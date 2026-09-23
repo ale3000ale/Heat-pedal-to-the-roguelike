@@ -1,14 +1,45 @@
 #!/bin/bash
 # setup.sh
-# Crea/ricrea il venv del backend usando la versione di Python piu' recente trovata sul sistema
-# (preferendo 3.10+ per compatibilita' con la sintassi "X | None" usata nel codice),
-# installa le dipendenze e inizializza il database SQLite.
+# Prepara l'intero ambiente di sviluppo Heat su macOS/Linux:
+# 1. Verifica/installa Node.js LTS (necessario per il frontend SvelteKit).
+# 2. Crea/ricrea il venv del backend usando la versione di Python piu' recente trovata sul sistema
+#    (preferendo 3.10+ per compatibilita' con la sintassi "X | None" usata nel codice).
+# 3. Installa le dipendenze Python e inizializza il database SQLite.
+# 4. Installa le dipendenze npm del frontend.
 #
 # Uso: bash setup.sh
 
 set -e
 
-cd backend
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ensure_node_installed()
+# Nessun parametro.
+# Controlla se "npm" e' disponibile nel PATH; se non lo trova, installa Node.js LTS
+# tramite Homebrew (macOS), cosi' non serve installarlo manualmente prima di lanciare il frontend.
+ensure_node_installed() {
+  if command -v npm >/dev/null 2>&1; then
+    echo "Node.js/npm gia' presente ($(npm --version))."
+    return 0
+  fi
+
+  echo "npm non trovato: installazione di Node.js LTS..."
+
+  if command -v brew >/dev/null 2>&1; then
+    # Passaggio critico: installa Node.js LTS tramite Homebrew, senza intervento manuale
+    brew install node
+  else
+    echo "Errore: Homebrew non trovato su questo sistema." >&2
+    echo "Installa Node.js manualmente da https://nodejs.org e rilancia questo script." >&2
+    exit 1
+  fi
+
+  if ! command -v npm >/dev/null 2>&1; then
+    echo "ATTENZIONE: npm ancora non riconosciuto in questa sessione." >&2
+    echo "Chiudi e riapri il terminale, poi rilancia setup.sh." >&2
+    exit 1
+  fi
+}
 
 # find_best_python()
 # Nessun parametro.
@@ -24,15 +55,20 @@ find_best_python() {
     fi
   done
 
-  # Nessuna versione moderna trovata: fallback su python3 di sistema, con avviso
   if command -v python3 >/dev/null 2>&1; then
     echo "python3"
     return 0
   fi
 
-  echo "" # nessun python trovato
+  echo ""
   return 1
 }
+
+# --- 1. Node.js / npm --------------------------------------------------
+ensure_node_installed
+
+# --- 2. Backend Python / venv -------------------------------------------
+cd "$ROOT_DIR/backend"
 
 PYTHON_BIN="$(find_best_python)"
 
@@ -44,7 +80,6 @@ fi
 PYTHON_VERSION="$("$PYTHON_BIN" --version 2>&1)"
 echo "Uso interprete: $PYTHON_BIN ($PYTHON_VERSION)"
 
-# Avviso se la versione trovata e' inferiore alla 3.10 (rischio incompatibilita' sintassi "X | None")
 PY_MAJOR_MINOR="$("$PYTHON_BIN" -c 'import sys; print(f"{sys.version_info.major}{sys.version_info.minor}")')"
 if [ "$PY_MAJOR_MINOR" -lt "310" ]; then
   echo "ATTENZIONE: la versione trovata e' inferiore a Python 3.10."
@@ -52,7 +87,6 @@ if [ "$PY_MAJOR_MINOR" -lt "310" ]; then
   echo "Consigliato: brew install python@3.12"
 fi
 
-# Rimuove un eventuale venv precedente per evitare mix di versioni Python diverse
 if [ -d "venv" ]; then
   echo "Rimozione venv esistente..."
   rm -rf venv
@@ -73,5 +107,17 @@ echo "Inizializzazione database heat.db..."
 python init_db.py
 
 echo ""
-echo "Setup completato. Venv creato con $(python --version)."
+echo "Setup backend completato. Venv creato con $(python --version)."
 echo "Per attivarlo manualmente in futuro: cd backend && source venv/bin/activate"
+
+# --- 3. Frontend: installazione dipendenze npm ---------------------------
+cd "$ROOT_DIR/frontend"
+
+echo ""
+echo "Installazione dipendenze frontend (npm install)..."
+npm install
+echo "Setup frontend completato."
+
+cd "$ROOT_DIR"
+echo ""
+echo "Setup completo del progetto Heat."
