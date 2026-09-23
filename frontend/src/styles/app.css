@@ -1,0 +1,46 @@
+/* frontend/src/styles/app.css */
+/* Stili globali dell'app: import Tailwind + variabili/tema racing personalizzabile. */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --racing-accent: #E10600;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Utility per l'indicatore "velocita'" usato in vari punti dell'UI come dettaglio a tema racing */
+.speed-indicator {
+  @apply inline-block h-1 w-full rounded-full bg-gradient-to-r from-racing-gold via-racing-red to-racing-black;
+}
+
+/* Card generica riutilizzata da PilotCard, DeckGrid, ecc. */
+.app-card {
+  @apply rounded-xl border border-racing-silver/30 bg-white dark:bg-racing-asphalt shadow-sm
+         hover:shadow-md transition-shadow p-4;
+}
+
+.app-card--highlight {
+  @apply border-2 border-racing-red ring-2 ring-racing-red/30;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-lg bg-racing-red px-4 py-2
+         font-display font-semibold text-white hover:bg-red-700 transition-colors
+         disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center rounded-lg border border-racing-black/20
+         dark:border-racing-silver/30 px-4 py-2 font-display font-semibold
+         hover:bg-racing-black/5 dark:hover:bg-white/10 transition-colors;
+}
+
+.input-field {
+  @apply w-full rounded-lg border border-racing-silver/50 bg-white dark:bg-racing-asphalt
+         px-3 py-2 focus:outline-none focus:ring-2 focus:ring-racing-red;
+}

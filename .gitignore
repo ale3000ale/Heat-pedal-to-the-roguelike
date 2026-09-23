@@ -427,3 +427,36 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# --- Backend Python ---
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+*.pyc
+*.pyo
+backend/.pytest_cache/
+backend/*.egg-info/
+
+# Database locale generato da init_db.py (rimuovi questa riga se vuoi versionare dati di test)
+backend/heat.db
+backend/*.db-journal
+
+# Variabili d'ambiente e secret
+.env
+backend/.env
+
+# --- Frontend Node/SvelteKit ---
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
