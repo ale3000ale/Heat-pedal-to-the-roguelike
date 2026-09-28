@@ -17,3 +17,4 @@
 - Race 1:N RaceResult
 - Pilot 1:N RaceResult
 - DeckPrototype (indipendente; usato solo come sorgente per reset/creazione mazzi)
+- Championship 1:N Pilot tramite ChampionshipPilot
