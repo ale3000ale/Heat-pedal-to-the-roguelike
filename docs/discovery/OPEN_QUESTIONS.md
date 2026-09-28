@@ -19,6 +19,6 @@ Al momento non emergono altre domande realmente bloccanti per la prima versione,
 - gestione campionati multipli, iscrizioni e classifiche è definita;
 - autenticazione, ruoli e primo admin sono definiti;
 - comportamenti delle pagine principali sono specificati;
-- strategia di migrazione e uso di Alembic sono definiti.
+- strategia di migrazione e uso di Alembic sono definite.
 
 Se desideri chiarimenti aggiuntivi su dettagli non critici (es. nomi esatti di alcuni campi audit, formati data/ora precisi, messaggi di errore specifici), puoi indicarli; non sono però prerequisiti per l'approvazione di `PROJECT_SPEC.md`.
