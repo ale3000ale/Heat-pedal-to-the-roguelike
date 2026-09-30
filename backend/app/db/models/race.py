@@ -1,8 +1,6 @@
 from sqlalchemy import Column, Integer, ForeignKey, DateTime, CheckConstraint, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase
+from app.db.base import Base
 from sqlalchemy.sql import func
-
-Base = DeclarativeBase()
 
 class Race(Base):
     __tablename__ = "race"

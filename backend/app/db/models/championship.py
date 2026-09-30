@@ -2,8 +2,6 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, U
 from app.db.base import Base
 from sqlalchemy.sql import func
 
-
-
 class Championship(Base):
     __tablename__ = "championship"
 
