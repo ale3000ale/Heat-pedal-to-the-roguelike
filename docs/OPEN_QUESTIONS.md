@@ -16,14 +16,10 @@
    serve solo come stabilizzatore di visualizzazione.
 4. **Pacchetti di carte**: contenuto, costo e meccanica di apertura. I
    pacchetti consumano la pool del campionato selezionato.
+5. **Pool reale delle carte**: il prototipo `default` ha pool vuota.
+   Servono elenco, valori e percorsi immagini delle carte.
 
-## Da verificare nella fase backend
 
-- Rappresentazione nel database di inventario e mazzo da gioco (due
-  riferimenti a `Deck` oppure un campo tipo).
-- Conferma che `Championship.deck` è la pool del campionato.
-- Nomi definitivi di tabelle e colonne nelle migrazioni Alembic, compreso il
-  nome `"Championship "` con lo spazio finale.
 
 ## Decisioni già chiuse (non ripetute)
 
