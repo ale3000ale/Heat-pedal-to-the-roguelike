@@ -1,24 +1,32 @@
 > **STATO: BOZZA NON APPROVATA.**
 >
-> Domande aperte residue dopo le 16 decisioni definitive. Le questioni già definite (relazioni, Deck/DeckPrototype, formato carte, campionati multipli, classifiche, autenticazione, ruoli, pagine, migrazioni) non sono qui ripetute. Il Negozio, l'amministrazione delle carte e lo spareggio sportivo sono esplicitamente rinviati e non bloccano la prima versione.
+> Domande aperte residue dopo la chiusura delle decisioni di `PROJECT_SPEC.md`.
+> Nessuna blocca la prima versione.
 
 # Domande aperte — Heat
 
-## Domande non bloccanti o rinviate
+## Domande rinviate
 
-1. **Negozio**: quali entità, prodotti, prezzi e regole saranno introdotte quando il modulo sarà implementato? (rinviato; prima versione: solo placeholder "Funzionalità in definizione").
-2. **Amministrazione carte**: quali funzioni amministrative saranno previste per aggiungere nuove carte (nuovi file immagine, nuovi record in `DeckPrototype` o altra entità)? (rinviato).
-3. **Spareggio sportivo**: in caso di pari punti in classifica, quale criterio di spareggio adottare (es. migliore risultato in una gara specifica, media posizioni, ecc.)? (rinviato; per ora solo ordine alfabetico come stabilizzatore di visualizzazione, non come spareggio).
+1. **Negozio**: quali entità, prodotti, prezzi e regole? Usa `gold` (denaro) e
+   `sponsor` (punti per premi). Prima versione: placeholder
+   "Funzionalità in definizione".
+2. **Amministrazione carte**: quali funzioni per aggiungere nuove carte (file
+   immagine, record in `DeckPrototype` o altra entità)?
+3. **Spareggio sportivo**: criterio a pari punti. Per ora l'ordine alfabetico
+   serve solo come stabilizzatore di visualizzazione.
+4. **Pacchetti di carte**: contenuto, costo e meccanica di apertura. I
+   pacchetti consumano la pool del campionato selezionato.
 
-## Eventuali altre domande
+## Da verificare nella fase backend
 
-Al momento non emergono altre domande realmente bloccanti per la prima versione, poiché:
+- Rappresentazione nel database di inventario e mazzo da gioco (due
+  riferimenti a `Deck` oppure un campo tipo).
+- Conferma che `Championship.deck` è la pool del campionato.
+- Nomi definitivi di tabelle e colonne nelle migrazioni Alembic, compreso il
+  nome `"Championship "` con lo spazio finale.
 
-- relazioni User/Team/Pilot/Deck sono definite;
-- formato carte e validazione sono definiti;
-- gestione campionati multipli, iscrizioni e classifiche è definita;
-- autenticazione, ruoli e primo admin sono definiti;
-- comportamenti delle pagine principali sono specificati;
-- strategia di migrazione e uso di Alembic sono definite.
+## Decisioni già chiuse (non ripetute)
 
-Se desideri chiarimenti aggiuntivi su dettagli non critici (es. nomi esatti di alcuni campi audit, formati data/ora precisi, messaggi di errore specifici), puoi indicarli; non sono però prerequisiti per l'approvazione di `PROJECT_SPEC.md`.
+Autenticazione, ruoli, primo admin, pagine, iscrizioni, mazzi, pool,
+punteggi, classifiche, reset all'iscrizione e strategia di migrazione sono
+definite in `PROJECT_SPEC.md`.

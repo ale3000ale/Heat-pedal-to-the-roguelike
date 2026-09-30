@@ -1,4 +1,6 @@
-> **STATO: BOZZA NON APPROVATA.** Questo documento riporta esclusivamente informazioni verificate realmente sul file `HeatDB.sql` fornito. Non contiene correzioni, deduzioni non verificabili né dati inventati. In attesa di risposte alle domande aperte (vedi `OPEN_QUESTIONS.md`) prima di poter essere considerato definitivo.
+> **STATO: BOZZA NON APPROVATA.** Questo documento separa i fatti verificati su
+> `HeatDB.sql` dalle differenze rispetto al modello target di `PROJECT_SPEC.md`.
+> Non contiene dati inventati.
 
 # Analisi del database — Heat
 
@@ -6,22 +8,18 @@
 
 - File: `HeatDB.sql`
 - Dimensione: 1.503 byte
-- Tipo reale: script SQL DDL (`CREATE TABLE ...`), **non** un file binario SQLite (`.db`/`.sqlite`)
-- Metodo di verifica: lettura integrale del contenuto testuale del file, eseguita più volte con richieste diverse per confermare la completezza del contenuto restituito
+- Tipo: script SQL DDL (`CREATE TABLE ...`), non un file binario SQLite
+- Verifica: lettura integrale del contenuto testuale
 
 ## 2. Contenuto verificato
 
-Il file contiene **esclusivamente 6 istruzioni `CREATE TABLE IF NOT EXISTS`**. Non contiene:
-
-- istruzioni `INSERT` (quindi nessun dato reale è disponibile)
-- istruzioni `CREATE INDEX`
-- istruzioni `CREATE VIEW`
-- istruzioni `PRAGMA`
-- commenti SQL
+Il file contiene esclusivamente 6 istruzioni `CREATE TABLE IF NOT EXISTS`.
+Non contiene `INSERT`, `CREATE INDEX`, `CREATE VIEW`, `PRAGMA` né commenti.
+Nessun dato reale è disponibile.
 
 ## 3. Schema rilevato
 
-### Tabella `User`
+### User
 
 | Colonna | Tipo | Vincoli |
 |---|---|---|
@@ -29,9 +27,7 @@ Il file contiene **esclusivamente 6 istruzioni `CREATE TABLE IF NOT EXISTS`**. N
 | username | TEXT | NOT NULL, UNIQUE |
 | password | TEXT | NOT NULL |
 
-Nessun campo di ruolo, permesso o timestamp. Nessuna indicazione nello schema se `password` contenga un valore già hashato.
-
-### Tabella `Pilot`
+### Pilot
 
 | Colonna | Tipo | Vincoli |
 |---|---|---|
@@ -44,14 +40,10 @@ Nessun campo di ruolo, permesso o timestamp. Nessuna indicazione nello schema se
 | team | INTEGER | NOT NULL |
 | user_id | INTEGER | NOT NULL |
 
-Foreign key:
-- `team` → `Team(id)` (ON UPDATE/DELETE NO ACTION)
-- `championship_id` → `"Championship "(id)` (ON UPDATE/DELETE NO ACTION) — nota lo spazio finale nel nome della tabella referenziata
-- `user_id` → `User(id)` (ON UPDATE/DELETE NO ACTION)
+Foreign key: `team` → `Team(id)`; `championship_id` → `"Championship "(id)`
+(nome con spazio finale); `user_id` → `User(id)`.
 
-Nessun vincolo `UNIQUE` su `user_id`: lo schema non impedisce che un utente abbia più piloti.
-
-### Tabella `Deck`
+### Deck
 
 | Colonna | Tipo | Vincoli |
 |---|---|---|
@@ -59,12 +51,9 @@ Nessun vincolo `UNIQUE` su `user_id`: lo schema non impedisce che un utente abbi
 | cards | TEXT | nullable |
 | id_prototype | INTEGER | NOT NULL |
 
-Foreign key:
-- `id_prototype` → `Deck_prototype(id)` (ON UPDATE/DELETE NO ACTION)
+Foreign key: `id_prototype` → `Deck_prototype(id)`.
 
-Nessun `CHECK` a livello database sul contenuto di `cards`. Nessun FK da `Pilot` o `Team` verso `Deck`: l'unico collegamento verificato verso `Deck` proviene dalla tabella `"Championship "` (colonna `deck`).
-
-### Tabella `"Championship "` (nome con spazio finale, verificato letteralmente nel file)
+### "Championship " (nome con spazio finale)
 
 | Colonna | Tipo | Vincoli |
 |---|---|---|
@@ -74,21 +63,16 @@ Nessun `CHECK` a livello database sul contenuto di `cards`. Nessun FK da `Pilot`
 | deck | INTEGER | nullable |
 | date | DATETIME | NOT NULL |
 
-Foreign key:
-- `deck` → `Deck(id)` (ON UPDATE/DELETE NO ACTION)
+Foreign key: `deck` → `Deck(id)`.
 
-La colonna `pilots` è di tipo `TEXT`, non una tabella ponte: la relazione campionato↔piloti non è espressa con vincoli referenziali nello schema.
-
-### Tabella `Team`
+### Team
 
 | Colonna | Tipo | Vincoli |
 |---|---|---|
 | id | INTEGER | NOT NULL, PRIMARY KEY |
 | name | TEXT | NOT NULL, UNIQUE |
 
-Nessun'altra colonna presente nello schema fornito.
-
-### Tabella `Deck_prototype`
+### Deck_prototype
 
 | Colonna | Tipo | Vincoli |
 |---|---|---|
@@ -96,48 +80,56 @@ Nessun'altra colonna presente nello schema fornito.
 | base_cards | TEXT | nullable |
 | name | TEXT | NOT NULL, UNIQUE |
 
-Nessuna indicazione nello schema sul formato interno di `base_cards`.
+Tutte le foreign key usano `ON UPDATE NO ACTION ON DELETE NO ACTION`.
 
-## 4. Diagramma delle relazioni verificate
-
-```
+## 4. Relazioni presenti nello schema
 User (1) ── < user_id (Pilot)
 Team (1) ── < team (Pilot)
 "Championship " (1) ── < championship_id (Pilot)
 Deck_prototype (1) ── < id_prototype (Deck)
 Deck (1) ── < deck ("Championship ")
-```
 
-Nessuna relazione diretta verificata tra `Pilot`/`Team` e `Deck`.
 
-## 5. Controllo di `Deck.cards`
+Nessuna FK da `Pilot` o `Team` verso `Deck`. Il solo collegamento verso `Deck`
+parte da `"Championship "`.
 
-Formato atteso (da istruzioni permanenti del progetto, non dal DB): array JSON di oggetti `{"path": "/images/cards/N_nome.ext", "value": N}`.
+## 5. Anomalie riscontrate (non corrette)
 
-**Nessun dato è verificabile**, perché il file `HeatDB.sql` non contiene alcuna istruzione `INSERT`. Di conseguenza non è possibile fornire conteggi di record:
+1. Nome tabella `"Championship "` con spazio finale; compare nel `CREATE TABLE`
+   e nella FK di `Pilot.championship_id`.
+2. `Deck.cards` e `Deck_prototype.base_cards` senza vincolo `CHECK`.
+3. `Championship.pilots` è TEXT, non una tabella di relazione.
+4. Nessuna FK tra `Deck` e `Pilot`.
+5. Nessuna tabella per il Negozio.
+6. `User` senza ruolo e senza indicazione sul formato di `password`.
+7. `Team` senza riferimento a `User`.
+8. `Pilot.user_id` senza UNIQUE: coerente con User 1:N Pilot.
+9. `Pilot.championship_id` è singolo: lo schema consente un solo campionato
+   per pilota, coerente con la regola di `PROJECT_SPEC.md`.
 
-- validi: non verificabile (0 righe di dati presenti nel file)
-- nulli: non verificabile
-- vuoti: non verificabile
-- JSON non validi: non verificabile
-- validi ma con struttura errata: non verificabile
+## 6. Differenze rispetto a PROJECT_SPEC.md (da risolvere con Alembic)
 
-Qualsiasi cifra su questi conteggi sarebbe inventata: non viene riportata.
+| Modello target | Stato attuale |
+|---|---|
+| Tabella `ChampionshipPilot` | Assente; esiste `Championship.pilots` (TEXT) |
+| Tabelle `Race` e `RaceResult` | Assenti |
+| Pilot 1:1 Inventario e Pilot 1:1 Mazzo da gioco | `Deck` non collegato a `Pilot` |
+| Pool di carte per campionato da `DeckPrototype` | `Championship.deck` → `Deck` → `Deck_prototype` (corrispondenza da confermare) |
+| Ruoli `admin` e `player` | `User` senza ruolo |
+| User 1:N Team | `Team` senza `user_id` |
+| Nome tabella `Championship` | Nome con spazio finale |
 
-## 6. Anomalie riscontrate (non corrette)
+## 7. Controllo di Deck.cards
 
-1. **Nome tabella con spazio finale**: `"Championship "` è definita così sia nel `CREATE TABLE` sia nella `FOREIGN KEY` di `Pilot` e nella `FOREIGN KEY` di `Deck`... verificato: solo `Pilot.championship_id` e la relazione inversa `"Championship ".deck → Deck.id` referenziano questa tabella; lo spazio è presente in modo consistente ovunque compaia nel file.
-2. **`Deck.cards` e `Deck_prototype.base_cards` senza vincolo `CHECK`**: nessuna garanzia a livello database che il contenuto sia JSON valido nella struttura richiesta.
-3. **`Championship.pilots` come colonna testuale** invece di una tabella di relazione N:N con vincoli referenziali.
-4. **Assenza di FK diretta tra `Deck` e `Pilot`/`Team`**: il mazzo risulta collegato solo al campionato nello schema attuale.
-5. **Assenza di qualunque tabella relativa a un "negozio"** (nessuna tabella `Shop`, `Item`, `Purchase` o simile presente nel file).
-6. **Nessun campo di ruolo/permesso in `User`** e nessuna indicazione sul formato di `password`.
-7. **Nessun vincolo `UNIQUE` su `Pilot.user_id`**: cardinalità Utente↔Pilota non definita a livello database.
+Formato atteso (da `PROJECT_SPEC.md`): array JSON di oggetti
+`{"path": "/images/cards/N_nome.ext", "value": N}`.
 
-## 7. Cosa non è stato verificato
+Nessun dato è verificabile perché il file non contiene `INSERT`. Non sono
+riportati conteggi di righe valide, nulle o errate.
 
-- Contenuto dati reale (perché assente nel file fornito)
+## 8. Cosa non è stato verificato
+
+- Contenuto dei dati reali
 - Indici oltre a quelli impliciti da `UNIQUE`
-- Eventuali vincoli `CHECK` (nessuno presente nel testo letto)
-- Comportamento di `ON DELETE`/`ON UPDATE` diverso da `NO ACTION` (tutte le FK usano `NO ACTION`, verificato)
-</content>
+- Eventuali vincoli `CHECK` (nessuno presente nel testo)
+- Comportamento di `ON DELETE` e `ON UPDATE` diverso da `NO ACTION`
