@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, UniqueConstraint
 from app.db.base import Base
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, expression
+
 
 class Championship(Base):
     __tablename__ = "championship"
@@ -8,7 +9,7 @@ class Championship(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
     date = Column(DateTime, nullable=False, server_default=func.now())
-    is_closed = Column(Boolean, nullable=False, default=False, server_default="false")
+    is_closed = Column(Boolean, nullable=False, default=False)
     pool_deck_id = Column(Integer, ForeignKey("deck.id"), nullable=True)
 
 class ChampionshipPilot(Base):

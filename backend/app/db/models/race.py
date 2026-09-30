@@ -26,4 +26,5 @@ class RaceResult(Base):
     __table_args__ = (
         UniqueConstraint("race_id", "pilot_id"),
         UniqueConstraint("race_id", "position"),
+        CheckConstraint("position BETWEEN 1 AND 12", name="ck_race_result_position"),
     )
