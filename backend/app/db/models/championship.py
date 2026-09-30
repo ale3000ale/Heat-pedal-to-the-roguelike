@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase
+from app.db.base import Base
 from sqlalchemy.sql import func
 
-Base = DeclarativeBase()
+
 
 class Championship(Base):
     __tablename__ = "championship"
