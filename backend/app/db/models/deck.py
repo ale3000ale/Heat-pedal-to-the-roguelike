@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, CheckConstraint
 from app.db.base import Base
 
+
 class DeckPrototype(Base):
     __tablename__ = "deck_prototype"
 
