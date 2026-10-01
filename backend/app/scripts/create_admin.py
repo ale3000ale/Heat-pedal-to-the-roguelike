@@ -9,7 +9,7 @@ from app.security import hash_password
 
 
 def main() -> None:
-    username = os.environ.get("HEAT_ADMIN_USERNAME") or input("Username admin: ").strip()
+    username = os.environ.get("HEAT_ADMIN_USERNAME") or input("Username admin: ").strip().lower()
     password = os.environ.get("HEAT_ADMIN_PASSWORD") or getpass("Password admin: ")
 
     if not username or not password:
