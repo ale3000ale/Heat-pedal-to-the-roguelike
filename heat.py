@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import platform
 import shutil
 import signal
 import subprocess
@@ -8,11 +9,12 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
 VENV = BACKEND / ".venv"
-IS_WIN = os.name == "nt"
+SYSTEM = platform.system()
+IS_WIN = SYSTEM == "Windows"
 VENV_PY = VENV / ("Scripts/python.exe" if IS_WIN else "bin/python")
 HOST = "127.0.0.1"
 BACKEND_PORT = 8000
@@ -25,14 +27,14 @@ def info(msg):
 
 
 def fail(msg):
-    print(f"\nERRORE: {msg}", file=sys.stderr)
-    sys.exit(1)
+    raise SystemExit(f"\nERRORE: {msg}")
 
 
-def run(cmd, cwd):
+def run(cmd, cwd, check=True):
     result = subprocess.run([str(c) for c in cmd], cwd=cwd)
-    if result.returncode != 0:
+    if check and result.returncode != 0:
         fail(f"Comando fallito: {' '.join(str(c) for c in cmd)}")
+    return result.returncode
 
 
 def has_frontend():
@@ -46,7 +48,7 @@ def find_npm():
     return npm
 
 
-def setup(args):
+def setup(skip_admin=False, skip_seed=False):
     if sys.version_info < MIN_PYTHON:
         fail(f"Serve Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} o superiore")
 
@@ -63,23 +65,23 @@ def setup(args):
     info("Applico le migrazioni del database")
     run([VENV_PY, "-m", "alembic", "upgrade", "head"], BACKEND)
 
-    if not args.skip_seed:
+    if not skip_seed:
         info("Popolo il prototipo del mazzo")
         run([VENV_PY, "-m", "app.scripts.seed_prototype"], BACKEND)
 
-    if not args.skip_admin:
+    if not skip_admin:
         info("Creo l'utente admin")
         run([VENV_PY, "-m", "app.scripts.create_admin"], BACKEND)
 
     if has_frontend():
         npm = find_npm()
         info("Installo le dipendenze del frontend")
-        cmd = "ci" if (FRONTEND / "package-lock.json").exists() else "install"
-        run([npm, cmd], FRONTEND)
+        lock = (FRONTEND / "package-lock.json").exists()
+        run([npm, "ci" if lock else "install"], FRONTEND)
     else:
         info("Cartella frontend/ non ancora presente: salto")
 
-    info("Setup completato. Avvia con start.bat (Windows) o ./start.sh")
+    info("Setup completato")
 
 
 def spawn(cmd, cwd):
@@ -115,9 +117,9 @@ def stop(proc):
                 pass
 
 
-def start(args):
+def start(backend_only=False):
     if not VENV_PY.exists():
-        fail("Ambiente non pronto. Esegui prima il setup")
+        fail("Ambiente non pronto. Scegli prima 'Setup'")
 
     procs = []
     try:
@@ -129,9 +131,9 @@ def start(args):
                 BACKEND,
             )
         )
-        if has_frontend() and not args.backend_only:
+        if has_frontend() and not backend_only:
             if not (FRONTEND / "node_modules").exists():
-                fail("Dipendenze frontend mancanti. Esegui prima il setup")
+                fail("Dipendenze frontend mancanti. Scegli prima 'Setup'")
             info(f"Avvio il frontend su http://{HOST}:{FRONTEND_PORT}")
             procs.append(
                 spawn(
@@ -151,18 +153,58 @@ def start(args):
             stop(p)
 
 
+def run_tests():
+    if not VENV_PY.exists():
+        fail("Ambiente non pronto. Scegli prima 'Setup'")
+    run([VENV_PY, "-m", "pytest", "-q"], BACKEND, check=False)
+
+
+MENU = [
+    ("Setup (installa tutto)", lambda: setup()),
+    ("Avvia backend e frontend", lambda: start()),
+    ("Avvia solo il backend", lambda: start(backend_only=True)),
+    ("Esegui i test del backend", run_tests),
+]
+
+
+def menu():
+    print(f"Heat - sistema rilevato: {SYSTEM} (Python {platform.python_version()})")
+    while True:
+        print()
+        for i, (label, _) in enumerate(MENU, 1):
+            print(f"  {i}) {label}")
+        print("  0) Esci")
+        choice = input("\nScelta: ").strip()
+        if choice == "0":
+            return
+        if choice.isdigit() and 1 <= int(choice) <= len(MENU):
+            try:
+                MENU[int(choice) - 1][1]()
+            except SystemExit as exc:
+                print(exc)
+        else:
+            print("Scelta non valida")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Heat: setup e avvio")
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command")
     p_setup = sub.add_parser("setup")
     p_setup.add_argument("--skip-admin", action="store_true")
     p_setup.add_argument("--skip-seed", action="store_true")
-    p_setup.set_defaults(func=setup)
     p_start = sub.add_parser("start")
     p_start.add_argument("--backend-only", action="store_true")
-    p_start.set_defaults(func=start)
+    sub.add_parser("test")
     args = parser.parse_args()
-    args.func(args)
+
+    if args.command == "setup":
+        setup(args.skip_admin, args.skip_seed)
+    elif args.command == "start":
+        start(args.backend_only)
+    elif args.command == "test":
+        run_tests()
+    else:
+        menu()
 
 
 if __name__ == "__main__":
