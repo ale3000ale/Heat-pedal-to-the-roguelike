@@ -35,3 +35,7 @@ __pycache__/
 # Database locale
 *.db
 *.sqlite3
+
+#preacauzione
+login.json
+cookies.txt
