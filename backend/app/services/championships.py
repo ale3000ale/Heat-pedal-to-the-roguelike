@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -6,6 +6,7 @@ from app.db.models import User
 from app.db.models.championship import Championship, ChampionshipPilot
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
+from app.db.models.race import Race, RaceResult
 from app.services.cards import STARTER_INVENTORY, dump_cards
 from app.services.names import clean_name, name_key
 from app.services.pilots import PilotInActiveChampionshipError, get_own_pilot
@@ -24,6 +25,8 @@ class ChampionshipNameTakenError(Exception):
 class ChampionshipClosedError(Exception):
     """Il campionato è chiuso (sola lettura)."""
 
+class ChampionshipOpenError(Exception):
+    """Il campionato è ancora attivo: va chiuso prima di cancellarlo."""
 
 class PilotWithoutTeamError(Exception):
     """Per iscriversi a un campionato il pilota deve avere un team."""
@@ -110,3 +113,24 @@ def enroll_pilot(db: Session, user: User, championship_id: int, pilot_id: int) -
         raise PilotInActiveChampionshipError
     db.refresh(pilot)
     return pilot
+
+def delete_championship(db: Session, championship_id: int) -> None:
+    # Cancella un campionato chiuso con tutto il suo storico: risultati, gare, iscrizioni
+    # e la copia della pool. I piloti restano. Tutto in un'unica transazione.
+    championship = get_championship(db, championship_id)
+    if not championship.is_closed:
+        raise ChampionshipOpenError
+    race_ids = select(Race.id).where(Race.championship_id == championship.id)
+    db.execute(delete(RaceResult).where(RaceResult.race_id.in_(race_ids)))
+    db.execute(delete(Race).where(Race.championship_id == championship.id))
+    db.execute(
+        delete(ChampionshipPilot).where(ChampionshipPilot.championship_id == championship.id)
+    )
+    pool_deck_id = championship.pool_deck_id
+    db.delete(championship)
+    db.flush()
+    if pool_deck_id is not None:
+        deck = db.get(Deck, pool_deck_id)
+        if deck is not None:
+            db.delete(deck)
+    db.commit()

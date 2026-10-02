@@ -1,7 +1,8 @@
 import json
 
 from app.db.models import User
-from app.db.models.championship import Championship
+from app.db.models.championship import Championship, ChampionshipPilot
+from app.db.models.race import Race, RaceResult
 from app.db.models.deck import Deck, DeckPrototype
 from app.db.models.pilot import Pilot
 from app.security import hash_password
@@ -291,4 +292,79 @@ def test_enrolled_pilot_is_locked(make_client, session_factory):
     assert player.delete(f"/api/pilots/{pilot_id}").status_code == 204
     detail = player.get(f"/api/championships/{championship_id}").json()
     assert [p["name"] for p in detail["pilots"]] == ["Ayrton"]
+
+def test_delete_championship_requires_admin_and_existing_id(make_client, session_factory):
+    seed_base_pool(session_factory)
+    admin = make_admin(make_client, session_factory)
+    player = make_player(make_client)
+    championship_id = new_championship(admin).json()["id"]
+    admin.post(f"/api/championships/{championship_id}/close")
+    assert make_client().delete(f"/api/championships/{championship_id}").status_code == 401
+    assert player.delete(f"/api/championships/{championship_id}").status_code == 403
+    assert admin.delete("/api/championships/999").status_code == 404
+
+
+def test_cannot_delete_active_championship(make_client, session_factory):
+    seed_base_pool(session_factory)
+    admin = make_admin(make_client, session_factory)
+    championship_id = new_championship(admin).json()["id"]
+    assert admin.delete(f"/api/championships/{championship_id}").status_code == 409
+    assert admin.get(f"/api/championships/{championship_id}").status_code == 200
+
+
+def test_delete_closed_championship_removes_its_history(make_client, session_factory):
+    seed_base_pool(session_factory)
+    admin = make_admin(make_client, session_factory)
+    player = make_player(make_client)
+    pilot_id = make_pilot(player)
+    championship_id = new_championship(admin, "Estate").json()["id"]
+    enroll(player, championship_id, pilot_id)
+    with session_factory() as db:
+        pool_deck_id = db.get(Championship, championship_id).pool_deck_id
+        race = Race(championship_id=championship_id, number=1)
+        db.add(race)
+        db.flush()
+        db.add(RaceResult(race_id=race.id, pilot_id=pilot_id, position=1, points=9))
+        db.commit()
+    admin.post(f"/api/championships/{championship_id}/close")
+    assert admin.delete(f"/api/championships/{championship_id}").status_code == 204
+    assert admin.get(f"/api/championships/{championship_id}").status_code == 404
+    with session_factory() as db:
+        assert db.get(Deck, pool_deck_id) is None
+        assert db.query(Race).count() == 0
+        assert db.query(RaceResult).count() == 0
+        assert db.query(ChampionshipPilot).count() == 0
+        assert db.get(Pilot, pilot_id) is not None
+    assert player.get(f"/api/pilots/{pilot_id}").status_code == 200
+    assert new_championship(admin, "Estate").status_code == 201
+
+
+def test_delete_leaves_other_championships_untouched(make_client, session_factory):
+    seed_base_pool(session_factory)
+    admin = make_admin(make_client, session_factory)
+    first = new_championship(admin, "Estate").json()["id"]
+    second = new_championship(admin, "Inverno").json()["id"]
+    with session_factory() as db:
+        keep_deck_id = db.get(Championship, second).pool_deck_id
+        db.add(Race(championship_id=second, number=1))
+        db.commit()
+    admin.post(f"/api/championships/{first}/close")
+    assert admin.delete(f"/api/championships/{first}").status_code == 204
+    assert admin.get(f"/api/championships/{second}").status_code == 200
+    with session_factory() as db:
+        assert db.get(Deck, keep_deck_id) is not None
+        assert db.query(Race).count() == 1
+
+
+def test_deleted_championship_frees_the_pilot_for_a_new_one(make_client, session_factory):
+    seed_base_pool(session_factory)
+    admin = make_admin(make_client, session_factory)
+    player = make_player(make_client)
+    pilot_id = make_pilot(player)
+    first = new_championship(admin, "Estate").json()["id"]
+    second = new_championship(admin, "Inverno").json()["id"]
+    enroll(player, first, pilot_id)
+    admin.post(f"/api/championships/{first}/close")
+    admin.delete(f"/api/championships/{first}")
+    assert enroll(player, second, pilot_id).status_code == 201
     

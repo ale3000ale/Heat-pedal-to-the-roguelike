@@ -12,9 +12,11 @@ from app.services.championships import (
     ChampionshipClosedError,
     ChampionshipNameTakenError,
     ChampionshipNotFoundError,
+    ChampionshipOpenError,
     PilotWithoutTeamError,
     close_championship,
     create_championship,
+    delete_championship,
     enroll_pilot,
     get_championship,
     list_championships,
@@ -97,4 +99,16 @@ def enroll(championship_id: int, data: EnrollRequest, user: CurrentUser, db: DbD
     except PilotInActiveChampionshipError:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Il pilota è già iscritto a un campionato attivo"
+        )
+
+@router.delete("/{championship_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove(championship_id: int, admin: AdminUser, db: DbDep):
+    # Cancella un campionato chiuso con tutto lo storico (solo admin).
+    try:
+        delete_championship(db, championship_id)
+    except ChampionshipNotFoundError:
+        raise NOT_FOUND
+    except ChampionshipOpenError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Chiudi il campionato prima di cancellarlo"
         )
