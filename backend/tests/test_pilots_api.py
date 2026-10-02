@@ -21,7 +21,11 @@ def create_pilot(client, name="Ayrton", team_id=None):
 def enroll(session_factory, pilot_id, closed=False):
     # Iscrive il pilota a un nuovo campionato, aperto o chiuso.
     with session_factory() as db:
-        championship = Championship(name=f"Campionato {pilot_id}", is_closed=closed)
+        championship = Championship(
+            name=f"Campionato {pilot_id}",
+            name_key=f"campionato {pilot_id}",
+            is_closed=closed,
+        )
         db.add(championship)
         db.flush()
         db.add(ChampionshipPilot(championship_id=championship.id, pilot_id=pilot_id))

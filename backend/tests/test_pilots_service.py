@@ -44,7 +44,9 @@ def luigi(db):
 
 def enroll(db, pilot, closed=False):
     # Iscrive il pilota a un nuovo campionato, aperto o chiuso.
-    championship = Championship(name=f"Campionato {pilot.id}", is_closed=closed)
+    championship = Championship(
+        name=f"Campionato {pilot.id}", name_key=f"campionato {pilot.id}", is_closed=closed
+    )
     db.add(championship)
     db.flush()
     db.add(ChampionshipPilot(championship_id=championship.id, pilot_id=pilot.id))
