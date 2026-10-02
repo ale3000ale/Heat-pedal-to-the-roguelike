@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.db.models import User
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
-from app.services.cards import STARTER_INVENTORY, dump_cards
+from app.services.cards import STARTER_INVENTORY, CardEntry, dump_cards, parse_cards
 from app.services.names import clean_name, name_key
 from app.services.teams import get_own_team, pilots_in_active_championship
 
@@ -132,3 +132,9 @@ def delete_pilot(db: Session, user: User, pilot_id: int) -> None:
         raise PilotInActiveChampionshipError
     pilot.deleted_at = _now()
     db.commit()
+
+def pilot_decks(db: Session, pilot: Pilot) -> tuple[list[CardEntry], list[CardEntry]]:
+    # Restituisce (inventario, mazzo da gioco) del pilota come elenchi di carte.
+    inventory = db.get(Deck, pilot.inventory_deck_id)
+    game = db.get(Deck, pilot.game_deck_id)
+    return parse_cards(inventory.cards), parse_cards(game.cards)

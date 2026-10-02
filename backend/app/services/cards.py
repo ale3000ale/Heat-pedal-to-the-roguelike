@@ -25,9 +25,9 @@ def card_key(name: str) -> str:
 
 
 # Inventario di partenza di ogni pilota, indipendente dalla pool del campionato.
-# I percorsi sono provvisori: le immagini verranno aggiunte più avanti.
+# I percorsi sono relativi a backend/media.
 STARTER_INVENTORY = [
-    CardEntry(name=f"Velocità {n}", path=f"images/cards/base/velocita_{n}.webp", copies=3)
+    CardEntry(name=f"Velocità {n}", path=f"cards/starter/velocita-{n}.webp", copies=3)
     for n in range(1, 5)
 ]
 

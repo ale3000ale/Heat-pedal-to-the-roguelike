@@ -7,6 +7,7 @@ from app.db.session import SessionLocal
 from app.services.sessions import purge_expired
 from app.api.teams import router as teams_router
 from fastapi.staticfiles import StaticFiles
+from app.api.pilots import router as pilots_router
 
 from app.config import MEDIA_DIR
 
@@ -23,7 +24,7 @@ app = FastAPI(title="Heat", lifespan=lifespan)
 
 app.include_router(auth_router, prefix="/api/auth")
 app.include_router(teams_router, prefix="/api/teams")
-
+app.include_router(pilots_router, prefix="/api/pilots")
 
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
