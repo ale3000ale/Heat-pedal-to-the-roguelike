@@ -40,3 +40,6 @@ __pycache__/
 #preacauzione
 login.json
 cookies.txt
+
+#images
+backend/media/cards/uploads/*

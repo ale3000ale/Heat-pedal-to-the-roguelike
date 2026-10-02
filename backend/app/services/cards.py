@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 # Limite di carte (somma delle copie) del mazzo da gioco.
 MAX_GAME_DECK_CARDS = 15
 
-
 class CardError(ValueError):
     """Errore di formato o di regole sulle carte (messaggio leggibile)."""
 
