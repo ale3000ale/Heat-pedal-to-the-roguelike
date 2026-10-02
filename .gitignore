@@ -34,6 +34,7 @@ __pycache__/
 
 # Database locale
 *.db
+*.db.bak
 *.sqlite3
 
 #preacauzione
