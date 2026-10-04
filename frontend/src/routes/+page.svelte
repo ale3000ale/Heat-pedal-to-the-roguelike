@@ -2,32 +2,89 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { auth } from '$lib/auth.svelte';
+	import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 
-	// Se non c'è nessun utente loggato rimanda alla pagina di login.
-	// Gira anche dopo il logout: lo stato si svuota e l'effetto scatta da solo.
+	let username = $state('');
+	let password = $state('');
+	let confirm = $state('');
+	let error = $state<string | null>(null);
+	let busy = $state(false);
+
+	// Dopo la registrazione l'utente risulta già loggato: va alla home.
 	$effect(() => {
-		if (auth.ready && !auth.user) goto(resolve('/login'));
+		if (auth.user) goto(resolve('/'));
 	});
 
-	// Esce dall'account (il redirect lo fa l'effetto qui sopra).
-	async function logout() {
-		await auth.logout().catch(() => {});
+	// Controlla che le due password coincidano, poi crea l'account.
+	async function submit(event: SubmitEvent) {
+		event.preventDefault();
+		error = null;
+		if (password !== confirm) {
+			error = 'Le password non coincidono';
+			return;
+		}
+		busy = true;
+		try {
+			await auth.register(username, password);
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Errore sconosciuto';
+		} finally {
+			busy = false;
+		}
 	}
 </script>
 
-<svelte:head><title>Heat</title></svelte:head>
+<svelte:head><title>Registrati - Heat</title></svelte:head>
 
-{#if auth.user}
-	<main class="mx-auto max-w-2xl p-6">
-		<h1 class="text-3xl font-bold">Heat: Pedal to the Roguelike</h1>
-		<p class="mt-4 text-neutral-300">
-			Ciao <strong>{auth.user.username}</strong>
-			<span class="ml-2 rounded bg-neutral-800 px-2 py-0.5 text-xs uppercase">
-				{auth.user.role}
-			</span>
-		</p>
-		<button onclick={logout} class="mt-6 rounded bg-neutral-800 px-4 py-2 hover:bg-neutral-700">
-			Esci
-		</button>
-	</main>
-{/if}
+<main class="mx-auto flex min-h-[80vh] max-w-sm items-center p-6">
+	<Card.Root class="w-full">
+		<Card.Header>
+			<Card.Title class="text-2xl">Crea un account</Card.Title>
+			<Card.Description>Scegli username e password per entrare in Heat.</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<form onsubmit={submit} class="flex flex-col gap-4">
+				<div class="flex flex-col gap-2">
+					<Label for="username">Username</Label>
+					<Input id="username" bind:value={username} autocomplete="username" required />
+				</div>
+
+				<div class="flex flex-col gap-2">
+					<Label for="password">Password</Label>
+					<Input
+						id="password"
+						type="password"
+						bind:value={password}
+						autocomplete="new-password"
+						required
+					/>
+				</div>
+
+				<div class="flex flex-col gap-2">
+					<Label for="confirm">Ripeti la password</Label>
+					<Input
+						id="confirm"
+						type="password"
+						bind:value={confirm}
+						autocomplete="new-password"
+						required
+					/>
+				</div>
+
+				{#if error}
+					<p class="text-sm text-destructive" role="alert">{error}</p>
+				{/if}
+
+				<Button type="submit" disabled={busy}>{busy ? 'Creazione…' : 'Registrati'}</Button>
+			</form>
+
+			<p class="mt-6 text-sm text-muted-foreground">
+				Hai già un account?
+				<a href={resolve('/login')} class="text-foreground underline">Accedi</a>
+			</p>
+		</Card.Content>
+	</Card.Root>
+</main>

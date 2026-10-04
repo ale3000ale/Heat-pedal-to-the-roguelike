@@ -2,6 +2,10 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { auth } from '$lib/auth.svelte';
+	import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 
 	let username = $state('');
 	let password = $state('');
@@ -30,45 +34,41 @@
 
 <svelte:head><title>Accedi - Heat</title></svelte:head>
 
-<main class="mx-auto max-w-sm p-6">
-	<h1 class="text-2xl font-bold">Accedi</h1>
+<main class="mx-auto flex min-h-[80vh] max-w-sm items-center p-6">
+	<Card.Root class="w-full">
+		<Card.Header>
+			<Card.Title class="text-2xl">Accedi</Card.Title>
+			<Card.Description>Entra nel tuo account Heat.</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<form onsubmit={submit} class="flex flex-col gap-4">
+				<div class="flex flex-col gap-2">
+					<Label for="username">Username</Label>
+					<Input id="username" bind:value={username} autocomplete="username" required />
+				</div>
 
-	<form onsubmit={submit} class="mt-6 flex flex-col gap-4">
-		<label class="flex flex-col gap-1 text-sm">
-			Username
-			<input
-				bind:value={username}
-				autocomplete="username"
-				required
-				class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2"
-			/>
-		</label>
+				<div class="flex flex-col gap-2">
+					<Label for="password">Password</Label>
+					<Input
+						id="password"
+						type="password"
+						bind:value={password}
+						autocomplete="current-password"
+						required
+					/>
+				</div>
 
-		<label class="flex flex-col gap-1 text-sm">
-			Password
-			<input
-				type="password"
-				bind:value={password}
-				autocomplete="current-password"
-				required
-				class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2"
-			/>
-		</label>
+				{#if error}
+					<p class="text-sm text-destructive" role="alert">{error}</p>
+				{/if}
 
-		{#if error}
-			<p class="text-sm text-red-400" role="alert">{error}</p>
-		{/if}
+				<Button type="submit" disabled={busy}>{busy ? 'Accesso…' : 'Entra'}</Button>
+			</form>
 
-		<button
-			disabled={busy}
-			class="rounded bg-red-600 px-4 py-2 font-semibold hover:bg-red-500 disabled:opacity-50"
-		>
-			{busy ? 'Accesso…' : 'Entra'}
-		</button>
-	</form>
-
-	<p class="mt-6 text-sm text-neutral-400">
-		Non hai un account?
-		<a href={resolve('/register')} class="text-red-400 underline">Registrati</a>
-	</p>
+			<p class="mt-6 text-sm text-muted-foreground">
+				Non hai un account?
+				<a href={resolve('/register')} class="text-foreground underline">Registrati</a>
+			</p>
+		</Card.Content>
+	</Card.Root>
 </main>
