@@ -48,7 +48,12 @@
 		{#if auth.user}
 			<header class="border-b">
 				<nav class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-					<a href={resolve('/')} class="text-lg font-bold tracking-tight">Heat</a>
+					<div class="flex items-center gap-6">
+						<a href={resolve('/')} class="text-lg font-bold tracking-tight">Heat</a>
+						<a href={resolve('/team')} class="text-sm text-muted-foreground hover:text-foreground">
+							Team e piloti
+						</a>
+					</div>
 					<div class="flex items-center gap-3 text-sm">
 						<span class="text-muted-foreground">
 							{auth.user.username}{auth.isAdmin ? ' · admin' : ''}

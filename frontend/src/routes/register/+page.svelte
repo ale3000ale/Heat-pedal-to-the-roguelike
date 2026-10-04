@@ -2,6 +2,10 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { auth } from '$lib/auth.svelte';
+	import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 
 	let username = $state('');
 	let password = $state('');
@@ -35,56 +39,52 @@
 
 <svelte:head><title>Registrati - Heat</title></svelte:head>
 
-<main class="mx-auto max-w-sm p-6">
-	<h1 class="text-2xl font-bold">Crea un account</h1>
+<main class="mx-auto flex min-h-[80vh] max-w-sm items-center p-6">
+	<Card.Root class="w-full">
+		<Card.Header>
+			<Card.Title class="text-2xl">Crea un account</Card.Title>
+			<Card.Description>Scegli username e password per entrare in Heat.</Card.Description>
+		</Card.Header>
+		<Card.Content>
+			<form onsubmit={submit} class="flex flex-col gap-4">
+				<div class="flex flex-col gap-2">
+					<Label for="username">Username</Label>
+					<Input id="username" bind:value={username} autocomplete="username" required />
+				</div>
 
-	<form onsubmit={submit} class="mt-6 flex flex-col gap-4">
-		<label class="flex flex-col gap-1 text-sm">
-			Username
-			<input
-				bind:value={username}
-				autocomplete="username"
-				required
-				class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2"
-			/>
-		</label>
+				<div class="flex flex-col gap-2">
+					<Label for="password">Password</Label>
+					<Input
+						id="password"
+						type="password"
+						bind:value={password}
+						autocomplete="new-password"
+						required
+					/>
+				</div>
 
-		<label class="flex flex-col gap-1 text-sm">
-			Password
-			<input
-				type="password"
-				bind:value={password}
-				autocomplete="new-password"
-				required
-				class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2"
-			/>
-		</label>
+				<div class="flex flex-col gap-2">
+					<Label for="confirm">Ripeti la password</Label>
+					<Input
+						id="confirm"
+						type="password"
+						bind:value={confirm}
+						autocomplete="new-password"
+						required
+					/>
+				</div>
 
-		<label class="flex flex-col gap-1 text-sm">
-			Ripeti la password
-			<input
-				type="password"
-				bind:value={confirm}
-				autocomplete="new-password"
-				required
-				class="rounded border border-neutral-700 bg-neutral-900 px-3 py-2"
-			/>
-		</label>
+				{#if error}
+					<p class="text-sm text-destructive" role="alert">{error}</p>
+				{/if}
 
-		{#if error}
-			<p class="text-sm text-red-400" role="alert">{error}</p>
-		{/if}
+				<Button type="submit" disabled={busy}>{busy ? 'Creazione…' : 'Registrati'}</Button>
+			</form>
 
-		<button
-			disabled={busy}
-			class="rounded bg-red-600 px-4 py-2 font-semibold hover:bg-red-500 disabled:opacity-50"
-		>
-			{busy ? 'Creazione…' : 'Registrati'}
-		</button>
-	</form>
-
-	<p class="mt-6 text-sm text-neutral-400">
-		Hai già un account?
-		<a href={resolve('/login')} class="text-red-400 underline">Accedi</a>
-	</p>
+			<p class="mt-6 text-sm text-muted-foreground">
+				Hai già un account?
+				<a href={resolve('/login')} class="text-foreground underline">Accedi</a>
+			</p>
+		</Card.Content>
+	</Card.Root>
 </main>

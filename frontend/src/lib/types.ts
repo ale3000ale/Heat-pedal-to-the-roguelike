@@ -7,3 +7,19 @@ export interface User {
 	username: string;
 	role: Role;
 }
+
+// Team dell'utente.
+export interface Team {
+	id: number;
+	name: string;
+}
+
+// Pilota come appare nell'elenco (senza i mazzi).
+export interface Pilot {
+	id: number;
+	name: string;
+	team_id: number | null;
+	gold: number;
+	sponsor: number;
+	point: number;
+}
