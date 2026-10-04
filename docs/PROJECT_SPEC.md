@@ -16,17 +16,14 @@
 ## 2. Decisioni definitive
 
 - Possono esistere più campionati attivi contemporaneamente.
-- La cronologia dei campionati chiusi deve essere mantenuta.
-- Cancellare un campionato è un'azione dell'admin e rimuove anche il suo storico.
-- Un campionato chiuso diventa in sola lettura e resta nella cronologia.
-- Un pilota non può essere iscritto a due campionati contemporaneamente;
-  può iscriversi a un nuovo campionato dopo la chiusura del precedente.
-- Solo l'admin crea e chiude i campionati.
-- Negozio, amministrazione carte e spareggio sportivo sono rinviati
-  e non bloccano la prima versione.
+- La cronologia dei campionati chiusi viene mantenuta tramite una classifica finale congelata.
+- Cancellare un campionato è un'azione dell'admin, possibile solo dopo la chiusura; rimuove anche gare, risultati, iscrizioni, classifica finale e copia della pool.
+- Un campionato chiuso diventa in sola lettura.
+- Un pilota non può essere iscritto a due campionati attivi contemporaneamente; può iscriversi a uno nuovo dopo la chiusura del precedente.
+- Solo l'admin crea, chiude e cancella i campionati; solo l'admin crea le gare e inserisce o corregge i risultati.
+- Negozio, amministrazione completa delle carte e spareggio sportivo sono rinviati e non bloccano la prima versione.
 - Prima versione del Negozio: solo placeholder "Funzionalità in definizione".
-- In caso di pari punti, l'ordine alfabetico serve solo come stabilizzatore
-  di visualizzazione, non come spareggio.
+- In caso di pari punti, l'ordine alfabetico serve solo come stabilizzatore di visualizzazione, non come spareggio.
 
 ## 3. Autenticazione
 
@@ -79,26 +76,28 @@ campo tipo) è rinviata alla fase backend e migrazioni.
   del campionato selezionato.
 - La meccanica dei pacchetti (contenuto, costo, apertura) è rinviata.
 
-### Pool di base e pool del campionato
+### Pool di base, pool derivate e pool del campionato
 
-- **Pool di base** (`DeckPrototype.base_cards`): catalogo di tutte le carte
-  e delle loro copie. Gestita solo dall'admin.
-- **Pool del campionato**: copia indipendente della pool di base, creata alla
-  creazione del campionato. Le carte prese dalla pool di un campionato non
-  influenzano le pool degli altri campionati.
-- Operazioni sulla pool di base (admin):
-  - Sincronizzazione con le immagini: aggiunge solo le carte nuove, non tocca
-    le esistenti; chiede conferma.
-  - Caricamento di una singola carta, con nome e copie modificabili prima
-    della conferma.
-  - Modifica manuale di nome e copie.
-  - Reset: ricostruisce la pool di base da nome e copie indicati nei nomi
-    dei file immagine.
-- Operazioni sulla pool del campionato (admin):
-  - Sincronizzazione con la pool di base: aggiunge solo le carte nuove,
-    non tocca le esistenti.
-  - Modifica manuale di nome e copie.
-  - Nessun reset della pool del campionato.
+- **Pool di base** (`DeckPrototype` con nome `default`): catalogo completo delle carte e delle copie disponibili.
+- **Pool derivata**: l'admin la crea sempre a partire dalla pool di base, senza nuove immagini. Sceglie le carte da includere, il numero di copie di ciascuna (mai superiore a quello della base) e assegna un nome univoco.
+- Le pool derivate usano nome, immagine e percorso delle carte già presenti nella pool di base.
+- La pool di base non può essere eliminata; una pool derivata può essere eliminata senza modificare i campionati già creati.
+- **Pool del campionato**: alla creazione di un campionato, l'admin sceglie una pool; se non la sceglie viene usata la pool di base. Il campionato riceve sempre una copia indipendente della pool selezionata.
+- Le modifiche o l'eliminazione della pool di origine non modificano mai la copia già assegnata a un campionato.
+
+### Eliminazione di team e piloti
+
+- Il player elimina i propri team e piloti in modo logico: la riga resta nel database (`deleted_at`) e scompare dalla sua vista.
+- L'eliminazione logica di un pilota o di un team è rifiutata se uno dei piloti coinvolti è iscritto a un campionato attivo.
+- L'eliminazione logica di un team nasconde anche tutti i suoi piloti visibili.
+- Un elemento nascosto continua a occupare il suo nome fino all'eliminazione definitiva.
+- L'admin può eliminare definitivamente un pilota nascosto in qualsiasi momento, purché non sia iscritto a un campionato attivo.
+- L'eliminazione definitiva di un pilota rimuove pilota, mazzi, iscrizioni e risultati gara; non modifica la classifica finale congelata dei campionati chiusi.
+- L'admin può eliminare definitivamente un team nascosto solo se non contiene più piloti, inclusi quelli già nascosti.
+- Dopo 365 giorni dall'eliminazione logica, la pulizia avviene automaticamente: prima i piloti, poi i team. Gli elementi ancora bloccati vengono saltati e riprovati in seguito.
+- L'admin può anche eseguire manualmente la pulizia automatica e cancellare prima del termine gli elementi che rispettano le regole.
+- Nomi di team e piloti: unici su tutto il gioco, senza distinguere le maiuscole.
+- Un pilota può esistere senza team; per iscriversi a un campionato serve un team.
 
 ### Formato delle carte
 
@@ -149,10 +148,24 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 
 ## 9. Campionati, gare e classifica
 
+- L'admin crea il campionato scegliendo una pool derivata o, come valore predefinito, la pool di base.
+- Il nome del campionato è unico senza distinguere maiuscole; la grafia scelta dall'admin è quella mostrata nell'interfaccia.
+- Il campionato riceve una copia indipendente della pool scelta.
+- L'admin può chiudere un campionato anche se alcune gare non sono state create o completate. Dopo la chiusura, il campionato è in sola lettura.
+- L'admin può cancellare definitivamente solo un campionato chiuso.
+
+### Gare
+
+- Ogni gara appartiene a un campionato e riceve automaticamente il numero successivo: 1, 2, 3, ecc.
+- La data della gara è facoltativa.
+- Massimo 12 piloti partecipanti per gara.
+- I risultati sono inseriti dall'admin come elenco ordinato di piloti; la posizione deriva dall'ordine nell'elenco.
+- I risultati possono essere corretti finché il campionato è attivo.
+- Possono essere inseriti solo piloti iscritti al campionato e ogni pilota può comparire una sola volta.
 - Punti per posizione di arrivo:
 
 | Posizione | Punti |
-|---|---|
+|---|---:|
 | 1° | 9 |
 | 2° | 6 |
 | 3° | 4 |
@@ -161,20 +174,30 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 | 6° | 1 |
 | 7°–12° | 0 |
 
-- Massimo 12 piloti per gara.
-- La classifica di un campionato è la somma dei punti ottenuti nelle gare.
-- A pari punti: ordine alfabetico, solo per stabilità di visualizzazione.
+- Un iscritto che non partecipa a una gara non ha una riga di risultato, ma viene mostrato nel dettaglio della gara con posizione assente e 0 punti.
+
+### Classifica
+
+- Nel campionato attivo, la classifica è la somma dei punti ottenuti nelle gare.
+- Include tutti gli iscritti, anche chi non ha partecipato a nessuna gara.
+- A pari punti, i piloti condividono la stessa posizione; l'ordine alfabetico stabilizza soltanto la visualizzazione.
+- Alla chiusura del campionato viene salvata una classifica finale congelata con: posizione, nome del pilota, punti totali e gare disputate.
+- La classifica congelata non conserva il riferimento al pilota: se il pilota viene eliminato definitivamente, lo storico del campionato resta visibile con nome, punti e posizione finale.
+- Non viene conservato il dettaglio gara per gara dei piloti eliminati definitivamente.
 
 ## 10. Pagine principali
 
 - Login e registrazione.
 - Dashboard con i propri team e piloti.
-- Gestione team e piloti.
+- Gestione di team e piloti.
 - Mazzi del pilota: inventario e mazzo da gioco.
-- Campionati: un'unica sezione che contiene elenco (attivi e chiusi),
-  dettaglio con classifica e gare, e iscrizione di un pilota.
+- Campionati: elenco di attivi e chiusi, dettaglio, iscrizione di un pilota, gare e classifica.
 - Negozio: placeholder "Funzionalità in definizione".
-- Pannello admin: campionati, gare, risultati.
+- Pannello admin:
+  - creazione e gestione delle pool derivate;
+  - creazione, chiusura e cancellazione dei campionati;
+  - creazione delle gare e inserimento o correzione dei risultati;
+  - elenco e pulizia di team e piloti nascosti.
 
 ## 11. Schema attuale verificato e differenze
 
