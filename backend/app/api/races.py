@@ -9,7 +9,7 @@ from app.schemas.race import (
     ResultsSet,
     StandingRead,
 )
-from app.services.championships import ChampionshipClosedError, ChampionshipNotFoundError
+from app.services.championships import standings, ChampionshipClosedError, ChampionshipNotFoundError
 from app.services.races import (
     RaceNotFoundError,
     RaceResultError,
@@ -18,7 +18,6 @@ from app.services.races import (
     list_races,
     race_table,
     set_results,
-    standings,
 )
 
 router = APIRouter(tags=["races"])
@@ -100,12 +99,17 @@ def put_results(
 @router.get("/{championship_id}/standings", response_model=list[StandingRead])
 def get_standings(championship_id: int, user: CurrentUser, db: DbDep):
     # Classifica del campionato: tutti gli iscritti, anche a 0 punti.
+    # Nei campionati chiusi è quella congelata alla chiusura (pilot_id nullo).
     try:
         return [
             StandingRead(
-                rank=rank, pilot_id=p.id, pilot_name=p.name, points=points, races_played=races
+                rank=row.rank,
+                pilot_id=row.pilot_id,
+                pilot_name=row.pilot_name,
+                points=row.points,
+                races_played=row.races_played,
             )
-            for rank, p, points, races in standings(db, championship_id)
+            for row in standings(db, championship_id)
         ]
     except ChampionshipNotFoundError:
         raise CHAMPIONSHIP_NOT_FOUND

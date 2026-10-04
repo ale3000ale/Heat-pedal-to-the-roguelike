@@ -33,7 +33,7 @@ class RaceDetail(RaceRead):
 
 class StandingRead(BaseModel):
     rank: int
-    pilot_id: int
+    pilot_id: int | None
     pilot_name: str
     points: int
     races_played: int

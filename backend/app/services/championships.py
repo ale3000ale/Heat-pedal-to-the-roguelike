@@ -1,9 +1,11 @@
-from sqlalchemy import delete, select
+from dataclasses import dataclass
+
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import User
-from app.db.models.championship import Championship, ChampionshipPilot
+from app.db.models.championship import Championship, ChampionshipPilot, ChampionshipStanding
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race, RaceResult
@@ -84,6 +86,7 @@ def close_championship(db: Session, championship_id: int) -> Championship:
     if championship.is_closed:
         raise ChampionshipClosedError
     championship.is_closed = True
+    _freeze_standings(db, championship)
     db.commit()
     db.refresh(championship)
     return championship
@@ -126,6 +129,9 @@ def delete_championship(db: Session, championship_id: int) -> None:
     db.execute(
         delete(ChampionshipPilot).where(ChampionshipPilot.championship_id == championship.id)
     )
+    db.execute(
+        delete(ChampionshipStanding).where(ChampionshipStanding.championship_id == championship.id)
+    )
     pool_deck_id = championship.pool_deck_id
     db.delete(championship)
     db.flush()
@@ -134,3 +140,76 @@ def delete_championship(db: Session, championship_id: int) -> None:
         if deck is not None:
             db.delete(deck)
     db.commit()
+
+@dataclass
+class StandingRow:
+    # Una riga di classifica: pilot_id è None per i campionati chiusi.
+    rank: int
+    pilot_id: int | None
+    pilot_name: str
+    points: int
+    races_played: int
+
+
+def pilot_totals(db: Session, championship_id: int) -> dict[int, tuple[int, int]]:
+    # Per pilota: (punti totali, gare disputate) nel campionato.
+    stmt = (
+        select(RaceResult.pilot_id, func.sum(RaceResult.points), func.count())
+        .select_from(RaceResult)
+        .join(Race, Race.id == RaceResult.race_id)
+        .where(Race.championship_id == championship_id)
+        .group_by(RaceResult.pilot_id)
+    )
+    return {pilot_id: (int(points), int(races)) for pilot_id, points, races in db.execute(stmt)}
+
+
+def live_standings(db: Session, championship_id: int) -> list[tuple[int, Pilot, int, int]]:
+    # Classifica calcolata dai risultati: (posizione, pilota, punti, gare disputate).
+    # A pari punti stessa posizione; l'ordine alfabetico serve solo alla visualizzazione.
+    totals = pilot_totals(db, championship_id)
+    entrants = sorted(
+        list_entrants(db, championship_id),
+        key=lambda p: (-totals.get(p.id, (0, 0))[0], p.name_key),
+    )
+    all_points = [totals.get(p.id, (0, 0))[0] for p in entrants]
+    rows = []
+    for pilot in entrants:
+        points, races = totals.get(pilot.id, (0, 0))
+        rank = 1 + sum(1 for other in all_points if other > points)
+        rows.append((rank, pilot, points, races))
+    return rows
+
+
+def _freeze_standings(db: Session, championship: Championship) -> None:
+    # Salva la classifica finale (solo nome, posizione, punti), senza commit.
+    for rank, pilot, points, races in live_standings(db, championship.id):
+        db.add(
+            ChampionshipStanding(
+                championship_id=championship.id,
+                pilot_name=pilot.name,
+                rank=rank,
+                points=points,
+                races_played=races,
+            )
+        )
+
+
+def standings(db: Session, championship_id: int) -> list[StandingRow]:
+    # Campionato chiuso: classifica congelata. Attivo: calcolata dai risultati.
+    championship = get_championship(db, championship_id)
+    if championship.is_closed:
+        frozen = list(
+            db.scalars(
+                select(ChampionshipStanding)
+                .where(ChampionshipStanding.championship_id == championship_id)
+                .order_by(ChampionshipStanding.rank, ChampionshipStanding.id)
+            )
+        )
+        if frozen:
+            return [
+                StandingRow(s.rank, None, s.pilot_name, s.points, s.races_played) for s in frozen
+            ]
+    return [
+        StandingRow(rank, pilot.id, pilot.name, points, races)
+        for rank, pilot, points, races in live_standings(db, championship_id)
+    ]

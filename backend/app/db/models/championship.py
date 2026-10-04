@@ -25,4 +25,15 @@ class ChampionshipPilot(Base):
     __table_args__ = (
         UniqueConstraint("championship_id", "pilot_id"),
     )
-  
+
+class ChampionshipStanding(Base):
+    # Classifica finale congelata alla chiusura: solo nome, posizione e punti,
+    # senza riferimento al pilota (che può essere eliminato in seguito).
+    __tablename__ = "championship_standing"
+
+    id = Column(Integer, primary_key=True, index=True)
+    championship_id = Column(Integer, ForeignKey("championship.id"), nullable=False, index=True)
+    pilot_name = Column(String, nullable=False)
+    rank = Column(Integer, nullable=False)
+    points = Column(Integer, nullable=False, default=0)
+    races_played = Column(Integer, nullable=False, default=0)

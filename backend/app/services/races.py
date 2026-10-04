@@ -9,6 +9,7 @@ from app.services.championships import (
     ChampionshipClosedError,
     get_championship,
     list_entrants,
+    pilot_totals,
 )
 
 # Punti per posizione di arrivo; dalla 7ª in poi si prendono 0 punti.
@@ -88,21 +89,11 @@ def set_results(db: Session, championship_id: int, race_id: int, pilot_ids: list
     return race
 
 
-def _totals(db: Session, championship_id: int) -> dict[int, tuple[int, int]]:
-    # Per pilota: (punti totali, gare disputate) nel campionato.
-    stmt = (
-        select(RaceResult.pilot_id, func.sum(RaceResult.points), func.count())
-        .select_from(RaceResult)
-        .join(Race, Race.id == RaceResult.race_id)
-        .where(Race.championship_id == championship_id)
-        .group_by(RaceResult.pilot_id)
-    )
-    return {pilot_id: (int(points), int(races)) for pilot_id, points, races in db.execute(stmt)}
 
 
 def _sync_pilot_points(db: Session, championship_id: int) -> None:
     # Allinea Pilot.point al totale ottenuto nel campionato.
-    totals = _totals(db, championship_id)
+    totals = pilot_totals(db, championship_id)
     for pilot in list_entrants(db, championship_id):
         pilot.point = totals.get(pilot.id, (0, 0))[0]
 
@@ -122,20 +113,3 @@ def race_table(
     rows += [(p, None, 0) for p in absent]
     return race, rows
 
-
-def standings(db: Session, championship_id: int) -> list[tuple[int, Pilot, int, int]]:
-    # Classifica: (posizione, pilota, punti, gare disputate). A pari punti stessa posizione,
-    # ordine alfabetico solo per stabilità di visualizzazione.
-    get_championship(db, championship_id)
-    totals = _totals(db, championship_id)
-    entrants = sorted(
-        list_entrants(db, championship_id),
-        key=lambda p: (-totals.get(p.id, (0, 0))[0], p.name_key),
-    )
-    all_points = [totals.get(p.id, (0, 0))[0] for p in entrants]
-    rows = []
-    for pilot in entrants:
-        points, races = totals.get(pilot.id, (0, 0))
-        rank = 1 + sum(1 for other in all_points if other > points)
-        rows.append((rank, pilot, points, races))
-    return rows
