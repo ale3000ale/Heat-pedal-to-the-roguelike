@@ -5,6 +5,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { resolve } from '$app/paths';
 
 	const selectClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
@@ -116,6 +117,12 @@
 		<span class="text-xs text-muted-foreground">
 			Gold {p.gold} · Sponsor {p.sponsor} · Punti {p.point}
 		</span>
+		<a
+			href={resolve('/pilots/[id]', { id: String(p.id) })}
+			class="text-sm text-muted-foreground underline hover:text-foreground"
+		>
+			Mazzi
+		</a>
 		<select
 			class={selectClass}
 			value={p.team_id === null ? '' : String(p.team_id)}

@@ -23,3 +23,16 @@ export interface Pilot {
 	sponsor: number;
 	point: number;
 }
+
+// Una riga di mazzo: una carta con il numero di copie possedute.
+export interface CardEntry {
+	name: string;
+	path: string;
+	copies: number;
+}
+
+// Pilota con i suoi due mazzi (dettaglio).
+export interface PilotDetail extends Pilot {
+	inventory: CardEntry[];
+	game_deck: CardEntry[];
+}
