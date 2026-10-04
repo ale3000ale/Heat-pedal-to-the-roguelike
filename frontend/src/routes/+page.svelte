@@ -22,12 +22,14 @@
 					</Card.Header>
 				</Card.Root>
 			</a>
-			<Card.Root>
-				<Card.Header>
-					<Card.Title>Campionati</Card.Title>
-					<Card.Description>In arrivo.</Card.Description>
-				</Card.Header>
-			</Card.Root>
+			<a href={resolve('/championships')}>
+				<Card.Root class="transition-colors hover:bg-accent">
+					<Card.Header>
+						<Card.Title>Campionati</Card.Title>
+						<Card.Description>Classifiche e iscrizioni.</Card.Description>
+					</Card.Header>
+				</Card.Root>
+			</a>
 		</div>
 	{/if}
 </main>

@@ -36,3 +36,25 @@ export interface PilotDetail extends Pilot {
 	inventory: CardEntry[];
 	game_deck: CardEntry[];
 }
+
+// Campionato come appare nell'elenco.
+export interface Championship {
+	id: number;
+	name: string;
+	date: string;
+	is_closed: boolean;
+	pilots_count: number;
+}
+
+// Pilota iscritto a un campionato, visibile a tutti.
+export interface Entrant {
+	id: number;
+	name: string;
+	team_id: number | null;
+	point: number;
+}
+
+// Campionato con i piloti iscritti.
+export interface ChampionshipDetail extends Championship {
+	pilots: Entrant[];
+}

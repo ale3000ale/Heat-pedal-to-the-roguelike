@@ -53,6 +53,12 @@
 						<a href={resolve('/team')} class="text-sm text-muted-foreground hover:text-foreground">
 							Team e piloti
 						</a>
+						<a
+							href={resolve('/championships')}
+							class="text-sm text-muted-foreground hover:text-foreground"
+						>
+							Campionati
+						</a>
 					</div>
 					<div class="flex items-center gap-3 text-sm">
 						<span class="text-muted-foreground">
