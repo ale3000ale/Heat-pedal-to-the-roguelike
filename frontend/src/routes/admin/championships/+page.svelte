@@ -215,9 +215,7 @@
 								</a>
 								<span class="text-sm text-muted-foreground">
 									{formatDate(c.date)} · {c.pilots_count}
-									{c.pilots_count === 1 ? 'pilota' : 'piloti'} · {c.is_closed
-										? 'chiuso'
-										: 'attivo'}
+									{c.pilots_count === 1 ? 'pilota' : 'piloti'} · {c.is_closed ? 'chiuso' : 'attivo'}
 								</span>
 								{#if c.is_closed}
 									<Button
