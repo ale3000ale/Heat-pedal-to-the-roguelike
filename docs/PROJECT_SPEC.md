@@ -1,6 +1,6 @@
 # Specifiche del Progetto — Heat
 
-> STATO: APPROVATO
+> STATO: APPROVATO. Si aggiorna nel tempo quando emergono nuove esigenze.
 
 ## 1. Stack e contesto
 
@@ -194,17 +194,19 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
   - elenco degli utenti e assegnazione o rimozione del ruolo di giudice;
   - elenco e pulizia di team e piloti nascosti.
 
+Stato di realizzazione (5 ottobre 2026): sono presenti le rotte del frontend per login, registrazione, home, team, piloti, campionati (con gare e classifica) e pannello admin (elenco utenti e ruoli). Non esiste ancora una rotta per il Negozio.
+
 ## 11. Schema e migrazioni
 
-Lo schema è gestito da Alembic (`backend/alembic/versions`). Le migrazioni, in ordine:
+Lo schema è gestito da Alembic (`backend/alembic/versions`), su SQLite. Le migrazioni, in ordine:
 
 | Migrazione | Contenuto |
 |---|---|
-| `3201b138ce2e` schema iniziale | Tabelle `user`, `team`, `pilot`, `deck`, `deck_prototype`, `championship`, `championship_pilot`, `race`, `race_result`; ruolo utente; team collegato all'utente; mazzo inventario e mazzo da gioco sul pilota; pool del campionato su `pool_deck_id`; limiti di posizione 1-12 nei risultati |
+| `3201b138ce2e` schema iniziale | Tabelle `user`, `team`, `pilot`, `deck`, `deck_prototype`, `championship`, `championship_pilot`, `race`, `race_result`; ruolo utente (`admin`, `player`); team collegato all'utente; mazzo inventario e mazzo da gioco sul pilota; pool del campionato su `pool_deck_id`; posizione dei risultati limitata a 1-12 |
 | `3daf355a6ffd` tabella session | Sessioni di login |
-| `9f4d32c3525f` eliminazione logica e nomi | `deleted_at` su team e pilota, nomi unici senza distinguere le maiuscole |
+| `9f4d32c3525f` team e pilota | `deleted_at` per l'eliminazione logica, `name_key` obbligatoria e unica per nomi senza distinzione di maiuscole e spazi doppi, `team_id` del pilota facoltativo |
 | `c7a1e5d2b9f4` nome campionato | Nome normalizzato del campionato per l'unicità senza distinguere le maiuscole |
-| `d4e8a2b6c1f7` giudice e sponsor | Ruolo `judge` nel vincolo dei ruoli, punti sponsor nei risultati |
+| `d4e8a2b6c1f7` giudice e sponsor | Ruolo `judge` nel vincolo dei ruoli; colonna `sponsor_points` in `race_result` (predefinito 0, mai negativa) |
 
 Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni.
 
