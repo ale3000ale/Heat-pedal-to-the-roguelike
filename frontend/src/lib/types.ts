@@ -32,10 +32,17 @@ export interface CardEntry {
 	copies: number;
 }
 
-// Pilota con i suoi due mazzi (dettaglio).
+// Riferimento a un campionato (id e nome).
+export interface ChampionshipRef {
+	id: number;
+	name: string;
+}
+
+// Pilota con i suoi due mazzi (dettaglio) e il campionato attivo, se iscritto.
 export interface PilotDetail extends Pilot {
 	inventory: CardEntry[];
 	game_deck: CardEntry[];
+	championship: ChampionshipRef | null;
 }
 
 // Campionato come appare nell'elenco.
