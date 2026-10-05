@@ -13,6 +13,11 @@
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
 
+	// La data della gara può non essere impostata.
+	function raceDate(value: string | null): string {
+		return value ? new Date(value).toLocaleDateString('it-IT') : 'Data da definire';
+	}
+
 	onMount(async () => {
 		try {
 			[race, myPilots] = await Promise.all([
@@ -43,7 +48,7 @@
 		<div>
 			<h1 class="text-2xl font-bold">Gara {race.number}</h1>
 			<p class="text-sm text-muted-foreground">
-				{new Date(race.date).toLocaleDateString('it-IT')} · {race.participants}
+				{raceDate(race.date)} · {race.participants}
 				{race.participants === 1 ? 'partecipante' : 'partecipanti'}
 			</p>
 		</div>

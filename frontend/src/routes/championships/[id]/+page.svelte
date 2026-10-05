@@ -28,6 +28,11 @@
 		)
 	);
 
+	// La data della gara può non essere impostata.
+	function raceDate(value: string | null): string {
+		return value ? new Date(value).toLocaleDateString('it-IT') : 'Data da definire';
+	}
+
 	// Ricarica i dati del campionato che cambiano dopo un'iscrizione.
 	async function reload() {
 		[championship, standings] = await Promise.all([
@@ -177,9 +182,7 @@
 									class="flex items-center gap-3 py-2 hover:bg-accent"
 								>
 									<span class="flex-1 font-medium">Gara {race.number}</span>
-									<span class="text-sm text-muted-foreground">
-										{new Date(race.date).toLocaleDateString('it-IT')}
-									</span>
+									<span class="text-sm text-muted-foreground">{raceDate(race.date)}</span>
 									<span class="text-sm text-muted-foreground">
 										{race.participants}
 										{race.participants === 1 ? 'partecipante' : 'partecipanti'}

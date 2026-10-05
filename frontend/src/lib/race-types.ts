@@ -1,8 +1,8 @@
-// Gara di un campionato, come appare nell'elenco.
+// Gara di un campionato, come appare nell'elenco. La data può non essere impostata.
 export interface Race {
 	id: number;
 	number: number;
-	date: string;
+	date: string | null;
 	participants: number;
 }
 
