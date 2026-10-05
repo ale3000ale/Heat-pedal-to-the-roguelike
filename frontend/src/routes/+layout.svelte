@@ -88,10 +88,10 @@
 								>
 									<li>
 										<a
-											href={resolve('/admin/users')}
+											href={resolve('/admin/championships')}
 											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
 										>
-											Utenti e ruoli
+											Gestione campionati
 										</a>
 									</li>
 									<li>
@@ -100,6 +100,14 @@
 											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
 										>
 											Pool di carte
+										</a>
+									</li>
+									<li>
+										<a
+											href={resolve('/admin/users')}
+											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
+										>
+											Utenti e ruoli
 										</a>
 									</li>
 								</ul>
