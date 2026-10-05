@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
+TOOLS = ROOT / "tools"
 VENV = BACKEND / ".venv"
 SYSTEM = platform.system()
 IS_WIN = SYSTEM == "Windows"
@@ -48,6 +49,14 @@ def find_npm():
     return npm
 
 
+def migrate():
+    # Idempotente: se il database è già aggiornato non fa nulla.
+    if not VENV_PY.exists():
+        fail("Ambiente non pronto. Scegli prima 'Setup'")
+    info("Applico le migrazioni del database")
+    run([VENV_PY, "-m", "alembic", "upgrade", "head"], BACKEND)
+
+
 def setup(skip_admin=False, skip_seed=False):
     if sys.version_info < MIN_PYTHON:
         fail(f"Serve Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} o superiore")
@@ -62,8 +71,7 @@ def setup(skip_admin=False, skip_seed=False):
     run([VENV_PY, "-m", "pip", "install", "--upgrade", "pip"], BACKEND)
     run([VENV_PY, "-m", "pip", "install", "-r", "requirements.txt"], BACKEND)
 
-    info("Applico le migrazioni del database")
-    run([VENV_PY, "-m", "alembic", "upgrade", "head"], BACKEND)
+    migrate()
 
     if not skip_seed:
         info("Popolo il prototipo del mazzo")
@@ -121,6 +129,10 @@ def start(backend_only=False):
     if not VENV_PY.exists():
         fail("Ambiente non pronto. Scegli prima 'Setup'")
 
+    # Dopo un git pull o un cambio di PC il database può essere indietro:
+    # lo aggiorniamo sempre prima di avviare il server.
+    migrate()
+
     procs = []
     try:
         info(f"Avvio il backend su http://{HOST}:{BACKEND_PORT}")
@@ -159,11 +171,24 @@ def run_tests():
     run([VENV_PY, "-m", "pytest", "-q"], BACKEND, check=False)
 
 
+def run_checks():
+    # format, check, lint e test del frontend, tramite tools/check-frontend.mjs.
+    script = TOOLS / "check-frontend.mjs"
+    if not script.exists():
+        fail("tools/check-frontend.mjs non trovato")
+    node = shutil.which("node")
+    if not node:
+        fail("node non trovato. Installa Node.js da https://nodejs.org")
+    run([node, script], ROOT, check=False)
+
+
 MENU = [
     ("Setup (installa tutto)", lambda: setup()),
+    ("Aggiorna il database (migrazioni)", migrate),
     ("Avvia backend e frontend", lambda: start()),
     ("Avvia solo il backend", lambda: start(backend_only=True)),
     ("Esegui i test del backend", run_tests),
+    ("Controlli del frontend (format, check, lint, test)", run_checks),
 ]
 
 
@@ -194,15 +219,21 @@ def main():
     p_setup.add_argument("--skip-seed", action="store_true")
     p_start = sub.add_parser("start")
     p_start.add_argument("--backend-only", action="store_true")
+    sub.add_parser("migrate")
     sub.add_parser("test")
+    sub.add_parser("check")
     args = parser.parse_args()
 
     if args.command == "setup":
         setup(args.skip_admin, args.skip_seed)
     elif args.command == "start":
         start(args.backend_only)
+    elif args.command == "migrate":
+        migrate()
     elif args.command == "test":
         run_tests()
+    elif args.command == "check":
+        run_checks()
     else:
         menu()
 
