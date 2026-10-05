@@ -1,7 +1,13 @@
 from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel
 
 from app.api.deps import AdminUser, DbDep
 from app.schemas.pool import PoolCreate, PoolDetail, PoolKind, PoolRead, PoolReloadResult
+from app.services.pool_cards import (
+    PoolCardNameTakenError,
+    PoolCardNotFoundError,
+    rename_pool_card,
+)
 from app.services.pools import (
     PoolNameTakenError,
     PoolNotFoundError,
@@ -18,6 +24,12 @@ from app.services.pools import (
 router = APIRouter(tags=["pools"])
 
 NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Pool non trovata")
+
+
+class CardRename(BaseModel):
+    # La carta si indica con il suo percorso (non cambia), il nome è quello nuovo.
+    path: str
+    name: str
 
 
 def _summary(pool) -> PoolRead:
@@ -71,6 +83,21 @@ def detail(pool_id: int, admin: AdminUser, db: DbDep):
         return _detail(get_pool(db, pool_id))
     except PoolNotFoundError:
         raise NOT_FOUND
+
+
+@router.patch("/{pool_id}/cards", response_model=PoolDetail)
+def rename_card(pool_id: int, data: CardRename, admin: AdminUser, db: DbDep):
+    # Rinomina una carta della pool (solo admin): il percorso resta quello.
+    try:
+        return _detail(rename_pool_card(db, pool_id, data.path, data.name))
+    except PoolNotFoundError:
+        raise NOT_FOUND
+    except PoolCardNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Carta non trovata nella pool")
+    except PoolCardNameTakenError:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Nome già usato da un'altra carta")
+    except PoolRuleError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
 
 
 @router.post("", response_model=PoolDetail, status_code=status.HTTP_201_CREATED)

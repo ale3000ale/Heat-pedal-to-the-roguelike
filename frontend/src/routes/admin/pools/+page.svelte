@@ -109,9 +109,7 @@
 
 	// Tiene il numero di copie tra 0 e le copie della pool di base.
 	function setPick(card: CardEntry, value: number) {
-		const copies = Number.isFinite(value)
-			? Math.min(Math.max(Math.trunc(value), 0), card.copies)
-			: 0;
+		const copies = Number.isFinite(value) ? Math.min(Math.max(Math.trunc(value), 0), card.copies) : 0;
 		picks = { ...picks, [card.name]: copies };
 	}
 
@@ -157,8 +155,8 @@
 			<Card.Header>
 				<Card.Title>Pool di base</Card.Title>
 				<Card.Description>
-					«Ricarica» legge i file della cartella e aggiunge solo le carte nuove: non modifica né
-					toglie quelle già presenti.
+					«Ricarica» legge i file della cartella e aggiunge solo le carte nuove: non modifica né toglie
+					quelle già presenti.
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -168,8 +166,13 @@
 						{@const result = results[kind]}
 						<li class="py-3">
 							<div class="flex items-center gap-3">
-								<span class="flex-1 font-medium">{kindLabels[kind]}</span>
 								{#if base}
+									<a
+										href={resolve('/admin/pools/[id]', { id: String(base.id) })}
+										class="flex-1 font-medium hover:underline"
+									>
+										{kindLabels[kind]}
+									</a>
 									<span class="text-sm text-muted-foreground">
 										{base.cards_count} carte · {base.copies_count} copie
 									</span>
@@ -182,6 +185,7 @@
 										Ricarica
 									</Button>
 								{:else}
+									<span class="flex-1 font-medium">{kindLabels[kind]}</span>
 									<span class="text-sm text-muted-foreground">Pool di base assente</span>
 								{/if}
 							</div>
@@ -210,7 +214,7 @@
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Pool create</Card.Title>
-				<Card.Description>Pool derivate dalla pool di base dello stesso tipo.</Card.Description>
+				<Card.Description>Clicca su una pool per aprirla.</Card.Description>
 			</Card.Header>
 			<Card.Content>
 				{#if derived.length === 0}
@@ -219,7 +223,12 @@
 					<ul class="divide-y">
 						{#each derived as pool (pool.id)}
 							<li class="flex items-center gap-3 py-2">
-								<span class="flex-1 font-medium">{pool.name}</span>
+								<a
+									href={resolve('/admin/pools/[id]', { id: String(pool.id) })}
+									class="flex-1 font-medium hover:underline"
+								>
+									{pool.name}
+								</a>
 								<span class="text-sm text-muted-foreground">{kindLabels[pool.kind]}</span>
 								<span class="text-sm text-muted-foreground">
 									{pool.cards_count} carte · {pool.copies_count} copie
