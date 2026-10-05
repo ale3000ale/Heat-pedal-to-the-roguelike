@@ -45,6 +45,11 @@ class ChampionshipRef(BaseModel):
     name: str
 
 
+class PilotListItem(PilotRead):
+    # Pilota nell'elenco, con il campionato attivo a cui è iscritto (se c'è).
+    championship: ChampionshipRef | None = None
+
+
 class PilotDeckDetail(PilotDetail):
     # Dettaglio del pilota con il campionato attivo a cui è iscritto (se c'è).
     championship: ChampionshipRef | None = None
@@ -55,19 +60,21 @@ class CardMove(BaseModel):
     path: str
 
 
+def _championship_ref(db, pilot) -> ChampionshipRef | None:
+    championship = active_championship(db, pilot)
+    if championship is None:
+        return None
+    return ChampionshipRef(id=championship.id, name=championship.name)
+
+
 def _detail(db, pilot) -> PilotDeckDetail:
     # Costruisce il dettaglio unendo i dati del pilota ai suoi due mazzi.
     inventory, game = pilot_decks(db, pilot)
-    championship = active_championship(db, pilot)
     return PilotDeckDetail(
         **PilotRead.model_validate(pilot).model_dump(),
         inventory=inventory,
         game_deck=game,
-        championship=(
-            ChampionshipRef(id=championship.id, name=championship.name)
-            if championship
-            else None
-        ),
+        championship=_championship_ref(db, pilot),
     )
 
 
@@ -76,11 +83,6 @@ def _move(db, user, pilot_id: int, data: CardMove, to_game: bool) -> PilotDeckDe
         return _detail(db, move_card(db, user, pilot_id, data.path, to_game))
     except PilotNotFoundError:
         raise PILOT_NOT_FOUND
-    except PilotInActiveChampionshipError:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Il pilota è iscritto a un campionato attivo: i mazzi non si possono modificare",
-        )
     except PilotCardNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Carta non trovata in questo mazzo")
     except GameDeckFullError:
@@ -90,10 +92,16 @@ def _move(db, user, pilot_id: int, data: CardMove, to_game: bool) -> PilotDeckDe
         )
 
 
-@router.get("", response_model=list[PilotRead])
+@router.get("", response_model=list[PilotListItem])
 def list_my_pilots(user: CurrentUser, db: DbDep):
-    # Elenco dei piloti dell'utente loggato.
-    return list_pilots(db, user)
+    # Elenco dei piloti dell'utente loggato, ognuno con il suo campionato attivo.
+    return [
+        PilotListItem(
+            **PilotRead.model_validate(pilot).model_dump(),
+            championship=_championship_ref(db, pilot),
+        )
+        for pilot in list_pilots(db, user)
+    ]
 
 
 @router.post("", response_model=PilotDeckDetail, status_code=status.HTTP_201_CREATED)

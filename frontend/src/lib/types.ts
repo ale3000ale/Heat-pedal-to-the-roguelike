@@ -15,7 +15,13 @@ export interface Team {
 	name: string;
 }
 
-// Pilota come appare nell'elenco (senza i mazzi).
+// Riferimento a un campionato (id e nome).
+export interface ChampionshipRef {
+	id: number;
+	name: string;
+}
+
+// Pilota come appare nell'elenco (senza i mazzi), con il campionato attivo se iscritto.
 export interface Pilot {
 	id: number;
 	name: string;
@@ -23,6 +29,7 @@ export interface Pilot {
 	gold: number;
 	sponsor: number;
 	point: number;
+	championship?: ChampionshipRef | null;
 }
 
 // Una riga di mazzo: una carta con il numero di copie possedute.
@@ -30,12 +37,6 @@ export interface CardEntry {
 	name: string;
 	path: string;
 	copies: number;
-}
-
-// Riferimento a un campionato (id e nome).
-export interface ChampionshipRef {
-	id: number;
-	name: string;
 }
 
 // Pilota con i suoi due mazzi (dettaglio) e il campionato attivo, se iscritto.

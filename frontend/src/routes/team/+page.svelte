@@ -114,6 +114,11 @@
 {#snippet pilotRow(p: Pilot)}
 	<li class="flex flex-wrap items-center gap-2 py-2">
 		{@render nameCell('pilot', p.id, p.name)}
+		{#if p.championship}
+			<span class="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+				{p.championship.name}
+			</span>
+		{/if}
 		<span class="text-xs text-muted-foreground">
 			Gold {p.gold} · Sponsor {p.sponsor} · Punti {p.point}
 		</span>
