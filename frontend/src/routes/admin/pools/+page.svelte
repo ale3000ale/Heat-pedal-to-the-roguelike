@@ -109,7 +109,9 @@
 
 	// Tiene il numero di copie tra 0 e le copie della pool di base.
 	function setPick(card: CardEntry, value: number) {
-		const copies = Number.isFinite(value) ? Math.min(Math.max(Math.trunc(value), 0), card.copies) : 0;
+		const copies = Number.isFinite(value)
+			? Math.min(Math.max(Math.trunc(value), 0), card.copies)
+			: 0;
 		picks = { ...picks, [card.name]: copies };
 	}
 
@@ -155,8 +157,8 @@
 			<Card.Header>
 				<Card.Title>Pool di base</Card.Title>
 				<Card.Description>
-					«Ricarica» legge i file della cartella e aggiunge solo le carte nuove: non modifica né toglie
-					quelle già presenti.
+					«Ricarica» legge i file della cartella e aggiunge solo le carte nuove: non modifica né
+					toglie quelle già presenti.
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
