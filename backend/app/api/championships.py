@@ -23,7 +23,7 @@ from app.services.championships import (
     list_entrants,
 )
 from app.services.pilots import PilotInActiveChampionshipError, PilotNotFoundError
-from app.services.pools import PoolNotFoundError
+from app.services.pools import PoolNotFoundError, PoolRuleError
 
 router = APIRouter(tags=["championships"])
 
@@ -48,11 +48,17 @@ def list_all(user: CurrentUser, db: DbDep):
 
 @router.post("", response_model=ChampionshipRead, status_code=status.HTTP_201_CREATED)
 def create(data: ChampionshipCreate, admin: AdminUser, db: DbDep):
-    # Crea un campionato (solo admin); 404 se la pool non esiste, 409 se il nome è in uso.
+    # Crea un campionato (solo admin) con le pool di modifiche e sponsor scelte; 404 se
+    # una pool non esiste, 422 se non è del tipo giusto, 409 se il nome è in uso.
     try:
-        return _read(db, create_championship(db, data.name, data.pool_id))
+        championship = create_championship(
+            db, data.name, data.pool_id, data.sponsor_pool_id
+        )
+        return _read(db, championship)
     except PoolNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Pool non trovata")
+    except PoolRuleError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
     except ChampionshipNameTakenError:
         raise HTTPException(status.HTTP_409_CONFLICT, "Nome già in uso")
 
