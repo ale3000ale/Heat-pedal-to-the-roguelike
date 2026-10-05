@@ -54,9 +54,7 @@
 <svelte:head><title>Utenti - Heat</title></svelte:head>
 
 <main class="mx-auto max-w-5xl space-y-6 p-6">
-	<a href={resolve('/')} class="text-sm text-muted-foreground hover:text-foreground">
-		← Home
-	</a>
+	<a href={resolve('/')} class="text-sm text-muted-foreground hover:text-foreground"> ← Home </a>
 
 	<h1 class="text-2xl font-bold">Utenti e ruoli</h1>
 
