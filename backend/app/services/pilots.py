@@ -38,16 +38,23 @@ def _name_taken(db: Session, key: str, exclude_id: int | None = None) -> bool:
 
 
 def list_pilots(
-    db: Session, user: User, limit: int | None = None, offset: int = 0
+    db: Session,
+    user: User,
+    limit: int | None = None,
+    offset: int = 0,
+    search: str | None = None,
+    team_id: int | None = None,
 ) -> list[Pilot]:
     # I piloti visibili dell'utente, in ordine alfabetico (a parità di nome per id, così
     # le pagine sono stabili). Senza `limit` restituisce tutti i piloti.
-    stmt = (
-        select(Pilot)
-        .where(Pilot.user_id == user.id, Pilot.deleted_at.is_(None))
-        .order_by(Pilot.name_key, Pilot.id)
-        .offset(offset)
-    )
+    # `search` cerca nel nome ignorando maiuscole e spazi in eccesso; `team_id` filtra per team.
+    stmt = select(Pilot).where(Pilot.user_id == user.id, Pilot.deleted_at.is_(None))
+    if search and search.strip():
+        # autoescape: % e _ digitati dall'utente valgono come caratteri normali.
+        stmt = stmt.where(Pilot.name_key.contains(name_key(search), autoescape=True))
+    if team_id is not None:
+        stmt = stmt.where(Pilot.team_id == team_id)
+    stmt = stmt.order_by(Pilot.name_key, Pilot.id).offset(offset)
     if limit is not None:
         stmt = stmt.limit(limit)
     return list(db.scalars(stmt))
