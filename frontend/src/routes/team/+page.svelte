@@ -10,6 +10,9 @@
 	const selectClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
 
+	// Piloti per richiesta: coincide con il massimo accettato dal backend.
+	const PILOTS_PAGE = 100;
+
 	let teams = $state<Team[]>([]);
 	let pilots = $state<Pilot[]>([]);
 	let loaded = $state(false);
@@ -27,8 +30,18 @@
 	);
 	let freePilots = $derived(pilots.filter((p) => p.team_id === null));
 
+	// Scarica i piloti a pagine finché una pagina non è incompleta.
+	async function loadPilots(): Promise<Pilot[]> {
+		const all: Pilot[] = [];
+		for (let offset = 0; ; offset += PILOTS_PAGE) {
+			const chunk = await api<Pilot[]>(`/pilots?limit=${PILOTS_PAGE}&offset=${offset}`);
+			all.push(...chunk);
+			if (chunk.length < PILOTS_PAGE) return all;
+		}
+	}
+
 	async function reload() {
-		[teams, pilots] = await Promise.all([api<Team[]>('/teams'), api<Pilot[]>('/pilots')]);
+		[teams, pilots] = await Promise.all([api<Team[]>('/teams'), loadPilots()]);
 	}
 
 	// Esegue un'azione, poi ricarica i dati. Restituisce false se è fallita
@@ -114,6 +127,11 @@
 {#snippet pilotRow(p: Pilot)}
 	<li class="flex flex-wrap items-center gap-2 py-2">
 		{@render nameCell('pilot', p.id, p.name)}
+		{#if p.championship}
+			<span class="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+				{p.championship.name}
+			</span>
+		{/if}
 		<span class="text-xs text-muted-foreground">
 			Gold {p.gold} · Sponsor {p.sponsor} · Punti {p.point}
 		</span>

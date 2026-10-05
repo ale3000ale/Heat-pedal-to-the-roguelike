@@ -1,7 +1,12 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.card import CardRead
 from app.services.names import clean_name
+
+# Tipo della pool: modifiche o sponsor.
+PoolKind = Literal["modifiche", "sponsor"]
 
 
 class PoolChoice(BaseModel):
@@ -11,9 +16,10 @@ class PoolChoice(BaseModel):
 
 
 class PoolCreate(BaseModel):
-    # Dati per creare una pool derivata dalla pool di base.
+    # Dati per creare una pool derivata dalla pool di base dello stesso tipo.
     name: str = Field(min_length=2, max_length=40)
     cards: list[PoolChoice] = Field(min_length=1)
+    kind: PoolKind = "modifiche"
 
     @field_validator("name", mode="before")
     @classmethod
@@ -26,7 +32,18 @@ class PoolRead(BaseModel):
 
     id: int
     name: str
+    kind: str
+    # Carte diverse e somma delle copie della pool.
+    cards_count: int
+    copies_count: int
 
 
 class PoolDetail(PoolRead):
     cards: list[CardRead]
+
+
+class PoolReloadResult(BaseModel):
+    # Esito della ricarica di una pool di base.
+    added: list[str]
+    already_present: int
+    warnings: list[str]

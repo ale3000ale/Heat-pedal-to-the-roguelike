@@ -14,6 +14,10 @@
 	const publicPaths = ['/login', '/register'];
 	let isPublic = $derived(publicPaths.includes(page.url.pathname));
 
+	// Menu a tendina dell'admin: si chiude cambiando pagina o cliccando fuori.
+	let adminMenuOpen = $state(false);
+	let adminMenu = $state<HTMLElement | null>(null);
+
 	// All'apertura dell'app chiede al backend se c'è già una sessione valida.
 	onMount(() => {
 		auth.init();
@@ -23,6 +27,17 @@
 	$effect(() => {
 		if (auth.ready && !auth.user && !isPublic) goto(resolve('/login'));
 	});
+
+	$effect(() => {
+		void page.url.pathname;
+		adminMenuOpen = false;
+	});
+
+	function closeAdminMenu(event: MouseEvent) {
+		if (adminMenuOpen && adminMenu && !adminMenu.contains(event.target as Node)) {
+			adminMenuOpen = false;
+		}
+	}
 
 	async function logout() {
 		try {
@@ -34,6 +49,7 @@
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<svelte:window onclick={closeAdminMenu} />
 
 <div class="min-h-screen bg-background text-foreground">
 	{#if !auth.ready}
@@ -59,10 +75,52 @@
 						>
 							Campionati
 						</a>
+						{#if auth.isAdmin}
+							<!-- Tutti i link riservati all'admin stanno qui dentro -->
+							<details class="relative" bind:open={adminMenuOpen} bind:this={adminMenu}>
+								<summary
+									class="cursor-pointer list-none text-sm text-muted-foreground hover:text-foreground"
+								>
+									Admin ▾
+								</summary>
+								<ul
+									class="absolute left-0 z-10 mt-2 min-w-44 rounded-md border bg-background p-1 shadow-md"
+								>
+									<li>
+										<a
+											href={resolve('/admin/championships')}
+											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
+										>
+											Gestione campionati
+										</a>
+									</li>
+									<li>
+										<a
+											href={resolve('/admin/pools')}
+											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
+										>
+											Pool di carte
+										</a>
+									</li>
+									<li>
+										<a
+											href={resolve('/admin/users')}
+											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
+										>
+											Utenti e ruoli
+										</a>
+									</li>
+								</ul>
+							</details>
+						{/if}
 					</div>
 					<div class="flex items-center gap-3 text-sm">
 						<span class="text-muted-foreground">
-							{auth.user.username}{auth.isAdmin ? ' · admin' : ''}
+							{auth.user.username}{auth.isAdmin
+								? ' · admin'
+								: auth.canManageRaces
+									? ' · giudice'
+									: ''}
 						</span>
 						<Button variant="outline" size="sm" onclick={logout}>Esci</Button>
 					</div>

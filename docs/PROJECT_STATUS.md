@@ -1,6 +1,6 @@
 # Stato del progetto — Heat
 
-Ultimo aggiornamento: 2026-10-04
+Ultimo aggiornamento: 2026-10-05
 
 ## Fasi
 
@@ -16,22 +16,27 @@ Ultimo aggiornamento: 2026-10-04
 | 7.7 | Gare, risultati e classifica live | Completata |
 | 7.8 | Pulizia amministrativa e automatica di team e piloti nascosti | Completata |
 | 7.9 | Classifica finale congelata dei campionati chiusi | Completata |
-| 8 | Frontend funzionale dell'applicazione | Da iniziare |
-| 9 | Negozio e pacchetti di carte | Rinviata |
+| 7.10 | Ruolo giudice e punti sponsor nei risultati | Completata |
+| 8a | Frontend: login, registrazione, team, piloti, campionati, gare, classifica, utenti e ruoli | Completata |
+| 8b | Backend: due pool di base (modifiche e sponsor), ricarica delle pool, seconda pool sul campionato | In corso (modelli e migrazione fatti; servizi e router da fare) |
+| 8c | Frontend admin: pool con ricarica, creazione, chiusura e cancellazione dei campionati | Da fare |
+| 8d | Frontend: costruzione del mazzo da gioco dall'inventario | Da fare |
+| 8e | Frontend admin: pulizia di team e piloti nascosti | Da fare |
+| 9 | Negozio e pacchetti di carte | Rinviata (regole da definire) |
 
-## Backend completato
+## Backend
 
 - FastAPI, SQLAlchemy 2.0, Alembic e SQLite in `backend/`.
 - Autenticazione con password hashate e cookie di sessione httpOnly.
-- Ruoli `admin` e `player`; registrazione libera e primo admin creato con setup.
+- Ruoli `admin`, `judge` e `player`; registrazione libera e primo admin creato con setup.
 - Team e piloti con nomi unici senza distinguere maiuscole, rinomina ed eliminazione logica.
 - Un pilota può non avere un team, ma deve averne uno per iscriversi a un campionato.
 - Ogni pilota possiede inventario e mazzo da gioco indipendenti.
 - Gestione e validazione delle carte JSON, inclusa la preparazione e il ridimensionamento delle immagini.
-- Pool `default` e pool derivate dalla base, create dall'admin scegliendo carte e numero di copie.
+- Pool `default` (modifiche), pool `sponsor` (nuova, vuota) e pool derivate create dall'admin.
 - Creazione dei campionati con copia indipendente della pool scelta; chiusura forzabile dall'admin.
 - Iscrizione ai campionati con reset di inventario, mazzo, gold, sponsor e punti.
-- Gare numerate automaticamente, risultati correggibili e punti 9-6-4-3-2-1, poi 0.
+- Gare numerate automaticamente, risultati correggibili (solo admin) e punti 9-6-4-3-2-1, poi 0, con punti sponsor inseriti a mano.
 - In ogni gara, gli iscritti assenti compaiono a 0 punti senza una riga `RaceResult`.
 - Classifica live per i campionati attivi e classifica congelata per quelli chiusi.
 - Cancellazione di un campionato chiuso con gare, risultati, iscrizioni, classifica finale e copia della pool.
@@ -39,8 +44,8 @@ Ultimo aggiornamento: 2026-10-04
 
 ## Qualità verificata
 
-- Suite backend: `138 passed`.
-- Migrazioni Alembic applicate e schema aggiornato fino alla tabella `championship_standing`.
+- Ultima suite backend registrata: `138 passed` (prima delle modifiche alle due pool: da rieseguire).
+- Migrazioni Alembic fino a `e5b9c3d7a2f8` (tipo della pool e pool sponsor).
 - Test dedicati ad autenticazione, carte, immagini, nomi, team, piloti, campionati, pool, gare, classifiche e pulizia.
 
 ## API principali
@@ -57,14 +62,15 @@ Ultimo aggiornamento: 2026-10-04
 
 ## Documenti
 
-- `PROJECT_SPEC.md`: specifiche funzionali aggiornate.
+- `PROJECT_SPEC.md`: specifiche funzionali (fonte delle regole).
+- `PROJECT_NOTES.md`: mappa del codice, comandi, convenzioni e questioni aperte.
 - `DATABASE_ANALYSIS.md`: analisi dello schema iniziale.
-- `BACKEND_BOOTSTRAP.md`: dettagli del bootstrap backend.
+- `BACKEND_BOOTSTRAP.md`, `BACKEND_AUTH.md`, `FRONTEND_BOOTSTRAP.md`, `FRONTEND_AUTH.md`: dettagli dei bootstrap e dell'autenticazione.
 - `OPEN_QUESTIONS.md`: decisioni ancora rinviate.
 
 ## Prossimi passi
 
-1. Aggiornare il frontend SvelteKit per collegarlo alle API già disponibili.
-2. Creare login, dashboard, gestione team e piloti, pagine campionati, gare e classifica.
-3. Creare il pannello admin per pool, chiusura campionati, risultati e pulizia.
-4. Lasciare il negozio come placeholder finché non saranno definite le regole di pacchetti, prezzi e sponsor.
+1. Fase 8b: servizi e router per due pool di base, ricarica che aggiunge soltanto, campionato con due pool, test.
+2. Fase 8c: pannello admin per pool (con ricarica) e campionati (creazione, chiusura, cancellazione).
+3. Fasi 8d e 8e: mazzo da gioco e pulizia dei nascosti.
+4. Fase 9: negozio e pacchetti, solo dopo aver definito regole, prezzi e uso degli sponsor.

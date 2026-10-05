@@ -18,6 +18,16 @@ export class AuthStore {
 		return this.user?.role === 'admin';
 	}
 
+	// Vero per admin e giudice: possono creare gare e chiuderle con i risultati.
+	get canManageRaces(): boolean {
+		return this.user?.role === 'admin' || this.user?.role === 'judge';
+	}
+
+	// Vero solo per l'admin: può correggere i risultati di una gara già chiusa.
+	get canCorrectRaces(): boolean {
+		return this.user?.role === 'admin';
+	}
+
 	// Da chiamare una volta all'apertura dell'app: chiede al backend chi sono
 	// (usando il cookie) e imposta lo stato di conseguenza.
 	async init(): Promise<void> {
