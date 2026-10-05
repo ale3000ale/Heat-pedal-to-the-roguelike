@@ -36,10 +36,13 @@
 		drafts = { ...drafts, [card.path]: value };
 	}
 
+	// Toglie la bozza e l'errore della carta indicata.
 	function clearState(path: string) {
-		const { [path]: _draft, ...restDrafts } = drafts;
+		const restDrafts = { ...drafts };
+		delete restDrafts[path];
 		drafts = restDrafts;
-		const { [path]: _error, ...restErrors } = cardErrors;
+		const restErrors = { ...cardErrors };
+		delete restErrors[path];
 		cardErrors = restErrors;
 	}
 
