@@ -17,3 +17,8 @@ class Deck(Base):
     id = Column(Integer, primary_key=True, index=True)
     cards = Column(String, nullable=True)
     id_prototype = Column(Integer, ForeignKey("deck_prototype.id"), nullable=True)
+    # Versione per il blocco ottimistico: ogni modifica la incrementa e salva solo se
+    # nessun altro ha modificato il mazzo nel frattempo (altrimenti StaleDataError).
+    version = Column(Integer, nullable=False, server_default="1")
+
+    __mapper_args__ = {"version_id_col": version}

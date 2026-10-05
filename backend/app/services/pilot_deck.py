@@ -1,5 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import StaleDataError
 
 from app.db.models import User
 from app.db.models.championship import Championship, ChampionshipPilot
@@ -14,6 +15,9 @@ from app.services.cards import (
 )
 from app.services.pilots import get_own_pilot
 
+# Tentativi di spostamento se un'altra richiesta modifica gli stessi mazzi nel frattempo.
+MAX_MOVE_ATTEMPTS = 3
+
 
 class PilotCardNotFoundError(Exception):
     """La carta non è nel mazzo da cui si vuole spostarla."""
@@ -21,6 +25,10 @@ class PilotCardNotFoundError(Exception):
 
 class GameDeckFullError(Exception):
     """Il mazzo da gioco ha già il massimo di carte."""
+
+
+class ConcurrentUpdateError(Exception):
+    """I mazzi sono stati modificati da altre richieste per tutti i tentativi."""
 
 
 def active_championships(db: Session, pilot_ids: list[int]) -> dict[int, tuple[int, str]]:
@@ -70,20 +78,28 @@ def _put_one(cards: list[CardEntry], moved: CardEntry) -> None:
 
 def move_card(db: Session, user: User, pilot_id: int, path: str, to_game: bool) -> Pilot:
     # Sposta una copia dall'inventario al mazzo da gioco (to_game=True) o viceversa.
-    # Il mazzo da gioco non può superare il limite.
-    pilot = get_own_pilot(db, user, pilot_id)
-    inventory_deck = db.get(Deck, pilot.inventory_deck_id)
-    game_deck = db.get(Deck, pilot.game_deck_id)
-    inventory = parse_cards(inventory_deck.cards)
-    game = parse_cards(game_deck.cards)
+    # Il mazzo da gioco non può superare il limite. Se un'altra richiesta modifica i
+    # mazzi tra la lettura e il salvataggio, si rilegge e si riprova, senza perdere
+    # le modifiche altrui.
+    for _ in range(MAX_MOVE_ATTEMPTS):
+        pilot = get_own_pilot(db, user, pilot_id)
+        inventory_deck = db.get(Deck, pilot.inventory_deck_id)
+        game_deck = db.get(Deck, pilot.game_deck_id)
+        inventory = parse_cards(inventory_deck.cards)
+        game = parse_cards(game_deck.cards)
 
-    source, target = (inventory, game) if to_game else (game, inventory)
-    if to_game and sum(card.copies for card in game) >= MAX_GAME_DECK_CARDS:
-        raise GameDeckFullError
-    _put_one(target, _take_one(source, path))
+        source, target = (inventory, game) if to_game else (game, inventory)
+        if to_game and sum(card.copies for card in game) >= MAX_GAME_DECK_CARDS:
+            raise GameDeckFullError
+        _put_one(target, _take_one(source, path))
 
-    inventory_deck.cards = dump_cards(inventory)
-    game_deck.cards = dump_cards(game)
-    db.commit()
-    db.refresh(pilot)
-    return pilot
+        inventory_deck.cards = dump_cards(inventory)
+        game_deck.cards = dump_cards(game)
+        try:
+            db.commit()
+        except StaleDataError:
+            db.rollback()
+            continue
+        db.refresh(pilot)
+        return pilot
+    raise ConcurrentUpdateError

@@ -11,6 +11,7 @@ from app.schemas.pilot import (
 )
 from app.services.cards import MAX_GAME_DECK_CARDS
 from app.services.pilot_deck import (
+    ConcurrentUpdateError,
     GameDeckFullError,
     PilotCardNotFoundError,
     active_championship,
@@ -90,6 +91,11 @@ def _move(db, user, pilot_id: int, data: CardMove, to_game: bool) -> PilotDeckDe
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             f"Il mazzo da gioco ha già {MAX_GAME_DECK_CARDS} carte",
+        )
+    except ConcurrentUpdateError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "I mazzi sono stati modificati da un'altra richiesta, riprova",
         )
 
 
