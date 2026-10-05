@@ -19,7 +19,7 @@
 
 - Possono esistere più campionati attivi contemporaneamente.
 - La cronologia dei campionati chiusi viene mantenuta tramite una classifica finale congelata.
-- Cancellare un campionato è un'azione dell'admin, possibile solo dopo la chiusura; rimuove anche gare, risultati, iscrizioni, classifica finale e copia della pool.
+- Cancellare un campionato è un'azione dell'admin, possibile solo dopo la chiusura; rimuove anche gare, risultati, iscrizioni, classifica finale e copie delle pool.
 - Un campionato chiuso diventa in sola lettura, per tutti, admin compreso.
 - Un pilota non può essere iscritto a due campionati attivi contemporaneamente; può iscriversi a uno nuovo dopo la chiusura del precedente.
 - Solo l'admin crea, chiude e cancella i campionati.
@@ -59,7 +59,8 @@
 - Championship 1:N Race
 - Race 1:N RaceResult
 - Pilot 1:N RaceResult
-- DeckPrototype: indipendente, sorgente della pool di carte di ogni campionato.
+- Championship N:2 pool: una copia della pool delle modifiche e una della pool degli sponsor.
+- DeckPrototype: indipendente, ha un tipo (`modifiche` o `sponsor`); sorgente delle pool di ogni campionato.
 
 Nota di modellazione: inventario e mazzo da gioco sono due mazzi distinti per
 pilota, rappresentati da due riferimenti a `Deck` sul pilota (`inventory_deck_id` e `game_deck_id`, entrambi univoci).
@@ -73,34 +74,46 @@ pilota, rappresentati da due riferimenti a `Deck` sul pilota (`inventory_deck_id
     (somma delle copie).
 - Il pilota costruisce il mazzo da gioco scegliendo carte dal proprio inventario:
   per ogni carta, le copie nel mazzo non superano quelle dell'inventario.
-- Stato iniziale alla creazione del pilota (fisso, indipendente dalla pool):
+- Stato iniziale alla creazione del pilota (fisso, indipendente dalle pool):
   - Inventario: Velocità 1, Velocità 2, Velocità 3, Velocità 4, 3 copie ciascuna.
     La carta Calore parte con 0 copie e non compare nell'elenco.
   - Mazzo da gioco: vuoto.
-- Il pilota ottiene nuove carte tramite pacchetti, che consumano la pool
+- Il pilota ottiene nuove carte tramite pacchetti, che consumano le pool
   del campionato selezionato.
 - La meccanica dei pacchetti (contenuto, costo, apertura) è rinviata.
 
 ### Pool di base, pool derivate e pool del campionato
 
-- **Pool di base** (`DeckPrototype` con nome `default`): catalogo completo delle carte e delle copie disponibili. Comprende due famiglie di carte: le **modifiche** e gli **sponsor**. Le carte Velocità 1-4 non ne fanno parte, perché sono assegnate di default a tutti i piloti. Le carte Calore, per ora, sono considerate parte delle modifiche e verranno aggiunte con le foto.
-- **Pool derivata**: l'admin la crea sempre a partire dalla pool di base, senza nuove immagini. Sceglie le carte da includere, il numero di copie di ciascuna (mai superiore a quello della base) e assegna un nome univoco.
+- **Due pool di base, distinte**: la pool delle **modifiche** e la pool degli **sponsor**. Ciascuna è un `DeckPrototype` con il suo tipo ed è il catalogo completo delle carte e delle copie di quel tipo. La prima versione usa le modifiche; la pool degli sponsor è predisposta.
+- Le carte Velocità 1-4 non fanno parte di nessuna pool di base, perché sono assegnate di default a tutti i piloti. Le carte Calore, per ora, sono considerate parte delle modifiche e verranno aggiunte con le foto.
+- **Pool derivata**: l'admin la crea sempre a partire dalla pool di base dello stesso tipo, senza nuove immagini. Sceglie le carte da includere, il numero di copie di ciascuna (mai superiore a quello della base) e assegna un nome univoco.
 - Le pool derivate usano nome, immagine e percorso delle carte già presenti nella pool di base.
-- La pool di base non può essere eliminata; una pool derivata può essere eliminata senza modificare i campionati già creati.
-- **Pool del campionato**: alla creazione di un campionato, l'admin sceglie una pool; se non la sceglie viene usata la pool di base. Il campionato riceve sempre una copia indipendente della pool selezionata.
-- Le modifiche o l'eliminazione della pool di origine non modificano mai la copia già assegnata a un campionato.
+- Le pool di base non si possono eliminare; una pool derivata può essere eliminata senza modificare i campionati già creati.
+- **Pool del campionato**: ogni campionato ha due pool, una di modifiche e una di sponsor. Alla creazione l'admin sceglie per ciascuna una pool del tipo corrispondente; se non la sceglie viene usata la rispettiva pool di base. Il campionato riceve sempre una copia indipendente di ciascuna pool selezionata.
+- Le modifiche o l'eliminazione di una pool di origine non modificano mai la copia già assegnata a un campionato.
 
 ### Cartelle delle immagini
 
 Le immagini delle carte stanno in `backend/media/cards/`:
 
-- `base/`: la pool di base, con le sottocartelle `modifiche/` e `sponsor/`.
+- `base/modifiche/`: la pool di base delle modifiche.
+- `base/sponsor/`: la pool di base degli sponsor.
 - `starter/`: le carte dell'inventario di partenza dei piloti.
 - `uploads/`: carte extra caricate in seguito, utilizzabili nella creazione delle pool.
 
 Le cartelle si riempiono a mano. Lo script `python -m app.scripts.resize_cards [cartella] [--dry-run]` (da `backend`) porta le immagini in WebP dentro la scatola massima, lasciando intatte quelle già a posto.
 
-Da decidere: come le carte di `base/` vengono registrate nella pool di base del database (oggi la pool `default` nasce vuota) e se modifiche e sponsor restano nello stesso prototipo o diventano due prototipi.
+### Ricarica delle pool di base
+
+Le carte delle cartelle `base/` entrano nel database con un pulsante "Ricarica" nel pannello admin, uno per ciascuna pool di base.
+
+- La ricarica **aggiunge soltanto**: legge la cartella e accoda in fondo alla pool le carte che non ci sono ancora. Non modifica e non toglie mai le carte già presenti, così nomi e quantità corretti a mano si conservano.
+- Una carta è considerata già presente se coincide il nome (senza distinguere le maiuscole) oppure il percorso dell'immagine.
+- Nome e copie di una carta nuova derivano dal nome del file (`nome_N.ext`). Un file senza il numero finale viene scartato con un avviso.
+- Carte con lo stesso nome in due pool di base diverse sono carte distinte.
+- Il risultato indica quante carte sono state aggiunte, quante già presenti e quali file sono stati scartati.
+- All'avvio non viene modificato nessun dato: nel log compare solo un avviso se le cartelle contengono carte non ancora presenti nelle pool.
+- Le carte tolte dalla cartella restano nella pool. Gli eventuali campionati e pool derivate non cambiano.
 
 ### Eliminazione di team e piloti
 
@@ -149,9 +162,9 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 
 ## 9. Campionati, gare e classifica
 
-- L'admin crea il campionato scegliendo una pool derivata o, come valore predefinito, la pool di base.
+- L'admin crea il campionato scegliendo due pool: una di modifiche e una di sponsor. Per ciascuna può scegliere una pool derivata o, come valore predefinito, la rispettiva pool di base.
 - Il nome del campionato è unico senza distinguere maiuscole; la grafia scelta dall'admin è quella mostrata nell'interfaccia.
-- Il campionato riceve una copia indipendente della pool scelta.
+- Il campionato riceve una copia indipendente di ciascuna delle due pool scelte.
 - L'admin può chiudere un campionato anche se alcune gare non sono state create o completate. Dopo la chiusura, il campionato è in sola lettura.
 - L'admin può cancellare definitivamente solo un campionato chiuso.
 
@@ -202,15 +215,15 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
   - chiusura della gara con ordine di arrivo e punti sponsor;
   - correzione dei risultati di una gara chiusa: solo admin.
 - Pannello admin, raggiungibile dal menu "Admin" in alto (visibile solo all'admin):
-  - creazione e gestione delle pool derivate;
-  - creazione, chiusura e cancellazione dei campionati;
+  - pool: elenco, pulsante "Ricarica" per le due pool di base, creazione ed eliminazione delle pool derivate;
+  - creazione, chiusura e cancellazione dei campionati, con la scelta delle due pool (modifiche e sponsor);
   - elenco degli utenti e assegnazione o rimozione del ruolo di giudice;
   - elenco e pulizia di team e piloti nascosti.
 
 Stato di realizzazione (5 ottobre 2026), verificato sulle pagine del frontend:
 
 - Realizzato: login, registrazione, home, team, dettaglio pilota (mazzo da gioco e inventario in sola lettura), elenco campionati (attivi e chiusi), dettaglio campionato con iscrizione, gare e classifica, gestione delle gare per admin e giudice, pannello admin con elenco utenti e ruoli.
-- Mancante: costruzione del mazzo da gioco dall'inventario (la pagina del pilota mostra i mazzi ma non permette di modificarli), creazione, chiusura e cancellazione dei campionati, pool derivate, pulizia di team e piloti nascosti, Negozio (nessuna rotta).
+- Mancante: costruzione del mazzo da gioco dall'inventario (la pagina del pilota mostra i mazzi ma non permette di modificarli), creazione, chiusura e cancellazione dei campionati, pool derivate e ricarica delle pool di base, pulizia di team e piloti nascosti, Negozio (nessuna rotta).
 
 ## 11. Schema e migrazioni
 
@@ -226,6 +239,8 @@ Lo schema è gestito da Alembic (`backend/alembic/versions`), su SQLite. Le migr
 
 Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni.
 
+Migrazione prevista (due pool di base): colonna `kind` su `DeckPrototype` (`modifiche` o `sponsor`), pool `default` rinominata in `modifiche`, creazione della pool `sponsor`, seconda pool su ogni campionato. I campionati presenti nel database sono solo di prova: non servono regole di conversione per dati reali.
+
 Punti ancora aperti nello schema:
 
 - Nessuna tabella per il Negozio (rinviato).
@@ -234,8 +249,7 @@ Punti ancora aperti nello schema:
 ## 12. Domande aperte (rinviate)
 
 1. Negozio: entità, prodotti, prezzi e regole.
-2. Amministrazione carte: sincronizzazione, caricamento singolo, modifica e reset
-   sono definiti in sezione 6; resta da progettare l'interfaccia di caricamento.
+2. Amministrazione carte: caricamento singolo da interfaccia in `uploads/`, modifica e reset delle carte già presenti nelle pool di base (la ricarica aggiunge soltanto).
 3. Spareggio sportivo: criterio in caso di pari punti.
 4. Pacchetti di carte: contenuto, costo e meccanica di apertura.
-5. Pool di base: come le carte delle cartelle `base/` entrano nel database e se modifiche e sponsor sono un solo prototipo o due.
+5. Uso della pool degli sponsor nel gioco (predisposta, non ancora usata).
