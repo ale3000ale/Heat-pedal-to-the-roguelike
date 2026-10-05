@@ -1,6 +1,6 @@
 # Specifiche del Progetto — Heat
 
-> STATO: BOZZA IN ATTESA DI APPROVAZIONE.
+> STATO: APPROVATO
 
 ## 1. Stack e contesto
 
