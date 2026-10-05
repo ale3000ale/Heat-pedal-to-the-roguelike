@@ -1,5 +1,6 @@
-// Ruoli previsti dal backend: l'admin gestisce i campionati, il player i propri piloti.
-export type Role = 'admin' | 'player';
+// Ruoli previsti dal backend: l'admin gestisce tutto, il giudice chiude le gare,
+// il player gestisce i propri piloti.
+export type Role = 'admin' | 'judge' | 'player';
 
 // Utente come lo restituisce il backend (mai la password).
 export interface User {
