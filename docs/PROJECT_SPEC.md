@@ -194,7 +194,10 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
   - elenco degli utenti e assegnazione o rimozione del ruolo di giudice;
   - elenco e pulizia di team e piloti nascosti.
 
-Stato di realizzazione (5 ottobre 2026): sono presenti le rotte del frontend per login, registrazione, home, team, piloti, campionati (con gare e classifica) e pannello admin (elenco utenti e ruoli). Non esiste ancora una rotta per il Negozio.
+Stato di realizzazione (5 ottobre 2026), verificato sulle pagine del frontend:
+
+- Realizzato: login, registrazione, home, team, dettaglio pilota (mazzo da gioco e inventario in sola lettura), elenco campionati (attivi e chiusi), dettaglio campionato con iscrizione, gare e classifica, gestione delle gare per admin e giudice, pannello admin con elenco utenti e ruoli.
+- Mancante: costruzione del mazzo da gioco dall'inventario (la pagina del pilota mostra i mazzi ma non permette di modificarli), creazione, chiusura e cancellazione dei campionati, pool derivate, pulizia di team e piloti nascosti, Negozio (nessuna rotta).
 
 ## 11. Schema e migrazioni
 
