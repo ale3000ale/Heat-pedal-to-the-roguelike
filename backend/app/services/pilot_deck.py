@@ -12,8 +12,7 @@ from app.services.cards import (
     dump_cards,
     parse_cards,
 )
-from app.services.pilots import PilotInActiveChampionshipError, get_own_pilot
-from app.services.teams import pilots_in_active_championship
+from app.services.pilots import get_own_pilot
 
 
 class PilotCardNotFoundError(Exception):
@@ -25,7 +24,7 @@ class GameDeckFullError(Exception):
 
 
 def active_championship(db: Session, pilot: Pilot) -> Championship | None:
-    # Il campionato attivo a cui il pilota è iscritto (ce n'è al massimo uno), se c'è.
+    # Il campionato attivo a cui il pilota è iscritto, se c'è (solo informativo).
     stmt = (
         select(Championship)
         .join(ChampionshipPilot, ChampionshipPilot.championship_id == Championship.id)
@@ -59,11 +58,9 @@ def _put_one(cards: list[CardEntry], moved: CardEntry) -> None:
 
 def move_card(db: Session, user: User, pilot_id: int, path: str, to_game: bool) -> Pilot:
     # Sposta una copia dall'inventario al mazzo da gioco (to_game=True) o viceversa.
-    # Il mazzo da gioco non può superare il limite e, con il pilota in un campionato
-    # attivo, i mazzi non si toccano.
+    # Il mazzo da gioco non può superare il limite. Il blocco durante una gara attiva
+    # andrà aggiunto qui quando la gara avrà uno stato "attiva".
     pilot = get_own_pilot(db, user, pilot_id)
-    if pilots_in_active_championship(db, [pilot.id]):
-        raise PilotInActiveChampionshipError
     inventory_deck = db.get(Deck, pilot.inventory_deck_id)
     game_deck = db.get(Deck, pilot.game_deck_id)
     inventory = parse_cards(inventory_deck.cards)
