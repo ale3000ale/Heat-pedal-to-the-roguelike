@@ -132,7 +132,8 @@ def test_purging_a_pilot_keeps_frozen_closed_championship_standings(
         assert r.status_code == 201
     race_id = admin.post(f"/api/championships/{cid}/races").json()["id"]
     r = admin.put(
-        f"/api/championships/{cid}/races/{race_id}/results", json={"pilot_ids": [p1, p2]}
+        f"/api/championships/{cid}/races/{race_id}/results",
+        json={"results": [{"pilot_id": p1}, {"pilot_id": p2}]},
     )
     assert r.status_code == 200
     admin.post(f"/api/championships/{cid}/close")
