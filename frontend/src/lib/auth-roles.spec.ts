@@ -9,7 +9,7 @@ function storeWith(role: Role | null): AuthStore {
 }
 
 describe('permessi sulle gare', () => {
-	it('l\'admin gestisce e corregge le gare', () => {
+	it("l'admin gestisce e corregge le gare", () => {
 		const store = storeWith('admin');
 		expect(store.isAdmin).toBe(true);
 		expect(store.canManageRaces).toBe(true);
