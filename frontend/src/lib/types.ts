@@ -59,3 +59,27 @@ export interface Entrant {
 export interface ChampionshipDetail extends Championship {
 	pilots: Entrant[];
 }
+
+// Tipo di una pool di carte: modifiche o sponsor.
+export type PoolKind = 'modifiche' | 'sponsor';
+
+// Pool come appare nell'elenco: carte diverse e somma delle copie.
+export interface Pool {
+	id: number;
+	name: string;
+	kind: PoolKind;
+	cards_count: number;
+	copies_count: number;
+}
+
+// Pool con l'elenco delle sue carte.
+export interface PoolDetail extends Pool {
+	cards: CardEntry[];
+}
+
+// Esito della ricarica di una pool di base.
+export interface ReloadResult {
+	added: string[];
+	already_present: number;
+	warnings: string[];
+}

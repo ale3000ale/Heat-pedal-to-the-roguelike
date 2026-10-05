@@ -94,6 +94,14 @@
 											Utenti e ruoli
 										</a>
 									</li>
+									<li>
+										<a
+											href={resolve('/admin/pools')}
+											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
+										>
+											Pool di carte
+										</a>
+									</li>
 								</ul>
 							</details>
 						{/if}
