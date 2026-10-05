@@ -17,7 +17,6 @@
 
 	let gameTotal = $derived(pilot ? total(pilot.game_deck) : 0);
 	let full = $derived(gameTotal >= MAX_GAME_DECK);
-	let locked = $derived(pilot?.championship != null);
 
 	onMount(async () => {
 		try {
@@ -73,7 +72,6 @@
 				>
 					{pilot.championship.name}
 				</a>
-				· i mazzi non si possono modificare.
 			</p>
 		{/if}
 
@@ -88,7 +86,7 @@
 					<span class={full ? 'font-semibold text-destructive' : ''}>
 						{gameTotal}/{MAX_GAME_DECK} carte
 					</span>
-					{#if !locked}· clicca una carta per riportarla nell'inventario{/if}
+					· clicca una carta per riportarla nell'inventario
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -99,7 +97,7 @@
 						{#each pilot.game_deck as card (card.path)}
 							<CardTile
 								{card}
-								disabled={locked || busy}
+								disabled={busy}
 								title="Copie nel mazzo"
 								onclick={() => move(card.path, 'remove')}
 							/>
@@ -113,8 +111,7 @@
 			<Card.Header>
 				<Card.Title>Inventario</Card.Title>
 				<Card.Description>
-					{total(pilot.inventory)} carte
-					{#if !locked}· clicca una carta per metterla nel mazzo{/if}
+					{total(pilot.inventory)} carte · clicca una carta per metterla nel mazzo
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -125,7 +122,7 @@
 						{#each pilot.inventory as card (card.path)}
 							<CardTile
 								{card}
-								disabled={locked || busy || full}
+								disabled={busy || full}
 								title="Copie in inventario"
 								onclick={() => move(card.path, 'add')}
 							/>
