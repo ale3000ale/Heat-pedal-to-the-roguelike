@@ -13,6 +13,7 @@
 - Sicurezza flessibile perché l'app è locale, ma progettata per un eventuale
   uso online futuro.
 - Avvio e manutenzione: `python heat.py` (menu) oppure `setup`, `start`, `migrate`, `test`, `check`. L'avvio applica sempre le migrazioni in sospeso.
+- Mappa del codice, convenzioni e stato del lavoro: `docs/PROJECT_NOTES.md`.
 
 ## 2. Decisioni definitive
 
@@ -82,12 +83,24 @@ pilota, rappresentati da due riferimenti a `Deck` sul pilota (`inventory_deck_id
 
 ### Pool di base, pool derivate e pool del campionato
 
-- **Pool di base** (`DeckPrototype` con nome `default`): catalogo completo delle carte e delle copie disponibili.
+- **Pool di base** (`DeckPrototype` con nome `default`): catalogo completo delle carte e delle copie disponibili. Comprende due famiglie di carte: le **modifiche** e gli **sponsor**. Le carte Velocità 1-4 non ne fanno parte, perché sono assegnate di default a tutti i piloti. Le carte Calore, per ora, sono considerate parte delle modifiche e verranno aggiunte con le foto.
 - **Pool derivata**: l'admin la crea sempre a partire dalla pool di base, senza nuove immagini. Sceglie le carte da includere, il numero di copie di ciascuna (mai superiore a quello della base) e assegna un nome univoco.
 - Le pool derivate usano nome, immagine e percorso delle carte già presenti nella pool di base.
 - La pool di base non può essere eliminata; una pool derivata può essere eliminata senza modificare i campionati già creati.
 - **Pool del campionato**: alla creazione di un campionato, l'admin sceglie una pool; se non la sceglie viene usata la pool di base. Il campionato riceve sempre una copia indipendente della pool selezionata.
 - Le modifiche o l'eliminazione della pool di origine non modificano mai la copia già assegnata a un campionato.
+
+### Cartelle delle immagini
+
+Le immagini delle carte stanno in `backend/media/cards/`:
+
+- `base/`: la pool di base, con le sottocartelle `modifiche/` e `sponsor/`.
+- `starter/`: le carte dell'inventario di partenza dei piloti.
+- `uploads/`: carte extra caricate in seguito, utilizzabili nella creazione delle pool.
+
+Le cartelle si riempiono a mano. Lo script `python -m app.scripts.resize_cards [cartella] [--dry-run]` (da `backend`) porta le immagini in WebP dentro la scatola massima, lasciando intatte quelle già a posto.
+
+Da decidere: come le carte di `base/` vengono registrate nella pool di base del database (oggi la pool `default` nasce vuota) e se modifiche e sponsor restano nello stesso prototipo o diventano due prototipi.
 
 ### Eliminazione di team e piloti
 
@@ -225,3 +238,4 @@ Punti ancora aperti nello schema:
    sono definiti in sezione 6; resta da progettare l'interfaccia di caricamento.
 3. Spareggio sportivo: criterio in caso di pari punti.
 4. Pacchetti di carte: contenuto, costo e meccanica di apertura.
+5. Pool di base: come le carte delle cartelle `base/` entrano nel database e se modifiche e sponsor sono un solo prototipo o due.
