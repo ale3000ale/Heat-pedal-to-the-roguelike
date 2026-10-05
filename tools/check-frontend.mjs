@@ -19,10 +19,13 @@ for (const step of steps) {
 	console.log(`\n▶ npm run ${step}\n`);
 	const started = Date.now();
 	// shell: true serve su Windows, dove npm è un file .cmd.
+	// stdin ignorato: nessun passo deve restare in attesa di input da tastiera
+	// (succedeva quando lo script era lanciato da heat.py).
 	const run = spawnSync('npm', ['run', step], {
 		cwd: frontend,
-		stdio: 'inherit',
-		shell: true
+		stdio: ['ignore', 'inherit', 'inherit'],
+		shell: true,
+		env: { ...process.env, CI: 'true' }
 	});
 	const ok = run.status === 0;
 	results.push({ step, ok, seconds: ((Date.now() - started) / 1000).toFixed(1) });

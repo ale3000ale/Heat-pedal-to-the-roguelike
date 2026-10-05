@@ -26,4 +26,4 @@ class UserRead(BaseModel):
 
     id: int
     username: str
-    role: Literal["admin", "player"]
+    role: Literal["admin", "judge", "player"]
