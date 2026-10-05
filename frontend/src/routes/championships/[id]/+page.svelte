@@ -36,6 +36,12 @@
 		return value ? new Date(value).toLocaleDateString('it-IT') : 'Data da definire';
 	}
 
+	// Chiave di una riga della classifica. Il rango non basta: i pari merito lo
+	// condividono. Nei campionati chiusi pilot_id può essere nullo.
+	function standingKey(row: Standing, index: number): string {
+		return row.pilot_id !== null ? `p${row.pilot_id}` : `r${row.rank}-${index}`;
+	}
+
 	// Ricarica i dati del campionato che cambiano dopo un'iscrizione.
 	async function reload() {
 		[championship, standings] = await Promise.all([
@@ -165,7 +171,7 @@
 					<p class="text-sm text-muted-foreground">Nessun pilota iscritto.</p>
 				{:else}
 					<ol class="divide-y">
-						{#each standings as row (row.rank)}
+						{#each standings as row, index (standingKey(row, index))}
 							<li class="flex items-center gap-3 py-2">
 								<span class="w-6 text-right text-sm text-muted-foreground">{row.rank}</span>
 								<span class="flex-1 font-medium">
