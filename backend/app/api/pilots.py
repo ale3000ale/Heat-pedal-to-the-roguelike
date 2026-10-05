@@ -14,6 +14,7 @@ from app.services.pilot_deck import (
     GameDeckFullError,
     PilotCardNotFoundError,
     active_championship,
+    active_championships,
     move_card,
 )
 from app.services.pilots import (
@@ -60,11 +61,8 @@ class CardMove(BaseModel):
     path: str
 
 
-def _championship_ref(db, pilot) -> ChampionshipRef | None:
-    championship = active_championship(db, pilot)
-    if championship is None:
-        return None
-    return ChampionshipRef(id=championship.id, name=championship.name)
+def _ref(found: tuple[int, str] | None) -> ChampionshipRef | None:
+    return None if found is None else ChampionshipRef(id=found[0], name=found[1])
 
 
 def _detail(db, pilot) -> PilotDeckDetail:
@@ -74,7 +72,7 @@ def _detail(db, pilot) -> PilotDeckDetail:
         **PilotRead.model_validate(pilot).model_dump(),
         inventory=inventory,
         game_deck=game,
-        championship=_championship_ref(db, pilot),
+        championship=_ref(active_championship(db, pilot)),
     )
 
 
@@ -95,12 +93,15 @@ def _move(db, user, pilot_id: int, data: CardMove, to_game: bool) -> PilotDeckDe
 @router.get("", response_model=list[PilotListItem])
 def list_my_pilots(user: CurrentUser, db: DbDep):
     # Elenco dei piloti dell'utente loggato, ognuno con il suo campionato attivo.
+    # I campionati si leggono con una sola query per tutti i piloti.
+    pilots = list_pilots(db, user)
+    championships = active_championships(db, [pilot.id for pilot in pilots])
     return [
         PilotListItem(
             **PilotRead.model_validate(pilot).model_dump(),
-            championship=_championship_ref(db, pilot),
+            championship=_ref(championships.get(pilot.id)),
         )
-        for pilot in list_pilots(db, user)
+        for pilot in pilots
     ]
 
 

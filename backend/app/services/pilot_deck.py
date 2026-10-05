@@ -23,14 +23,26 @@ class GameDeckFullError(Exception):
     """Il mazzo da gioco ha già il massimo di carte."""
 
 
-def active_championship(db: Session, pilot: Pilot) -> Championship | None:
-    # Il campionato attivo a cui il pilota è iscritto, se c'è (solo informativo).
+def active_championships(db: Session, pilot_ids: list[int]) -> dict[int, tuple[int, str]]:
+    # Per ogni pilota iscritto a un campionato non chiuso: {pilot_id: (id, nome)}.
+    # Una sola query per tutti i piloti, qualunque sia il loro numero.
+    if not pilot_ids:
+        return {}
     stmt = (
-        select(Championship)
-        .join(ChampionshipPilot, ChampionshipPilot.championship_id == Championship.id)
-        .where(ChampionshipPilot.pilot_id == pilot.id, Championship.is_closed.is_(False))
+        select(ChampionshipPilot.pilot_id, Championship.id, Championship.name)
+        .join(Championship, Championship.id == ChampionshipPilot.championship_id)
+        .where(ChampionshipPilot.pilot_id.in_(pilot_ids), Championship.is_closed.is_(False))
+        .order_by(Championship.id)
     )
-    return db.scalars(stmt).first()
+    result: dict[int, tuple[int, str]] = {}
+    for pilot_id, championship_id, name in db.execute(stmt):
+        result.setdefault(pilot_id, (championship_id, name))
+    return result
+
+
+def active_championship(db: Session, pilot: Pilot) -> tuple[int, str] | None:
+    # Il campionato attivo di un solo pilota, come (id, nome), se c'è (solo informativo).
+    return active_championships(db, [pilot.id]).get(pilot.id)
 
 
 def _take_one(cards: list[CardEntry], path: str) -> CardEntry:
@@ -58,8 +70,7 @@ def _put_one(cards: list[CardEntry], moved: CardEntry) -> None:
 
 def move_card(db: Session, user: User, pilot_id: int, path: str, to_game: bool) -> Pilot:
     # Sposta una copia dall'inventario al mazzo da gioco (to_game=True) o viceversa.
-    # Il mazzo da gioco non può superare il limite. Il blocco durante una gara attiva
-    # andrà aggiunto qui quando la gara avrà uno stato "attiva".
+    # Il mazzo da gioco non può superare il limite.
     pilot = get_own_pilot(db, user, pilot_id)
     inventory_deck = db.get(Deck, pilot.inventory_deck_id)
     game_deck = db.get(Deck, pilot.game_deck_id)
