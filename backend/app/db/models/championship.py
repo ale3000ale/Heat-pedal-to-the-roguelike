@@ -12,7 +12,10 @@ class Championship(Base):
     name_key = Column(String, nullable=False)
     date = Column(DateTime, nullable=False, server_default=func.now())
     is_closed = Column(Boolean, nullable=False, default=False)
+    # Copia della pool delle modifiche.
     pool_deck_id = Column(Integer, ForeignKey("deck.id"), nullable=True)
+    # Copia della pool degli sponsor.
+    sponsor_pool_deck_id = Column(Integer, ForeignKey("deck.id"), nullable=True)
     __table_args__ = (UniqueConstraint("name_key", name="uq_championship_name_key"),)
 
 class ChampionshipPilot(Base):

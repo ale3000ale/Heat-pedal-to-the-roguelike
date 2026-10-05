@@ -8,6 +8,8 @@ class DeckPrototype(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
     base_cards = Column(String, nullable=True)
+    # Tipo della pool: "modifiche" o "sponsor". Le derivate hanno il tipo della base da cui nascono.
+    kind = Column(String, nullable=False, default="modifiche", server_default="modifiche")
 
 class Deck(Base):
     __tablename__ = "deck"
