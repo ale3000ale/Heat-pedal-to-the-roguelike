@@ -7,11 +7,12 @@
 - Applicazione web locale basata sul gioco da tavolo Heat.
 - Backend: FastAPI. Frontend: SvelteKit (minimal, TypeScript, npm, ESLint,
   Prettier, Vitest) in `frontend/`.
-- Database: schema attuale in `HeatDB.sql` (solo DDL, nessun dato).
+- Database: SQLite, schema gestito da Alembic. `HeatDB.sql` è lo schema di partenza storico (solo DDL, nessun dato).
 - Migrazioni database: Alembic, una migrazione per ogni cambiamento di schema,
   a partire da una migrazione iniziale che allinea lo schema al modello target.
 - Sicurezza flessibile perché l'app è locale, ma progettata per un eventuale
   uso online futuro.
+- Avvio e manutenzione: `python heat.py` (menu) oppure `setup`, `start`, `migrate`, `test`, `check`. L'avvio applica sempre le migrazioni in sospeso.
 
 ## 2. Decisioni definitive
 
@@ -42,6 +43,7 @@
 - Giudice: ruolo fisso, valido per tutti i campionati, assegnato e tolto dall'admin a un utente. Serve a delegare del lavoro all'admin: può creare le gare e chiuderle inserendo i risultati e i punti sponsor. Non può correggere una gara già chiusa e non ha altri poteri di amministrazione. Può avere team e piloti come un giocatore.
 - Player: gestisce i propri team e piloti.
 - Il ruolo dell'admin non si può cambiare, nemmeno da parte dell'admin stesso. Dall'interfaccia si assegna solo `player` o `judge`; l'admin si crea con il setup.
+- Ogni risposta dell'API che descrive un utente (login, utente corrente, registrazione) deve poter restituire tutti e tre i ruoli.
 
 ## 5. Entità e relazioni
 
@@ -59,8 +61,7 @@
 - DeckPrototype: indipendente, sorgente della pool di carte di ogni campionato.
 
 Nota di modellazione: inventario e mazzo da gioco sono due mazzi distinti per
-pilota. La rappresentazione nel database (due riferimenti a `Deck` oppure un
-campo tipo) è rinviata alla fase backend e migrazioni.
+pilota, rappresentati da due riferimenti a `Deck` sul pilota (`inventory_deck_id` e `game_deck_id`, entrambi univoci).
 
 ## 6. Mazzi, inventario e pool di carte
 
@@ -170,7 +171,7 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 
 - Nel campionato attivo, la classifica è la somma dei punti ottenuti nelle gare (i punti sponsor non contano).
 - Include tutti gli iscritti, anche chi non ha partecipato a nessuna gara.
-- A pari punti, i piloti condividono la stessa posizione; l'ordine alfabetico stabilizza soltanto la visualizzazione.
+- A pari punti, i piloti condividono la stessa posizione (1, 2, 2, 4); l'ordine alfabetico stabilizza soltanto la visualizzazione. Nell'interfaccia ogni riga ha una chiave propria (id del pilota), perché il rango non è univoco.
 - Alla chiusura del campionato viene salvata una classifica finale congelata con: posizione, nome del pilota, punti totali e gare disputate.
 - La classifica congelata non conserva il riferimento al pilota: se il pilota viene eliminato definitivamente, lo storico del campionato resta visibile con nome, punti e posizione finale.
 - Non viene conservato il dettaglio gara per gara dei piloti eliminati definitivamente.
@@ -187,33 +188,30 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
   - creazione delle gare;
   - chiusura della gara con ordine di arrivo e punti sponsor;
   - correzione dei risultati di una gara chiusa: solo admin.
-- Pannello admin:
+- Pannello admin, raggiungibile dal menu "Admin" in alto (visibile solo all'admin):
   - creazione e gestione delle pool derivate;
   - creazione, chiusura e cancellazione dei campionati;
   - elenco degli utenti e assegnazione o rimozione del ruolo di giudice;
   - elenco e pulizia di team e piloti nascosti.
 
-## 11. Schema attuale verificato e differenze
+## 11. Schema e migrazioni
 
-Schema attuale (HeatDB.sql): 6 tabelle `User`, `Pilot`, `Deck`,
-`"Championship "`, `Team`, `Deck_prototype`. Nessun dato, indice o vista.
-Tutte le foreign key usano `ON UPDATE/DELETE NO ACTION`.
+Lo schema è gestito da Alembic (`backend/alembic/versions`). Le migrazioni, in ordine:
 
-Da risolvere con migrazioni Alembic:
+| Migrazione | Contenuto |
+|---|---|
+| `3201b138ce2e` schema iniziale | Tabelle `user`, `team`, `pilot`, `deck`, `deck_prototype`, `championship`, `championship_pilot`, `race`, `race_result`; ruolo utente; team collegato all'utente; mazzo inventario e mazzo da gioco sul pilota; pool del campionato su `pool_deck_id`; limiti di posizione 1-12 nei risultati |
+| `3daf355a6ffd` tabella session | Sessioni di login |
+| `9f4d32c3525f` eliminazione logica e nomi | `deleted_at` su team e pilota, nomi unici senza distinguere le maiuscole |
+| `c7a1e5d2b9f4` nome campionato | Nome normalizzato del campionato per l'unicità senza distinguere le maiuscole |
+| `d4e8a2b6c1f7` giudice e sponsor | Ruolo `judge` nel vincolo dei ruoli, punti sponsor nei risultati |
 
-- La tabella `"Championship "` ha uno spazio finale nel nome.
-- `Championship.pilots` è TEXT: sostituire con `ChampionshipPilot`.
-- Mancano le tabelle `Race` e `RaceResult`.
-- `RaceResult` ha bisogno di `sponsor_points` (intero, 0 o più).
-- `Deck` non è collegato a `Pilot`: servono inventario e mazzo da gioco.
-- `Deck` è oggi collegato solo al campionato (`Championship.deck`).
-- `Team` non ha riferimento a `User`: serve per User 1:N Team.
-- `User` non ha campo ruolo: serve per admin/judge/player.
-- `Pilot.user_id` non ha vincolo UNIQUE, coerente con User 1:N Pilot.
+Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni.
+
+Punti ancora aperti nello schema:
+
 - Nessuna tabella per il Negozio (rinviato).
-- `Team` e `Pilot` non hanno `deleted_at`.
-- `Pilot.team_id` è obbligatorio: va reso facoltativo.
-- I nomi `Team.name` e `Pilot.name` sono unici ma distinguono le maiuscole.
+- Dopo un cambio di computer o un `git pull` è necessario applicare le migrazioni: `python heat.py migrate` (l'avvio lo fa da solo).
 
 ## 12. Domande aperte (rinviate)
 
