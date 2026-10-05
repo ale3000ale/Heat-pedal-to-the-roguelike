@@ -53,3 +53,13 @@ def require_admin(user: CurrentUser) -> User:
 
 
 AdminUser = Annotated[User, Depends(require_admin)]
+
+
+def require_judge(user: CurrentUser) -> User:
+    # Il giudice gestisce le gare; l'admin può fare tutto ciò che fa il giudice.
+    if user.role not in ("admin", "judge"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Permesso negato")
+    return user
+
+
+JudgeUser = Annotated[User, Depends(require_judge)]

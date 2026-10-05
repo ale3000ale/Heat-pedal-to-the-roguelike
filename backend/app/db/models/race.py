@@ -22,9 +22,11 @@ class RaceResult(Base):
     pilot_id = Column(Integer, ForeignKey("pilot.id"), nullable=False)
     position = Column(Integer, nullable=False)
     points = Column(Integer, nullable=False, default=0, server_default="0")
+    sponsor_points = Column(Integer, nullable=False, default=0, server_default="0")
 
     __table_args__ = (
         UniqueConstraint("race_id", "pilot_id"),
         UniqueConstraint("race_id", "position"),
         CheckConstraint("position BETWEEN 1 AND 12", name="ck_race_result_position"),
+        CheckConstraint("sponsor_points >= 0", name="ck_race_result_sponsor"),
     )

@@ -10,5 +10,5 @@ class User(Base):
     role = Column(String, nullable=False, default="player", server_default="player")
 
     __table_args__ = (
-        CheckConstraint("role IN ('admin', 'player')", name="ck_user_role"),
+        CheckConstraint("role IN ('admin', 'judge', 'player')", name="ck_user_role"),
     )

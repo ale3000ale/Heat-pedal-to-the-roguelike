@@ -18,9 +18,10 @@
 - Possono esistere più campionati attivi contemporaneamente.
 - La cronologia dei campionati chiusi viene mantenuta tramite una classifica finale congelata.
 - Cancellare un campionato è un'azione dell'admin, possibile solo dopo la chiusura; rimuove anche gare, risultati, iscrizioni, classifica finale e copia della pool.
-- Un campionato chiuso diventa in sola lettura.
+- Un campionato chiuso diventa in sola lettura, per tutti, admin compreso.
 - Un pilota non può essere iscritto a due campionati attivi contemporaneamente; può iscriversi a uno nuovo dopo la chiusura del precedente.
-- Solo l'admin crea, chiude e cancella i campionati; solo l'admin crea le gare e inserisce o corregge i risultati.
+- Solo l'admin crea, chiude e cancella i campionati.
+- L'admin e il giudice creano le gare e le chiudono inserendo i risultati; solo l'admin può correggere i risultati di una gara già chiusa.
 - Negozio, amministrazione completa delle carte e spareggio sportivo sono rinviati e non bloccano la prima versione.
 - Prima versione del Negozio: solo placeholder "Funzionalità in definizione".
 - In caso di pari punti, l'ordine alfabetico serve solo come stabilizzatore di visualizzazione, non come spareggio.
@@ -34,11 +35,13 @@
 
 ## 4. Ruoli
 
-- Ruoli previsti: `admin` e `player`.
+- Ruoli previsti: `admin`, `judge` (giudice) e `player`.
 - Il primo admin viene creato al primo avvio tramite comando di setup
   o variabile d'ambiente.
-- Admin: crea e chiude campionati, gestisce le gare, inserisce i risultati.
+- Admin: crea, chiude e cancella i campionati, gestisce le pool, crea le gare, inserisce e corregge i risultati, assegna il ruolo di giudice, pulisce gli elementi nascosti.
+- Giudice: ruolo fisso, valido per tutti i campionati, assegnato e tolto dall'admin a un utente. Serve a delegare del lavoro all'admin: può creare le gare e chiuderle inserendo i risultati e i punti sponsor. Non può correggere una gara già chiusa e non ha altri poteri di amministrazione. Può avere team e piloti come un giocatore.
 - Player: gestisce i propri team e piloti.
+- Il ruolo dell'admin non si può cambiare, nemmeno da parte dell'admin stesso. Dall'interfaccia si assegna solo `player` o `judge`; l'admin si crea con il setup.
 
 ## 5. Entità e relazioni
 
@@ -113,26 +116,10 @@ campo tipo) è rinviata alla fase backend e migrazioni.
 - Immagini: ridimensionate senza tagliare dentro una scatola massima di
   560x870 px (proporzione 5,6 x 8,7 cm).
 
-### Eliminazione di team e piloti
-
-- Il player elimina i propri team e piloti in modo logico: la riga resta nel
-  database (`deleted_at`) e sparisce dalla sua vista. L'eliminazione di un
-  team nasconde anche i suoi piloti.
-- Un pilota iscritto a un campionato attivo non può essere eliminato.
-- Gli elementi nascosti si conservano fino a un anno.
-- Un elemento nascosto continua a occupare il suo nome fino alla pulizia.
-- L'admin può cancellare definitivamente: prima i piloti, poi il team.
-  Un pilota si cancella solo se non compare in alcun campionato
-  (il campionato va cancellato prima).
-- La pulizia annuale è un comando manuale: cancella solo gli elementi nascosti
-  da oltre 12 mesi che non hanno collegamenti.
-- Nomi di team e di piloti: unici su tutto il gioco, senza distinguere le maiuscole.
-- Un pilota può esistere senza team; per iscriversi a un campionato serve un team.
-
 ## 7. Risorse del pilota
 
 - `gold`: denaro spendibile nel negozio.
-- `sponsor`: punti che permettono di riscattare premi nel negozio.
+- `sponsor`: punti che permettono di riscattare premi nel negozio. Si ottengono a fine gara (sezione 9) e si possono spendere: per questo il totale non si ricalcola mai dalla somma delle gare, ma si aggiorna solo con la differenza quando un risultato viene corretto, senza scendere sotto zero.
 - `point`: punti del pilota nel campionato.
 
 ## 8. Iscrizione a un campionato
@@ -158,9 +145,11 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 
 - Ogni gara appartiene a un campionato e riceve automaticamente il numero successivo: 1, 2, 3, ecc.
 - La data della gara è facoltativa.
+- La gara la crea l'admin o il giudice.
 - Massimo 12 piloti partecipanti per gara.
-- I risultati sono inseriti dall'admin come elenco ordinato di piloti; la posizione deriva dall'ordine nell'elenco.
-- I risultati possono essere corretti finché il campionato è attivo.
+- **Chiusura della gara**: coincide con l'inserimento dei risultati. L'admin o il giudice inseriscono l'elenco ordinato dei piloti (la posizione deriva dall'ordine) e, per ogni pilota, i punti sponsor. Non esiste uno stato salvato: una gara è chiusa quando ha almeno un risultato.
+- **Correzione**: solo l'admin può sostituire i risultati di una gara già chiusa (in caso di errore), e solo finché il campionato è attivo. Il giudice che ci prova riceve un rifiuto.
+- Un campionato chiuso è in sola lettura per tutti: nessuna creazione di gare e nessuna correzione, nemmeno dell'admin.
 - Possono essere inseriti solo piloti iscritti al campionato e ogni pilota può comparire una sola volta.
 - Punti per posizione di arrivo:
 
@@ -174,11 +163,12 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 | 6° | 1 |
 | 7°–12° | 0 |
 
-- Un iscritto che non partecipa a una gara non ha una riga di risultato, ma viene mostrato nel dettaglio della gara con posizione assente e 0 punti.
+- **Punti sponsor**: non dipendono dalla posizione, dipendono da come va la partita. Sono inseriti a mano per ogni pilota, valgono 0 se non indicati e non possono essere negativi. Vengono assegnati al pilota nel momento della chiusura della gara; in una correzione il pilota riceve (o perde) solo la differenza rispetto ai valori precedenti, senza scendere sotto zero.
+- Un iscritto che non partecipa a una gara non ha una riga di risultato, ma viene mostrato nel dettaglio della gara con posizione assente, 0 punti e 0 punti sponsor.
 
 ### Classifica
 
-- Nel campionato attivo, la classifica è la somma dei punti ottenuti nelle gare.
+- Nel campionato attivo, la classifica è la somma dei punti ottenuti nelle gare (i punti sponsor non contano).
 - Include tutti gli iscritti, anche chi non ha partecipato a nessuna gara.
 - A pari punti, i piloti condividono la stessa posizione; l'ordine alfabetico stabilizza soltanto la visualizzazione.
 - Alla chiusura del campionato viene salvata una classifica finale congelata con: posizione, nome del pilota, punti totali e gare disputate.
@@ -193,10 +183,14 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 - Mazzi del pilota: inventario e mazzo da gioco.
 - Campionati: elenco di attivi e chiusi, dettaglio, iscrizione di un pilota, gare e classifica.
 - Negozio: placeholder "Funzionalità in definizione".
+- Gestione gare (admin e giudice):
+  - creazione delle gare;
+  - chiusura della gara con ordine di arrivo e punti sponsor;
+  - correzione dei risultati di una gara chiusa: solo admin.
 - Pannello admin:
   - creazione e gestione delle pool derivate;
   - creazione, chiusura e cancellazione dei campionati;
-  - creazione delle gare e inserimento o correzione dei risultati;
+  - elenco degli utenti e assegnazione o rimozione del ruolo di giudice;
   - elenco e pulizia di team e piloti nascosti.
 
 ## 11. Schema attuale verificato e differenze
@@ -210,10 +204,11 @@ Da risolvere con migrazioni Alembic:
 - La tabella `"Championship "` ha uno spazio finale nel nome.
 - `Championship.pilots` è TEXT: sostituire con `ChampionshipPilot`.
 - Mancano le tabelle `Race` e `RaceResult`.
+- `RaceResult` ha bisogno di `sponsor_points` (intero, 0 o più).
 - `Deck` non è collegato a `Pilot`: servono inventario e mazzo da gioco.
 - `Deck` è oggi collegato solo al campionato (`Championship.deck`).
 - `Team` non ha riferimento a `User`: serve per User 1:N Team.
-- `User` non ha campo ruolo: serve per admin/player.
+- `User` non ha campo ruolo: serve per admin/judge/player.
 - `Pilot.user_id` non ha vincolo UNIQUE, coerente con User 1:N Pilot.
 - Nessuna tabella per il Negozio (rinviato).
 - `Team` e `Pilot` non hanno `deleted_at`.
