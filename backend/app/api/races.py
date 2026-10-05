@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import AdminUser, CurrentUser, DbDep
+from app.api.deps import CurrentUser, DbDep, JudgeUser
 from app.schemas.race import (
     RaceCreate,
     RaceDetail,
@@ -11,6 +11,7 @@ from app.schemas.race import (
 )
 from app.services.championships import standings, ChampionshipClosedError, ChampionshipNotFoundError
 from app.services.races import (
+    RaceAlreadyClosedError,
     RaceNotFoundError,
     RaceResultError,
     count_participants,
@@ -25,6 +26,9 @@ router = APIRouter(tags=["races"])
 CHAMPIONSHIP_NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Campionato non trovato")
 RACE_NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Gara non trovata")
 CLOSED = HTTPException(status.HTTP_409_CONFLICT, "Campionato chiuso")
+RACE_CLOSED = HTTPException(
+    status.HTTP_403_FORBIDDEN, "Gara già chiusa: solo l'admin può correggere i risultati"
+)
 
 
 def _read(db, race) -> RaceRead:
@@ -39,8 +43,14 @@ def _read(db, race) -> RaceRead:
 def _detail(db, championship_id: int, race_id: int) -> RaceDetail:
     race, rows = race_table(db, championship_id, race_id)
     results = [
-        RaceResultRead(pilot_id=p.id, pilot_name=p.name, position=position, points=points)
-        for p, position, points in rows
+        RaceResultRead(
+            pilot_id=p.id,
+            pilot_name=p.name,
+            position=position,
+            points=points,
+            sponsor_points=sponsor_points,
+        )
+        for p, position, points, sponsor_points in rows
     ]
     return RaceDetail(**_read(db, race).model_dump(), results=results)
 
@@ -57,8 +67,8 @@ def list_all(championship_id: int, user: CurrentUser, db: DbDep):
 @router.post(
     "/{championship_id}/races", response_model=RaceRead, status_code=status.HTTP_201_CREATED
 )
-def create(championship_id: int, admin: AdminUser, db: DbDep, data: RaceCreate | None = None):
-    # Crea la gara successiva (solo admin).
+def create(championship_id: int, judge: JudgeUser, db: DbDep, data: RaceCreate | None = None):
+    # Crea la gara successiva (giudice o admin).
     try:
         return _read(db, create_race(db, championship_id, data.date if data else None))
     except ChampionshipNotFoundError:
@@ -80,11 +90,15 @@ def detail(championship_id: int, race_id: int, user: CurrentUser, db: DbDep):
 
 @router.put("/{championship_id}/races/{race_id}/results", response_model=RaceDetail)
 def put_results(
-    championship_id: int, race_id: int, data: ResultsSet, admin: AdminUser, db: DbDep
+    championship_id: int, race_id: int, data: ResultsSet, judge: JudgeUser, db: DbDep
 ):
-    # Registra o corregge l'ordine di arrivo (solo admin).
+    # Chiude la gara registrando i risultati e gli sponsor (giudice o admin).
+    # Se la gara ha già i risultati, solo l'admin può correggerli.
+    entries = [(entry.pilot_id, entry.sponsor_points) for entry in data.results]
     try:
-        set_results(db, championship_id, race_id, data.pilot_ids)
+        set_results(
+            db, championship_id, race_id, entries, can_correct=judge.role == "admin"
+        )
         return _detail(db, championship_id, race_id)
     except ChampionshipNotFoundError:
         raise CHAMPIONSHIP_NOT_FOUND
@@ -92,6 +106,8 @@ def put_results(
         raise RACE_NOT_FOUND
     except ChampionshipClosedError:
         raise CLOSED
+    except RaceAlreadyClosedError:
+        raise RACE_CLOSED
     except RaceResultError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
 

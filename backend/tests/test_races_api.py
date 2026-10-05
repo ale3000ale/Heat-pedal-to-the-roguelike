@@ -1,5 +1,6 @@
 from app.db.models import User
 from app.db.models.deck import DeckPrototype
+from app.db.models.pilot import Pilot
 from app.security import hash_password
 from app.services.cards import CardEntry, dump_cards
 from app.db.models.championship import ChampionshipStanding
@@ -26,6 +27,20 @@ def make_player(make_client, username="mario"):
     return client
 
 
+def make_judge(make_client, session_factory, username="giudice"):
+    # Un giocatore a cui l'admin ha dato il ruolo di giudice.
+    client = make_player(make_client, username)
+    with session_factory() as db:
+        db.query(User).filter(User.username == username).update({"role": "judge"})
+        db.commit()
+    return client
+
+
+def sponsor_of(session_factory, pilot_id):
+    with session_factory() as db:
+        return db.get(Pilot, pilot_id).sponsor
+
+
 def setup(make_client, session_factory, names):
     # Un campionato attivo con i piloti indicati, tutti iscritti.
     admin = make_admin(make_client, session_factory)
@@ -47,14 +62,20 @@ def new_race(admin, championship_id):
     return r.json()["id"]
 
 
-def put_results(admin, championship_id, race_id, pilot_ids):
-    return admin.put(
+def put_results(client, championship_id, race_id, pilot_ids, sponsors=None):
+    # sponsors: {pilot_id: punti sponsor}; chi non è indicato ha 0.
+    sponsors = sponsors or {}
+    return client.put(
         f"/api/championships/{championship_id}/races/{race_id}/results",
-        json={"pilot_ids": pilot_ids},
+        json={
+            "results": [
+                {"pilot_id": pid, "sponsor_points": sponsors.get(pid, 0)} for pid in pilot_ids
+            ]
+        },
     )
 
 
-def test_race_actions_are_admin_only(make_client, session_factory):
+def test_players_cannot_manage_races(make_client, session_factory):
     admin, player, cid, pilots = setup(make_client, session_factory, ["Anna"])
     race_id = new_race(admin, cid)
     assert make_client().post(f"/api/championships/{cid}/races").status_code == 401
@@ -92,10 +113,13 @@ def test_absent_pilots_appear_with_zero_points(make_client, session_factory):
     race_id = new_race(admin, cid)
     r = put_results(admin, cid, race_id, [pilots["Beppe"], pilots["Anna"]])
     assert r.json()["participants"] == 2
-    assert [(x["pilot_name"], x["position"], x["points"]) for x in r.json()["results"]] == [
-        ("Beppe", 1, 9),
-        ("Anna", 2, 6),
-        ("Carlo", None, 0),
+    assert [
+        (x["pilot_name"], x["position"], x["points"], x["sponsor_points"])
+        for x in r.json()["results"]
+    ] == [
+        ("Beppe", 1, 9, 0),
+        ("Anna", 2, 6, 0),
+        ("Carlo", None, 0, 0),
     ]
     assert player.get(f"/api/pilots/{pilots['Beppe']}").json()["point"] == 9
     assert player.get(f"/api/pilots/{pilots['Anna']}").json()["point"] == 6
@@ -116,6 +140,29 @@ def test_invalid_results_are_rejected(make_client, session_factory):
     assert admin.get(f"/api/championships/{cid}/races/{race_id}").json()["participants"] == 0
 
 
+def test_negative_sponsor_points_are_rejected(make_client, session_factory):
+    admin, player, cid, pilots = setup(make_client, session_factory, ["Anna"])
+    race_id = new_race(admin, cid)
+    r = admin.put(
+        f"/api/championships/{cid}/races/{race_id}/results",
+        json={"results": [{"pilot_id": pilots["Anna"], "sponsor_points": -1}]},
+    )
+    assert r.status_code == 422
+    assert admin.get(f"/api/championships/{cid}/races/{race_id}").json()["participants"] == 0
+
+
+def test_sponsor_points_default_to_zero(make_client, session_factory):
+    admin, player, cid, pilots = setup(make_client, session_factory, ["Anna"])
+    race_id = new_race(admin, cid)
+    r = admin.put(
+        f"/api/championships/{cid}/races/{race_id}/results",
+        json={"results": [{"pilot_id": pilots["Anna"]}]},
+    )
+    assert r.status_code == 200
+    assert r.json()["results"][0]["sponsor_points"] == 0
+    assert sponsor_of(session_factory, pilots["Anna"]) == 0
+
+
 def test_results_can_be_corrected(make_client, session_factory):
     admin, player, cid, pilots = setup(make_client, session_factory, ["Anna", "Beppe"])
     race_id = new_race(admin, cid)
@@ -128,6 +175,80 @@ def test_results_can_be_corrected(make_client, session_factory):
     ]
     assert player.get(f"/api/pilots/{pilots['Anna']}").json()["point"] == 0
     assert player.get(f"/api/pilots/{pilots['Beppe']}").json()["point"] == 9
+
+
+def test_judge_closes_a_race_with_sponsor_but_cannot_correct_it(make_client, session_factory):
+    admin, player, cid, pilots = setup(make_client, session_factory, ["Anna", "Beppe"])
+    judge = make_judge(make_client, session_factory)
+    r = judge.post(f"/api/championships/{cid}/races")
+    assert r.status_code == 201
+    race_id = r.json()["id"]
+    anna, beppe = pilots["Anna"], pilots["Beppe"]
+    r = put_results(judge, cid, race_id, [anna, beppe], {anna: 5})
+    assert r.status_code == 200
+    assert [x["sponsor_points"] for x in r.json()["results"]] == [5, 0]
+    assert sponsor_of(session_factory, anna) == 5
+    assert player.get(f"/api/pilots/{anna}").json()["point"] == 9
+    assert put_results(judge, cid, race_id, [beppe, anna], {beppe: 7}).status_code == 403
+    assert sponsor_of(session_factory, anna) == 5
+    assert sponsor_of(session_factory, beppe) == 0
+    assert admin.get(f"/api/championships/{cid}/races/{race_id}").json()["results"][0][
+        "pilot_id"
+    ] == anna
+
+
+def test_admin_correction_applies_only_the_sponsor_difference(make_client, session_factory):
+    admin, player, cid, pilots = setup(make_client, session_factory, ["Anna", "Beppe"])
+    judge = make_judge(make_client, session_factory)
+    anna, beppe = pilots["Anna"], pilots["Beppe"]
+    race_id = new_race(judge, cid)
+    put_results(judge, cid, race_id, [anna, beppe], {anna: 5, beppe: 2})
+    r = put_results(admin, cid, race_id, [beppe, anna], {anna: 3})
+    assert r.status_code == 200
+    assert [(x["pilot_name"], x["points"], x["sponsor_points"]) for x in r.json()["results"]] == [
+        ("Beppe", 9, 0),
+        ("Anna", 6, 3),
+    ]
+    assert sponsor_of(session_factory, anna) == 3
+    assert sponsor_of(session_factory, beppe) == 0
+
+
+def test_correction_never_takes_sponsor_below_zero(make_client, session_factory):
+    admin, player, cid, pilots = setup(make_client, session_factory, ["Anna"])
+    anna = pilots["Anna"]
+    race_id = new_race(admin, cid)
+    put_results(admin, cid, race_id, [anna], {anna: 5})
+    with session_factory() as db:
+        db.get(Pilot, anna).sponsor = 1
+        db.commit()
+    assert put_results(admin, cid, race_id, [anna], {anna: 0}).status_code == 200
+    assert sponsor_of(session_factory, anna) == 0
+
+
+def test_removing_a_pilot_from_a_race_takes_back_its_sponsor(make_client, session_factory):
+    admin, player, cid, pilots = setup(make_client, session_factory, ["Anna", "Beppe"])
+    anna, beppe = pilots["Anna"], pilots["Beppe"]
+    race_id = new_race(admin, cid)
+    put_results(admin, cid, race_id, [anna, beppe], {anna: 4, beppe: 6})
+    put_results(admin, cid, race_id, [beppe], {beppe: 6})
+    assert sponsor_of(session_factory, anna) == 0
+    assert sponsor_of(session_factory, beppe) == 6
+
+
+def test_sponsor_adds_up_over_several_races(make_client, session_factory):
+    admin, player, cid, pilots = setup(make_client, session_factory, ["Anna"])
+    anna = pilots["Anna"]
+    for sponsor in (3, 4):
+        put_results(admin, cid, new_race(admin, cid), [anna], {anna: sponsor})
+    assert sponsor_of(session_factory, anna) == 7
+
+
+def test_judge_cannot_manage_championships(make_client, session_factory):
+    admin, player, cid, pilots = setup(make_client, session_factory, ["Anna"])
+    judge = make_judge(make_client, session_factory)
+    assert judge.post("/api/championships", json={"name": "Inverno"}).status_code == 403
+    assert judge.post(f"/api/championships/{cid}/close").status_code == 403
+    assert judge.get("/api/admin/users").status_code == 403
 
 
 def test_standings_sum_points_and_share_rank_on_ties(make_client, session_factory):
