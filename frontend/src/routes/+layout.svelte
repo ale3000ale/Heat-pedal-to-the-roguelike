@@ -100,7 +100,11 @@
 					</div>
 					<div class="flex items-center gap-3 text-sm">
 						<span class="text-muted-foreground">
-							{auth.user.username}{auth.isAdmin ? ' · admin' : auth.canManageRaces ? ' · giudice' : ''}
+							{auth.user.username}{auth.isAdmin
+								? ' · admin'
+								: auth.canManageRaces
+									? ' · giudice'
+									: ''}
 						</span>
 						<Button variant="outline" size="sm" onclick={logout}>Esci</Button>
 					</div>
