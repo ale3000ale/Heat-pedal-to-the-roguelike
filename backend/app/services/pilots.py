@@ -37,13 +37,19 @@ def _name_taken(db: Session, key: str, exclude_id: int | None = None) -> bool:
     return db.scalar(stmt) is not None
 
 
-def list_pilots(db: Session, user: User) -> list[Pilot]:
-    # I piloti visibili dell'utente, in ordine alfabetico.
+def list_pilots(
+    db: Session, user: User, limit: int | None = None, offset: int = 0
+) -> list[Pilot]:
+    # I piloti visibili dell'utente, in ordine alfabetico (a parità di nome per id, così
+    # le pagine sono stabili). Senza `limit` restituisce tutti i piloti.
     stmt = (
         select(Pilot)
         .where(Pilot.user_id == user.id, Pilot.deleted_at.is_(None))
-        .order_by(Pilot.name_key)
+        .order_by(Pilot.name_key, Pilot.id)
+        .offset(offset)
     )
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return list(db.scalars(stmt))
 
 
@@ -132,6 +138,7 @@ def delete_pilot(db: Session, user: User, pilot_id: int) -> None:
         raise PilotInActiveChampionshipError
     pilot.deleted_at = _now()
     db.commit()
+
 
 def pilot_decks(db: Session, pilot: Pilot) -> tuple[list[CardEntry], list[CardEntry]]:
     # Restituisce (inventario, mazzo da gioco) del pilota come elenchi di carte.

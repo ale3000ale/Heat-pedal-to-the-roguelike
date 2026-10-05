@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.api.deps import CurrentUser, DbDep
@@ -39,6 +39,9 @@ NAME_TAKEN = HTTPException(status.HTTP_409_CONFLICT, "Nome già in uso")
 IN_CHAMPIONSHIP = HTTPException(
     status.HTTP_409_CONFLICT, "Il pilota è iscritto a un campionato attivo"
 )
+
+# Massimo di piloti per pagina nell'elenco (e valore predefinito).
+MAX_PILOTS_PER_PAGE = 100
 
 
 class ChampionshipRef(BaseModel):
@@ -91,10 +94,15 @@ def _move(db, user, pilot_id: int, data: CardMove, to_game: bool) -> PilotDeckDe
 
 
 @router.get("", response_model=list[PilotListItem])
-def list_my_pilots(user: CurrentUser, db: DbDep):
-    # Elenco dei piloti dell'utente loggato, ognuno con il suo campionato attivo.
-    # I campionati si leggono con una sola query per tutti i piloti.
-    pilots = list_pilots(db, user)
+def list_my_pilots(
+    user: CurrentUser,
+    db: DbDep,
+    limit: int = Query(MAX_PILOTS_PER_PAGE, ge=1, le=MAX_PILOTS_PER_PAGE),
+    offset: int = Query(0, ge=0),
+):
+    # Una pagina dei piloti dell'utente loggato, in ordine alfabetico, ognuno con il suo
+    # campionato attivo. I campionati si leggono con una sola query per tutta la pagina.
+    pilots = list_pilots(db, user, limit=limit, offset=offset)
     championships = active_championships(db, [pilot.id for pilot in pilots])
     return [
         PilotListItem(
