@@ -5,6 +5,7 @@
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
+	import { standingKey } from '$lib/standings';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
 	import type { Race, Standing } from '$lib/race-types';
 	import * as Card from '$lib/components/ui/card';
@@ -34,12 +35,6 @@
 	// La data della gara può non essere impostata.
 	function raceDate(value: string | null): string {
 		return value ? new Date(value).toLocaleDateString('it-IT') : 'Data da definire';
-	}
-
-	// Chiave di una riga della classifica. Il rango non basta: i pari merito lo
-	// condividono. Nei campionati chiusi pilot_id può essere nullo.
-	function standingKey(row: Standing, index: number): string {
-		return row.pilot_id !== null ? `p${row.pilot_id}` : `r${row.rank}-${index}`;
 	}
 
 	// Ricarica i dati del campionato che cambiano dopo un'iscrizione.
