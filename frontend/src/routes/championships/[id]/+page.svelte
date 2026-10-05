@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
+	import { auth } from '$lib/auth.svelte';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
 	import type { Race, Standing } from '$lib/race-types';
 	import * as Card from '$lib/components/ui/card';
@@ -17,6 +19,7 @@
 	let myPilots = $state<Pilot[]>([]);
 	let error = $state<string | null>(null);
 	let actionError = $state<string | null>(null);
+	let raceError = $state<string | null>(null);
 	let busy = $state(false);
 	let selectedPilot = $state('');
 
@@ -68,6 +71,27 @@
 			await reload();
 		} catch (e) {
 			actionError = e instanceof Error ? e.message : 'Errore sconosciuto';
+		} finally {
+			busy = false;
+		}
+	}
+
+	// Admin e giudice: crea la prossima gara e apre subito la sua pagina per i risultati.
+	async function createRace() {
+		raceError = null;
+		busy = true;
+		try {
+			const created = await api<Race>(`/championships/${page.params.id}/races`, {
+				method: 'POST'
+			});
+			await goto(
+				resolve('/championships/[id]/races/[raceId]', {
+					id: String(page.params.id),
+					raceId: String(created.id)
+				})
+			);
+		} catch (e) {
+			raceError = e instanceof Error ? e.message : 'Errore sconosciuto';
 		} finally {
 			busy = false;
 		}
@@ -168,6 +192,14 @@
 				<Card.Description>{races.length} gare in calendario</Card.Description>
 			</Card.Header>
 			<Card.Content>
+				{#if auth.canManageRaces && !championship.is_closed}
+					<div class="mb-4">
+						<Button size="sm" onclick={createRace} disabled={busy}>Nuova gara</Button>
+						{#if raceError}
+							<p class="mt-3 text-sm text-destructive" role="alert">{raceError}</p>
+						{/if}
+					</div>
+				{/if}
 				{#if races.length === 0}
 					<p class="text-sm text-muted-foreground">Nessuna gara ancora disputata.</p>
 				{:else}
