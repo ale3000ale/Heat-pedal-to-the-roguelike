@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import AdminUser, DbDep
 from app.schemas.admin import DeletedPilotRead, DeletedTeamRead, PurgeRead
+from app.schemas.roles import RoleSet, UserRoleRead
 from app.services.cleanup import (
     DeletedItemNotFoundError,
     TeamHasPilotsError,
@@ -15,10 +16,29 @@ from app.services.cleanup import (
     purge_team,
 )
 from app.services.pilots import PilotInActiveChampionshipError
+from app.services.roles import AdminRoleLockedError, UserNotFoundError, list_users, set_role
 
 router = APIRouter(tags=["admin"])
 
 NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Elemento nascosto non trovato")
+
+
+@router.get("/users", response_model=list[UserRoleRead])
+def users(admin: AdminUser, db: DbDep):
+    # Elenco degli utenti con il loro ruolo (solo admin).
+    return [UserRoleRead(id=u.id, username=u.username, role=u.role) for u in list_users(db)]
+
+
+@router.put("/users/{user_id}/role", response_model=UserRoleRead)
+def change_role(user_id: int, data: RoleSet, admin: AdminUser, db: DbDep):
+    # Assegna o toglie il ruolo di giudice (solo admin); i ruoli admin non si cambiano.
+    try:
+        user = set_role(db, user_id, data.role)
+    except UserNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Utente non trovato")
+    except AdminRoleLockedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Il ruolo di un admin non si può cambiare")
+    return UserRoleRead(id=user.id, username=user.username, role=user.role)
 
 
 @router.get("/deleted/pilots", response_model=list[DeletedPilotRead])
