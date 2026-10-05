@@ -20,14 +20,34 @@ router = APIRouter(tags=["pools"])
 NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Pool non trovata")
 
 
+def _summary(pool) -> PoolRead:
+    # Riga dell'elenco: dati della pool e conteggio di carte e copie.
+    cards = pool_cards(pool)
+    return PoolRead(
+        id=pool.id,
+        name=pool.name,
+        kind=pool.kind,
+        cards_count=len(cards),
+        copies_count=sum(card.copies for card in cards),
+    )
+
+
 def _detail(pool) -> PoolDetail:
-    return PoolDetail(id=pool.id, name=pool.name, kind=pool.kind, cards=pool_cards(pool))
+    cards = pool_cards(pool)
+    return PoolDetail(
+        id=pool.id,
+        name=pool.name,
+        kind=pool.kind,
+        cards_count=len(cards),
+        copies_count=sum(card.copies for card in cards),
+        cards=cards,
+    )
 
 
 @router.get("", response_model=list[PoolRead])
 def list_all(admin: AdminUser, db: DbDep):
-    # Elenco delle pool (solo admin).
-    return list_pools(db)
+    # Elenco delle pool con il numero di carte e di copie (solo admin).
+    return [_summary(pool) for pool in list_pools(db)]
 
 
 @router.post("/base/{kind}/reload", response_model=PoolReloadResult)

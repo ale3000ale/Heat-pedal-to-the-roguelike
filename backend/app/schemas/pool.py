@@ -33,6 +33,9 @@ class PoolRead(BaseModel):
     id: int
     name: str
     kind: str
+    # Carte diverse e somma delle copie della pool.
+    cards_count: int
+    copies_count: int
 
 
 class PoolDetail(PoolRead):
