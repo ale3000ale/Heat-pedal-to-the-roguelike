@@ -2,6 +2,12 @@
 
 Questo file serve a chi lavora sul progetto (anche l'assistente) per ripartire senza rileggere tutto. La fonte delle regole di gioco e di prodotto è `docs/PROJECT_SPEC.md`: qui ci sono mappa del codice, comandi, convenzioni e stato del lavoro. Si aggiorna passo passo, ogni volta che qualcosa cambia.
 
+## Regole di lavoro con l'assistente
+
+- Mai presumere: prima di modificare un file lo si legge, anche se si pensa di conoscerlo.
+- Se le chiamate di un messaggio non bastano, si dichiara cosa manca e si salva qui il contesto, poi si prosegue nel messaggio successivo.
+- I file esistenti si modificano solo dopo averli letti nella versione attuale del ramo.
+
 ## Mappa del progetto
 
 | Percorso | Contenuto |
@@ -9,15 +15,17 @@ Questo file serve a chi lavora sul progetto (anche l'assistente) per ripartire s
 | `heat.py` | Menu e comandi: `setup`, `start`, `migrate`, `test`, `check` |
 | `backend/` | FastAPI, SQLAlchemy, Alembic (SQLite) |
 | `backend/app/api/` | Router: `auth`, `teams`, `pilots`, `championships`, `races`, `pools`, `admin`; dipendenze in `deps.py` |
-| `backend/app/db/models/` | Modelli SQLAlchemy (es. `deck.py` con `DeckPrototype`) |
+| `backend/app/config.py` | `DATABASE_URL`, cookie di sessione, `MEDIA_DIR` (`backend/media`) |
+| `backend/app/db/models/` | Modelli SQLAlchemy (`deck.py`: `DeckPrototype` con `kind`, `Deck`; `championship.py`) |
 | `backend/app/schemas/` | Schemi Pydantic delle risposte e delle richieste |
 | `backend/app/services/` | Regole di business (campionati, pool, carte, immagini, nomi, ruoli, utenti) |
 | `backend/app/scripts/` | `create_admin`, `seed_prototype`, `resize_cards` |
 | `backend/alembic/versions/` | Migrazioni (elenco nella sezione 11 della specifica) |
 | `backend/media/cards/` | Immagini delle carte (vedi sotto) |
+| `backend/tests/` | Test; `conftest.py` crea un database SQLite in memoria con `create_all` (senza migrazioni) |
 | `frontend/` | SvelteKit; pagine in `src/routes`, codice condiviso in `src/lib` |
 | `tools/check-frontend.mjs` | format, check, lint e test del frontend in sequenza |
-| `docs/` | Specifica e questa guida |
+| `docs/` | Specifica, stato, note, domande aperte |
 
 ## Comandi utili
 
@@ -32,16 +40,19 @@ Le immagini stanno in `backend/media/cards/`:
 
 - `base/modifiche/`: pool di base delle modifiche.
 - `base/sponsor/`: pool di base degli sponsor (predisposta).
-- `starter/`: carte dell'inventario di partenza di ogni pilota (Velocità 1-4).
+- `starter/`: carte dell'inventario di partenza di ogni pilota. `STARTER_INVENTORY` (in `services/cards.py`) usa i file `velocita-1.webp` … `velocita-4.webp`, 3 copie ciascuno.
 - `uploads/`: carte extra caricate in seguito, utilizzabili nella creazione delle pool.
 
 Le cartelle le riempie a mano l'autore del progetto. Nomi dei file: `nome_N.ext`, con N pari al numero di copie. Le carte Calore non sono ancora state fotografate: per ora si considerano parte delle modifiche.
 
-Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dentro la scatola massima di 560x870 px, senza tagliare. Lavora su tutta la cartella indicata, sottocartelle comprese, e lascia intatti i WebP già della misura giusta. Con `--dry-run` mostra solo cosa farebbe.
+Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dentro la scatola massima di 560x870 px, senza tagliare, e lascia intatti i WebP già della misura giusta. Con `--dry-run` mostra solo cosa farebbe. Non cancella gli originali: la ricarica usa soltanto i WebP.
 
-### Ricarica delle pool di base
+## Pool di base e ricarica
 
-Regola decisa: la ricarica solo **aggiunge** le carte nuove in fondo alla pool e non modifica né toglie quelle esistenti, perché nomi e quantità corretti a mano non vadano persi. Una carta è già presente se coincide nome o percorso. File senza `_N` finale: scartati con avviso. All'avvio nessuna scrittura, solo un avviso nel log. Dettagli nella sezione 6 della specifica.
+- Tipi: `modifiche` e `sponsor`. Nomi tecnici delle pool di base: `default` (modifiche) e `sponsor`, definiti in `BASE_POOL_NAMES` (`services/pools.py`). La rinomina di `default` in `modifiche` non è stata fatta, per non rompere codice e test.
+- Ricarica (`POST /api/pools/base/{kind}/reload`, solo admin): legge `backend/media/cards/base/<tipo>` e **aggiunge soltanto** in fondo le carte nuove; non modifica e non toglie mai quelle presenti. Una carta è già presente se coincide il nome (senza distinguere le maiuscole) o il percorso. File senza `_N` finale: scartati con avviso. File non WebP senza il loro WebP: avviso. Cartella assente: avviso.
+- Il database di prova non contiene la pool `sponsor` se un test non la crea: in quel caso il campionato nasce senza copia degli sponsor.
+- Il campionato ha `pool_deck_id` (copia delle modifiche) e `sponsor_pool_deck_id` (copia degli sponsor).
 
 ## Convenzioni
 
@@ -53,17 +64,19 @@ Regola decisa: la ricarica solo **aggiunge** le carte nuove in fondo alla pool e
 - Il lavoro avanza sul ramo `phase-8-frontend`; prima di unire a `main` devono passare `python heat.py test` e `python heat.py check`.
 - I documenti si aggiornano al momento, non a fine fase.
 
-## Stato del lavoro (5 ottobre 2026)
+## Contesto di lavoro (5 ottobre 2026, sera)
 
-- Realizzato: tutto il backend delle fasi precedenti; frontend per login, registrazione, home, team, dettaglio pilota (mazzi in sola lettura), campionati con iscrizione, gare e classifica, gestione gare per admin e giudice, utenti e ruoli.
-- In corso, nell'ordine:
-  1. Backend: due pool di base (modifiche e sponsor) con colonna `kind`, seconda pool sul campionato, migrazione, ricarica delle pool.
-  2. Frontend admin: pagina pool con "Ricarica", creazione campionato con due scelte, chiusura e cancellazione.
-- Dopo: costruzione del mazzo da gioco, pulizia di team e piloti nascosti, Negozio.
-- Endpoint già presenti: `/championships` (crea, chiudi, cancella) e `/pools` (elenco, dettaglio, crea, elimina); da adeguare alle due pool.
+Fase 8b (backend delle due pool di base):
+
+- Fatto: colonna `kind`, `sponsor_pool_deck_id`, migrazione `e5b9c3d7a2f8`, `services/pools.py` (pool di base per tipo, ricarica), `services/championships.py` (due copie di pool, cancellazione di entrambe), schemi e router `pools` e `championships`, `seed_prototype` per entrambe le pool.
+- Test: 156 passati prima dei test nuovi. Scritto `tests/test_pool_kinds_api.py` (ricarica, tipo delle pool, campionato con due pool): da eseguire con `python heat.py test`.
+- Da fare, in ordine:
+  1. Eseguire i test nuovi e correggere eventuali errori.
+  2. Leggere `app/main.py` e aggiungere l'avviso nel log all'avvio se le cartelle `base/` contengono carte non ancora nelle pool (nessuna scrittura nel database).
+  3. Correggere `PROJECT_SPEC.md`: nome tecnico `default` per le modifiche, migrazione `e5b9c3d7a2f8` nella sezione 11.
+  4. Fase 8c (frontend admin): leggere `frontend/src/lib` (helper `api`) e `src/routes/admin/users`; poi pagina pool con "Ricarica", creazione campionato con due scelte, chiusura e cancellazione.
 
 ## Questioni aperte
 
-- Dove nasce l'inventario iniziale (Velocità 1-4 dalla cartella `starter/`): da verificare nel codice.
 - Uso della pool degli sponsor nel gioco: predisposta ma non ancora usata.
 - Le voci di fine specifica (Negozio, pacchetti, spareggio, interfaccia di caricamento carte).
