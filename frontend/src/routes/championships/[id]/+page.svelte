@@ -33,8 +33,10 @@
 			(p) => p.team_id !== null && !championship?.pilots.some((entrant) => entrant.id === p.id)
 		)
 	);
+	// Una gara senza classifica è in corso: finché c'è non se ne può creare un'altra.
+	let raceInProgress = $derived(races.some((race) => race.participants === 0));
 
-	// La data della gara può non essere impostata.
+	// La data della gara può non essere impostata (gare create prima della data automatica).
 	function raceDate(value: string | null): string {
 		return value ? new Date(value).toLocaleDateString('it-IT') : 'Data da definire';
 	}
@@ -83,7 +85,8 @@
 		}
 	}
 
-	// Admin e giudice: crea la prossima gara e apre subito la sua pagina per i risultati.
+	// Admin e giudice: crea la prossima gara. Resta in questa pagina: la gara nuova
+	// compare in lista come "in corso" e si apre da lì.
 	async function createRace() {
 		raceError = null;
 		busy = true;
@@ -91,12 +94,7 @@
 			const created = await api<Race>(`/championships/${page.params.id}/races`, {
 				method: 'POST'
 			});
-			await goto(
-				resolve('/championships/[id]/races/[raceId]', {
-					id: String(page.params.id),
-					raceId: String(created.id)
-				})
-			);
+			races = [...races, created];
 		} catch (e) {
 			raceError = e instanceof Error ? e.message : 'Errore sconosciuto';
 		} finally {
@@ -213,7 +211,14 @@
 			<Card.Content>
 				{#if auth.canManageRaces && !championship.is_closed}
 					<div class="mb-4">
-						<Button size="sm" onclick={createRace} disabled={busy}>Nuova gara</Button>
+						<Button size="sm" onclick={createRace} disabled={busy || raceInProgress}>
+							Nuova gara
+						</Button>
+						{#if raceInProgress}
+							<p class="mt-3 text-sm text-muted-foreground">
+								C'è una gara in corso: va terminata prima di crearne un'altra.
+							</p>
+						{/if}
 						{#if raceError}
 							<p class="mt-3 text-sm text-destructive" role="alert">{raceError}</p>
 						{/if}
@@ -234,10 +239,11 @@
 								>
 									<span class="flex-1 font-medium">Gara {race.number}</span>
 									<span class="text-sm text-muted-foreground">{raceDate(race.date)}</span>
-									<span class="text-sm text-muted-foreground">
-										{race.participants}
-										{race.participants === 1 ? 'partecipante' : 'partecipanti'}
-									</span>
+									{#if race.participants === 0}
+										<span class="text-sm font-medium text-red-600">in corso</span>
+									{:else}
+										<span class="text-sm font-medium text-green-600">terminata</span>
+									{/if}
 								</a>
 							</li>
 						{/each}
