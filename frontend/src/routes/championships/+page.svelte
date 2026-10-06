@@ -7,12 +7,14 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
+	import NewChampionshipDialog from '$lib/components/new-championship-dialog.svelte';
 
 	let championships = $state<Championship[]>([]);
 	let loaded = $state(false);
 	let error = $state<string | null>(null);
 	let selectedId = $state<number | null>(null);
 	let settingsOpen = $state(false);
+	let newOpen = $state(false);
 
 	let active = $derived(championships.filter((c) => !c.is_closed));
 	let closed = $derived(championships.filter((c) => c.is_closed));
@@ -84,7 +86,19 @@
 {/snippet}
 
 <main class="mx-auto max-w-5xl space-y-6 p-6">
-	<h1 class="text-2xl font-bold">Campionati</h1>
+	<div class="flex items-center justify-between gap-3">
+		<h1 class="text-2xl font-bold">Campionati</h1>
+		{#if auth.isAdmin}
+			<Button
+				size="sm"
+				variant="outline"
+				aria-label="Nuovo campionato"
+				onclick={() => (newOpen = true)}
+			>
+				+
+			</Button>
+		{/if}
+	</div>
 
 	{#if error}
 		<p class="text-sm text-destructive" role="alert">{error}</p>
@@ -100,14 +114,15 @@
 			<h2 class="text-lg font-semibold">Chiusi</h2>
 			{@render list(closed, 'Nessun campionato chiuso.')}
 		</section>
+	{/if}
 
-		{#if auth.isAdmin}
-			<ChampionshipSettings
-				championship={selected}
-				bind:open={settingsOpen}
-				onclosed={replaceChampionship}
-				ondeleted={loadChampionships}
-			/>
-		{/if}
+	{#if auth.isAdmin}
+		<ChampionshipSettings
+			championship={selected}
+			bind:open={settingsOpen}
+			onclosed={replaceChampionship}
+			ondeleted={loadChampionships}
+		/>
+		<NewChampionshipDialog bind:open={newOpen} oncreated={loadChampionships} />
 	{/if}
 </main>
