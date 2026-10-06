@@ -246,9 +246,9 @@
 				<Card.Header>
 					<Card.Title>{isRaceClosed ? 'Correggi i risultati' : 'Termina la gara'}</Card.Title>
 					<Card.Description>
-						Metti in classifica i piloti in ordine di arrivo (massimo {MAX_PARTICIPANTS}) con i punti
-						sponsor di ciascuno, e indica a mano chi non partecipa. Ogni iscritto va assegnato. Gli
-						sponsor vengono assegnati al salvataggio.
+						Metti in classifica i piloti in ordine di arrivo (massimo {MAX_PARTICIPANTS}) con i
+						punti sponsor di ciascuno, e indica a mano chi non partecipa. Ogni iscritto va
+						assegnato. Gli sponsor vengono assegnati al salvataggio.
 					</Card.Description>
 				</Card.Header>
 				<Card.Content class="space-y-4">
