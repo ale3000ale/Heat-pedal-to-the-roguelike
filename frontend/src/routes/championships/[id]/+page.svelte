@@ -14,6 +14,8 @@
 
 	const selectClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
+	const RACE_IN_PROGRESS_MESSAGE =
+		"C'è una gara in corso: va terminata prima di crearne un'altra.";
 
 	let championship = $state<ChampionshipDetail | null>(null);
 	let standings = $state<Standing[]>([]);
@@ -86,8 +88,13 @@
 	}
 
 	// Admin e giudice: crea la prossima gara. Resta in questa pagina: la gara nuova
-	// compare in lista come "in corso" e si apre da lì.
+	// compare in lista come "in corso" e si apre da lì. Con una gara in corso il pulsante
+	// sembra spento ma si può premere: il click mostra solo l'avviso, senza chiamare l'API.
 	async function createRace() {
+		if (raceInProgress) {
+			raceError = RACE_IN_PROGRESS_MESSAGE;
+			return;
+		}
 		raceError = null;
 		busy = true;
 		try {
@@ -211,14 +218,15 @@
 			<Card.Content>
 				{#if auth.canManageRaces && !championship.is_closed}
 					<div class="mb-4">
-						<Button size="sm" onclick={createRace} disabled={busy || raceInProgress}>
+						<Button
+							size="sm"
+							onclick={createRace}
+							disabled={busy}
+							aria-disabled={raceInProgress}
+							class={raceInProgress ? 'opacity-50' : ''}
+						>
 							Nuova gara
 						</Button>
-						{#if raceInProgress}
-							<p class="mt-3 text-sm text-muted-foreground">
-								C'è una gara in corso: va terminata prima di crearne un'altra.
-							</p>
-						{/if}
 						{#if raceError}
 							<p class="mt-3 text-sm text-destructive" role="alert">{raceError}</p>
 						{/if}
