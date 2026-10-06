@@ -25,7 +25,9 @@
 >
 	<div class="mb-3 flex items-center justify-between gap-3">
 		<h2 class="text-lg font-semibold">{title}</h2>
-		<Button size="sm" variant="outline" onclick={() => (open = false)}>Chiudi</Button>
+		<Button size="sm" variant="outline" aria-label="Chiudi" onclick={() => (open = false)}>
+			✕
+		</Button>
 	</div>
 	{#if open}
 		{@render children()}

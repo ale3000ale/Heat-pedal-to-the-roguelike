@@ -7,14 +7,16 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import GoldRulesForm from '$lib/components/gold-rules-form.svelte';
+	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 
 	let championships = $state<Championship[]>([]);
 	let pools = $state<Pool[]>([]);
 	let error = $state<string | null>(null);
-	let actionError = $state<string | null>(null);
 	let formError = $state<string | null>(null);
 	let busy = $state<string | null>(null);
 	let loaded = $state(false);
+	let selectedId = $state<number | null>(null);
+	let settingsOpen = $state(false);
 
 	// Modulo di creazione: nome e id (come testo) delle due pool scelte.
 	let name = $state('');
@@ -23,6 +25,7 @@
 
 	let modifichePools = $derived(pools.filter((pool) => pool.kind === 'modifiche'));
 	let sponsorPools = $derived(pools.filter((pool) => pool.kind === 'sponsor'));
+	let selected = $derived(championships.find((c) => c.id === selectedId) ?? null);
 
 	function message(e: unknown): string {
 		return e instanceof Error ? e.message : 'Errore sconosciuto';
@@ -38,6 +41,15 @@
 
 	async function loadChampionships() {
 		championships = await api<Championship[]>('/championships');
+	}
+
+	function openSettings(championship: Championship) {
+		selectedId = championship.id;
+		settingsOpen = true;
+	}
+
+	function replaceChampionship(updated: Championship) {
+		championships = championships.map((c) => (c.id === updated.id ? updated : c));
 	}
 
 	// Preseleziona la pool di base di ciascun tipo, se non è già stata scelta una pool.
@@ -89,41 +101,6 @@
 			busy = null;
 		}
 	}
-
-	async function close(championship: Championship) {
-		if (!confirm(`Chiudere il campionato "${championship.name}"?`)) return;
-		actionError = null;
-		busy = `close-${championship.id}`;
-		try {
-			const updated = await api<Championship>(`/championships/${championship.id}/close`, {
-				method: 'POST'
-			});
-			championships = championships.map((c) => (c.id === updated.id ? updated : c));
-		} catch (e) {
-			actionError = message(e);
-		} finally {
-			busy = null;
-		}
-	}
-
-	async function remove(championship: Championship) {
-		if (
-			!confirm(
-				`Cancellare il campionato "${championship.name}" con tutto lo storico? L'azione non si può annullare.`
-			)
-		)
-			return;
-		actionError = null;
-		busy = `delete-${championship.id}`;
-		try {
-			await api(`/championships/${championship.id}`, { method: 'DELETE' });
-			await loadChampionships();
-		} catch (e) {
-			actionError = message(e);
-		} finally {
-			busy = null;
-		}
-	}
 </script>
 
 <svelte:head><title>Gestione campionati - Heat</title></svelte:head>
@@ -140,6 +117,20 @@
 	{:else if error}
 		<p class="text-sm text-destructive" role="alert">{error}</p>
 	{:else}
+		<details class="rounded-lg border">
+			<summary class="cursor-pointer rounded-lg px-4 py-3 text-lg font-semibold">
+				Impostazioni generali dei campionati
+			</summary>
+			<div class="px-4 pb-4">
+				<GoldRulesForm
+					url="/admin/championship-defaults"
+					title="Oro per gara"
+					description="Copiato in ogni nuovo campionato. Cambiarlo non modifica i campionati già creati."
+					editable
+				/>
+			</div>
+		</details>
+
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Nuovo campionato</Card.Title>
@@ -193,19 +184,12 @@
 			</Card.Content>
 		</Card.Root>
 
-		<GoldRulesForm
-			url="/admin/championship-defaults"
-			title="Impostazioni generali dei campionati"
-			description="Oro per gara copiato in ogni nuovo campionato. Cambiarlo non modifica i campionati già creati."
-			editable
-		/>
-
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Campionati</Card.Title>
 				<Card.Description>
-					Un campionato attivo si può chiudere; solo uno chiuso si può cancellare, con tutto lo
-					storico.
+					Con l'ingranaggio apri le impostazioni del campionato, da cui lo chiudi o, una volta
+					chiuso, lo elimini con tutto lo storico.
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -225,33 +209,26 @@
 									{formatDate(c.date)} · {c.pilots_count}
 									{c.pilots_count === 1 ? 'pilota' : 'piloti'} · {c.is_closed ? 'chiuso' : 'attivo'}
 								</span>
-								{#if c.is_closed}
-									<Button
-										size="sm"
-										variant="outline"
-										disabled={busy === `delete-${c.id}`}
-										onclick={() => remove(c)}
-									>
-										Cancella
-									</Button>
-								{:else}
-									<Button
-										size="sm"
-										variant="outline"
-										disabled={busy === `close-${c.id}`}
-										onclick={() => close(c)}
-									>
-										Chiudi
-									</Button>
-								{/if}
+								<Button
+									size="sm"
+									variant="outline"
+									aria-label={`Impostazioni di ${c.name}`}
+									onclick={() => openSettings(c)}
+								>
+									⚙
+								</Button>
 							</li>
 						{/each}
 					</ul>
 				{/if}
-				{#if actionError}
-					<p class="mt-3 text-sm text-destructive" role="alert">{actionError}</p>
-				{/if}
 			</Card.Content>
 		</Card.Root>
+
+		<ChampionshipSettings
+			championship={selected}
+			bind:open={settingsOpen}
+			onclosed={replaceChampionship}
+			ondeleted={loadChampionships}
+		/>
 	{/if}
 </main>

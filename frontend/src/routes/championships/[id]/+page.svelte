@@ -10,8 +10,7 @@
 	import type { Race, Standing } from '$lib/race-types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
-	import GoldRulesForm from '$lib/components/gold-rules-form.svelte';
-	import SettingsDialog from '$lib/components/settings-dialog.svelte';
+	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 
 	const selectClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
@@ -40,12 +39,16 @@
 		return value ? new Date(value).toLocaleDateString('it-IT') : 'Data da definire';
 	}
 
-	// Ricarica i dati del campionato che cambiano dopo un'iscrizione.
+	// Ricarica i dati del campionato che cambiano dopo un'iscrizione o una chiusura.
 	async function reload() {
 		[championship, standings] = await Promise.all([
 			api<ChampionshipDetail>(`/championships/${page.params.id}`),
 			api<Standing[]>(`/championships/${page.params.id}/standings`)
 		]);
+	}
+
+	async function afterDelete() {
+		await goto(resolve('/championships'));
 	}
 
 	onMount(async () => {
@@ -244,14 +247,12 @@
 		</Card.Root>
 
 		{#if auth.isAdmin}
-			<SettingsDialog bind:open={settingsOpen} title="Impostazioni del campionato">
-				<GoldRulesForm
-					url={`/championships/${championship.id}/gold-rules`}
-					title="Oro per gara"
-					description="Oro dato a tutti gli iscritti dopo ogni gara, anche a chi non corre. Un totale negativo diventa 0. Le modifiche valgono dalla gara successiva."
-					editable={!championship.is_closed}
-				/>
-			</SettingsDialog>
+			<ChampionshipSettings
+				{championship}
+				bind:open={settingsOpen}
+				onclosed={reload}
+				ondeleted={afterDelete}
+			/>
 		{/if}
 	{/if}
 </main>
