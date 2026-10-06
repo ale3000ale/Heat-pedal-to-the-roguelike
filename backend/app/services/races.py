@@ -86,8 +86,11 @@ def set_results(
     race_id: int,
     entries: list[tuple[int, int]],
     can_correct: bool = False,
+    absent: list[int] | None = None,
 ) -> Race:
     # entries: (pilot_id, punti sponsor) nell'ordine di arrivo.
+    # absent: piloti dichiarati assenti; se indicato, ogni iscritto deve essere o in
+    # entries o in absent.
     # Una gara è chiusa quando ha almeno un risultato: da allora solo chi ha
     # can_correct (l'admin) può sostituirli. Il campionato deve essere attivo.
     # L'oro si assegna una sola volta, alla prima chiusura della gara, con le regole
@@ -115,6 +118,15 @@ def set_results(
     enrolled = {pilot.id for pilot in entrants}
     if not set(pilot_ids) <= enrolled:
         raise RaceResultError("Tutti i piloti devono essere iscritti al campionato")
+    if absent is not None:
+        if len(set(absent)) != len(absent):
+            raise RaceResultError("Pilota assente ripetuto")
+        if set(absent) & set(pilot_ids):
+            raise RaceResultError("Un pilota non può essere in classifica e tra gli assenti")
+        if not set(absent) <= enrolled:
+            raise RaceResultError("Tutti i piloti devono essere iscritti al campionato")
+        if enrolled - set(pilot_ids) - set(absent):
+            raise RaceResultError("Indica per ogni iscritto se ha partecipato o no")
     db.query(RaceResult).where(RaceResult.race_id == race.id).delete()
     for position, (pilot_id, sponsor) in enumerate(entries, start=1):
         db.add(
