@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -11,6 +11,7 @@ from app.services.championships import (
     list_entrants,
     pilot_totals,
 )
+from app.services.gold import award_race_gold, rules_of
 
 # Punti per posizione di arrivo; dalla 7ª in poi si prendono 0 punti.
 POINTS_BY_POSITION = {1: 9, 2: 6, 3: 4, 4: 3, 5: 2, 6: 1}
@@ -23,6 +24,10 @@ class RaceNotFoundError(Exception):
 
 class RaceAlreadyClosedError(Exception):
     """La gara ha già i risultati: solo l'admin può correggerli."""
+
+
+class RaceInProgressError(Exception):
+    """C'è già una gara in corso (senza risultati): va terminata prima di crearne un'altra."""
 
 
 class RaceResultError(ValueError):
@@ -44,13 +49,27 @@ def get_race(db: Session, championship_id: int, race_id: int) -> Race:
     return race
 
 
+def has_race_in_progress(db: Session, championship_id: int) -> bool:
+    # Una gara è in corso finché non ha nessun risultato.
+    has_results = select(RaceResult.race_id).where(RaceResult.race_id == Race.id).exists()
+    stmt = select(Race.id).where(Race.championship_id == championship_id, ~has_results).limit(1)
+    return db.scalar(stmt) is not None
+
+
 def create_race(db: Session, championship_id: int, date: datetime | None = None) -> Race:
-    # Nuova gara con il numero successivo; non si crea in un campionato chiuso.
+    # Nuova gara con il numero successivo, datata al momento della creazione se non
+    # indicato altrimenti. Non si crea in un campionato chiuso né con una gara in corso.
     championship = get_championship(db, championship_id)
     if championship.is_closed:
         raise ChampionshipClosedError
+    if has_race_in_progress(db, championship_id):
+        raise RaceInProgressError
     last = db.scalar(select(func.max(Race.number)).where(Race.championship_id == championship_id))
-    race = Race(championship_id=championship_id, number=(last or 0) + 1, date=date)
+    race = Race(
+        championship_id=championship_id,
+        number=(last or 0) + 1,
+        date=date or datetime.now(timezone.utc),
+    )
     db.add(race)
     db.commit()
     db.refresh(race)
@@ -67,10 +86,15 @@ def set_results(
     race_id: int,
     entries: list[tuple[int, int]],
     can_correct: bool = False,
+    absent: list[int] | None = None,
 ) -> Race:
     # entries: (pilot_id, punti sponsor) nell'ordine di arrivo.
+    # absent: piloti dichiarati assenti; se indicato, ogni iscritto deve essere o in
+    # entries o in absent.
     # Una gara è chiusa quando ha almeno un risultato: da allora solo chi ha
     # can_correct (l'admin) può sostituirli. Il campionato deve essere attivo.
+    # L'oro si assegna una sola volta, alla prima chiusura della gara, con le regole
+    # del campionato di quel momento: le correzioni non lo toccano.
     championship = get_championship(db, championship_id)
     race = get_race(db, championship_id, race_id)
     if championship.is_closed:
@@ -90,9 +114,19 @@ def set_results(
         raise RaceResultError("Pilota ripetuto")
     if any(sponsor < 0 for _, sponsor in entries):
         raise RaceResultError("I punti sponsor non possono essere negativi")
-    enrolled = {pilot.id for pilot in list_entrants(db, championship_id)}
+    entrants = list_entrants(db, championship_id)
+    enrolled = {pilot.id for pilot in entrants}
     if not set(pilot_ids) <= enrolled:
         raise RaceResultError("Tutti i piloti devono essere iscritti al campionato")
+    if absent is not None:
+        if len(set(absent)) != len(absent):
+            raise RaceResultError("Pilota assente ripetuto")
+        if set(absent) & set(pilot_ids):
+            raise RaceResultError("Un pilota non può essere in classifica e tra gli assenti")
+        if not set(absent) <= enrolled:
+            raise RaceResultError("Tutti i piloti devono essere iscritti al campionato")
+        if enrolled - set(pilot_ids) - set(absent):
+            raise RaceResultError("Indica per ogni iscritto se ha partecipato o no")
     db.query(RaceResult).where(RaceResult.race_id == race.id).delete()
     for position, (pilot_id, sponsor) in enumerate(entries, start=1):
         db.add(
@@ -107,6 +141,8 @@ def set_results(
     db.flush()
     _sync_pilot_points(db, championship_id)
     _apply_sponsor_delta(db, old_sponsor, dict(entries))
+    if not old_sponsor:
+        award_race_gold(entrants, rules_of(championship), pilot_ids)
     db.commit()
     db.refresh(race)
     return race

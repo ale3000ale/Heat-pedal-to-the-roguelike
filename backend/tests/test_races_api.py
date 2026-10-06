@@ -75,6 +75,14 @@ def put_results(client, championship_id, race_id, pilot_ids, sponsors=None):
     )
 
 
+def put_with_absent(client, championship_id, race_id, pilot_ids, absent):
+    # Come put_results, ma dichiara a mano anche chi non partecipa.
+    return client.put(
+        f"/api/championships/{championship_id}/races/{race_id}/results",
+        json={"results": [{"pilot_id": pid} for pid in pilot_ids], "absent": absent},
+    )
+
+
 def test_players_cannot_manage_races(make_client, session_factory):
     admin, player, cid, pilots = setup(make_client, session_factory, ["Anna"])
     race_id = new_race(admin, cid)
@@ -87,7 +95,8 @@ def test_players_cannot_manage_races(make_client, session_factory):
 
 def test_races_are_numbered_and_unknown_ids_are_404(make_client, session_factory):
     admin, player, cid, pilots = setup(make_client, session_factory, ["Anna"])
-    new_race(admin, cid)
+    first = new_race(admin, cid)
+    put_results(admin, cid, first, [pilots["Anna"]])
     new_race(admin, cid)
     races = player.get(f"/api/championships/{cid}/races").json()
     assert [r["number"] for r in races] == [1, 2]
@@ -124,6 +133,31 @@ def test_absent_pilots_appear_with_zero_points(make_client, session_factory):
     assert player.get(f"/api/pilots/{pilots['Beppe']}").json()["point"] == 9
     assert player.get(f"/api/pilots/{pilots['Anna']}").json()["point"] == 6
     assert player.get(f"/api/pilots/{pilots['Carlo']}").json()["point"] == 0
+
+
+def test_declared_absent_list_must_cover_every_entrant(make_client, session_factory):
+    admin, player, cid, pilots = setup(make_client, session_factory, ["Anna", "Beppe", "Carlo"])
+    anna, beppe, carlo = pilots["Anna"], pilots["Beppe"], pilots["Carlo"]
+    race_id = new_race(admin, cid)
+    assert put_with_absent(admin, cid, race_id, [anna], [beppe]).status_code == 422
+    assert put_with_absent(admin, cid, race_id, [anna, beppe], [beppe, carlo]).status_code == 422
+    assert put_with_absent(admin, cid, race_id, [anna], [beppe, beppe, carlo]).status_code == 422
+    assert admin.get(f"/api/championships/{cid}/races/{race_id}").json()["participants"] == 0
+    r = put_with_absent(admin, cid, race_id, [anna], [beppe, carlo])
+    assert r.status_code == 200
+    assert [(x["pilot_name"], x["position"]) for x in r.json()["results"]] == [
+        ("Anna", 1),
+        ("Beppe", None),
+        ("Carlo", None),
+    ]
+
+
+def test_declared_absent_pilot_must_be_enrolled(make_client, session_factory):
+    admin, player, cid, pilots = setup(make_client, session_factory, ["Anna"])
+    team_id = player.post("/api/teams", json={"name": "Team Fuori"}).json()["id"]
+    outsider = player.post("/api/pilots", json={"name": "Fuori", "team_id": team_id}).json()["id"]
+    race_id = new_race(admin, cid)
+    assert put_with_absent(admin, cid, race_id, [pilots["Anna"]], [outsider]).status_code == 422
 
 
 def test_invalid_results_are_rejected(make_client, session_factory):
@@ -254,8 +288,8 @@ def test_judge_cannot_manage_championships(make_client, session_factory):
 def test_standings_sum_points_and_share_rank_on_ties(make_client, session_factory):
     admin, player, cid, pilots = setup(make_client, session_factory, ["Anna", "Beppe", "Carlo"])
     first = new_race(admin, cid)
-    second = new_race(admin, cid)
     put_results(admin, cid, first, [pilots["Anna"], pilots["Beppe"]])
+    second = new_race(admin, cid)
     put_results(admin, cid, second, [pilots["Beppe"], pilots["Anna"], pilots["Carlo"]])
     table = player.get(f"/api/championships/{cid}/standings").json()
     assert [(x["rank"], x["pilot_name"], x["points"], x["races_played"]) for x in table] == [

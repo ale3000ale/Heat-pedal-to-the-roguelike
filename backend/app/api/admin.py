@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import AdminUser, DbDep
 from app.schemas.admin import DeletedPilotRead, DeletedTeamRead, PurgeRead
+from app.schemas.gold import GoldRulesData
 from app.schemas.roles import RoleSet, UserRoleRead
 from app.services.cleanup import (
     DeletedItemNotFoundError,
@@ -15,6 +16,7 @@ from app.services.cleanup import (
     purge_pilot,
     purge_team,
 )
+from app.services.gold import get_defaults, rules_of, set_defaults
 from app.services.pilots import PilotInActiveChampionshipError
 from app.services.roles import AdminRoleLockedError, UserNotFoundError, list_users, set_role
 
@@ -39,6 +41,20 @@ def change_role(user_id: int, data: RoleSet, admin: AdminUser, db: DbDep):
     except AdminRoleLockedError:
         raise HTTPException(status.HTTP_409_CONFLICT, "Il ruolo di un admin non si può cambiare")
     return UserRoleRead(id=user.id, username=user.username, role=user.role)
+
+
+@router.get("/championship-defaults", response_model=GoldRulesData)
+def championship_defaults(admin: AdminUser, db: DbDep):
+    # Impostazioni generali dei campionati (solo admin): i valori copiati in ogni nuovo
+    # campionato.
+    return GoldRulesData.from_rules(rules_of(get_defaults(db)))
+
+
+@router.put("/championship-defaults", response_model=GoldRulesData)
+def change_championship_defaults(data: GoldRulesData, admin: AdminUser, db: DbDep):
+    # Cambia le impostazioni generali (solo admin): valgono per i campionati creati dopo,
+    # quelli esistenti non cambiano.
+    return GoldRulesData.from_rules(rules_of(set_defaults(db, data.to_rules())))
 
 
 @router.get("/deleted/pilots", response_model=list[DeletedPilotRead])

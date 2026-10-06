@@ -10,9 +10,11 @@
 	import type { Race, Standing } from '$lib/race-types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
+	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 
 	const selectClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
+	const RACE_IN_PROGRESS_MESSAGE = "C'è una gara in corso: va terminata prima di crearne un'altra.";
 
 	let championship = $state<ChampionshipDetail | null>(null);
 	let standings = $state<Standing[]>([]);
@@ -23,6 +25,7 @@
 	let raceError = $state<string | null>(null);
 	let busy = $state(false);
 	let selectedPilot = $state('');
+	let settingsOpen = $state(false);
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
 	// Piloti che hanno un team e non sono già iscritti a questo campionato.
@@ -31,18 +34,24 @@
 			(p) => p.team_id !== null && !championship?.pilots.some((entrant) => entrant.id === p.id)
 		)
 	);
+	// Una gara senza classifica è in corso: finché c'è non se ne può creare un'altra.
+	let raceInProgress = $derived(races.some((race) => race.participants === 0));
 
-	// La data della gara può non essere impostata.
+	// La data della gara può non essere impostata (gare create prima della data automatica).
 	function raceDate(value: string | null): string {
 		return value ? new Date(value).toLocaleDateString('it-IT') : 'Data da definire';
 	}
 
-	// Ricarica i dati del campionato che cambiano dopo un'iscrizione.
+	// Ricarica i dati del campionato che cambiano dopo un'iscrizione o una chiusura.
 	async function reload() {
 		[championship, standings] = await Promise.all([
 			api<ChampionshipDetail>(`/championships/${page.params.id}`),
 			api<Standing[]>(`/championships/${page.params.id}/standings`)
 		]);
+	}
+
+	async function afterDelete() {
+		await goto(resolve('/championships'));
 	}
 
 	onMount(async () => {
@@ -77,20 +86,21 @@
 		}
 	}
 
-	// Admin e giudice: crea la prossima gara e apre subito la sua pagina per i risultati.
+	// Admin e giudice: crea la prossima gara. Resta in questa pagina: la gara nuova
+	// compare in lista come "in corso" e si apre da lì. Con una gara in corso il pulsante
+	// sembra spento ma si può premere: il click mostra solo l'avviso, senza chiamare l'API.
 	async function createRace() {
+		if (raceInProgress) {
+			raceError = RACE_IN_PROGRESS_MESSAGE;
+			return;
+		}
 		raceError = null;
 		busy = true;
 		try {
 			const created = await api<Race>(`/championships/${page.params.id}/races`, {
 				method: 'POST'
 			});
-			await goto(
-				resolve('/championships/[id]/races/[raceId]', {
-					id: String(page.params.id),
-					raceId: String(created.id)
-				})
-			);
+			races = [...races, created];
 		} catch (e) {
 			raceError = e instanceof Error ? e.message : 'Errore sconosciuto';
 		} finally {
@@ -111,12 +121,24 @@
 	{:else if !championship}
 		<p class="text-muted-foreground">Caricamento…</p>
 	{:else}
-		<div>
-			<h1 class="text-2xl font-bold">{championship.name}</h1>
-			<p class="text-sm text-muted-foreground">
-				{new Date(championship.date).toLocaleDateString('it-IT')} ·
-				{championship.is_closed ? 'Chiuso' : 'Attivo'}
-			</p>
+		<div class="flex items-start justify-between gap-3">
+			<div>
+				<h1 class="text-2xl font-bold">{championship.name}</h1>
+				<p class="text-sm text-muted-foreground">
+					{new Date(championship.date).toLocaleDateString('it-IT')} ·
+					{championship.is_closed ? 'Chiuso' : 'Attivo'}
+				</p>
+			</div>
+			{#if auth.isAdmin}
+				<Button
+					size="sm"
+					variant="outline"
+					aria-label="Impostazioni del campionato"
+					onclick={() => (settingsOpen = true)}
+				>
+					⚙
+				</Button>
+			{/if}
 		</div>
 
 		{#if !championship.is_closed}
@@ -195,7 +217,15 @@
 			<Card.Content>
 				{#if auth.canManageRaces && !championship.is_closed}
 					<div class="mb-4">
-						<Button size="sm" onclick={createRace} disabled={busy}>Nuova gara</Button>
+						<Button
+							size="sm"
+							onclick={createRace}
+							disabled={busy}
+							aria-disabled={raceInProgress}
+							class={raceInProgress ? 'opacity-50' : ''}
+						>
+							Nuova gara
+						</Button>
 						{#if raceError}
 							<p class="mt-3 text-sm text-destructive" role="alert">{raceError}</p>
 						{/if}
@@ -216,10 +246,11 @@
 								>
 									<span class="flex-1 font-medium">Gara {race.number}</span>
 									<span class="text-sm text-muted-foreground">{raceDate(race.date)}</span>
-									<span class="text-sm text-muted-foreground">
-										{race.participants}
-										{race.participants === 1 ? 'partecipante' : 'partecipanti'}
-									</span>
+									{#if race.participants === 0}
+										<span class="text-sm font-medium text-red-600">in corso</span>
+									{:else}
+										<span class="text-sm font-medium text-green-600">terminata</span>
+									{/if}
 								</a>
 							</li>
 						{/each}
@@ -227,5 +258,14 @@
 				{/if}
 			</Card.Content>
 		</Card.Root>
+
+		{#if auth.isAdmin}
+			<ChampionshipSettings
+				{championship}
+				bind:open={settingsOpen}
+				onclosed={reload}
+				ondeleted={afterDelete}
+			/>
+		{/if}
 	{/if}
 </main>

@@ -16,7 +16,10 @@ class ResultEntry(BaseModel):
 
 class ResultsSet(BaseModel):
     # Risultati nell'ordine di arrivo: la posizione è la posizione nell'elenco.
+    # absent: piloti iscritti che non partecipano, dichiarati a mano. Se presente, ogni
+    # iscritto deve stare o nei risultati o tra gli assenti.
     results: list[ResultEntry] = Field(min_length=1, max_length=12)
+    absent: list[int] | None = None
 
 
 class RaceRead(BaseModel):
