@@ -43,6 +43,8 @@ IN_CHAMPIONSHIP = HTTPException(
 
 # Massimo di piloti per pagina nell'elenco (e valore predefinito).
 MAX_PILOTS_PER_PAGE = 100
+# Lunghezza massima del testo cercato (come il nome di un pilota).
+MAX_SEARCH_LENGTH = 40
 
 
 class ChampionshipRef(BaseModel):
@@ -105,10 +107,13 @@ def list_my_pilots(
     db: DbDep,
     limit: int = Query(MAX_PILOTS_PER_PAGE, ge=1, le=MAX_PILOTS_PER_PAGE),
     offset: int = Query(0, ge=0),
+    q: str | None = Query(None, max_length=MAX_SEARCH_LENGTH),
+    team_id: int | None = Query(None),
 ):
     # Una pagina dei piloti dell'utente loggato, in ordine alfabetico, ognuno con il suo
-    # campionato attivo. I campionati si leggono con una sola query per tutta la pagina.
-    pilots = list_pilots(db, user, limit=limit, offset=offset)
+    # campionato attivo. `q` cerca nel nome, `team_id` filtra per team (un team non tuo
+    # non dà risultati). I campionati si leggono con una sola query per tutta la pagina.
+    pilots = list_pilots(db, user, limit=limit, offset=offset, search=q, team_id=team_id)
     championships = active_championships(db, [pilot.id for pilot in pilots])
     return [
         PilotListItem(

@@ -12,6 +12,8 @@
 
 	// Piloti per richiesta: coincide con il massimo accettato dal backend.
 	const PILOTS_PAGE = 100;
+	// Attesa dopo l'ultimo tasto prima di cercare, per non fare una richiesta a ogni lettera.
+	const SEARCH_DELAY_MS = 300;
 
 	let teams = $state<Team[]>([]);
 	let pilots = $state<Pilot[]>([]);
@@ -22,26 +24,45 @@
 	let newTeam = $state('');
 	let newPilot = $state('');
 	let newPilotTeam = $state('');
+	let search = $state('');
 	let editing = $state<{ kind: 'team' | 'pilot'; id: number; name: string } | null>(null);
 
-	// Piloti raggruppati per team, e piloti senza team.
+	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+	// Numera i caricamenti: una risposta vecchia non deve sovrascrivere una più recente.
+	let reloadId = 0;
+
+	let searching = $derived(search.trim() !== '');
+
+	// Piloti raggruppati per team, e piloti senza team. Durante la ricerca i team senza
+	// risultati si nascondono.
 	let groups = $derived(
-		teams.map((team) => ({ team, pilots: pilots.filter((p) => p.team_id === team.id) }))
+		teams
+			.map((team) => ({ team, pilots: pilots.filter((p) => p.team_id === team.id) }))
+			.filter((group) => !searching || group.pilots.length > 0)
 	);
 	let freePilots = $derived(pilots.filter((p) => p.team_id === null));
 
 	// Scarica i piloti a pagine finché una pagina non è incompleta.
-	async function loadPilots(): Promise<Pilot[]> {
+	async function loadPilots(query: string): Promise<Pilot[]> {
 		const all: Pilot[] = [];
 		for (let offset = 0; ; offset += PILOTS_PAGE) {
-			const chunk = await api<Pilot[]>(`/pilots?limit=${PILOTS_PAGE}&offset=${offset}`);
+			const params = new URLSearchParams({ limit: String(PILOTS_PAGE), offset: String(offset) });
+			if (query !== '') params.set('q', query);
+			const chunk = await api<Pilot[]>(`/pilots?${params}`);
 			all.push(...chunk);
 			if (chunk.length < PILOTS_PAGE) return all;
 		}
 	}
 
 	async function reload() {
-		[teams, pilots] = await Promise.all([api<Team[]>('/teams'), loadPilots()]);
+		const id = ++reloadId;
+		const [newTeams, newPilots] = await Promise.all([
+			api<Team[]>('/teams'),
+			loadPilots(search.trim())
+		]);
+		if (id !== reloadId) return;
+		teams = newTeams;
+		pilots = newPilots;
 	}
 
 	// Esegue un'azione, poi ricarica i dati. Restituisce false se è fallita
@@ -61,9 +82,14 @@
 		}
 	}
 
-	onMount(async () => {
-		await run(async () => {});
-		loaded = true;
+	function onSearchInput() {
+		clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => void run(async () => {}), SEARCH_DELAY_MS);
+	}
+
+	onMount(() => {
+		void run(async () => {}).then(() => (loaded = true));
+		return () => clearTimeout(searchTimer);
 	});
 
 	async function createTeam(event: SubmitEvent) {
@@ -207,6 +233,15 @@
 			</Card.Root>
 		</div>
 
+		<Input
+			type="search"
+			bind:value={search}
+			oninput={onSearchInput}
+			maxlength={40}
+			placeholder="Cerca un pilota per nome"
+			aria-label="Cerca un pilota per nome"
+		/>
+
 		{#each groups as group (group.team.id)}
 			<Card.Root>
 				<Card.Header>
@@ -250,7 +285,9 @@
 			</Card.Root>
 		{/if}
 
-		{#if teams.length === 0 && pilots.length === 0}
+		{#if searching && pilots.length === 0}
+			<p class="text-muted-foreground">Nessun pilota corrisponde alla ricerca.</p>
+		{:else if teams.length === 0 && pilots.length === 0}
 			<p class="text-muted-foreground">Non hai ancora né team né piloti: creane uno qui sopra.</p>
 		{/if}
 	{/if}
