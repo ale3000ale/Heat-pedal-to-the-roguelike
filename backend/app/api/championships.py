@@ -8,6 +8,7 @@ from app.schemas.championship import (
     EnrollRequest,
     EntrantRead,
 )
+from app.schemas.gold import GoldRulesData
 from app.services.championships import (
     ChampionshipClosedError,
     ChampionshipNameTakenError,
@@ -21,7 +22,9 @@ from app.services.championships import (
     get_championship,
     list_championships,
     list_entrants,
+    set_gold_rules,
 )
+from app.services.gold import rules_of
 from app.services.pilots import PilotInActiveChampionshipError, PilotNotFoundError
 from app.services.pools import PoolNotFoundError, PoolRuleError
 
@@ -72,6 +75,30 @@ def detail(championship_id: int, user: CurrentUser, db: DbDep):
         raise NOT_FOUND
     pilots = [EntrantRead.model_validate(p) for p in list_entrants(db, championship.id)]
     return ChampionshipDetail(**_read(db, championship).model_dump(), pilots=pilots)
+
+
+@router.get("/{championship_id}/gold-rules", response_model=GoldRulesData)
+def read_gold_rules(championship_id: int, user: CurrentUser, db: DbDep):
+    # Le regole dell'oro per gara di questo campionato.
+    try:
+        championship = get_championship(db, championship_id)
+    except ChampionshipNotFoundError:
+        raise NOT_FOUND
+    return GoldRulesData.from_rules(rules_of(championship))
+
+
+@router.put("/{championship_id}/gold-rules", response_model=GoldRulesData)
+def change_gold_rules(
+    championship_id: int, data: GoldRulesData, admin: AdminUser, db: DbDep
+):
+    # Cambia le regole dell'oro (solo admin, campionato attivo): valgono dalla prossima gara.
+    try:
+        championship = set_gold_rules(db, championship_id, data.to_rules())
+    except ChampionshipNotFoundError:
+        raise NOT_FOUND
+    except ChampionshipClosedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Campionato chiuso")
+    return GoldRulesData.from_rules(rules_of(championship))
 
 
 @router.post("/{championship_id}/close", response_model=ChampionshipRead)

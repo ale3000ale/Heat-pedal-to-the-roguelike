@@ -10,6 +10,7 @@ from app.db.models.deck import Deck, DeckPrototype
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race, RaceResult
 from app.services.cards import STARTER_INVENTORY, dump_cards
+from app.services.gold import GoldRules, apply_rules, get_defaults, rules_of
 from app.services.names import clean_name, name_key
 from app.services.pilots import PilotInActiveChampionshipError, get_own_pilot
 from app.services.pools import PoolNotFoundError, get_base_pool, pool_for_kind
@@ -74,7 +75,8 @@ def create_championship(
     sponsor_pool_id: int | None = None,
 ) -> Championship:
     # Crea un campionato con una copia indipendente della pool delle modifiche e una
-    # della pool degli sponsor (le rispettive pool di base se omesse).
+    # della pool degli sponsor (le rispettive pool di base se omesse), e con una copia
+    # delle impostazioni generali dell'oro: cambiarle dopo non tocca il campionato.
     name = clean_name(name)
     key = name_key(name)
     if db.scalar(select(Championship.id).where(Championship.name_key == key)) is not None:
@@ -96,12 +98,25 @@ def create_championship(
         pool_deck_id=deck.id,
         sponsor_pool_deck_id=sponsor_deck.id if sponsor_deck is not None else None,
     )
+    apply_rules(championship, rules_of(get_defaults(db)))
     db.add(championship)
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
         raise ChampionshipNameTakenError
+    db.refresh(championship)
+    return championship
+
+
+def set_gold_rules(db: Session, championship_id: int, rules: GoldRules) -> Championship:
+    # Cambia le regole dell'oro di un campionato attivo: valgono dalla prossima gara che
+    # si chiude, le gare già chiuse restano come sono.
+    championship = get_championship(db, championship_id)
+    if championship.is_closed:
+        raise ChampionshipClosedError
+    apply_rules(championship, rules)
+    db.commit()
     db.refresh(championship)
     return championship
 

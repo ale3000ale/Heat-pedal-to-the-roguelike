@@ -11,6 +11,7 @@ from app.services.championships import (
     list_entrants,
     pilot_totals,
 )
+from app.services.gold import award_race_gold, rules_of
 
 # Punti per posizione di arrivo; dalla 7ª in poi si prendono 0 punti.
 POINTS_BY_POSITION = {1: 9, 2: 6, 3: 4, 4: 3, 5: 2, 6: 1}
@@ -71,6 +72,8 @@ def set_results(
     # entries: (pilot_id, punti sponsor) nell'ordine di arrivo.
     # Una gara è chiusa quando ha almeno un risultato: da allora solo chi ha
     # can_correct (l'admin) può sostituirli. Il campionato deve essere attivo.
+    # L'oro si assegna una sola volta, alla prima chiusura della gara, con le regole
+    # del campionato di quel momento: le correzioni non lo toccano.
     championship = get_championship(db, championship_id)
     race = get_race(db, championship_id, race_id)
     if championship.is_closed:
@@ -90,7 +93,8 @@ def set_results(
         raise RaceResultError("Pilota ripetuto")
     if any(sponsor < 0 for _, sponsor in entries):
         raise RaceResultError("I punti sponsor non possono essere negativi")
-    enrolled = {pilot.id for pilot in list_entrants(db, championship_id)}
+    entrants = list_entrants(db, championship_id)
+    enrolled = {pilot.id for pilot in entrants}
     if not set(pilot_ids) <= enrolled:
         raise RaceResultError("Tutti i piloti devono essere iscritti al campionato")
     db.query(RaceResult).where(RaceResult.race_id == race.id).delete()
@@ -107,6 +111,8 @@ def set_results(
     db.flush()
     _sync_pilot_points(db, championship_id)
     _apply_sponsor_delta(db, old_sponsor, dict(entries))
+    if not old_sponsor:
+        award_race_gold(entrants, rules_of(championship), pilot_ids)
     db.commit()
     db.refresh(race)
     return race
