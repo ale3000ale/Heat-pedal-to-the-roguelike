@@ -11,6 +11,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import GoldRulesForm from '$lib/components/gold-rules-form.svelte';
+	import SettingsDialog from '$lib/components/settings-dialog.svelte';
 
 	const selectClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
@@ -24,6 +25,7 @@
 	let raceError = $state<string | null>(null);
 	let busy = $state(false);
 	let selectedPilot = $state('');
+	let settingsOpen = $state(false);
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
 	// Piloti che hanno un team e non sono già iscritti a questo campionato.
@@ -112,12 +114,24 @@
 	{:else if !championship}
 		<p class="text-muted-foreground">Caricamento…</p>
 	{:else}
-		<div>
-			<h1 class="text-2xl font-bold">{championship.name}</h1>
-			<p class="text-sm text-muted-foreground">
-				{new Date(championship.date).toLocaleDateString('it-IT')} ·
-				{championship.is_closed ? 'Chiuso' : 'Attivo'}
-			</p>
+		<div class="flex items-start justify-between gap-3">
+			<div>
+				<h1 class="text-2xl font-bold">{championship.name}</h1>
+				<p class="text-sm text-muted-foreground">
+					{new Date(championship.date).toLocaleDateString('it-IT')} ·
+					{championship.is_closed ? 'Chiuso' : 'Attivo'}
+				</p>
+			</div>
+			{#if auth.isAdmin}
+				<Button
+					size="sm"
+					variant="outline"
+					aria-label="Impostazioni del campionato"
+					onclick={() => (settingsOpen = true)}
+				>
+					⚙
+				</Button>
+			{/if}
 		</div>
 
 		{#if !championship.is_closed}
@@ -229,11 +243,15 @@
 			</Card.Content>
 		</Card.Root>
 
-		<GoldRulesForm
-			url={`/championships/${championship.id}/gold-rules`}
-			title="Oro per gara"
-			description="Oro dato a tutti gli iscritti dopo ogni gara, anche a chi non corre. Un totale negativo diventa 0. Le modifiche valgono dalla gara successiva."
-			editable={auth.isAdmin && !championship.is_closed}
-		/>
+		{#if auth.isAdmin}
+			<SettingsDialog bind:open={settingsOpen} title="Impostazioni del campionato">
+				<GoldRulesForm
+					url={`/championships/${championship.id}/gold-rules`}
+					title="Oro per gara"
+					description="Oro dato a tutti gli iscritti dopo ogni gara, anche a chi non corre. Un totale negativo diventa 0. Le modifiche valgono dalla gara successiva."
+					editable={!championship.is_closed}
+				/>
+			</SettingsDialog>
+		{/if}
 	{/if}
 </main>
