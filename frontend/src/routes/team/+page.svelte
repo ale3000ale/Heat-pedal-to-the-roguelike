@@ -46,9 +46,9 @@
 	async function loadPilots(query: string): Promise<Pilot[]> {
 		const all: Pilot[] = [];
 		for (let offset = 0; ; offset += PILOTS_PAGE) {
-			const params = new URLSearchParams({ limit: String(PILOTS_PAGE), offset: String(offset) });
-			if (query !== '') params.set('q', query);
-			const chunk = await api<Pilot[]>(`/pilots?${params}`);
+			let url = `/pilots?limit=${PILOTS_PAGE}&offset=${offset}`;
+			if (query !== '') url += `&q=${encodeURIComponent(query)}`;
+			const chunk = await api<Pilot[]>(url);
 			all.push(...chunk);
 			if (chunk.length < PILOTS_PAGE) return all;
 		}
