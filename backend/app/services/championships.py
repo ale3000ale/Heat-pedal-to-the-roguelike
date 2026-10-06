@@ -68,6 +68,16 @@ def _copy_pool(db: Session, pool: DeckPrototype) -> Deck:
     return deck
 
 
+def _reset_pilot(db: Session, pilot: Pilot) -> None:
+    # Riporta il pilota allo stato iniziale: inventario di partenza, mazzo da gioco
+    # vuoto, gold, sponsor e point a zero. Senza commit.
+    db.get(Deck, pilot.inventory_deck_id).cards = dump_cards(STARTER_INVENTORY)
+    db.get(Deck, pilot.game_deck_id).cards = dump_cards([])
+    pilot.gold = 0
+    pilot.sponsor = 0
+    pilot.point = 0
+
+
 def create_championship(
     db: Session,
     name: str,
@@ -123,11 +133,14 @@ def set_gold_rules(db: Session, championship_id: int, rules: GoldRules) -> Champ
 
 def close_championship(db: Session, championship_id: int) -> Championship:
     # Chiude il campionato (anche con gare non finite): da qui in poi è in sola lettura.
+    # Congela la classifica e reimposta i soli piloti iscritti a questo campionato.
     championship = get_championship(db, championship_id)
     if championship.is_closed:
         raise ChampionshipClosedError
     championship.is_closed = True
     _freeze_standings(db, championship)
+    for pilot in list_entrants(db, championship.id):
+        _reset_pilot(db, pilot)
     db.commit()
     db.refresh(championship)
     return championship
@@ -144,11 +157,7 @@ def enroll_pilot(db: Session, user: User, championship_id: int, pilot_id: int) -
         raise PilotWithoutTeamError
     if pilots_in_active_championship(db, [pilot.id]):
         raise PilotInActiveChampionshipError
-    db.get(Deck, pilot.inventory_deck_id).cards = dump_cards(STARTER_INVENTORY)
-    db.get(Deck, pilot.game_deck_id).cards = dump_cards([])
-    pilot.gold = 0
-    pilot.sponsor = 0
-    pilot.point = 0
+    _reset_pilot(db, pilot)
     db.add(ChampionshipPilot(championship_id=championship.id, pilot_id=pilot.id))
     try:
         db.commit()
