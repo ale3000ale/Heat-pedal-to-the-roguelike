@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -26,6 +26,10 @@ class RaceAlreadyClosedError(Exception):
     """La gara ha già i risultati: solo l'admin può correggerli."""
 
 
+class RaceInProgressError(Exception):
+    """C'è già una gara in corso (senza risultati): va terminata prima di crearne un'altra."""
+
+
 class RaceResultError(ValueError):
     """Elenco dei risultati non valido (messaggio leggibile)."""
 
@@ -45,13 +49,27 @@ def get_race(db: Session, championship_id: int, race_id: int) -> Race:
     return race
 
 
+def has_race_in_progress(db: Session, championship_id: int) -> bool:
+    # Una gara è in corso finché non ha nessun risultato.
+    has_results = select(RaceResult.race_id).where(RaceResult.race_id == Race.id).exists()
+    stmt = select(Race.id).where(Race.championship_id == championship_id, ~has_results).limit(1)
+    return db.scalar(stmt) is not None
+
+
 def create_race(db: Session, championship_id: int, date: datetime | None = None) -> Race:
-    # Nuova gara con il numero successivo; non si crea in un campionato chiuso.
+    # Nuova gara con il numero successivo, datata al momento della creazione se non
+    # indicato altrimenti. Non si crea in un campionato chiuso né con una gara in corso.
     championship = get_championship(db, championship_id)
     if championship.is_closed:
         raise ChampionshipClosedError
+    if has_race_in_progress(db, championship_id):
+        raise RaceInProgressError
     last = db.scalar(select(func.max(Race.number)).where(Race.championship_id == championship_id))
-    race = Race(championship_id=championship_id, number=(last or 0) + 1, date=date)
+    race = Race(
+        championship_id=championship_id,
+        number=(last or 0) + 1,
+        date=date or datetime.now(timezone.utc),
+    )
     db.add(race)
     db.commit()
     db.refresh(race)

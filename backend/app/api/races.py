@@ -12,6 +12,7 @@ from app.schemas.race import (
 from app.services.championships import standings, ChampionshipClosedError, ChampionshipNotFoundError
 from app.services.races import (
     RaceAlreadyClosedError,
+    RaceInProgressError,
     RaceNotFoundError,
     RaceResultError,
     count_participants,
@@ -26,6 +27,9 @@ router = APIRouter(tags=["races"])
 CHAMPIONSHIP_NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Campionato non trovato")
 RACE_NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Gara non trovata")
 CLOSED = HTTPException(status.HTTP_409_CONFLICT, "Campionato chiuso")
+RACE_IN_PROGRESS = HTTPException(
+    status.HTTP_409_CONFLICT, "C'è già una gara in corso: va terminata prima di crearne un'altra"
+)
 RACE_CLOSED = HTTPException(
     status.HTTP_403_FORBIDDEN, "Gara già chiusa: solo l'admin può correggere i risultati"
 )
@@ -68,13 +72,15 @@ def list_all(championship_id: int, user: CurrentUser, db: DbDep):
     "/{championship_id}/races", response_model=RaceRead, status_code=status.HTTP_201_CREATED
 )
 def create(championship_id: int, judge: JudgeUser, db: DbDep, data: RaceCreate | None = None):
-    # Crea la gara successiva (giudice o admin).
+    # Crea la gara successiva (giudice o admin), solo se non ce n'è una in corso.
     try:
         return _read(db, create_race(db, championship_id, data.date if data else None))
     except ChampionshipNotFoundError:
         raise CHAMPIONSHIP_NOT_FOUND
     except ChampionshipClosedError:
         raise CLOSED
+    except RaceInProgressError:
+        raise RACE_IN_PROGRESS
 
 
 @router.get("/{championship_id}/races/{race_id}", response_model=RaceDetail)
