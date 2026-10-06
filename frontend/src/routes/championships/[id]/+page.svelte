@@ -10,6 +10,7 @@
 	import type { Race, Standing } from '$lib/race-types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
+	import GoldRulesForm from '$lib/components/gold-rules-form.svelte';
 
 	const selectClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
@@ -227,5 +228,12 @@
 				{/if}
 			</Card.Content>
 		</Card.Root>
+
+		<GoldRulesForm
+			url={`/championships/${championship.id}/gold-rules`}
+			title="Oro per gara"
+			description="Oro dato a tutti gli iscritti dopo ogni gara, anche a chi non corre. Un totale negativo diventa 0. Le modifiche valgono dalla gara successiva."
+			editable={auth.isAdmin && !championship.is_closed}
+		/>
 	{/if}
 </main>

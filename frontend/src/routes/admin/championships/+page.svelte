@@ -6,6 +6,7 @@
 	import type { Championship, Pool } from '$lib/types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
+	import GoldRulesForm from '$lib/components/gold-rules-form.svelte';
 
 	let championships = $state<Championship[]>([]);
 	let pools = $state<Pool[]>([]);
@@ -191,6 +192,13 @@
 				</form>
 			</Card.Content>
 		</Card.Root>
+
+		<GoldRulesForm
+			url="/admin/championship-defaults"
+			title="Impostazioni generali dei campionati"
+			description="Oro per gara copiato in ogni nuovo campionato. Cambiarlo non modifica i campionati già creati."
+			editable
+		/>
 
 		<Card.Root>
 			<Card.Header>
