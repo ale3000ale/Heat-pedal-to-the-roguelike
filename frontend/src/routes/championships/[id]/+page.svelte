@@ -14,8 +14,7 @@
 
 	const selectClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
-	const RACE_IN_PROGRESS_MESSAGE =
-		"C'è una gara in corso: va terminata prima di crearne un'altra.";
+	const RACE_IN_PROGRESS_MESSAGE = "C'è una gara in corso: va terminata prima di crearne un'altra.";
 
 	let championship = $state<ChampionshipDetail | null>(null);
 	let standings = $state<Standing[]>([]);
