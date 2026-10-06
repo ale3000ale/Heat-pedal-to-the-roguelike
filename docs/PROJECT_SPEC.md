@@ -10,6 +10,7 @@
 - Database: SQLite, schema gestito da Alembic. `HeatDB.sql` è lo schema di partenza storico (solo DDL, nessun dato).
 - Migrazioni database: Alembic, una migrazione per ogni cambiamento di schema,
   a partire da una migrazione iniziale che allinea lo schema al modello target.
+- Integrazione continua: GitHub Actions esegue i test del backend e i controlli del frontend a ogni pull request.
 - Sicurezza flessibile perché l'app è locale, ma progettata per un eventuale
   uso online futuro.
 - Avvio e manutenzione: `python heat.py` (menu) oppure `setup`, `start`, `migrate`, `test`, `check`. L'avvio applica sempre le migrazioni in sospeso.
@@ -23,9 +24,9 @@
 - Un campionato chiuso diventa in sola lettura, per tutti, admin compreso.
 - Un pilota non può essere iscritto a due campionati attivi contemporaneamente; può iscriversi a uno nuovo dopo la chiusura del precedente.
 - Solo l'admin crea, chiude e cancella i campionati.
-- L'admin e il giudice creano le gare e le chiudono inserendo i risultati; solo l'admin può correggere i risultati di una gara già chiusa.
-- Negozio, amministrazione completa delle carte e spareggio sportivo sono rinviati e non bloccano la prima versione.
-- Prima versione del Negozio: solo placeholder "Funzionalità in definizione".
+- L'admin e il giudice creano le gare e le terminano inserendo i risultati; solo l'admin può correggere i risultati di una gara già terminata.
+- In un campionato c'è al massimo una gara in corso alla volta: finché non è terminata non se ne crea un'altra.
+- Negozio, pacchetti di carte, amministrazione completa delle carte e spareggio sportivo sono rinviati e non bloccano la versione attuale.
 - In caso di pari punti, l'ordine alfabetico serve solo come stabilizzatore di visualizzazione, non come spareggio.
 
 ## 3. Autenticazione
@@ -40,8 +41,8 @@
 - Ruoli previsti: `admin`, `judge` (giudice) e `player`.
 - Il primo admin viene creato al primo avvio tramite comando di setup
   o variabile d'ambiente.
-- Admin: crea, chiude e cancella i campionati, gestisce le pool, crea le gare, inserisce e corregge i risultati, assegna il ruolo di giudice, pulisce gli elementi nascosti.
-- Giudice: ruolo fisso, valido per tutti i campionati, assegnato e tolto dall'admin a un utente. Serve a delegare del lavoro all'admin: può creare le gare e chiuderle inserendo i risultati e i punti sponsor. Non può correggere una gara già chiusa e non ha altri poteri di amministrazione. Può avere team e piloti come un giocatore.
+- Admin: crea, chiude e cancella i campionati, gestisce le pool e le impostazioni generali, crea le gare, inserisce e corregge i risultati, assegna il ruolo di giudice, pulisce gli elementi nascosti.
+- Giudice: ruolo fisso, valido per tutti i campionati, assegnato e tolto dall'admin a un utente. Serve a delegare del lavoro all'admin: può creare le gare e terminarle inserendo i risultati e i punti sponsor. Non può correggere una gara già terminata e non ha altri poteri di amministrazione. Può avere team e piloti come un giocatore.
 - Player: gestisce i propri team e piloti.
 - Il ruolo dell'admin non si può cambiare, nemmeno da parte dell'admin stesso. Dall'interfaccia si assegna solo `player` o `judge`; l'admin si crea con il setup.
 - Ogni risposta dell'API che descrive un utente (login, utente corrente, registrazione) deve poter restituire tutti e tre i ruoli.
@@ -61,6 +62,7 @@
 - Pilot 1:N RaceResult
 - Championship N:2 pool: una copia della pool delle modifiche e una della pool degli sponsor.
 - DeckPrototype: indipendente, ha un tipo (`modifiche` o `sponsor`); sorgente delle pool di ogni campionato.
+- ChampionshipDefaults: una sola riga con le impostazioni generali (regole dell'oro per gara), copiate su ogni nuovo campionato.
 
 Nota di modellazione: inventario e mazzo da gioco sono due mazzi distinti per
 pilota, rappresentati da due riferimenti a `Deck` sul pilota (`inventory_deck_id` e `game_deck_id`, entrambi univoci).
@@ -73,7 +75,9 @@ pilota, rappresentati da due riferimenti a `Deck` sul pilota (`inventory_deck_id
   - **Mazzo da gioco**: le carte usate in gara, massimo 15 carte in totale
     (somma delle copie).
 - Il pilota costruisce il mazzo da gioco scegliendo carte dal proprio inventario:
-  per ogni carta, le copie nel mazzo non superano quelle dell'inventario.
+  per ogni carta, le copie nel mazzo non superano quelle dell'inventario. Nella pagina del pilota le carte si spostano con un clic tra inventario e mazzo.
+- I mazzi si possono modificare anche con un campionato attivo; un eventuale blocco varrà solo durante una gara.
+- Ogni mazzo ha un numero di versione (blocco ottimistico): se due modifiche si incrociano, la seconda riceve un errore 409.
 - Stato iniziale alla creazione del pilota (fisso, indipendente dalle pool):
   - Inventario: Velocità 1, Velocità 2, Velocità 3, Velocità 4, 3 copie ciascuna.
     La carta Calore parte con 0 copie e non compare nell'elenco.
@@ -84,10 +88,10 @@ pilota, rappresentati da due riferimenti a `Deck` sul pilota (`inventory_deck_id
 
 ### Pool di base, pool derivate e pool del campionato
 
-- **Due pool di base, distinte**: la pool delle **modifiche** e la pool degli **sponsor**. Ciascuna è un `DeckPrototype` con il suo tipo ed è il catalogo completo delle carte e delle copie di quel tipo. La prima versione usa le modifiche; la pool degli sponsor è predisposta.
+- **Due pool di base, distinte**: la pool delle **modifiche** e la pool degli **sponsor**. Ciascuna è un `DeckPrototype` con il suo tipo ed è il catalogo completo delle carte e delle copie di quel tipo. Nomi tecnici: `default` per le modifiche e `sponsor` per gli sponsor. La versione attuale usa le modifiche; la pool degli sponsor è predisposta.
 - Le carte Velocità 1-4 non fanno parte di nessuna pool di base, perché sono assegnate di default a tutti i piloti. Le carte Calore, per ora, sono considerate parte delle modifiche e verranno aggiunte con le foto.
 - **Pool derivata**: l'admin la crea sempre a partire dalla pool di base dello stesso tipo, senza nuove immagini. Sceglie le carte da includere, il numero di copie di ciascuna (mai superiore a quello della base) e assegna un nome univoco.
-- Le pool derivate usano nome, immagine e percorso delle carte già presenti nella pool di base.
+- Le pool derivate usano nome, immagine e percorso delle carte già presenti nella pool di base. Le carte di una pool si possono rinominare dalla pagina di dettaglio della pool.
 - Le pool di base non si possono eliminare; una pool derivata può essere eliminata senza modificare i campionati già creati.
 - **Pool del campionato**: ogni campionato ha due pool, una di modifiche e una di sponsor. Alla creazione l'admin sceglie per ciascuna una pool del tipo corrispondente; se non la sceglie viene usata la rispettiva pool di base. Il campionato riceve sempre una copia indipendente di ciascuna pool selezionata.
 - Le modifiche o l'eliminazione di una pool di origine non modificano mai la copia già assegnata a un campionato.
@@ -129,6 +133,12 @@ Le carte delle cartelle `base/` entrano nel database con un pulsante "Ricarica" 
 - Nomi di team e piloti: unici su tutto il gioco, senza distinguere le maiuscole.
 - Un pilota può esistere senza team; per iscriversi a un campionato serve un team.
 
+### Elenco dei piloti
+
+- L'elenco dei piloti è paginato (`limit` e `offset`) e si carica a pagine nella pagina dei team.
+- Si può cercare per nome e filtrare per team.
+- Accanto a ogni pilota compare il campionato attivo a cui è iscritto, se c'è.
+
 ### Formato delle carte
 
 - `Deck.cards` e `DeckPrototype.base_cards`: array JSON di oggetti
@@ -145,7 +155,7 @@ Le carte delle cartelle `base/` entrano nel database con un pulsante "Ricarica" 
 
 ## 7. Risorse del pilota
 
-- `gold`: denaro spendibile nel negozio.
+- `gold`: denaro spendibile nel negozio. Si ottiene a ogni gara terminata (sezione 9).
 - `sponsor`: punti che permettono di riscattare premi nel negozio. Si ottengono a fine gara (sezione 9) e si possono spendere: per questo il totale non si ricalcola mai dalla somma delle gare, ma si aggiorna solo con la differenza quando un risultato viene corretto, senza scendere sotto zero.
 - `point`: punti del pilota nel campionato.
 
@@ -160,6 +170,8 @@ Ad ogni iscrizione a un campionato, tutto il pilota viene reimpostato:
 
 Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 
+Lo stesso reset si applica ai piloti iscritti anche alla chiusura del campionato; quello dell'iscrizione resta.
+
 ## 9. Campionati, gare e classifica
 
 - L'admin crea il campionato scegliendo due pool: una di modifiche e una di sponsor. Per ciascuna può scegliere una pool derivata o, come valore predefinito, la rispettiva pool di base.
@@ -168,14 +180,22 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 - L'admin può chiudere un campionato anche se alcune gare non sono state create o completate. Dopo la chiusura, il campionato è in sola lettura.
 - L'admin può cancellare definitivamente solo un campionato chiuso.
 
+### Impostazioni generali e regole dell'oro
+
+- Le **impostazioni generali** contengono le regole dell'oro per gara e si modificano dal pannello admin. Valgono solo per i campionati creati dopo la modifica.
+- Ogni campionato ha le proprie regole dell'oro, copiate dalle impostazioni generali alla creazione. L'admin le modifica dal popup delle impostazioni del campionato (ingranaggio), insieme a chiusura e cancellazione.
+- Le regole sono: un **oro base** dato a tutti gli iscritti, un **modificatore** per ciascuna delle posizioni 1-6 e un modificatore "altre" per le posizioni dalla 7ª in poi. Chi non ha corso riceve solo l'oro base. L'oro di una gara non scende mai sotto zero.
+- L'oro si assegna **una sola volta**, alla prima chiusura della gara, con le regole del campionato di quel momento. Le correzioni dei risultati non lo modificano.
+
 ### Gare
 
 - Ogni gara appartiene a un campionato e riceve automaticamente il numero successivo: 1, 2, 3, ecc.
-- La data della gara è facoltativa.
-- La gara la crea l'admin o il giudice.
+- La data della gara è quella della creazione. Le gare create prima di questa regola possono non avere data ("Data da definire").
+- La gara la crea l'admin o il giudice. In un campionato c'è una sola gara in corso alla volta: una gara è **in corso** finché non ha risultati, **terminata** quando ne ha almeno uno. Creare una nuova gara con una in corso è rifiutato (errore 409); l'interfaccia mostra l'avviso solo quando si preme "Nuova gara".
 - Massimo 12 piloti partecipanti per gara.
-- **Chiusura della gara**: coincide con l'inserimento dei risultati. L'admin o il giudice inseriscono l'elenco ordinato dei piloti (la posizione deriva dall'ordine) e, per ogni pilota, i punti sponsor. Non esiste uno stato salvato: una gara è chiusa quando ha almeno un risultato.
-- **Correzione**: solo l'admin può sostituire i risultati di una gara già chiusa (in caso di errore), e solo finché il campionato è attivo. Il giudice che ci prova riceve un rifiuto.
+- **Terminare la gara**: coincide con l'inserimento dei risultati. L'admin o il giudice inseriscono la classifica (la posizione deriva dall'ordine) con i punti sponsor di ciascun pilota e indicano a mano i piloti che non partecipano. Ogni iscritto va assegnato alla classifica o ai non partecipanti, e serve almeno un pilota in classifica. Non esiste uno stato salvato.
+- **Uscita dalla pagina**: se si lascia una gara in corso con una classifica non salvata, un popup chiede conferma ("Esci" o "Rimani"); chiudendo o ricaricando la scheda compare l'avviso del browser.
+- **Correzione**: solo l'admin può sostituire i risultati di una gara già terminata (in caso di errore), e solo finché il campionato è attivo. Il giudice che ci prova riceve un rifiuto.
 - Un campionato chiuso è in sola lettura per tutti: nessuna creazione di gare e nessuna correzione, nemmeno dell'admin.
 - Possono essere inseriti solo piloti iscritti al campionato e ogni pilota può comparire una sola volta.
 - Punti per posizione di arrivo:
@@ -190,7 +210,7 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 | 6° | 1 |
 | 7°–12° | 0 |
 
-- **Punti sponsor**: non dipendono dalla posizione, dipendono da come va la partita. Sono inseriti a mano per ogni pilota, valgono 0 se non indicati e non possono essere negativi. Vengono assegnati al pilota nel momento della chiusura della gara; in una correzione il pilota riceve (o perde) solo la differenza rispetto ai valori precedenti, senza scendere sotto zero.
+- **Punti sponsor**: non dipendono dalla posizione, dipendono da come va la partita. Sono inseriti a mano per ogni pilota, valgono 0 se non indicati e non possono essere negativi. Vengono assegnati al pilota nel momento in cui la gara è terminata; in una correzione il pilota riceve (o perde) solo la differenza rispetto ai valori precedenti, senza scendere sotto zero.
 - Un iscritto che non partecipa a una gara non ha una riga di risultato, ma viene mostrato nel dettaglio della gara con posizione assente, 0 punti e 0 punti sponsor.
 
 ### Classifica
@@ -206,28 +226,24 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
 
 - Login e registrazione.
 - Dashboard con i propri team e piloti.
-- Gestione di team e piloti.
-- Mazzi del pilota: inventario e mazzo da gioco.
-- Campionati: elenco di attivi e chiusi, dettaglio, iscrizione di un pilota, gare e classifica.
-- Negozio: placeholder "Funzionalità in definizione".
-- Gestione gare (admin e giudice):
-  - creazione delle gare;
-  - chiusura della gara con ordine di arrivo e punti sponsor;
-  - correzione dei risultati di una gara chiusa: solo admin.
+- Gestione di team e piloti, con ricerca per nome e filtro per team.
+- Pilota: inventario e mazzo da gioco, con spostamento delle carte (massimo 15 nel mazzo) e campionato attivo.
+- Campionati: elenco di attivi e chiusi (pulsante "+" per crearne uno, solo admin), dettaglio con iscrizione di un pilota, gare ("in corso" o "terminata") e classifica; ingranaggio con le impostazioni del campionato (solo admin).
+- Gara: classifica, piloti da assegnare, non partecipanti, pulsante "Termina"; correzione solo per l'admin.
 - Pannello admin, raggiungibile dal menu "Admin" in alto (visibile solo all'admin):
-  - pool: elenco, pulsante "Ricarica" per le due pool di base, creazione ed eliminazione delle pool derivate;
+  - pool: elenco, pulsante "Ricarica" per le due pool di base, creazione ed eliminazione delle pool derivate, dettaglio con carte rinominabili;
   - creazione, chiusura e cancellazione dei campionati, con la scelta delle due pool (modifiche e sponsor);
+  - impostazioni generali (regole dell'oro per i nuovi campionati);
   - elenco degli utenti e assegnazione o rimozione del ruolo di giudice;
   - elenco e pulizia di team e piloti nascosti.
+- Conferme e finestre di dialogo: popup propri, mai `dialog` o `confirm` nativi.
+- Negozio: rinviato, nessuna rotta.
 
-Stato di realizzazione (5 ottobre 2026), verificato sulle pagine del frontend:
-
-- Realizzato: login, registrazione, home, team, dettaglio pilota (mazzo da gioco e inventario in sola lettura), elenco campionati (attivi e chiusi), dettaglio campionato con iscrizione, gare e classifica, gestione delle gare per admin e giudice, pannello admin con elenco utenti e ruoli.
-- Mancante: costruzione del mazzo da gioco dall'inventario (la pagina del pilota mostra i mazzi ma non permette di modificarli), creazione, chiusura e cancellazione dei campionati, pool derivate e ricarica delle pool di base, pulizia di team e piloti nascosti, Negozio (nessuna rotta).
+Stato di realizzazione (7 ottobre 2026): tutte le pagine elencate sopra sono realizzate, eccetto il Negozio.
 
 ## 11. Schema e migrazioni
 
-Lo schema è gestito da Alembic (`backend/alembic/versions`), su SQLite. Le migrazioni, in ordine:
+Lo schema è gestito da Alembic (`backend/alembic/versions`), su SQLite. Le migrazioni presenti:
 
 | Migrazione | Contenuto |
 |---|---|
@@ -236,10 +252,13 @@ Lo schema è gestito da Alembic (`backend/alembic/versions`), su SQLite. Le migr
 | `9f4d32c3525f` team e pilota | `deleted_at` per l'eliminazione logica, `name_key` obbligatoria e unica per nomi senza distinzione di maiuscole e spazi doppi, `team_id` del pilota facoltativo |
 | `c7a1e5d2b9f4` nome campionato | Nome normalizzato del campionato per l'unicità senza distinguere le maiuscole |
 | `d4e8a2b6c1f7` giudice e sponsor | Ruolo `judge` nel vincolo dei ruoli; colonna `sponsor_points` in `race_result` (predefinito 0, mai negativa) |
+| `e5b9c3d7a2f8` tipo pool e pool sponsor | Colonna `kind` su `DeckPrototype` (`modifiche` o `sponsor`), pool sponsor di base, seconda pool (`sponsor_pool_deck_id`) sul campionato |
+| `f6c0d4e8b3a9` classifica finale | Tabella `championship_standing` (classifica congelata alla chiusura del campionato) |
+| `a7d1e9c4b2f6` indice iscrizioni | Indice su `championship_pilot.pilot_id` per le ricerche per pilota |
+| `b8e2f0a5c3d7` versione mazzi | Colonna `version` su `deck` (blocco ottimistico) |
+| `c9f3a1b6d8e4` oro per gara | Regole dell'oro sul campionato e tabella delle impostazioni generali (`ChampionshipDefaults`) |
 
-Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni.
-
-Migrazione prevista (due pool di base): colonna `kind` su `DeckPrototype` (`modifiche` o `sponsor`), pool `default` rinominata in `modifiche`, creazione della pool `sponsor`, seconda pool su ogni campionato. I campionati presenti nel database sono solo di prova: non servono regole di conversione per dati reali.
+Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni. I campionati presenti nel database sono solo di prova: non servono regole di conversione per dati reali.
 
 Punti ancora aperti nello schema:
 
@@ -248,7 +267,7 @@ Punti ancora aperti nello schema:
 
 ## 12. Domande aperte (rinviate)
 
-1. Negozio: entità, prodotti, prezzi e regole.
+1. Negozio: entità, prodotti, prezzi e regole (uso di gold e punti sponsor).
 2. Amministrazione carte: caricamento singolo da interfaccia in `uploads/`, modifica e reset delle carte già presenti nelle pool di base (la ricarica aggiunge soltanto).
 3. Spareggio sportivo: criterio in caso di pari punti.
 4. Pacchetti di carte: contenuto, costo e meccanica di apertura.
