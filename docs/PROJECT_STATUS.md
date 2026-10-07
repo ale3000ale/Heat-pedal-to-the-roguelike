@@ -24,8 +24,8 @@ Ultimo aggiornamento: 2026-10-07
 | 8e | Frontend admin: pulizia di team e piloti nascosti | Completata |
 | 9 | Ricerca piloti per nome e filtro per team, paginazione dell'elenco piloti | Completata |
 | 10 | CI con GitHub Actions: test backend e controlli frontend a ogni pull request | Completata |
-| 11 | Oro per gara, impostazioni generali e del campionato, popup propri, una sola gara in corso, assenti espliciti | In corso (ramo `phase-11-gold-and-lists`) |
-| 12 | Negozio e pacchetti di carte | Rinviata (regole da definire) |
+| 11 | Oro per gara, impostazioni generali e del campionato, popup propri, una sola gara in corso, assenti espliciti | Completata (pull request #4 unita a `main`) |
+| 12 | Negozio e pacchetti di carte | In preparazione (ramo `phase-12-shop`, regole da definire: vedi `OPEN_QUESTIONS.md`) |
 
 ## Backend
 
@@ -55,7 +55,7 @@ Ultimo aggiornamento: 2026-10-07
 
 ## Qualità verificata
 
-- Ultima suite backend registrata nelle note: 156 test passati prima dei test nuovi sulle pool; da rieseguire con `python heat.py test`.
+- Suite backend: 224 test passati alla chiusura della fase 11 (`python heat.py test`).
 - CI su ogni pull request (test backend, controlli frontend).
 - Migrazioni Alembic fino a `c9f3a1b6d8e4` (oro per gara) più quelle elencate nella sezione 11 della specifica.
 
@@ -75,12 +75,11 @@ Ultimo aggiornamento: 2026-10-07
 
 - `PROJECT_SPEC.md`: specifiche funzionali (fonte delle regole).
 - `PROJECT_NOTES.md`: mappa del codice, comandi, convenzioni e contesto di lavoro.
-- `DATABASE_ANALYSIS.md`: analisi dello schema iniziale.
-- `BACKEND_BOOTSTRAP.md`, `BACKEND_AUTH.md`, `FRONTEND_BOOTSTRAP.md`, `FRONTEND_AUTH.md`: dettagli dei bootstrap e dell'autenticazione.
-- `OPEN_QUESTIONS.md`: decisioni ancora rinviate.
+- `OPEN_QUESTIONS.md`: decisioni ancora rinviate, in particolare le 19 domande sul Negozio.
+- Documenti storici (fotografie di una fase, non lo stato attuale): `DATABASE_ANALYSIS.md`, `BACKEND_BOOTSTRAP.md`, `BACKEND_AUTH.md`, `FRONTEND_BOOTSTRAP.md`, `FRONTEND_AUTH.md`.
 
 ## Prossimi passi
 
-1. Chiudere la fase 11: rieseguire `python heat.py test` e `python heat.py check`, poi unire il ramo a `main` con una pull request.
-2. Fase 12: negozio e pacchetti, solo dopo aver definito regole, prezzi, uso di gold e sponsor.
+1. Rispondere alle domande sul Negozio in `OPEN_QUESTIONS.md` (almeno i punti 1, 4, 7, 8, 9 e 12).
+2. Fase 12: schema delle tabelle del Negozio, approvazione, poi implementazione backend e frontend.
 3. Decidere come usare la pool degli sponsor nel gioco (predisposta, non ancora usata).
