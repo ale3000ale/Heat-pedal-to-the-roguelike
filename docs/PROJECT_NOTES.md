@@ -7,6 +7,7 @@ Questo file serve a chi lavora sul progetto (anche l'assistente) per ripartire s
 - Mai presumere: prima di modificare un file lo si legge, anche se si pensa di conoscerlo.
 - Se le chiamate di un messaggio non bastano, si dichiara cosa manca e si salva qui il contesto, poi si prosegue nel messaggio successivo.
 - I file esistenti si modificano solo dopo averli letti nella versione attuale del ramo.
+- Un messaggio vuoto dell'utente significa "continua, mi sta bene".
 
 ## Mappa del progetto
 
@@ -26,13 +27,13 @@ Questo file serve a chi lavora sul progetto (anche l'assistente) per ripartire s
 | `frontend/` | SvelteKit; pagine in `src/routes`, codice condiviso in `src/lib` |
 | `tools/check-frontend.mjs` | format, check, lint e test del frontend in sequenza |
 | `.github/` | CI: test backend e controlli frontend a ogni pull request |
-| `docs/` | Specifica, stato, note, domande aperte |
+| `docs/` | Specifica, stato, note, domande aperte; documenti storici di bootstrap e autenticazione |
 
 ## Comandi utili
 
 - Primo avvio o nuovo PC: `python heat.py setup`, poi `python heat.py start`.
-- Dopo un `git pull`: `python heat.py migrate` (l'avvio migra comunque da solo).
-- Test backend: `python heat.py test`. Controlli frontend: `python heat.py check`.
+- Dopo un `git pull` o un cambio di ramo: `python heat.py migrate` (l'avvio migra comunque da solo).
+- Test backend: `python heat.py test` (224 test alla chiusura della fase 11). Controlli frontend: `python heat.py check`.
 - Ridimensionare le carte, da `backend`: `python -m app.scripts.resize_cards [cartella] [--dry-run]`.
 
 ## Carte e immagini
@@ -69,20 +70,20 @@ Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dent
 - Ogni risposta che descrive un utente deve ammettere i ruoli `admin`, `judge`, `player`.
 - Nelle liste `{#each}` la chiave deve essere univoca: il rango della classifica non lo è (vedi `src/lib/standings.ts`).
 - Niente `dialog` né `confirm` nativi: si usano i popup propri.
-- Il lavoro avanza su un ramo per fase (ora `phase-11-gold-and-lists`); prima di unire a `main` devono passare `python heat.py test` e `python heat.py check` (la CI li esegue a ogni pull request).
+- Il lavoro avanza su un ramo per fase (ora `phase-12-shop`); prima di unire a `main` devono passare `python heat.py test` e `python heat.py check` (la CI li esegue a ogni pull request).
 - I documenti si aggiornano al momento, non a fine fase.
 
 ## Contesto di lavoro (7 ottobre 2026)
 
-Le fasi 8, 9 e 10 sono concluse e unite a `main` (pull request #1, #2, #3). La fase 11 è in corso sul ramo `phase-11-gold-and-lists`: oro per gara con regole per campionato e impostazioni generali, popup propri, una sola gara in corso, data automatica, assenti espliciti e conferma d'uscita dalla gara.
+Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 11 ha portato oro per gara con regole per campionato e impostazioni generali, popup propri, una sola gara in corso, data automatica, assenti espliciti e conferma d'uscita dalla gara. La fase 12 (Negozio e pacchetti) è iniziata sul ramo `phase-12-shop`, ma le regole non sono definite: le 19 domande sono in `OPEN_QUESTIONS.md`.
 
 Da fare, in ordine:
 
-1. Eseguire `python heat.py test` e `python heat.py check` sul ramo e correggere eventuali errori.
-2. Aprire la pull request della fase 11 e unirla a `main`.
-3. Definire le regole del Negozio e dei pacchetti prima di iniziare la fase 12.
+1. Ricevere le risposte alle domande sul Negozio (priorità: punti 1, 4, 7, 8, 9 e 12).
+2. Proporre e far approvare lo schema delle tabelle del Negozio e le regole in `PROJECT_SPEC.md`.
+3. Implementare backend (migrazione, servizi, API, test) e poi frontend.
 
 ## Questioni aperte
 
 - Uso della pool degli sponsor nel gioco: predisposta ma non ancora usata.
-- Le voci di fine specifica (Negozio, pacchetti, spareggio, interfaccia di caricamento carte).
+- Le voci di fine specifica (Negozio, pacchetti, spareggio, interfaccia di caricamento carte): dettaglio in `OPEN_QUESTIONS.md`.

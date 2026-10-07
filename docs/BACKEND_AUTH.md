@@ -1,4 +1,7 @@
-STATO: COMPLETATA
+STATO: COMPLETATA. DOCUMENTO STORICO della fase 5: gli endpoint e le scelte
+restano validi, ma i ruoli sono poi diventati `admin`, `judge` e `player`
+(la registrazione crea sempre un `player`) e i test sono molti di più dei 16
+citati sotto. Stato attuale in `PROJECT_STATUS.md`.
 
 # Fase 5 - Autenticazione
 
@@ -24,7 +27,7 @@ app/services/sessions.py, app/services/users.py,
 app/db/models/session.py, migrazione 3daf355a6ffd,
 tests/conftest.py, tests/test_auth.py
 
-## Esiti
+## Esiti (alla fase 5)
 - 16 test pytest passati, database di prova in memoria
 - Verifica manuale con curl.exe: login, me, logout OK
 
