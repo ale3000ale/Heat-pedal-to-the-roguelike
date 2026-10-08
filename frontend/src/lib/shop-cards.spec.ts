@@ -34,7 +34,7 @@ describe('revealOrder', () => {
 });
 
 describe('packImageUrl', () => {
-	it('costruisce l\'URL sotto /media/pack', () => {
+	it("costruisce l'URL sotto /media/pack", () => {
 		expect(packImageUrl('illustration/turbo.webp')).toBe('/media/pack/illustration/turbo.webp');
 	});
 });
