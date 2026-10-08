@@ -7,8 +7,9 @@
 	import { packImageUrl, revealOrder } from '$lib/shop-cards';
 	import { shopSelection } from '$lib/shop-selection.svelte';
 	import type { PurchaseResult, ShopPack, ShopPilotRef, ShopView } from '$lib/shop-types';
-	import CardTile from '$lib/components/CardTile.svelte';
 	import Modal from '$lib/components/modal.svelte';
+	import PackReveal from '$lib/components/pack-reveal.svelte';
+	import ShopInventoryModal from '$lib/components/shop-inventory-modal.svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	type Area = 'modifiche' | 'sponsor';
@@ -27,6 +28,7 @@
 	let busy = $state(false);
 	let result = $state<PurchaseResult | null>(null);
 	let resultOpen = $state(false);
+	let inventoryOpen = $state(false);
 
 	// Area modifiche = pacchetti da pagare in oro; area sponsor = punti sponsor.
 	let visiblePacks = $derived(
@@ -177,18 +179,29 @@
 					</p>
 				{/if}
 			</div>
-			{#if pilots.length > 1}
-				<select
-					class={selectClass}
-					bind:value={selectedPilot}
-					onchange={changePilot}
-					aria-label="Pilota"
-				>
-					{#each pilots as p (p.id)}
-						<option value={String(p.id)}>{p.name}</option>
-					{/each}
-				</select>
-			{/if}
+			<div class="flex items-center gap-2">
+				{#if shop.pilot}
+					<Button
+						size="sm"
+						variant="outline"
+						onclick={() => (inventoryOpen = true)}
+					>
+						Inventario
+					</Button>
+				{/if}
+				{#if pilots.length > 1}
+					<select
+						class={selectClass}
+						bind:value={selectedPilot}
+						onchange={changePilot}
+						aria-label="Pilota"
+					>
+						{#each pilots as p (p.id)}
+							<option value={String(p.id)}>{p.name}</option>
+						{/each}
+					</select>
+				{/if}
+			</div>
 		</div>
 
 		{#if shop.read_only}
@@ -232,14 +245,11 @@
 </main>
 
 <Modal bind:open={resultOpen} title={result ? result.pack_name : 'Pacchetto'}>
-	<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-		{#each revealed as item, index (index)}
-			<div class="space-y-1">
-				<CardTile card={item.card} title="Copie ottenute" />
-				<p class="text-xs text-muted-foreground">
-					{item.section === 'modifiche' ? 'Modifica' : 'Sponsor'}
-				</p>
-			</div>
-		{/each}
-	</div>
+	<PackReveal cards={revealed} />
 </Modal>
+
+<ShopInventoryModal
+	bind:open={inventoryOpen}
+	{championshipId}
+	pilotId={shop?.pilot?.id ?? null}
+/>
