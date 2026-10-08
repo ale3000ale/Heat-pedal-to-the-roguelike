@@ -181,11 +181,7 @@
 			</div>
 			<div class="flex items-center gap-2">
 				{#if shop.pilot}
-					<Button
-						size="sm"
-						variant="outline"
-						onclick={() => (inventoryOpen = true)}
-					>
+					<Button size="sm" variant="outline" onclick={() => (inventoryOpen = true)}>
 						Inventario
 					</Button>
 				{/if}
