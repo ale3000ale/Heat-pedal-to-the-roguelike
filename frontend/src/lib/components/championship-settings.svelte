@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { api } from '$lib/api';
 	import { Button } from '$lib/components/ui/button';
+	import ChampionshipHistoryPanel from '$lib/components/championship-history-panel.svelte';
+	import ChampionshipPacksManager from '$lib/components/championship-packs-manager.svelte';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 	import GoldRulesForm from '$lib/components/gold-rules-form.svelte';
+	import Modal from '$lib/components/modal.svelte';
 	import SettingsDialog from '$lib/components/settings-dialog.svelte';
 	import type { Championship } from '$lib/types';
 
@@ -22,6 +25,8 @@
 	let error = $state<string | null>(null);
 	let confirmClose = $state(false);
 	let confirmDelete = $state(false);
+	let packsOpen = $state(false);
+	let historyOpen = $state(false);
 
 	$effect(() => {
 		if (open) error = null;
@@ -29,6 +34,17 @@
 
 	function message(e: unknown): string {
 		return e instanceof Error ? e.message : 'Errore sconosciuto';
+	}
+
+	// I popup del negozio si aprono al posto delle impostazioni, non sopra di esse.
+	function openPacks() {
+		open = false;
+		packsOpen = true;
+	}
+
+	function openHistory() {
+		open = false;
+		historyOpen = true;
 	}
 
 	async function closeChampionship() {
@@ -78,6 +94,14 @@
 			{/if}
 
 			<div class="space-y-2 border-t pt-4">
+				<h3 class="text-sm font-semibold">Negozio</h3>
+				<div class="flex flex-wrap gap-2">
+					<Button size="sm" variant="outline" onclick={openPacks}>Pacchetti</Button>
+					<Button size="sm" variant="outline" onclick={openHistory}>Storico</Button>
+				</div>
+			</div>
+
+			<div class="space-y-2 border-t pt-4">
 				{#if error}
 					<p class="text-sm text-destructive" role="alert">{error}</p>
 				{/if}
@@ -110,4 +134,14 @@
 		confirmLabel="Elimina campionato"
 		onconfirm={deleteChampionship}
 	/>
+	<Modal bind:open={packsOpen} title="Pacchetti del negozio">
+		{#if packsOpen}
+			<ChampionshipPacksManager championshipId={championship.id} closed={championship.is_closed} />
+		{/if}
+	</Modal>
+	<Modal bind:open={historyOpen} title="Storico acquisti del campionato">
+		{#if historyOpen}
+			<ChampionshipHistoryPanel championshipId={championship.id} />
+		{/if}
+	</Modal>
 {/if}
