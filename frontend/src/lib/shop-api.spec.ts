@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from './api';
 import { buyPack, fetchInventory, fetchMyShops, fetchShop } from './shop-api';
 
-function fakeFetch(status: number, body: unknown) {
-	return vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch &
-		ReturnType<typeof vi.fn>;
+type Fetcher = typeof fetch & ReturnType<typeof vi.fn>;
+
+function fakeFetch(status: number, body: unknown): Fetcher {
+	const fn = vi.fn(async () => new Response(JSON.stringify(body), { status }));
+	return fn as unknown as Fetcher;
 }
 
 function lastCall(fn: ReturnType<typeof vi.fn>): [string, RequestInit] {
@@ -12,7 +14,7 @@ function lastCall(fn: ReturnType<typeof vi.fn>): [string, RequestInit] {
 }
 
 describe('shop-api', () => {
-	it('legge i negozi dell\'utente da /api/me/shops', async () => {
+	it("legge i negozi dell'utente da /api/me/shops", async () => {
 		const f = fakeFetch(200, { shops: [] });
 		expect(await fetchMyShops(f)).toEqual({ shops: [] });
 		expect(lastCall(f)[0]).toBe('/api/me/shops');
@@ -37,7 +39,7 @@ describe('shop-api', () => {
 		expect(JSON.parse(init.body as string)).toEqual({ pilot_id: 7, pack_id: 9 });
 	});
 
-	it('legge l\'inventario del pilota', async () => {
+	it("legge l'inventario del pilota", async () => {
 		const f = fakeFetch(200, {});
 		await fetchInventory(3, 7, f);
 		expect(lastCall(f)[0]).toBe('/api/championships/3/shop/inventory?pilot_id=7');
