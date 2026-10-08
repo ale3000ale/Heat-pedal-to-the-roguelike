@@ -137,9 +137,7 @@
 <ConfirmDialog
 	bind:open={confirmOpen}
 	title="Eliminare il template di negozio?"
-	message={deleting
-		? `Il template "${deleting.name}" viene eliminato; i pacchetti restano.`
-		: ''}
+	message={deleting ? `Il template "${deleting.name}" viene eliminato; i pacchetti restano.` : ''}
 	confirmLabel="Elimina"
 	onconfirm={remove}
 />
