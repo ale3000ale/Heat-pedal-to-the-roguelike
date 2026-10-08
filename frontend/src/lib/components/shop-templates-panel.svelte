@@ -102,7 +102,7 @@
 					<div class="flex flex-1 flex-col gap-1">
 						<span class="font-medium">{item.name}</span>
 						{#if item.is_empty}
-							<span class="text-sm font-medium text-yellow-600">⚠ Vuoto: non utilizzabile</span>
+							<span class="text-sm font-medium text-yellow-600">⚠ Senza pacchetti</span>
 						{:else}
 							<span class="text-sm text-muted-foreground">{namesOf(item)}</span>
 						{/if}
@@ -117,7 +117,10 @@
 	{/if}
 </section>
 
-<Modal bind:open={formOpen} title={editing ? 'Modifica template di negozio' : 'Nuovo template di negozio'}>
+<Modal
+	bind:open={formOpen}
+	title={editing ? 'Modifica template di negozio' : 'Nuovo template di negozio'}
+>
 	{#if formOpen}
 		<ShopTemplateForm
 			{packTemplates}
@@ -134,7 +137,9 @@
 <ConfirmDialog
 	bind:open={confirmOpen}
 	title="Eliminare il template di negozio?"
-	message={deleting ? `Il template "${deleting.name}" viene eliminato; i pacchetti restano.` : ''}
+	message={deleting
+		? `Il template "${deleting.name}" viene eliminato; i pacchetti restano.`
+		: ''}
 	confirmLabel="Elimina"
 	onconfirm={remove}
 />
