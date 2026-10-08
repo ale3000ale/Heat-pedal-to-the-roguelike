@@ -33,12 +33,22 @@ def test_parse_filter_cleans_names():
 
 
 def test_probability_is_per_copy_and_recalculated_after_each_draw():
+    # Pool A=3, B=1, C=6: i valori 0-2 sono A, 3 è B, 4-9 sono C (totale 10).
+    # Dopo aver estratto A restano A=2, B=1, C=6 (totale 9): 0-1 sono A, 2 è B, 3-8 sono C.
     pool = [card("A", 3), card("B", 1), card("C", 6)]
-    rng = StubRng([0, 3])
+    rng = StubRng([0, 2])
     drawn, new_pool = draw_cards(pool, 2, False, None, rng)
     assert rng.totals == [10, 9]
     assert [(c.name, c.copies) for c in drawn] == [("A", 1), ("B", 1)]
     assert {c.name: c.copies for c in new_pool} == {"A": 2, "C": 6}
+
+
+def test_each_copy_has_the_same_weight():
+    pool = [card("A", 3), card("B", 1), card("C", 6)]
+    expected = {0: "A", 2: "A", 3: "B", 4: "C", 9: "C"}
+    for roll, name in expected.items():
+        drawn, _ = draw_cards(pool, 1, False, None, StubRng([roll]))
+        assert [c.name for c in drawn] == [name]
 
 
 def test_the_same_card_can_come_out_more_than_once():
