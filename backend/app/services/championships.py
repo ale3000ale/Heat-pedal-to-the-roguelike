@@ -69,9 +69,10 @@ def _copy_pool(db: Session, pool: DeckPrototype) -> Deck:
 
 
 def _reset_pilot(db: Session, pilot: Pilot) -> None:
-    # Riporta il pilota allo stato iniziale: inventario di partenza, mazzo da gioco
-    # vuoto, gold, sponsor e point a zero. Senza commit.
+    # Riporta il pilota allo stato iniziale: inventario di partenza, inventario sponsor
+    # vuoto, mazzo da gioco vuoto, gold, sponsor e point a zero. Senza commit.
     db.get(Deck, pilot.inventory_deck_id).cards = dump_cards(STARTER_INVENTORY)
+    db.get(Deck, pilot.sponsor_inventory_deck_id).cards = dump_cards([])
     db.get(Deck, pilot.game_deck_id).cards = dump_cards([])
     pilot.gold = 0
     pilot.sponsor = 0
@@ -147,8 +148,8 @@ def close_championship(db: Session, championship_id: int) -> Championship:
 
 
 def enroll_pilot(db: Session, user: User, championship_id: int, pilot_id: int) -> Pilot:
-    # Iscrive un pilota dell'utente e lo reimposta: inventario iniziale, mazzo da gioco
-    # vuoto, gold, sponsor e point a zero.
+    # Iscrive un pilota dell'utente e lo reimposta: inventario iniziale, inventario
+    # sponsor vuoto, mazzo da gioco vuoto, gold, sponsor e point a zero.
     championship = get_championship(db, championship_id)
     if championship.is_closed:
         raise ChampionshipClosedError
