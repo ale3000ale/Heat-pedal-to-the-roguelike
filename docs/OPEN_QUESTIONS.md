@@ -1,19 +1,16 @@
 > **STATO: AGGIORNATO L'8 OTTOBRE 2026 (fase 12).**
 >
 > Domande aperte dopo la chiusura della fase 11. Le decisioni già prese sono in
-> `PROJECT_SPEC.md`; il funzionamento del Negozio, con le risposte dell'autore,
-> è in `SHOP_DESIGN.md` (bozza). Qui restano solo i punti non ancora decisi.
+> `PROJECT_SPEC.md`; il funzionamento del Negozio è in `SHOP_DESIGN.md` e la sua
+> traduzione tecnica in `SHOP_SCHEMA.md` (proposta da approvare).
 
 # Domande aperte — Heat
 
 ## Negozio (fase 12)
 
-Tutto il resto è deciso e scritto in `SHOP_DESIGN.md`.
-
-1. **Template di negozio con il triangolo giallo**: se un template di negozio ha
-   perso tutti i suoi template di pacchetto, si può comunque sceglierlo alla
-   creazione di un campionato (il negozio nasce vuoto), oppure è disattivato
-   nell'elenco? Si propone di disattivarlo.
+Nessuna domanda aperta sul funzionamento. Si attende solo l'approvazione di
+`SHOP_SCHEMA.md`. Ultima decisione: un template di negozio senza pacchetti
+(triangolo giallo) non è utilizzabile alla creazione del campionato.
 
 ## Fase futura (non blocca la fase 12)
 
