@@ -112,11 +112,7 @@
 							{#if pack.sold_out}
 								<span class="text-sm font-medium text-red-600">Terminato</span>
 							{:else}
-								<Button
-									size="sm"
-									onclick={() => buy(pack)}
-									disabled={busy || !canBuy(view, pack)}
-								>
+								<Button size="sm" onclick={() => buy(pack)} disabled={busy || !canBuy(view, pack)}>
 									Acquista
 								</Button>
 							{/if}
