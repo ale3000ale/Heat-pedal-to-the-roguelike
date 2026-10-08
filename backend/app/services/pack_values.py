@@ -33,6 +33,11 @@ def resolve_image(image_path: str | None) -> str:
     return image_path
 
 
+def values_of(source) -> dict:
+    # Legge le caratteristiche da un template o da un pacchetto.
+    return {field: getattr(source, field) for field in PACK_FIELDS}
+
+
 def apply_pack_values(target, values: dict) -> None:
     # Copia le caratteristiche del pacchetto su un template o su un pacchetto.
     # Senza commit: lo fa chi chiama.
