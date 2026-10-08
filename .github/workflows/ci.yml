@@ -37,6 +37,42 @@ jobs:
       - name: Esegui i test
         run: python -m pytest -q
 
+  migrations:
+    name: Migrazioni (database di test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PYTHONPATH: .
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Installa le dipendenze
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Database di test nuovo
+        # Il database è un file nuovo sul runner (./heat.db): non tocca quello locale.
+        run: rm -f heat.db
+      - name: Upgrade fino all'ultima migrazione
+        run: alembic upgrade head
+      - name: Verifica tabelle, colonne e indici
+        run: python ../.github/scripts/check_migrations.py schema
+      - name: Downgrade fino all'inizio
+        run: alembic downgrade base
+      - name: Verifica database vuoto
+        run: python ../.github/scripts/check_migrations.py empty
+      - name: Upgrade di nuovo
+        run: alembic upgrade head
+      - name: Verifica finale dello schema
+        run: python ../.github/scripts/check_migrations.py schema
+
   frontend:
     name: Frontend (check, lint, test, build)
     runs-on: ubuntu-latest
