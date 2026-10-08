@@ -107,6 +107,14 @@
 									</li>
 									<li>
 										<a
+											href={resolve('/admin/shop')}
+											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
+										>
+											Gestione negozio
+										</a>
+									</li>
+									<li>
+										<a
 											href={resolve('/admin/users')}
 											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
 										>
