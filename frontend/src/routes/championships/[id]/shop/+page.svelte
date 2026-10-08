@@ -5,6 +5,7 @@
 	import { resolve } from '$app/paths';
 	import { buyPack, fetchMyShops, fetchShop } from '$lib/shop-api';
 	import { packImageUrl, revealOrder } from '$lib/shop-cards';
+	import { currencyLabel } from '$lib/shop-format';
 	import { shopSelection } from '$lib/shop-selection.svelte';
 	import type { PurchaseResult, ShopPack, ShopPilotRef, ShopView } from '$lib/shop-types';
 	import Modal from '$lib/components/modal.svelte';
@@ -44,10 +45,6 @@
 
 	function message(e: unknown): string {
 		return e instanceof Error ? e.message : 'Errore sconosciuto';
-	}
-
-	function currencyLabel(currency: string): string {
-		return currency === 'gold' ? 'oro' : 'punti sponsor';
 	}
 
 	// Saldo del pilota nella valuta del pacchetto.
@@ -184,6 +181,12 @@
 					<Button size="sm" variant="outline" onclick={() => (inventoryOpen = true)}>
 						Inventario
 					</Button>
+					<a
+						href={resolve('/championships/[id]/shop/history', { id: String(championshipId) })}
+						class="text-sm text-muted-foreground hover:text-foreground"
+					>
+						Storico
+					</a>
 				{/if}
 				{#if pilots.length > 1}
 					<select
