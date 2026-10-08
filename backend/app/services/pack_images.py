@@ -1,9 +1,10 @@
 from pathlib import Path
 
+from app.config import MEDIA_DIR
 from app.services.images import CardImageError, save_card_image, slugify
 
-# Cartella dei file: backend/media/pack, con l'immagine predefinita e quelle caricate.
-DEFAULT_MEDIA_DIR = Path(__file__).resolve().parents[2] / "media" / "pack"
+# Cartella dei file: media/pack, con l'immagine predefinita e quelle caricate.
+DEFAULT_MEDIA_DIR = MEDIA_DIR / "pack"
 DEFAULT_FOLDER = "defaultIllustration"
 UPLOAD_FOLDER = "illustration"
 
