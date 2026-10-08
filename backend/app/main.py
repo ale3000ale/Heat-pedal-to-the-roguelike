@@ -14,6 +14,7 @@ from app.api.races import router as races_router
 from app.api.admin import router as admin_router
 from app.api.packs import router as packs_router
 from app.api.shop import router as shop_router
+from app.api.shop_play import router as shop_play_router
 from app.services.cleanup import purge_old_deleted
 
 from app.config import MEDIA_DIR
@@ -37,6 +38,7 @@ app.include_router(pools_router, prefix="/api/pools")
 app.include_router(championships_router, prefix="/api/championships")
 app.include_router(races_router, prefix="/api/championships")
 app.include_router(packs_router, prefix="/api/championships")
+app.include_router(shop_play_router, prefix="/api/championships")
 app.include_router(admin_router, prefix="/api/admin")
 app.include_router(shop_router, prefix="/api/shop")
 
