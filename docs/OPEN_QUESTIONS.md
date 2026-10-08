@@ -1,74 +1,55 @@
 > **STATO: AGGIORNATO L'8 OTTOBRE 2026 (fase 12).**
 >
 > Domande aperte dopo la chiusura della fase 11. Le decisioni già prese sono in
-> `PROJECT_SPEC.md`; il funzionamento del Negozio descritto dall'autore è in
-> `SHOP_DESIGN.md` (bozza). Qui restano solo i punti non ancora decisi.
+> `PROJECT_SPEC.md`; il funzionamento del Negozio, con le risposte dell'autore,
+> è in `SHOP_DESIGN.md` (bozza). Qui restano solo i punti non ancora decisi.
 
 # Domande aperte — Heat
 
 ## Negozio (fase 12)
 
-Già chiarito dall'autore (vedi `SHOP_DESIGN.md`): un negozio per campionato,
-accesso dal campionato e dalla barra, due sezioni (modifiche e sponsor),
-pacchetti creati dall'admin con numero di carte modifiche e sponsor, estrazione
-casuale con uguale probabilità e filtri, consumo della pool, scritta
-"Terminato", apertura animata, acquisto con oro o sponsor del pilota iscritto.
+Tutto il resto è deciso e scritto in `SHOP_DESIGN.md`.
 
-### Pacchetti e prezzi
+### Inventario sponsor
 
-1. Un pacchetto con carte sia modifiche sia sponsor in quale sezione compare?
-   Oppure ogni pacchetto è di una sola sezione?
-2. Il costo è un solo importo in una sola valuta (oro o sponsor) scelta per
-   pacchetto, o possono servire entrambe?
-3. Il collegamento è al campionato (copia del template alla creazione, modifiche
-   al template che non toccano i campionati esistenti, come per le pool)?
-4. Si può eliminare o disattivare un pacchetto? Che cosa succede a quelli già
-   comprati?
+1. Le carte sponsor, una volta nell'inventario sponsor, servono a qualcosa nel
+   gioco (ad esempio entrano nel mazzo da gioco) oppure sono solo da collezione
+   per ora?
+2. Il mazzo da gioco (massimo 15 carte) pesca solo dall'inventario delle
+   modifiche o anche da quello sponsor?
 
-### Estrazione e filtri
+### Acquisto
 
-5. I filtri su che cosa si basano? Le carte hanno solo nome, immagine e copie:
-   serve una categoria o etichetta per carta (esempio "freni"), oppure un filtro
-   per nome o parte del nome? Come si assegna?
-6. "Uguale probabilità": uguale per ogni carta distinta o per ogni copia
-   rimasta (una carta con 3 copie esce 3 volte più spesso di una con 1)?
-7. Nello stesso pacchetto la stessa carta può uscire più volte?
-8. Un pacchetto è "Terminato" quando le copie rimaste *nel sottoinsieme dei
-   filtri* sono meno delle carte da estrarre: conferma?
+3. L'ordine di estrazione in un pacchetto con modifiche e sponsor: prima tutte le
+   modifiche e poi gli sponsor, o l'ordine in cui l'admin le ha indicate? Vale
+   anche per l'ordine mostrato nell'animazione.
+4. Se il filtro non trova nessuna carta in una delle due pool, ma il pacchetto
+   richiede carte di quel tipo: "Terminato" (conferma).
+5. L'oro o i punti sponsor del pilota sono sempre sufficienti prima dell'acquisto?
+   Se il saldo non basta, il pulsante è disabilitato e mostra il prezzo (conferma).
+6. Un costo può essere 0 (pacchetto gratuito)? Si propone di consentirlo.
 
-### Immagini dei pacchetti
+### Gestione dei pacchetti
 
-9. Le cartelle sono `pack/defaultPack` (immagine predefinita) e
-   `pack/illustration` (immagini scelte): conferma. Il caricamento da interfaccia
-   è previsto o si riempiono a mano come le carte?
+7. Quando l'admin modifica un pacchetto (prezzo, carte, filtro), vale subito per
+   tutti gli acquisti successivi; lo storico conserva i valori del momento
+   dell'acquisto: conferma.
+8. Il nome del pacchetto deve essere unico nel negozio di un campionato?
+9. L'ordine in cui si vedono i pacchetti nel negozio: per data di creazione, per
+   prezzo o scelto dall'admin?
+10. I campionati attivi già esistenti prima della fase 12 non hanno pacchetti:
+    l'admin li crea a mano con "Crea pack", oppure serve un pulsante "Genera
+    dai template" per i campionati esistenti?
 
-### Accesso e permessi
+### Storico
 
-10. Un utente con più piloti iscritti allo stesso campionato: con quale pilota
-    compra?
-11. L'admin e il giudice senza pilota iscritto vedono i negozi in sola lettura?
-12. La voce "Negozio" nella barra compare sempre o solo con un pilota iscritto?
-13. Il negozio è sempre aperto o si blocca durante una gara in corso?
-14. In un campionato chiuso il negozio è in sola lettura (coerente con la regola
-    generale)?
+11. Lo storico di un pilota eliminato in modo definitivo si cancella con lui o resta
+    per l'admin (come la classifica congelata, senza riferimento al pilota)?
 
-### Aspetti tecnici
+### Immagini
 
-15. Storico degli acquisti (chi, cosa, quando, prezzo, carte uscite): serve una
-    tabella?
-16. Concorrenza: due acquisti insieme non devono consumare due volte la stessa
-    copia. Si usa una transazione unica (pagamento, estrazione, assegnazione) con
-    blocco sulla pool, come il blocco ottimistico dei mazzi?
-17. Se l'inventario del pilota ha già la carta, le copie si sommano? C'è un tetto?
-18. Le carte sponsor vanno nello stesso inventario delle modifiche? Il popup di
-    riepilogo mostra solo le carte della sezione aperta?
-19. Le carte Calore (ancora senza foto, parte delle modifiche) possono uscire dai
-    pacchetti?
-
-### Valori
-
-20. Prezzi e contenuto dei pacchetti di partenza: l'autore li imposterà dal
-    pannello; servono solo i template iniziali?
+12. Formato accettato per il caricamento dell'immagine del pacchetto (png, jpg,
+    jpeg, webp, come per le carte) e limite di dimensione del file?
 
 ## Altre domande rinviate
 
