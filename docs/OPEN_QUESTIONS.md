@@ -10,17 +10,10 @@
 
 Tutto il resto è deciso e scritto in `SHOP_DESIGN.md`.
 
-1. **Scelta del template di negozio**: si sceglie solo nel modulo di creazione
-   del campionato, oppure anche dopo, con un pulsante "Applica template" nelle
-   impostazioni del campionato? Se anche dopo, aggiunge i pacchetti a quelli già
-   presenti o li sostituisce? Si propone di aggiungerli.
-2. **Eliminare un template di pacchetto usato da un template di negozio**: si
-   blocca con un messaggio che elenca i template di negozio che lo usano, oppure
-   lo si toglie da quei template di negozio? Si propone di bloccare.
-3. **Duplicati**: lo stesso template di pacchetto può comparire più volte nello
-   stesso template di negozio (per avere due copie identiche)? Si propone di no.
-4. **Template di negozio senza pacchetti**: si può creare un template di negozio
-   vuoto? Si propone di sì, è uguale a un negozio vuoto.
+1. **Template di negozio con il triangolo giallo**: se un template di negozio ha
+   perso tutti i suoi template di pacchetto, si può comunque sceglierlo alla
+   creazione di un campionato (il negozio nasce vuoto), oppure è disattivato
+   nell'elenco? Si propone di disattivarlo.
 
 ## Fase futura (non blocca la fase 12)
 

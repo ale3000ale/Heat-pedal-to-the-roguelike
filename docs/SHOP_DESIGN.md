@@ -104,19 +104,29 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
 - Un modello da cui l'admin parte: ha le stesse caratteristiche di un pacchetto
   (nome, immagine, costo e valuta, carte per pool, filtro).
 - Non è un pacchetto in vendita.
+- **Eliminazione**: eliminare un template di pacchetto lo toglie da tutti i
+  template di negozio che lo usano. I campionati e i pacchetti già creati non
+  cambiano.
 
 ### Template di negozio
 
-- Ha un nome e l'elenco dei template di pacchetto che usa.
+- Ha un nome e l'elenco dei template di pacchetto che usa. Lo stesso template di
+  pacchetto non può comparire due volte nello stesso template di negozio.
+- Alla **creazione** deve contenere almeno un template di pacchetto: un template
+  di negozio vuoto non si può creare.
 - È **collegato** ai template di pacchetto: se si modifica un template di
   pacchetto, la modifica si vede subito in tutti i template di negozio che lo
   usano.
+- Se tutti i suoi template di pacchetto vengono eliminati, il template di negozio
+  resta, ma nell'elenco mostra un **triangolo giallo** di avviso; può tornare
+  utilizzabile aggiungendogli almeno un template di pacchetto.
 
 ### Creare il negozio di un campionato
 
 - Un nuovo campionato nasce con il negozio **vuoto**, oppure l'admin sceglie un
-  **template di negozio** da cui partire: in quel caso il negozio ha già una base
-  con i pacchetti di quel template.
+  **template di negozio** da cui partire, **solo nel modulo di creazione del
+  campionato**: in quel caso il negozio ha già una base con i pacchetti di quel
+  template. Dopo la creazione non si può applicare un template di negozio.
 - I pacchetti creati in questo modo sono **copie indipendenti**, modificabili per
   intero. Le modifiche successive ai template (di pacchetto o di negozio) non
   cambiano i campionati già creati.
