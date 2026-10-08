@@ -10,14 +10,17 @@
 
 Tutto il resto è deciso e scritto in `SHOP_DESIGN.md`.
 
-1. **Negozio vuoto alla creazione**: ora i pacchetti si creano a mano da un
-   template con "Crea pack". Questo sostituisce l'idea iniziale che i template
-   generassero da soli il negozio alla creazione del campionato. Conferma: un
-   nuovo campionato nasce con il negozio vuoto?
-2. **Pacchetto senza template**: con "Crea pack" si può anche creare un pacchetto
-   da zero, senza partire da un template?
-3. **Dimensione massima del file** dell'immagine di un pacchetto: si propone 5 MB
-   (le immagini vengono comunque convertite in webp e ridimensionate).
+1. **Scelta del template di negozio**: si sceglie solo nel modulo di creazione
+   del campionato, oppure anche dopo, con un pulsante "Applica template" nelle
+   impostazioni del campionato? Se anche dopo, aggiunge i pacchetti a quelli già
+   presenti o li sostituisce? Si propone di aggiungerli.
+2. **Eliminare un template di pacchetto usato da un template di negozio**: si
+   blocca con un messaggio che elenca i template di negozio che lo usano, oppure
+   lo si toglie da quei template di negozio? Si propone di bloccare.
+3. **Duplicati**: lo stesso template di pacchetto può comparire più volte nello
+   stesso template di negozio (per avere due copie identiche)? Si propone di no.
+4. **Template di negozio senza pacchetti**: si può creare un template di negozio
+   vuoto? Si propone di sì, è uguale a un negozio vuoto.
 
 ## Fase futura (non blocca la fase 12)
 

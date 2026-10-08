@@ -46,8 +46,10 @@ pilota iscritto; le carte ottenute vanno nell'inventario di quel pilota.
   barra di ricerca per nome.
 - Un pulsante **Storico** (solo nel negozio) apre un popup con tutti gli acquisti
   dei propri piloti iscritti, divisi per pilota in sezioni espandibili.
-- Un pacchetto il cui costo supera il saldo del pilota ha il pulsante
-  disabilitato, con il prezzo ben visibile.
+- **Saldo insufficiente**: se il costo di un pacchetto supera il saldo del pilota
+  (oro o punti sponsor, secondo la valuta del pacchetto), si disattiva solo il
+  pulsante d'acquisto di quel pacchetto, che resta visibile con il suo prezzo. Il
+  negozio e gli altri pacchetti restano utilizzabili.
 
 ## 4. Pacchetti
 
@@ -88,22 +90,40 @@ tempo).
   già state distribuite.
 - **Immagine**: quella predefinita sta in `backend/media/pack/defaultIllustration`.
   Per sceglierne un'altra si carica un file dall'interfaccia (finisce in
-  `backend/media/pack/illustration`) o si sceglie tra quelle già presenti. Si
-  accettano png, jpg/jpeg e webp; tutte vengono convertite in webp e
+  `backend/media/pack/illustration`; massimo 5 MB) o si sceglie tra quelle già
+  presenti. Si accettano png, jpg/jpeg e webp; tutte vengono convertite in webp e
   normalizzate alle stesse dimensioni delle carte (scatola massima 560x870 px).
 
-## 5. Dove si creano i pacchetti
+## 5. Template e creazione del negozio
 
-- **Gestione negozio** (nuova sezione, solo admin): qui si creano e si gestiscono
-  i *template* dei pacchetti. All'inizio non esiste nessun template. Un template
-  non è un pacchetto in vendita: è un modello da cui l'admin parte.
+L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
+(solo admin). All'inizio non ne esiste nessuno.
+
+### Template di pacchetto
+
+- Un modello da cui l'admin parte: ha le stesse caratteristiche di un pacchetto
+  (nome, immagine, costo e valuta, carte per pool, filtro).
+- Non è un pacchetto in vendita.
+
+### Template di negozio
+
+- Ha un nome e l'elenco dei template di pacchetto che usa.
+- È **collegato** ai template di pacchetto: se si modifica un template di
+  pacchetto, la modifica si vede subito in tutti i template di negozio che lo
+  usano.
+
+### Creare il negozio di un campionato
+
+- Un nuovo campionato nasce con il negozio **vuoto**, oppure l'admin sceglie un
+  **template di negozio** da cui partire: in quel caso il negozio ha già una base
+  con i pacchetti di quel template.
+- I pacchetti creati in questo modo sono **copie indipendenti**, modificabili per
+  intero. Le modifiche successive ai template (di pacchetto o di negozio) non
+  cambiano i campionati già creati.
 - **Impostazioni del campionato**: il pulsante "Crea pack" aggiunge un pacchetto
-  al negozio di quel campionato. L'admin sceglie un template e ottiene le
-  impostazioni già compilate, che può modificare per intero prima di creare il
-  pacchetto. Non è obbligatorio usare tutti i template: ne usa solo quelli che
-  servono per quel torneo.
-- Il pacchetto creato è una copia indipendente: le modifiche al template non
-  cambiano i pacchetti già creati.
+  al negozio. L'admin sceglie un template di pacchetto e ottiene le impostazioni
+  già compilate, che può modificare per intero prima di creare il pacchetto, oppure
+  lo crea da zero senza template. Non è obbligatorio usare tutti i template.
 - Da qui l'admin modifica o elimina i pacchetti del negozio e vede lo storico di
   tutti i piloti.
 - I campionati attivi esistenti prima della fase 12 hanno il negozio vuoto: i
