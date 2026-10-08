@@ -248,8 +248,4 @@
 	<PackReveal cards={revealed} />
 </Modal>
 
-<ShopInventoryModal
-	bind:open={inventoryOpen}
-	{championshipId}
-	pilotId={shop?.pilot?.id ?? null}
-/>
+<ShopInventoryModal bind:open={inventoryOpen} {championshipId} pilotId={shop?.pilot?.id ?? null} />
