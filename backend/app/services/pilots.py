@@ -73,7 +73,8 @@ def get_own_pilot(db: Session, user: User, pilot_id: int) -> Pilot:
 
 
 def create_pilot(db: Session, user: User, name: str, team_id: int | None = None) -> Pilot:
-    # Crea un pilota con i suoi due mazzi: inventario di partenza e mazzo da gioco vuoto.
+    # Crea un pilota con i suoi tre mazzi: inventario di partenza, inventario sponsor
+    # vuoto e mazzo da gioco vuoto.
     # Il team è facoltativo, ma se indicato deve essere un team visibile dell'utente.
     name = clean_name(name)
     key = name_key(name)
@@ -82,8 +83,9 @@ def create_pilot(db: Session, user: User, name: str, team_id: int | None = None)
     if _name_taken(db, key):
         raise PilotNameTakenError
     inventory = Deck(cards=dump_cards(STARTER_INVENTORY))
+    sponsor_inventory = Deck(cards=dump_cards([]))
     game = Deck(cards=dump_cards([]))
-    db.add_all([inventory, game])
+    db.add_all([inventory, sponsor_inventory, game])
     db.flush()
     pilot = Pilot(
         name=name,
@@ -91,6 +93,7 @@ def create_pilot(db: Session, user: User, name: str, team_id: int | None = None)
         team_id=team_id,
         user_id=user.id,
         inventory_deck_id=inventory.id,
+        sponsor_inventory_deck_id=sponsor_inventory.id,
         game_deck_id=game.id,
     )
     db.add(pilot)

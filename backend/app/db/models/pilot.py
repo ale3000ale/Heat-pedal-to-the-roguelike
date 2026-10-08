@@ -17,6 +17,8 @@ class Pilot(Base):
     team_id = Column(Integer, ForeignKey("team.id"), nullable=True)
     user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     inventory_deck_id = Column(Integer, ForeignKey("deck.id"), nullable=False, unique=True)
+    # Inventario delle carte sponsor, separato da quello delle modifiche.
+    sponsor_inventory_deck_id = Column(Integer, ForeignKey("deck.id"), nullable=False, unique=True)
     game_deck_id = Column(Integer, ForeignKey("deck.id"), nullable=False, unique=True)
     # Data di eliminazione logica; None = pilota visibile.
     deleted_at = Column(DateTime, nullable=True)
