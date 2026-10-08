@@ -75,6 +75,9 @@
 						>
 							Campionati
 						</a>
+						<a href={resolve('/shop')} class="text-sm text-muted-foreground hover:text-foreground">
+							Negozio
+						</a>
 						{#if auth.isAdmin}
 							<!-- Tutti i link riservati all'admin stanno qui dentro -->
 							<details class="relative" bind:open={adminMenuOpen} bind:this={adminMenu}>
