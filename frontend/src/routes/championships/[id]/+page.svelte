@@ -129,16 +129,27 @@
 					{championship.is_closed ? 'Chiuso' : 'Attivo'}
 				</p>
 			</div>
-			{#if auth.isAdmin}
-				<Button
-					size="sm"
-					variant="outline"
-					aria-label="Impostazioni del campionato"
-					onclick={() => (settingsOpen = true)}
-				>
-					⚙
-				</Button>
-			{/if}
+			<div class="flex items-center gap-2">
+				<!-- Campionato chiuso: il negozio si apre in sola lettura, solo per l'admin -->
+				{#if !championship.is_closed || auth.isAdmin}
+					<a
+						href={resolve('/championships/[id]/shop', { id: String(championship.id) })}
+						class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent"
+					>
+						Negozio
+					</a>
+				{/if}
+				{#if auth.isAdmin}
+					<Button
+						size="sm"
+						variant="outline"
+						aria-label="Impostazioni del campionato"
+						onclick={() => (settingsOpen = true)}
+					>
+						⚙
+					</Button>
+				{/if}
+			</div>
 		</div>
 
 		{#if !championship.is_closed}
