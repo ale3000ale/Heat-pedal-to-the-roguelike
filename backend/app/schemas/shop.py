@@ -59,3 +59,25 @@ class PackTemplateRead(BaseModel):
 class PackImageRead(BaseModel):
     # Percorso relativo dentro media/pack, es. "illustration/turbo.webp".
     path: str
+
+
+class ShopTemplateData(BaseModel):
+    # Dati per creare o modificare un template di negozio.
+    name: str = Field(min_length=2, max_length=40)
+    pack_template_ids: list[int] = Field(default_factory=list)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _clean_name(cls, value):
+        return clean_name(value) if isinstance(value, str) else value
+
+
+class ShopTemplateRead(BaseModel):
+    model_config = {"from_attributes": True}
+
+    id: int
+    name: str
+    created_at: datetime
+    pack_template_ids: list[int]
+    # Vero se non ha template di pacchetto (triangolo giallo, non utilizzabile).
+    is_empty: bool
