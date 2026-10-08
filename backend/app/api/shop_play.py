@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import CurrentUser, DbDep
+from app.api.deps import AdminUser, CurrentUser, DbDep
+from app.schemas.history import HistoryRead, PilotHistoryRead, PurchaseItemRead
 from app.schemas.purchase import (
     DrawnCardRead,
     PurchaseRead,
@@ -9,10 +10,14 @@ from app.schemas.purchase import (
     ShopPilotRead,
     ShopViewRead,
 )
+from app.schemas.shop_inventory import InventoryRead
+from app.services.cards import parse_cards
 from app.services.championships import ChampionshipClosedError, ChampionshipNotFoundError
 from app.services.packs import PackNotFoundError
 from app.services.pilots import PilotNotFoundError
 from app.services.shop_draw import PackSoldOutError
+from app.services.shop_history import group_by_pilot, list_all_history, list_own_history
+from app.services.shop_inventory import inventory_summary
 from app.services.shop_purchase import (
     InsufficientFundsError,
     InventoryLimitError,
@@ -26,6 +31,36 @@ router = APIRouter(tags=["shop-play"])
 CHAMPIONSHIP_NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Campionato non trovato")
 PILOT_NOT_FOUND = HTTPException(status.HTTP_404_NOT_FOUND, "Pilota non trovato")
 NOT_ENROLLED = HTTPException(status.HTTP_403_FORBIDDEN, "Il pilota non è iscritto al campionato")
+ACCESS_DENIED = HTTPException(status.HTTP_403_FORBIDDEN, "Accesso al negozio non consentito")
+
+
+def _cards_read(cards) -> list[DrawnCardRead]:
+    return [DrawnCardRead(**card.model_dump()) for card in cards]
+
+
+def _history_read(purchases) -> HistoryRead:
+    # Storico diviso per pilota; gli acquisti conservano le carte come testo JSON.
+    return HistoryRead(
+        pilots=[
+            PilotHistoryRead(
+                pilot_id=group.pilot_id,
+                pilot_name=group.pilot_name,
+                purchases=[
+                    PurchaseItemRead(
+                        id=item.id,
+                        pack_name=item.pack_name,
+                        currency=item.currency,
+                        cost=item.cost,
+                        purchased_at=item.purchased_at,
+                        cards_modifiche=_cards_read(parse_cards(item.cards_modifiche)),
+                        cards_sponsor=_cards_read(parse_cards(item.cards_sponsor)),
+                    )
+                    for item in group.purchases
+                ],
+            )
+            for group in group_by_pilot(purchases)
+        ]
+    )
 
 
 @router.get("/{championship_id}/shop", response_model=ShopViewRead)
@@ -43,7 +78,7 @@ def read_shop(
     except PilotNotEnrolledError:
         raise NOT_ENROLLED
     except ShopAccessDeniedError:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Accesso al negozio non consentito")
+        raise ACCESS_DENIED
     pilot = view.pilot
     return ShopViewRead(
         championship_id=view.championship.id,
@@ -108,8 +143,51 @@ def buy_pack(championship_id: int, data: PurchaseRequest, user: CurrentUser, db:
         pack_name=purchase.pack_name,
         currency=purchase.currency,
         cost=purchase.cost,
-        cards_modifiche=[DrawnCardRead(**card.model_dump()) for card in result.cards_modifiche],
-        cards_sponsor=[DrawnCardRead(**card.model_dump()) for card in result.cards_sponsor],
+        cards_modifiche=_cards_read(result.cards_modifiche),
+        cards_sponsor=_cards_read(result.cards_sponsor),
         gold=result.pilot.gold,
         sponsor=result.pilot.sponsor,
     )
+
+
+@router.get("/{championship_id}/shop/inventory", response_model=InventoryRead)
+def read_inventory(championship_id: int, pilot_id: int, user: CurrentUser, db: DbDep):
+    # Riepilogo per il popup del negozio: carte del pilota senza Velocità 1-4.
+    try:
+        pilot, modifiche, sponsor = inventory_summary(db, user, championship_id, pilot_id)
+    except ChampionshipNotFoundError:
+        raise CHAMPIONSHIP_NOT_FOUND
+    except PilotNotFoundError:
+        raise PILOT_NOT_FOUND
+    except PilotNotEnrolledError:
+        raise NOT_ENROLLED
+    except ShopAccessDeniedError:
+        raise ACCESS_DENIED
+    return InventoryRead(
+        pilot_id=pilot.id,
+        pilot_name=pilot.name,
+        modifiche=_cards_read(modifiche),
+        sponsor=_cards_read(sponsor),
+    )
+
+
+@router.get("/{championship_id}/shop/history", response_model=HistoryRead)
+def read_own_history(championship_id: int, user: CurrentUser, db: DbDep):
+    # Storico degli acquisti dei propri piloti, diviso per pilota.
+    try:
+        purchases = list_own_history(db, user, championship_id)
+    except ChampionshipNotFoundError:
+        raise CHAMPIONSHIP_NOT_FOUND
+    except ShopAccessDeniedError:
+        raise ACCESS_DENIED
+    return _history_read(purchases)
+
+
+@router.get("/{championship_id}/shop/history/all", response_model=HistoryRead)
+def read_all_history(championship_id: int, _admin: AdminUser, db: DbDep):
+    # Cronologia completa del campionato (impostazioni del negozio, solo admin).
+    try:
+        purchases = list_all_history(db, championship_id)
+    except ChampionshipNotFoundError:
+        raise CHAMPIONSHIP_NOT_FOUND
+    return _history_read(purchases)
