@@ -1,13 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { buyPack, fetchMyShops, fetchShop } from '$lib/shop-api';
 	import { packImageUrl, revealOrder } from '$lib/shop-cards';
+	import { shopSelection } from '$lib/shop-selection.svelte';
 	import type { PurchaseResult, ShopPack, ShopPilotRef, ShopView } from '$lib/shop-types';
 	import CardTile from '$lib/components/CardTile.svelte';
 	import Modal from '$lib/components/modal.svelte';
 	import { Button } from '$lib/components/ui/button';
+
+	type Area = 'modifiche' | 'sponsor';
 
 	const selectClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
@@ -16,18 +20,32 @@
 	let shop = $state<ShopView | null>(null);
 	let pilots = $state<ShopPilotRef[]>([]);
 	let selectedPilot = $state('');
+	let area = $state<Area>('modifiche');
+	let fromList = $state(false);
 	let error = $state<string | null>(null);
 	let buyError = $state<string | null>(null);
 	let busy = $state(false);
 	let result = $state<PurchaseResult | null>(null);
 	let resultOpen = $state(false);
 
-	let goldPacks = $derived(shop?.packs.filter((p) => p.currency === 'gold') ?? []);
-	let sponsorPacks = $derived(shop?.packs.filter((p) => p.currency === 'sponsor') ?? []);
+	// Area modifiche = pacchetti da pagare in oro; area sponsor = punti sponsor.
+	let visiblePacks = $derived(
+		shop?.packs.filter((p) => p.currency === (area === 'modifiche' ? 'gold' : 'sponsor')) ?? []
+	);
 	let revealed = $derived(result ? revealOrder(result) : []);
+
+	// Il ritorno dipende da dove si arriva: dall'elenco dei negozi si torna all'elenco,
+	// da ogni altra pagina (anche dopo un ricaricamento) al campionato.
+	afterNavigate(({ from }) => {
+		fromList = from?.route.id === '/shop';
+	});
 
 	function message(e: unknown): string {
 		return e instanceof Error ? e.message : 'Errore sconosciuto';
+	}
+
+	function currencyLabel(currency: string): string {
+		return currency === 'gold' ? 'oro' : 'punti sponsor';
 	}
 
 	// Saldo del pilota nella valuta del pacchetto.
@@ -77,7 +95,9 @@
 			const mine = await fetchMyShops();
 			const entry = mine.shops.find((s) => s.championship_id === championshipId);
 			pilots = entry?.pilots ?? [];
-			if (pilots.length > 0) selectedPilot = String(pilots[0].id);
+			const chosen = pilots.find((p) => p.id === shopSelection.pilotId) ?? pilots[0];
+			shopSelection.pilotId = null;
+			if (chosen) selectedPilot = String(chosen.id);
 		} catch (e) {
 			error = message(e);
 			return;
@@ -108,7 +128,10 @@
 							<span class="text-xs text-muted-foreground">Filtro: {pack.filter_text}</span>
 						{/if}
 						<div class="mt-auto flex items-center justify-between gap-2">
-							<span class="text-sm font-semibold">{pack.cost} {pack.currency}</span>
+							<span class="text-sm font-semibold">
+								{pack.cost}
+								{currencyLabel(pack.currency)}
+							</span>
 							{#if pack.sold_out}
 								<span class="text-sm font-medium text-red-600">Terminato</span>
 							{:else}
@@ -127,9 +150,18 @@
 <svelte:head><title>{shop ? shop.championship_name : 'Negozio'} - Heat</title></svelte:head>
 
 <main class="mx-auto max-w-5xl space-y-6 p-6">
-	<a href={resolve('/shop')} class="text-sm text-muted-foreground hover:text-foreground">
-		← Negozio
-	</a>
+	{#if fromList}
+		<a href={resolve('/shop')} class="text-sm text-muted-foreground hover:text-foreground">
+			← Negozio
+		</a>
+	{:else}
+		<a
+			href={resolve('/championships/[id]', { id: String(championshipId) })}
+			class="text-sm text-muted-foreground hover:text-foreground"
+		>
+			← Campionato
+		</a>
+	{/if}
 
 	{#if error}
 		<p class="text-sm text-destructive" role="alert">{error}</p>
@@ -141,7 +173,7 @@
 				<h1 class="text-2xl font-bold">{shop.championship_name}</h1>
 				{#if shop.pilot}
 					<p class="text-sm text-muted-foreground">
-						{shop.pilot.name} · {shop.pilot.gold} gold · {shop.pilot.sponsor} sponsor
+						{shop.pilot.name} · {shop.pilot.gold} oro · {shop.pilot.sponsor} punti sponsor
 					</p>
 				{/if}
 			</div>
@@ -171,14 +203,30 @@
 			<p class="text-sm text-destructive" role="alert">{buyError}</p>
 		{/if}
 
-		<section class="space-y-3">
-			<h2 class="text-lg font-semibold">Pacchetti gold</h2>
-			{@render packList(shop, goldPacks)}
-		</section>
+		<div class="flex gap-2" role="group" aria-label="Area del negozio">
+			<Button
+				size="sm"
+				variant={area === 'modifiche' ? 'default' : 'outline'}
+				aria-pressed={area === 'modifiche'}
+				onclick={() => (area = 'modifiche')}
+			>
+				Area modifiche
+			</Button>
+			<Button
+				size="sm"
+				variant={area === 'sponsor' ? 'default' : 'outline'}
+				aria-pressed={area === 'sponsor'}
+				onclick={() => (area = 'sponsor')}
+			>
+				Area sponsor
+			</Button>
+		</div>
 
 		<section class="space-y-3">
-			<h2 class="text-lg font-semibold">Pacchetti sponsor</h2>
-			{@render packList(shop, sponsorPacks)}
+			<h2 class="text-lg font-semibold">
+				{area === 'modifiche' ? 'Pacchetti modifiche (oro)' : 'Pacchetti sponsor (punti sponsor)'}
+			</h2>
+			{@render packList(shop, visiblePacks)}
 		</section>
 	{/if}
 </main>
