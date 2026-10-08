@@ -1,6 +1,7 @@
-> **STATO: PROPOSTA DA APPROVARE.** Traduzione tecnica di `SHOP_DESIGN.md`. Nessun
-> codice è stato scritto. Se approvata, le regole passano in `PROJECT_SPEC.md` e si
-> parte dalla sottofase 12a.
+> **STATO: IN IMPLEMENTAZIONE.** Traduzione tecnica di `SHOP_DESIGN.md`. La
+> sottofase 12a è completata (tabelle, inventario sponsor, immagini); le altre
+> sono da fare. Quando il Negozio sarà finito, le regole passano in
+> `PROJECT_SPEC.md`.
 
 # Negozio — schema, servizi, rotte e sottofasi
 
@@ -11,39 +12,43 @@ giallo) **non è utilizzabile**: nell'elenco del modulo di creazione del
 campionato è disattivato. Questa regola va riportata anche in `SHOP_DESIGN.md`
 quando lo si aggiorna.
 
-## 2. Tabelle nuove
+## 2. Tabelle nuove (create dalla migrazione della 12a)
 
 Campi comuni di costo e contenuto (usati da template e pacchetti): `name`,
 `image_path`, `currency` (`gold` o `sponsor`), `cost` (intero maggiore di 0),
 `modifiche_count` e `sponsor_count` (interi da 0, somma almeno 1),
 `filter_enabled`, `filter_text`.
 
+I nomi delle tabelle seguono la convenzione del progetto (singolare), come nel
+codice.
+
 | Tabella | Campi principali | Note |
 |---|---|---|
-| `pack_templates` | id, campi comuni, created_at, updated_at | Modelli di pacchetto, solo admin. |
-| `shop_templates` | id, name (unico, senza distinguere le maiuscole), created_at | Modelli di negozio. |
-| `shop_template_packs` | shop_template_id, pack_template_id (chiave doppia) | Collegamento vivo; eliminare un template di pacchetto elimina le sue righe qui (nessun duplicato per costruzione). |
-| `packs` | id, championship_id, campi comuni, created_at, updated_at | Pacchetti del campionato: copie indipendenti, cancellati con il campionato. |
-| `pack_purchases` | id, championship_id, pilot_id (facoltativo), pilot_name, pack_id (facoltativo), pack_name, currency, cost, cards_modifiche (JSON), cards_sponsor (JSON), purchased_at | Storico. Il nome del pilota e del pacchetto sono copiati al momento dell'acquisto; le righe restano se il pilota o il pacchetto vengono eliminati, e spariscono solo con il campionato. |
+| `pack_template` | id, campi comuni, created_at, updated_at | Modelli di pacchetto, solo admin. |
+| `shop_template` | id, name (unico, senza distinguere le maiuscole), created_at | Modelli di negozio. |
+| `shop_template_pack` | shop_template_id, pack_template_id (chiave doppia) | Collegamento vivo; eliminare un template di pacchetto elimina le sue righe qui (nessun duplicato per costruzione). |
+| `pack` | id, championship_id, campi comuni, created_at, updated_at | Pacchetti del campionato: copie indipendenti, cancellati con il campionato. |
+| `pack_purchase` | id, championship_id, pilot_id (facoltativo), pilot_name, pack_id (facoltativo), pack_name, currency, cost, cards_modifiche (JSON), cards_sponsor (JSON), purchased_at | Storico. Il nome del pilota e del pacchetto sono copiati al momento dell'acquisto; le righe restano se il pilota o il pacchetto vengono eliminati, e spariscono solo con il campionato. |
 
-## 3. Tabelle esistenti da modificare
+## 3. Tabelle esistenti modificate (12a)
 
-- `pilots`: nuova colonna `sponsor_inventory_deck_id` (riferimento univoco a
-  `Deck`), per l'inventario delle carte sponsor. La migrazione crea un mazzo vuoto
-  per ogni pilota esistente.
+- `pilot`: colonna `sponsor_inventory_deck_id` (riferimento univoco a `Deck`), per
+  l'inventario delle carte sponsor. La migrazione crea un mazzo vuoto per ogni
+  pilota esistente.
 - Iscrizione e chiusura del campionato: il reset del pilota svuota anche
-  l'inventario sponsor, come l'inventario delle modifiche.
-- `championships`: nessuna colonna nuova; il negozio è l'insieme dei suoi `packs`.
+  l'inventario sponsor, come reimposta l'inventario delle modifiche.
+- `championship`: nessuna colonna nuova; il negozio è l'insieme dei suoi `pack`.
 
-Una sola migrazione Alembic, con scaricamento (`downgrade`) che rimuove le tabelle
-e la colonna.
+La migrazione Alembic ha uno scaricamento (`downgrade`) che rimuove le tabelle e la
+colonna.
 
 ## 4. Servizi del backend
 
-- **Immagini dei pacchetti**: caricamento (png, jpg/jpeg, webp; massimo 5 MB),
-  conversione in webp e ridimensionamento nella scatola 560x870 px, riuso della
-  logica di `resize_cards`; elenco delle immagini disponibili; immagine
-  predefinita da `defaultIllustration`.
+- **Immagini dei pacchetti** (fatto nella 12a, `services/pack_images.py`):
+  caricamento (png, jpg/jpeg, webp; massimo 5 MB), conversione in webp e
+  ridimensionamento nella scatola 560x870 px con la logica di `services/images.py`;
+  elenco delle immagini disponibili; immagine predefinita da `defaultIllustration`.
+  Lo script `resize_cards` tratta anche le immagini dei pacchetti.
 - **Template di pacchetto e di negozio**: creazione, modifica, eliminazione con le
   regole di `SHOP_DESIGN.md` (almeno un pacchetto alla creazione di un template di
   negozio; indicatore "vuoto" calcolato, non salvato).
@@ -68,6 +73,8 @@ e la colonna.
   riprovare.
 - **Storico**: elenco per pilota per l'utente (solo i propri piloti iscritti);
   elenco completo per l'admin.
+- **Cancellazione del campionato**: deve eliminare anche `pack` e `pack_purchase`
+  (da fare nella 12b).
 
 ## 5. Rotte proposte (prefisso `/api`)
 
@@ -100,14 +107,14 @@ di versione, 422 dati non validi.
 
 ## 7. Sottofasi e verifiche
 
-| Sottofase | Contenuto | Test |
-|---|---|---|
-| 12a | Migrazione, modelli, inventario sponsor e reset, servizio immagini | Migrazione su e giù, reset all'iscrizione e alla chiusura, caricamento immagini |
-| 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template | Regole di creazione ed eliminazione, copie indipendenti, permessi |
-| 12c | Acquisto, estrazione, storico | Probabilità per copia, filtro, "Terminato", saldo, gara in corso, campionato chiuso, concorrenza, tetto 100 |
-| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | Test dei componenti e controlli del frontend |
-| 12e | Frontend dell'admin: gestione negozio, "Crea pack", storico completo | Come sopra |
-| 12f | Documenti, `PROJECT_SPEC.md`, stato e note | Revisione finale |
+| Sottofase | Contenuto | Test | Stato |
+|---|---|---|---|
+| 12a | Migrazione, modelli, inventario sponsor e reset, servizio e script delle immagini | Migrazione su e giù, reset all'iscrizione e alla chiusura, caricamento immagini | Completata (248 test) |
+| 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template, rotte delle immagini | Regole di creazione ed eliminazione, copie indipendenti, permessi | Da fare |
+| 12c | Acquisto, estrazione, storico | Probabilità per copia, filtro, "Terminato", saldo, gara in corso, campionato chiuso, concorrenza, tetto 100 | Da fare |
+| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | Test dei componenti e controlli del frontend | Da fare |
+| 12e | Frontend dell'admin: gestione negozio, "Crea pack", storico completo | Come sopra | Da fare |
+| 12f | Documenti, `PROJECT_SPEC.md`, stato e note | Revisione finale | Da fare |
 
 Ogni sottofase si chiude con test, controlli e commit sul ramo `phase-12-shop`,
 come nelle fasi precedenti.
