@@ -44,8 +44,10 @@ class PoolRuleError(ValueError):
 
 @dataclass
 class ReloadResult:
-    # Esito della ricarica: carte aggiunte, carte già presenti e file scartati.
+    # Esito della ricarica: carte aggiunte, carte rimosse perché il file non esiste più,
+    # carte già presenti e file scartati.
     added: list[str] = field(default_factory=list)
+    removed: list[str] = field(default_factory=list)
     already_present: int = 0
     warnings: list[str] = field(default_factory=list)
 
@@ -132,11 +134,27 @@ def delete_pool(db: Session, pool_id: int) -> None:
     db.commit()
 
 
+def _drop_missing(
+    cards: list[CardEntry], existing_paths: set[str], kind: str, result: ReloadResult
+) -> list[CardEntry]:
+    # Toglie le carte della cartella <tipo> il cui file non esiste più e ne annota il nome
+    # in result.removed. Le carte con un percorso fuori da quella cartella non si toccano.
+    prefix = f"cards/base/{kind}/"
+    kept: list[CardEntry] = []
+    for card in cards:
+        if card.path.startswith(prefix) and card.path not in existing_paths:
+            result.removed.append(card.name)
+        else:
+            kept.append(card)
+    return kept
+
+
 def reload_base_pool(db: Session, kind: str) -> ReloadResult:
-    # Ricarica una pool di base dalla sua cartella (backend/media/cards/base/<tipo>).
-    # Aggiunge soltanto: le carte nuove vanno in fondo, quelle già presenti (stesso nome,
-    # senza distinguere le maiuscole, oppure stesso percorso) non si toccano mai, così
-    # nomi e copie corretti a mano si conservano. Le carte tolte dalla cartella restano.
+    # Sincronizza una pool di base con la sua cartella (backend/media/cards/base/<tipo>).
+    # Le carte già presenti (stesso nome, senza distinguere le maiuscole, oppure stesso
+    # percorso) non si toccano, così nomi e copie corretti a mano si conservano. Le carte
+    # nuove vanno in fondo. Le carte il cui file non esiste più vengono tolte dal database.
+    # Se la cartella manca o non contiene immagini non si toglie nulla.
     pool = get_base_pool(db, kind)
     result = ReloadResult()
     folder = MEDIA_DIR / "cards" / "base" / kind
@@ -145,13 +163,21 @@ def reload_base_pool(db: Session, kind: str) -> ReloadResult:
         return result
 
     cards = pool_cards(pool)
-    names = {card_key(card.name) for card in cards}
-    paths = {card.path for card in cards}
     files = sorted(
         path
         for path in folder.iterdir()
         if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
     )
+    if files:
+        existing_paths = {f"cards/base/{kind}/{path.name}" for path in files}
+        cards = _drop_missing(cards, existing_paths, kind, result)
+    elif cards:
+        result.warnings.append(
+            f"Nessuna immagine in cards/base/{kind}: nessuna carta è stata rimossa"
+        )
+
+    names = {card_key(card.name) for card in cards}
+    paths = {card.path for card in cards}
     webp_stems = {path.stem.casefold() for path in files if path.suffix.lower() == ".webp"}
 
     for path in files:
@@ -181,7 +207,7 @@ def reload_base_pool(db: Session, kind: str) -> ReloadResult:
         paths.add(entry.path)
         result.added.append(entry.name)
 
-    if result.added:
+    if result.added or result.removed:
         pool.base_cards = dump_cards(cards)
         db.commit()
     return result

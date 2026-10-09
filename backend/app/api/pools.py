@@ -64,14 +64,15 @@ def list_all(admin: AdminUser, db: DbDep):
 
 @router.post("/base/{kind}/reload", response_model=PoolReloadResult)
 def reload(kind: PoolKind, admin: AdminUser, db: DbDep):
-    # Ricarica una pool di base dalla sua cartella: aggiunge le carte nuove, non toglie
-    # e non modifica quelle presenti (solo admin).
+    # Sincronizza una pool di base con la sua cartella (solo admin): aggiunge le carte
+    # nuove, toglie quelle il cui file non esiste più e non modifica quelle presenti.
     try:
         result = reload_base_pool(db, kind)
     except PoolNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Pool di base non trovata")
     return PoolReloadResult(
         added=result.added,
+        removed=result.removed,
         already_present=result.already_present,
         warnings=result.warnings,
     )

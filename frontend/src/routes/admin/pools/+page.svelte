@@ -32,6 +32,11 @@
 		return e instanceof Error ? e.message : 'Errore sconosciuto';
 	}
 
+	// Riga di riepilogo dell'esito di una ricarica.
+	function summary(result: ReloadResult): string {
+		return `Aggiunte: ${result.added.length}, rimosse: ${result.removed.length}, già presenti: ${result.already_present}.`;
+	}
+
 	function baseOf(kind: PoolKind): Pool | undefined {
 		return pools.find((pool) => pool.kind === kind && pool.name === baseNames[kind]);
 	}
@@ -77,7 +82,8 @@
 		}
 	}
 
-	// Legge i file della cartella e aggiunge soltanto le carte nuove.
+	// Sincronizza la pool di base con i file della cartella: aggiunge le carte nuove e
+	// toglie quelle il cui file non esiste più.
 	async function reload(kind: PoolKind) {
 		actionError = null;
 		busy = `reload-${kind}`;
@@ -156,10 +162,7 @@
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Pool di base</Card.Title>
-				<Card.Description>
-					«Ricarica» legge i file della cartella e aggiunge solo le carte nuove: non modifica né
-					toglie quelle già presenti.
-				</Card.Description>
+				<Card.Description>«Ricarica» sincronizza il database con la cartella.</Card.Description>
 			</Card.Header>
 			<Card.Content>
 				<ul class="divide-y">
@@ -193,11 +196,12 @@
 							</div>
 							{#if result}
 								<div class="mt-2 space-y-1 text-sm" role="status">
-									<p>
-										Aggiunte: {result.added.length}, già presenti: {result.already_present}.
-									</p>
+									<p>{summary(result)}</p>
 									{#if result.added.length > 0}
-										<p class="text-muted-foreground">{result.added.join(', ')}</p>
+										<p class="text-muted-foreground">Aggiunte: {result.added.join(', ')}</p>
+									{/if}
+									{#if result.removed.length > 0}
+										<p class="text-muted-foreground">Rimosse: {result.removed.join(', ')}</p>
 									{/if}
 									{#each result.warnings as warning (warning)}
 										<p class="text-destructive">{warning}</p>
