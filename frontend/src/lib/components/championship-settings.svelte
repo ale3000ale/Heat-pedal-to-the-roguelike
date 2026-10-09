@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipHistoryPanel from '$lib/components/championship-history-panel.svelte';
 	import ChampionshipPacksManager from '$lib/components/championship-packs-manager.svelte';
+	import ChampionshipPoolPanel from '$lib/components/championship-pool-panel.svelte';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 	import GoldRulesForm from '$lib/components/gold-rules-form.svelte';
 	import Modal from '$lib/components/modal.svelte';
@@ -29,6 +30,7 @@
 	let confirmDelete = $state(false);
 	let packsOpen = $state(false);
 	let historyOpen = $state(false);
+	let poolOpen = $state(false);
 
 	$effect(() => {
 		if (open) error = null;
@@ -47,6 +49,11 @@
 	function openHistory() {
 		open = false;
 		historyOpen = true;
+	}
+
+	function openPool() {
+		open = false;
+		poolOpen = true;
 	}
 
 	async function closeChampionship() {
@@ -99,6 +106,7 @@
 				<h3 class="text-sm font-semibold">Negozio</h3>
 				<div class="flex flex-wrap gap-2">
 					<Button size="sm" variant="outline" onclick={openPacks}>Pacchetti</Button>
+					<Button size="sm" variant="outline" onclick={openPool}>Pool completa</Button>
 					<Button size="sm" variant="outline" onclick={openHistory}>Storico</Button>
 				</div>
 			</div>
@@ -143,6 +151,11 @@
 				closed={championship.is_closed}
 				onchange={onshopchanged}
 			/>
+		{/if}
+	</Modal>
+	<Modal bind:open={poolOpen} title="Pool completa del campionato">
+		{#if poolOpen}
+			<ChampionshipPoolPanel championshipId={championship.id} />
 		{/if}
 	</Modal>
 	<Modal bind:open={historyOpen} title="Storico acquisti del campionato">
