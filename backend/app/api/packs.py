@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.api.deps import AdminUser, DbDep
 from app.schemas.pack import PackRead
 from app.schemas.shop import PackData
+from app.schemas.shop_pool import ShopPoolRead
 from app.services.championships import ChampionshipClosedError, ChampionshipNotFoundError
 from app.services.pack_images import PackImageError
 from app.services.packs import (
@@ -12,6 +13,7 @@ from app.services.packs import (
     list_packs,
     update_pack,
 )
+from app.services.shop_pool import build_shop_pool
 
 router = APIRouter(tags=["packs"])
 
@@ -26,6 +28,16 @@ def list_championship_packs(championship_id: int, admin: AdminUser, db: DbDep):
     # nella sottofase 12c).
     try:
         return list_packs(db, championship_id)
+    except ChampionshipNotFoundError:
+        raise CHAMPIONSHIP_NOT_FOUND
+
+
+@router.get("/{championship_id}/shop-pool", response_model=ShopPoolRead)
+def read_shop_pool(championship_id: int, admin: AdminUser, db: DbDep):
+    # Pool complete del campionato (modifiche e sponsor) con copie rimaste e probabilità
+    # (solo admin, anche a campionato chiuso).
+    try:
+        return build_shop_pool(db, championship_id)
     except ChampionshipNotFoundError:
         raise CHAMPIONSHIP_NOT_FOUND
 
