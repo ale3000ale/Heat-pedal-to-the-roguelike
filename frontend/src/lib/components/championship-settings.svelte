@@ -13,12 +13,14 @@
 		championship,
 		open = $bindable(false),
 		onclosed,
-		ondeleted
+		ondeleted,
+		onshopchanged
 	}: {
 		championship: { id: number; name: string; is_closed: boolean } | null;
 		open?: boolean;
 		onclosed?: (updated: Championship) => void | Promise<void>;
 		ondeleted?: () => void | Promise<void>;
+		onshopchanged?: () => void | Promise<void>;
 	} = $props();
 
 	let busy = $state(false);
@@ -136,7 +138,11 @@
 	/>
 	<Modal bind:open={packsOpen} title="Pacchetti del negozio">
 		{#if packsOpen}
-			<ChampionshipPacksManager championshipId={championship.id} closed={championship.is_closed} />
+			<ChampionshipPacksManager
+				championshipId={championship.id}
+				closed={championship.is_closed}
+				onchange={onshopchanged}
+			/>
 		{/if}
 	</Modal>
 	<Modal bind:open={historyOpen} title="Storico acquisti del campionato">

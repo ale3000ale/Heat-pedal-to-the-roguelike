@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { api } from '$lib/api';
+	import { listShopTemplates } from '$lib/shop-admin-api';
 	import { Button } from '$lib/components/ui/button';
 	import Modal from '$lib/components/modal.svelte';
+	import type { ShopTemplate } from '$lib/shop-admin-types';
 	import type { Pool } from '$lib/types';
 
 	let {
@@ -12,9 +14,11 @@
 	const fieldClass = 'h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
 
 	let pools = $state<Pool[]>([]);
+	let shopTemplates = $state<ShopTemplate[]>([]);
 	let name = $state('');
 	let poolId = $state('');
 	let sponsorId = $state('');
+	let shopTemplateId = $state('');
 	let error = $state<string | null>(null);
 	let busy = $state(false);
 	let poolsLoaded = false;
@@ -30,6 +34,11 @@
 		return `${pool.name} (${pool.cards_count} carte, ${pool.copies_count} copie)`;
 	}
 
+	// Un template di negozio senza pacchetti non si può scegliere.
+	function shopLabel(item: ShopTemplate): string {
+		return item.is_empty ? `${item.name} (senza pacchetti)` : item.name;
+	}
+
 	// Preseleziona la pool di base di ciascun tipo.
 	function presetPools() {
 		const base = modifichePools.find((pool) => pool.name === 'default') ?? modifichePools[0];
@@ -38,13 +47,19 @@
 		sponsorId = sponsor ? String(sponsor.id) : '';
 	}
 
+	// Le pool si caricano una volta sola; i template di negozio a ogni apertura,
+	// perché l'admin può averne creati nel frattempo. Il negozio parte vuoto di default.
 	async function prepare() {
 		error = null;
-		if (poolsLoaded) return;
 		try {
-			pools = await api<Pool[]>('/pools');
-			poolsLoaded = true;
-			presetPools();
+			if (!poolsLoaded) {
+				pools = await api<Pool[]>('/pools');
+				poolsLoaded = true;
+				presetPools();
+			}
+			shopTemplates = await listShopTemplates();
+			const chosen = shopTemplates.find((item) => String(item.id) === shopTemplateId);
+			if (!chosen || chosen.is_empty) shopTemplateId = '';
 		} catch (e) {
 			error = message(e);
 		}
@@ -64,10 +79,12 @@
 				body: {
 					name,
 					pool_id: poolId ? Number(poolId) : null,
-					sponsor_pool_id: sponsorId ? Number(sponsorId) : null
+					sponsor_pool_id: sponsorId ? Number(sponsorId) : null,
+					shop_template_id: shopTemplateId ? Number(shopTemplateId) : null
 				}
 			});
 			name = '';
+			shopTemplateId = '';
 			open = false;
 			await oncreated?.();
 		} catch (e) {
@@ -104,6 +121,16 @@
 				<option value="">Nessuna</option>
 				{#each sponsorPools as pool (pool.id)}
 					<option value={String(pool.id)}>{describe(pool)}</option>
+				{/each}
+			</select>
+		</label>
+
+		<label class="block space-y-1 text-sm">
+			<span>Template del negozio</span>
+			<select class={fieldClass} bind:value={shopTemplateId}>
+				<option value="">Negozio vuoto</option>
+				{#each shopTemplates as item (item.id)}
+					<option value={String(item.id)} disabled={item.is_empty}>{shopLabel(item)}</option>
 				{/each}
 			</select>
 		</label>

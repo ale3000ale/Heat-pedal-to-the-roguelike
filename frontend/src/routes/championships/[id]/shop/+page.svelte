@@ -1,13 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { api } from '$lib/api';
+	import { auth } from '$lib/auth.svelte';
 	import { buyPack, fetchMyShops, fetchShop } from '$lib/shop-api';
 	import { packImageUrl, revealOrder } from '$lib/shop-cards';
 	import { currencyLabel } from '$lib/shop-format';
 	import { shopSelection } from '$lib/shop-selection.svelte';
+	import type { ChampionshipDetail } from '$lib/types';
 	import type { PurchaseResult, ShopPack, ShopPilotRef, ShopView } from '$lib/shop-types';
+	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 	import Modal from '$lib/components/modal.svelte';
 	import PackReveal from '$lib/components/pack-reveal.svelte';
 	import ShopInventoryModal from '$lib/components/shop-inventory-modal.svelte';
@@ -20,6 +24,7 @@
 	const championshipId = Number(page.params.id);
 
 	let shop = $state<ShopView | null>(null);
+	let championship = $state<ChampionshipDetail | null>(null);
 	let pilots = $state<ShopPilotRef[]>([]);
 	let selectedPilot = $state('');
 	let area = $state<Area>('modifiche');
@@ -29,7 +34,9 @@
 	let busy = $state(false);
 	let result = $state<PurchaseResult | null>(null);
 	let resultOpen = $state(false);
+	let revealDone = $state(false);
 	let inventoryOpen = $state(false);
+	let settingsOpen = $state(false);
 
 	// Area modifiche = pacchetti da pagare in oro; area sponsor = punti sponsor.
 	let visiblePacks = $derived(
@@ -69,6 +76,24 @@
 		}
 	}
 
+	// Dati del campionato, serviti alle impostazioni dell'admin (nome e stato aperto/chiuso).
+	async function loadChampionship() {
+		try {
+			championship = await api<ChampionshipDetail>(`/championships/${championshipId}`);
+		} catch {
+			championship = null;
+		}
+	}
+
+	// Dopo la chiusura del campionato si aggiornano sia le impostazioni sia il negozio.
+	async function afterClosed() {
+		await Promise.all([loadChampionship(), loadShop()]);
+	}
+
+	async function afterDelete() {
+		await goto(resolve('/championships'));
+	}
+
 	async function changePilot() {
 		buyError = null;
 		await loadShop();
@@ -80,6 +105,7 @@
 		busy = true;
 		try {
 			result = await buyPack(championshipId, shop.pilot.id, pack.id);
+			revealDone = false;
 			resultOpen = true;
 			await loadShop();
 		} catch (e) {
@@ -90,6 +116,7 @@
 	}
 
 	onMount(async () => {
+		if (auth.isAdmin) void loadChampionship();
 		try {
 			const mine = await fetchMyShops();
 			const entry = mine.shops.find((s) => s.championship_id === championshipId);
@@ -200,6 +227,16 @@
 						{/each}
 					</select>
 				{/if}
+				{#if auth.isAdmin && championship}
+					<Button
+						size="sm"
+						variant="outline"
+						aria-label="Impostazioni del campionato"
+						onclick={() => (settingsOpen = true)}
+					>
+						⚙
+					</Button>
+				{/if}
 			</div>
 		</div>
 
@@ -243,8 +280,22 @@
 	{/if}
 </main>
 
-<Modal bind:open={resultOpen} title={result ? result.pack_name : 'Pacchetto'}>
-	<PackReveal cards={revealed} />
+<Modal
+	bind:open={resultOpen}
+	title={result ? result.pack_name : 'Pacchetto'}
+	closeOnOutside={revealDone}
+>
+	<PackReveal cards={revealed} bind:done={revealDone} />
 </Modal>
 
 <ShopInventoryModal bind:open={inventoryOpen} {championshipId} pilotId={shop?.pilot?.id ?? null} />
+
+{#if auth.isAdmin}
+	<ChampionshipSettings
+		{championship}
+		bind:open={settingsOpen}
+		onclosed={afterClosed}
+		ondeleted={afterDelete}
+		onshopchanged={loadShop}
+	/>
+{/if}

@@ -17,7 +17,16 @@
 
 	// Pacchetti del negozio di un campionato: elenco, "Crea pack" (da zero o da un template),
 	// modifica ed eliminazione. A campionato chiuso resta in sola lettura.
-	let { championshipId, closed }: { championshipId: number; closed: boolean } = $props();
+	// `onchange` viene chiamato dopo ogni modifica, per aggiornare il negozio sullo sfondo.
+	let {
+		championshipId,
+		closed,
+		onchange
+	}: {
+		championshipId: number;
+		closed: boolean;
+		onchange?: () => void | Promise<void>;
+	} = $props();
 
 	const field = 'h-8 w-full rounded-md border border-input bg-background px-2 text-sm';
 
@@ -38,6 +47,7 @@
 
 	async function reload() {
 		packs = await listChampionshipPacks(championshipId);
+		await onchange?.();
 	}
 
 	function create() {
