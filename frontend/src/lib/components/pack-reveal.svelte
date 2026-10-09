@@ -13,8 +13,10 @@
 	let flipped = $state<boolean[]>(untrack(() => cards.map(() => false)));
 	let remaining = $derived(flipped.filter((value) => !value).length);
 
+	// Aggiorna `done` solo quando cambia, così l'effetto non si ripete.
 	$effect(() => {
-		done = remaining === 0;
+		const finished = remaining === 0;
+		if (done !== finished) done = finished;
 	});
 
 	function flip(index: number) {
