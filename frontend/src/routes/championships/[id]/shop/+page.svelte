@@ -231,7 +231,7 @@
 					<Button
 						size="sm"
 						variant="outline"
-						aria-label="Impostazioni del campionato"
+						aria-label="Impostazioni del negozio"
 						onclick={() => (settingsOpen = true)}
 					>
 						⚙
@@ -294,6 +294,7 @@
 	<ChampionshipSettings
 		{championship}
 		bind:open={settingsOpen}
+		shopOnly
 		onclosed={afterClosed}
 		ondeleted={afterDelete}
 		onshopchanged={loadShop}

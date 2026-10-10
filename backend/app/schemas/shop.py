@@ -5,13 +5,17 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.services.names import clean_name
 
+# Costo di un nuovo pacchetto quando non è indicato: 10 oro oppure 2 punti sponsor.
+DEFAULT_PACK_COSTS = {"gold": 10, "sponsor": 2}
+
 
 class PackData(BaseModel):
     # Caratteristiche di un template di pacchetto o di un pacchetto (dati in ingresso).
+    # Senza valuta si usa l'oro; senza costo, quello predefinito della valuta.
     name: str = Field(min_length=1, max_length=40)
     image_path: str | None = None
-    currency: Literal["gold", "sponsor"]
-    cost: int = Field(gt=0)
+    currency: Literal["gold", "sponsor"] = "gold"
+    cost: int | None = Field(default=None, gt=0)
     modifiche_count: int = Field(default=3, ge=0)
     sponsor_count: int = Field(default=0, ge=0)
     filter_enabled: bool = False
@@ -33,6 +37,8 @@ class PackData(BaseModel):
 
     @model_validator(mode="after")
     def _check_rules(self):
+        if self.cost is None:
+            self.cost = DEFAULT_PACK_COSTS[self.currency]
         if self.modifiche_count + self.sponsor_count < 1:
             raise ValueError("Il pacchetto deve contenere almeno una carta")
         if self.filter_enabled and not self.filter_text:

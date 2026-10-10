@@ -1,6 +1,9 @@
 import type { Currency } from '$lib/shop-types';
 import type { PackData, PackFields } from '$lib/shop-admin-types';
 
+// Costo di partenza di un nuovo pacchetto, per valuta (uguale al backend).
+export const DEFAULT_PACK_COSTS: Record<Currency, number> = { gold: 10, sponsor: 2 };
+
 // Stato del modulo di un pacchetto: testi e numeri come li modifica l'utente.
 export interface PackForm {
 	name: string;
@@ -13,18 +16,24 @@ export interface PackForm {
 	filter_text: string;
 }
 
-// Modulo vuoto con i valori di partenza di un nuovo pacchetto.
+// Modulo vuoto con i valori di partenza di un nuovo pacchetto (10 oro).
 export function emptyPackForm(): PackForm {
 	return {
 		name: '',
 		image_path: '',
 		currency: 'gold',
-		cost: 100,
+		cost: DEFAULT_PACK_COSTS.gold,
 		modifiche_count: 3,
 		sponsor_count: 0,
 		filter_enabled: false,
 		filter_text: ''
 	};
+}
+
+// Cambio di valuta: se il costo è ancora quello predefinito della valuta precedente
+// passa a quello della nuova (10 oro, 2 sponsor); un costo scelto a mano resta com'è.
+export function costAfterCurrencyChange(cost: number, from: Currency, to: Currency): number {
+	return cost === DEFAULT_PACK_COSTS[from] ? DEFAULT_PACK_COSTS[to] : cost;
 }
 
 // Modulo precompilato da un pacchetto o da un template esistente.

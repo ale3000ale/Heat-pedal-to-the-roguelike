@@ -10,15 +10,19 @@
 	import SettingsDialog from '$lib/components/settings-dialog.svelte';
 	import type { Championship } from '$lib/types';
 
+	// Con `shopOnly` il popup mostra solo le impostazioni del negozio (pacchetti, pool
+	// completa, storico), senza oro per gara né chiusura o eliminazione del campionato.
 	let {
 		championship,
 		open = $bindable(false),
+		shopOnly = false,
 		onclosed,
 		ondeleted,
 		onshopchanged
 	}: {
 		championship: { id: number; name: string; is_closed: boolean } | null;
 		open?: boolean;
+		shopOnly?: boolean;
 		onclosed?: (updated: Championship) => void | Promise<void>;
 		ondeleted?: () => void | Promise<void>;
 		onshopchanged?: () => void | Promise<void>;
@@ -88,12 +92,15 @@
 	}
 </script>
 
-<SettingsDialog bind:open title="Impostazioni del campionato">
+<SettingsDialog
+	bind:open
+	title={shopOnly ? 'Impostazioni del negozio' : 'Impostazioni del campionato'}
+>
 	{#if championship}
 		<div class="space-y-4">
 			<p class="text-sm text-muted-foreground">{championship.name}</p>
 
-			{#if !championship.is_closed}
+			{#if !shopOnly && !championship.is_closed}
 				<GoldRulesForm
 					url={`/championships/${championship.id}/gold-rules`}
 					title="Oro per gara"
@@ -102,7 +109,7 @@
 				/>
 			{/if}
 
-			<div class="space-y-2 border-t pt-4">
+			<div class={shopOnly ? 'space-y-2' : 'space-y-2 border-t pt-4'}>
 				<h3 class="text-sm font-semibold">Negozio</h3>
 				<div class="flex flex-wrap gap-2">
 					<Button size="sm" variant="outline" onclick={openPacks}>Pacchetti</Button>
@@ -111,20 +118,22 @@
 				</div>
 			</div>
 
-			<div class="space-y-2 border-t pt-4">
-				{#if error}
-					<p class="text-sm text-destructive" role="alert">{error}</p>
-				{/if}
-				{#if championship.is_closed}
-					<Button variant="destructive" disabled={busy} onclick={() => (confirmDelete = true)}>
-						Elimina campionato
-					</Button>
-				{:else}
-					<Button variant="destructive" disabled={busy} onclick={() => (confirmClose = true)}>
-						Chiudi campionato
-					</Button>
-				{/if}
-			</div>
+			{#if !shopOnly}
+				<div class="space-y-2 border-t pt-4">
+					{#if error}
+						<p class="text-sm text-destructive" role="alert">{error}</p>
+					{/if}
+					{#if championship.is_closed}
+						<Button variant="destructive" disabled={busy} onclick={() => (confirmDelete = true)}>
+							Elimina campionato
+						</Button>
+					{:else}
+						<Button variant="destructive" disabled={busy} onclick={() => (confirmClose = true)}>
+							Chiudi campionato
+						</Button>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	{/if}
 </SettingsDialog>

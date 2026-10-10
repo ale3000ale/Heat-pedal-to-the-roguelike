@@ -2,9 +2,15 @@
 	import { onMount, untrack } from 'svelte';
 	import { listPackImages, uploadPackImage } from '$lib/shop-admin-api';
 	import { errorMessage } from '$lib/shop-admin-format';
-	import { toPackData, validatePackForm, type PackForm } from '$lib/shop-admin-validation';
+	import {
+		costAfterCurrencyChange,
+		toPackData,
+		validatePackForm,
+		type PackForm
+	} from '$lib/shop-admin-validation';
 	import { packImageUrl } from '$lib/shop-cards';
 	import type { PackData, PackImage } from '$lib/shop-admin-types';
+	import type { Currency } from '$lib/shop-types';
 	import { Button } from '$lib/components/ui/button';
 
 	// Modulo di un pacchetto, usato per i template e per i pacchetti del campionato.
@@ -36,6 +42,16 @@
 			error = errorMessage(e);
 		}
 	});
+
+	// Cambio di valuta: il costo predefinito segue la valuta (10 oro, 2 sponsor), mentre
+	// un costo scelto a mano non viene toccato. Legge la valuta dall'evento, così non
+	// dipende dall'ordine con cui Svelte aggiorna `form.currency`.
+	function changeCurrency(event: Event) {
+		const next: Currency =
+			(event.currentTarget as HTMLSelectElement).value === 'sponsor' ? 'sponsor' : 'gold';
+		const previous: Currency = next === 'gold' ? 'sponsor' : 'gold';
+		form.cost = costAfterCurrencyChange(form.cost, previous, next);
+	}
 
 	// Carica il file scelto e lo seleziona come immagine del pacchetto.
 	async function pickFile(event: Event) {
@@ -82,7 +98,7 @@
 	<div class="grid grid-cols-2 gap-3">
 		<label class="block space-y-1 text-sm">
 			<span>Valuta</span>
-			<select class={field} bind:value={form.currency}>
+			<select class={field} bind:value={form.currency} onchange={changeCurrency}>
 				<option value="gold">Oro</option>
 				<option value="sponsor">Punti sponsor</option>
 			</select>

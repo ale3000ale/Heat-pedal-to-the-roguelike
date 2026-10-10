@@ -36,6 +36,19 @@
 	);
 	// Una gara senza classifica è in corso: finché c'è non se ne può creare un'altra.
 	let raceInProgress = $derived(races.some((race) => race.participants === 0));
+	// Gare dalla più recente: per data decrescente, a parità (o senza data) per numero.
+	let sortedRaces = $derived(
+		[...races].sort((a, b) => {
+			const byDate = raceTime(b.date) - raceTime(a.date);
+			return byDate !== 0 ? byDate : b.number - a.number;
+		})
+	);
+
+	// Istante della data in millisecondi; una data non impostata vale 0 (in fondo all'elenco).
+	function raceTime(value: string | null): number {
+		const time = value ? new Date(value).getTime() : 0;
+		return Number.isNaN(time) ? 0 : time;
+	}
 
 	// La data della gara può non essere impostata (gare create prima della data automatica).
 	function raceDate(value: string | null): string {
@@ -246,7 +259,7 @@
 					<p class="text-sm text-muted-foreground">Nessuna gara ancora disputata.</p>
 				{:else}
 					<ul class="divide-y">
-						{#each races as race (race.id)}
+						{#each sortedRaces as race (race.id)}
 							<li>
 								<a
 									href={resolve('/championships/[id]/races/[raceId]', {

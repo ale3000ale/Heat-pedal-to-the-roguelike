@@ -46,8 +46,9 @@
 						<tr class="border-b last:border-0">
 							<td class="py-1">
 								<div class="flex items-center gap-2">
+									<!-- Il percorso della carta è relativo a media/: va servito da /media/ -->
 									<img
-										src={card.path}
+										src="/media/{card.path}"
 										alt={card.name}
 										loading="lazy"
 										class="h-12 w-8 rounded object-cover"
