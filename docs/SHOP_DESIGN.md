@@ -1,10 +1,11 @@
-> **STATO: APPROVATO PER IL BACKEND (aggiornato il 10 ottobre 2026).** Descrive il
+> **STATO: APPROVATO PER IL BACKEND (aggiornato l'11 ottobre 2026).** Descrive il
 > funzionamento del Negozio come lo ha spiegato l'autore l'8 ottobre 2026, con le
 > risposte alle domande. Le regole sono riportate nella sezione 13 di
 > `PROJECT_SPEC.md`; lo schema tecnico è in `SHOP_SCHEMA.md`. Il backend (12a-12c) è
 > completato; il frontend (12d, 12e) è in corso. Le parti ancora da decidere sono in
 > `OPEN_QUESTIONS.md`. Il 10 ottobre 2026 l'autore ha scelto, per il frontend, un solo
-> pulsante Inventario e lo Storico come pagina separata (sezioni 3 e 8).
+> pulsante Inventario e lo Storico come pagina separata (sezioni 3 e 8). L'11 ottobre
+> 2026 ha scelto l'apertura della busta con uno strappo (sezione 6).
 
 # Negozio — progetto della fase 12
 
@@ -165,8 +166,11 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
    carte sponsor.
 4. Il pacchetto compare in primo piano; lo sfondo si sfoca e non è più
    cliccabile.
-5. Prima si vede la busta chiusa. Un clic in qualsiasi punto la fa scorrere
-   verso il basso e mostra la prima carta.
+5. Prima si vede la busta chiusa. Un clic in qualsiasi punto la apre con uno
+   strappo (decisione dell'11 ottobre): la striscia superiore se ne va e la busta
+   resta tagliata in alto, con il bordo irregolare; poi compare la prima carta. È
+   solo un effetto grafico (CSS) e non cambia l'acquisto. I valori tecnici sono in
+   `SHOP_SCHEMA.md`.
 6. Ogni clic successivo fa scorrere la carta verso sinistra e mostra la
    seguente, fino all'ultima.
 
