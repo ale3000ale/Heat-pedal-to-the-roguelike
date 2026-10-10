@@ -21,8 +21,14 @@ Decisioni del 10 ottobre 2026 (non più aperte):
 
 - La ricarica delle pool di base chiede conferma prima di togliere carte: elenca ogni
   carta e dice se è nella copia di pool di un campionato attivo.
-- L'elenco dei campionati con negozio nella barra di navigazione non serve: la pagina
-  del negozio indica già i campionati del giocatore e chiede con quale pilota entrare.
+- L'elenco dei campionati con negozio per la barra di navigazione e per la scelta del
+  pilota serve ed esiste: `GET /api/me/shops` (`api/shop_me.py`) restituisce i
+  campionati a cui l'utente partecipa con i piloti iscritti. Una versione precedente di
+  questo file lo dava per non necessario; la correzione è stata fatta dopo la lettura
+  del codice.
+- Nel negozio lo storico resta una pagina separata e l'inventario un solo pulsante
+  (invece del popup con sezioni espandibili e del pulsante in ogni area previsti in
+  `SHOP_DESIGN.md`).
 - Gli acquisti si serializzano con un blocco sul database (`BEGIN IMMEDIATE` su SQLite).
 - La pool sponsor è usata dai pacchetti per estrarre le carte sponsor.
 - I pacchetti nuovi costano 10 oro oppure 2 sponsor.
