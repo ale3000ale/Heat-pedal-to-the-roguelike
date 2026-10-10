@@ -3,7 +3,8 @@
 > risposte alle domande. Le regole sono riportate nella sezione 13 di
 > `PROJECT_SPEC.md`; lo schema tecnico è in `SHOP_SCHEMA.md`. Il backend (12a-12c) è
 > completato; il frontend (12d, 12e) è in corso. Le parti ancora da decidere sono in
-> `OPEN_QUESTIONS.md`.
+> `OPEN_QUESTIONS.md`. Il 10 ottobre 2026 l'autore ha scelto, per il frontend, un solo
+> pulsante Inventario e lo Storico come pagina separata (sezioni 3 e 8).
 
 # Negozio — progetto della fase 12
 
@@ -39,17 +40,19 @@ pilota iscritto; le carte ottenute vanno nell'inventario di quel pilota.
   distingue **solo la valuta**: i pacchetti pagati in oro stanno nella sezione
   modifiche, quelli pagati in punti sponsor nella sezione sponsor. Le carte che
   escono da un pacchetto non dipendono dalla sezione.
-- Dentro ciascuna sezione:
-  - un pulsante apre un popup con il riepilogo dell'inventario del pilota: carte
-    in miniatura, con in basso a destra il numero di copie; le carte di default
-    (Velocità 1-4) sono escluse; il popup si chiude con una X in alto a destra;
-  - nel resto della pagina ci sono i pacchetti di quella sezione.
+- **Inventario** (decisione del 10 ottobre: un solo pulsante, non uno per sezione):
+  un pulsante "Inventario", vicino al saldo in alto a destra, apre un popup con il
+  riepilogo dell'inventario del pilota: carte in miniatura, con in basso a destra
+  il numero di copie; le carte di default (Velocità 1-4) sono escluse; il popup si
+  chiude con una X in alto a destra.
+- Dentro ciascuna sezione ci sono i pacchetti di quella sezione.
 - **Ordinamento e ricerca** (scelta del singolo giocatore, non salvata nel
   campionato): di default dal meno caro al più caro; si può scegliere dal più
   caro al meno caro, in ordine alfabetico o alfabetico inverso. In più c'è una
-  barra di ricerca per nome.
-- Un pulsante **Storico** (solo nel negozio) apre un popup con tutti gli acquisti
-  dei propri piloti iscritti, divisi per pilota in sezioni espandibili.
+  barra di ricerca per nome. Si trovano in ciascuna sezione, sopra i pacchetti.
+- **Storico** (decisione del 10 ottobre: pagina separata, non popup): un link
+  "Storico", vicino al saldo, porta a una pagina che mostra tutti gli acquisti
+  dei propri piloti iscritti, divisi per pilota (sezione 8).
 - **Saldo insufficiente**: se il costo di un pacchetto supera il saldo del pilota
   (oro o punti sponsor, secondo la valuta del pacchetto), si disattiva solo il
   pulsante d'acquisto di quel pacchetto, che resta visibile con il suo prezzo. Il
@@ -186,9 +189,9 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
 
 - Ogni acquisto registra almeno: pilota, pacchetto, costo e valuta, data e ora,
   carte ottenute.
-- Si vede solo dal negozio, con il pulsante "Storico": un popup con i propri
-  piloti iscritti, ciascuno in una sezione espandibile. Il giocatore non vede gli
-  acquisti di un pilota che ha eliminato.
+- Si vede solo dal negozio, con il link "Storico" (decisione del 10 ottobre: pagina
+  separata invece del popup): mostra i propri piloti iscritti, divisi per pilota.
+  Il giocatore non vede gli acquisti di un pilota che ha eliminato.
 - L'admin, dalle impostazioni del negozio, vede lo storico di tutti i piloti; nel
   negozio è come un giocatore qualsiasi.
 - Alla chiusura del campionato lo storico **resta solo per l'admin** e viene
