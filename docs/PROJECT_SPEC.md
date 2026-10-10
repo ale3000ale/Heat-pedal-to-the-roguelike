@@ -94,7 +94,7 @@ pilota, rappresentati da tre riferimenti a `Deck` sul pilota (`inventory_deck_id
 ### Pool di base, pool derivate e pool del campionato
 
 - **Due pool di base, distinte**: la pool delle **modifiche** e la pool degli **sponsor**. Ciascuna è un `DeckPrototype` con il suo tipo ed è il catalogo completo delle carte e delle copie di quel tipo. Nomi tecnici: `default` per le modifiche e `sponsor` per gli sponsor. La pool degli sponsor è usata dai pacchetti per le carte sponsor.
-- Le carte Velocità 1-4 non fanno parte di nessuna pool di base, perché sono assegnate di default a tutti i piloti. Le carte Calore, per ora, sono considerate parte delle modifiche e verranno aggiunte con le foto.
+- Le carte Velocità 1-4 non fanno parte di nessuna pool di base, perché sono assegnate di default a tutti i piloti. Le carte Calore sono carte modifiche come le altre.
 - **Pool derivata**: l'admin la crea sempre a partire dalla pool di base dello stesso tipo, senza nuove immagini. Sceglie le carte da includere, il numero di copie di ciascuna (mai superiore a quello della base) e assegna un nome univoco.
 - Le pool derivate usano nome, immagine e percorso delle carte già presenti nella pool di base. Le carte di una pool si possono rinominare dalla pagina di dettaglio della pool.
 - Le pool di base non si possono eliminare; una pool derivata può essere eliminata senza modificare i campionati già creati.
@@ -237,7 +237,7 @@ Lo stesso reset si applica ai piloti iscritti anche alla chiusura del campionato
 - Pilota: inventario e mazzo da gioco, con spostamento delle carte (massimo 15 nel mazzo) e campionato attivo.
 - Campionati: elenco di attivi e chiusi (pulsante "+" per crearne uno, solo admin), dettaglio con iscrizione di un pilota, gare ("in corso" o "terminata") e classifica; ingranaggio con le impostazioni del campionato (solo admin).
 - Gara: classifica, piloti da assegnare, non partecipanti, pulsante "Termina"; correzione solo per l'admin.
-- Negozio del campionato: pacchetti, acquisto, inventario e storico (sezione 13); alcune pagine sono già presenti e vanno verificate rispetto a `SHOP_SCHEMA.md`.
+- Negozio del campionato: sezioni modifiche e sponsor, pacchetti, acquisto con apertura animata, riepilogo dell'inventario e storico (sezione 13).
 - Pannello admin, raggiungibile dal menu "Admin" in alto (visibile solo all'admin):
   - pool: elenco, pulsante "Ricarica" per le due pool di base (con conferma se toglie carte), creazione ed eliminazione delle pool derivate, dettaglio con carte rinominabili;
   - creazione, chiusura e cancellazione dei campionati, con la scelta delle due pool (modifiche e sponsor);
@@ -263,7 +263,7 @@ Lo schema è gestito da Alembic (`backend/alembic/versions`), su SQLite. Le migr
 | `a7d1e9c4b2f6` indice iscrizioni | Indice su `championship_pilot.pilot_id` per le ricerche per pilota |
 | `b8e2f0a5c3d7` versione mazzi | Colonna `version` su `deck` (blocco ottimistico) |
 | `c9f3a1b6d8e4` oro per gara | Regole dell'oro sul campionato e tabella delle impostazioni generali (`ChampionshipDefaults`) |
-| `a1c5e9b3d7f2` Negozio | Tabelle `pack_template`, `shop_template`, `shop_template_pack`, `pack`, `pack_purchase`; colonna `sponsor_inventory_deck_id` sul pilota |
+| `a1c5e9b3d7f2` Negozio | Tabelle `pack_template`, `shop_template`, `shop_template_pack`, `pack`, `pack_purchase`; colonna `sponsor_inventory_deck_id` sul pilota (con un mazzo sponsor vuoto per ogni pilota esistente) |
 | `b2d6f0a4c8e1` unione delle teste | Unisce le due teste di migrazione; dopo l'unione `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa |
 
 Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni. I campionati presenti nel database sono solo di prova: non servono regole di conversione per dati reali.
@@ -275,16 +275,49 @@ Dopo un cambio di computer o un `git pull` è necessario applicare le migrazioni
 1. Amministrazione carte: caricamento singolo da interfaccia in `uploads/`, modifica e reset delle carte già presenti nelle pool di base (la ricarica aggiunge e toglie solo in base ai file).
 2. Spareggio sportivo: criterio in caso di pari punti.
 3. Carte sponsor a consumo: uso in gara, consumo, ingresso nel mazzo da gioco (vedi `OPEN_QUESTIONS.md`).
-4. Avviso per un template di negozio senza pacchetti (da riportare in `SHOP_SCHEMA.md`).
-5. Uso online con un database diverso da SQLite: servirà un blocco sulla riga del pilota negli acquisti.
+4. Uso online con un database diverso da SQLite: servirà un blocco sulla riga del pilota negli acquisti.
 
 ## 13. Negozio e pacchetti (fase 12)
 
-Il funzionamento dettagliato è in `SHOP_DESIGN.md`, lo schema tecnico, i servizi e le rotte in `SHOP_SCHEMA.md`. Regole fissate:
+Il funzionamento esteso è in `SHOP_DESIGN.md`, lo schema tecnico, i servizi e le rotte in `SHOP_SCHEMA.md`. Regole fissate:
 
-- **Template**: l'admin crea template di pacchetto (nome, immagine, valuta oro o sponsor, costo maggiore di 0, numero di carte modifiche e sponsor con somma almeno 1, filtro per nome facoltativo) e template di negozio, che collegano template di pacchetto. Un template di negozio senza pacchetti non è utilizzabile alla creazione del campionato.
-- **Pacchetti del campionato**: alla creazione del campionato i pacchetti dei template collegati si copiano in modo indipendente; l'admin può anche creare, modificare ed eliminare pacchetti del campionato. Se la valuta non è indicata è oro; se il costo non è indicato vale 10 oro o 2 sponsor.
-- **Accesso**: il giocatore entra con un proprio pilota iscritto e solo a campionato attivo; l'admin entra sempre, in sola lettura senza pilota o a campionato chiuso, e con un pilota iscritto si comporta come un giocatore. Un pilota eliminato non può comprare durante un campionato attivo.
-- **Acquisto**: bloccato con una gara in corso. In una sola transazione: controllo del saldo, estrazione di una carta alla volta con probabilità proporzionale alle copie rimaste, filtro per nome senza distinguere le maiuscole, "Terminato" se le copie sono meno di quelle richieste, copie tolte dalla pool del campionato, carte aggiunte all'inventario (tetto di 100 per carta, altrimenti 409), costo scalato e riga di storico. Gli acquisti sono serializzati con un blocco sul database.
-- **Storico**: il giocatore vede gli acquisti dei propri piloti, non quelli di un pilota che ha eliminato; l'admin vede la cronologia completa. Le righe restano se pilota o pacchetto vengono eliminati e spariscono con il campionato.
-- **Stato**: backend (12a-12c) completato e approvato; frontend del giocatore (12d) e dell'admin (12e) in corso.
+### Accesso
+
+- Il giocatore entra nel negozio di un campionato solo con un proprio pilota iscritto; se ne ha più di uno nello stesso campionato sceglie con quale proseguire.
+- L'admin entra in ogni negozio, anche senza pilota, in sola lettura; con un pilota iscritto nel campionato si comporta come un giocatore. Il giudice senza pilota iscritto non ha accesso.
+- Con una gara in corso il negozio si blocca (nessun acquisto). A campionato chiuso il negozio non è più disponibile per gli utenti; l'admin lo apre in sola lettura.
+- Un pilota eliminato non può comprare durante un campionato attivo.
+
+### Pagina del negozio
+
+- In alto a destra compaiono il nome del pilota scelto, il suo oro e i suoi punti sponsor.
+- Due sezioni, modifiche e sponsor, che distinguono **solo la valuta**: i pacchetti pagati in oro stanno nella sezione modifiche, quelli pagati in punti sponsor nella sezione sponsor. Le carte che escono da un pacchetto non dipendono dalla sezione.
+- In ogni sezione un popup mostra il riepilogo dell'inventario del pilota (miniature con il numero di copie, senza le carte Velocità 1-4); il resto della pagina elenca i pacchetti.
+- Ordinamento e ricerca sono scelte del singolo giocatore e non vengono salvate: di default dal meno caro al più caro, oppure dal più caro al meno caro, alfabetico o alfabetico inverso, con una barra di ricerca per nome.
+- Con saldo insufficiente si disattiva solo il pulsante d'acquisto di quel pacchetto, che resta visibile con il suo prezzo.
+
+### Template e pacchetti
+
+- L'admin crea template di pacchetto (nome, immagine, valuta oro o sponsor, costo maggiore di 0, carte da estrarre per ciascuna pool, filtro per nome facoltativo) e template di negozio, che raccolgono template di pacchetto senza ripeterli. Un template di negozio si crea con almeno un template di pacchetto; se poi li perde tutti resta, con un avviso, e non è utilizzabile alla creazione del campionato.
+- Un nuovo campionato nasce con il negozio vuoto oppure da un template di negozio scelto solo nel modulo di creazione. I pacchetti ottenuti sono copie indipendenti: le modifiche successive ai template non toccano i campionati esistenti. L'admin può anche creare, modificare ed eliminare pacchetti del campionato, partendo o no da un template.
+- Le carte da estrarre dalla pool delle modifiche sono 3 se non indicate; ciascun numero può essere 0 ma la somma deve essere almeno 1. Se la valuta non è indicata è oro; se il costo non è indicato vale 10 oro o 2 punti sponsor, secondo la valuta.
+- Il filtro è unico per pacchetto, si applica a entrambe le pool, si basa solo sul nome della carta senza distinguere le maiuscole e accetta più nomi separati da virgola.
+- Una modifica a un pacchetto vale subito per gli acquisti successivi; lo storico conserva i valori del momento dell'acquisto. I nomi dei pacchetti non devono essere unici.
+- L'immagine predefinita sta in `backend/media/pack/defaultIllustration`; se ne può caricare un'altra (massimo 5 MB, png, jpg/jpeg o webp, convertita in webp nella scatola massima delle carte).
+
+### Acquisto
+
+- Operazione unica: controllo del saldo, estrazione di una carta alla volta con probabilità proporzionale alle copie rimaste (ricalcolata dopo ogni estrazione), filtro per nome, copie tolte dalla pool del campionato, carte aggiunte all'inventario, costo scalato e riga di storico.
+- Se le copie rimaste nel sottoinsieme filtrato sono meno di quelle richieste, il pacchetto non si compra e al posto del prezzo compare "Terminato".
+- Le copie ottenute si sommano a quelle possedute, con un tetto di 100 per carta (oltre, l'acquisto è rifiutato con 409). Gli acquisti sono serializzati con un blocco sul database.
+- Nell'animazione di apertura si mostrano prima le carte modifiche e poi le carte sponsor.
+
+### Storico
+
+- Il giocatore vede dal negozio, con il pulsante "Storico", gli acquisti dei propri piloti iscritti, divisi per pilota; non vede quelli di un pilota che ha eliminato.
+- L'admin vede la cronologia completa dalle impostazioni del campionato. Dopo la chiusura lo storico resta visibile solo all'admin e sparisce con la cancellazione del campionato.
+- Le righe restano se pilota o pacchetto vengono eliminati.
+
+### Stato
+
+Backend (12a-12c) completato e approvato; frontend del giocatore (12d) e dell'admin (12e) in corso.
