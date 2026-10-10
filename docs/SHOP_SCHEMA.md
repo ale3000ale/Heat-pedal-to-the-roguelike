@@ -1,8 +1,9 @@
 > **STATO: IN IMPLEMENTAZIONE (aggiornato il 10 ottobre 2026).** Traduzione tecnica di
 > `SHOP_DESIGN.md`. Le sottofasi 12a, 12b e 12c (backend) sono completate; restano il
-> frontend del giocatore (12d), il frontend admin (12e) e i documenti (12f). Alcune
-> pagine del frontend esistono già e vanno verificate. Quando il Negozio sarà finito,
-> le regole passano in `PROJECT_SPEC.md`.
+> frontend del giocatore (12d), il frontend admin (12e) e i documenti (12f). La pagina
+> del negozio ha ora ordinamento, ricerca e saldo in alto a destra; le altre pagine
+> esistono già e vanno verificate. Quando il Negozio sarà finito, le regole passano in
+> `PROJECT_SPEC.md`.
 
 # Negozio — schema, servizi, rotte e sottofasi
 
@@ -120,9 +121,16 @@ dell'inventario o conflitto di versione, 422 dati non validi.
 
 - Barra di navigazione: voce "Negozio" solo con un pilota iscritto.
 - `/shop`: elenco dei campionati con negozio e scelta del pilota.
-  `/shop/[championshipId]`: due sezioni, pacchetti con ordinamento e ricerca, popup
-  inventario, popup storico, animazione di apertura (busta, scorrimento verso il
-  basso, carte verso sinistra, sfondo sfocato e bloccato).
+- `/championships/[id]/shop`: pagina del negozio. In alto a destra il pilota scelto
+  con oro e punti sponsor, sotto il pulsante "Inventario" (popup con le carte in
+  miniatura), il link "Storico", la scelta del pilota e, per l'admin, l'ingranaggio. Due
+  pulsanti scelgono l'area modifiche (pacchetti in oro) o sponsor (punti sponsor); in
+  ogni area una barra cerca per nome e un menu ordina i pacchetti (predefinito dal
+  meno caro al più caro, poi dal più caro, alfabetico, alfabetico inverso; scelta non
+  salvata, logica in `src/lib/shop-sort.ts`). L'animazione di apertura mostra la busta,
+  lo scorrimento verso il basso, le carte verso sinistra, lo sfondo sfocato e bloccato.
+- `/championships/[id]/shop/history`: storico acquisti come pagina separata (decisione
+  del 10 ottobre 2026, al posto del popup previsto prima).
 - Admin: pagina "Gestione negozio" con due schede (template di pacchetto, template
   di negozio con triangolo giallo); modulo di creazione del campionato con scelta
   del template di negozio; ingranaggio del campionato con "Crea pack", modifica ed
@@ -138,7 +146,7 @@ dell'inventario o conflitto di versione, 422 dati non validi.
 | 12a | Migrazione, modelli, inventario sponsor e reset, servizio e script delle immagini | Migrazione su e giù, reset all'iscrizione e alla chiusura, caricamento immagini | Completata (248 test) |
 | 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template, rotte delle immagini | Regole di creazione ed eliminazione, copie indipendenti, permessi | Completata |
 | 12c | Acquisto, estrazione, storico, inventario (backend) | Probabilità per copia, filtro, "Terminato", saldo, gara in corso, campionato chiuso, concorrenza, tetto 100 | Completata e approvata il 10 ottobre 2026 |
-| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | Test dei componenti e controlli del frontend | In corso (pagine presenti da verificare) |
+| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | `shop-sort.spec.ts` (9 test di ordinamento e ricerca) e controlli del frontend verdi in CI | In corso (negozio con ordinamento, ricerca e saldo fatto; altre pagine da verificare) |
 | 12e | Frontend dell'admin: gestione negozio, "Crea pack", storico completo | Come sopra | In corso (pagine presenti da verificare) |
 | 12f | Documenti, `PROJECT_SPEC.md`, stato e note | Revisione finale | Da fare |
 
