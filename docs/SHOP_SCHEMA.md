@@ -1,16 +1,23 @@
-> **STATO: IN IMPLEMENTAZIONE.** Traduzione tecnica di `SHOP_DESIGN.md`. La
-> sottofase 12a è completata (tabelle, inventario sponsor, immagini); le altre
-> sono da fare. Quando il Negozio sarà finito, le regole passano in
-> `PROJECT_SPEC.md`.
+> **STATO: IN IMPLEMENTAZIONE (aggiornato il 10 ottobre 2026).** Traduzione tecnica di
+> `SHOP_DESIGN.md`. Le sottofasi 12a, 12b e 12c (backend) sono completate; restano il
+> frontend del giocatore (12d), il frontend admin (12e) e i documenti (12f). Alcune
+> pagine del frontend esistono già e vanno verificate. Quando il Negozio sarà finito,
+> le regole passano in `PROJECT_SPEC.md`.
 
 # Negozio — schema, servizi, rotte e sottofasi
 
-## 1. Regola aggiunta all'ultimo giro
+## 1. Regole aggiunte lungo il lavoro
 
-Un template di negozio che ha perso tutti i suoi template di pacchetto (triangolo
-giallo) **non è utilizzabile**: nell'elenco del modulo di creazione del
-campionato è disattivato. Questa regola va riportata anche in `SHOP_DESIGN.md`
-quando lo si aggiorna.
+- Un template di negozio che ha perso tutti i suoi template di pacchetto (triangolo
+  giallo) **non è utilizzabile**: nell'elenco del modulo di creazione del campionato
+  è disattivato. Questa regola va riportata anche in `SHOP_DESIGN.md` quando lo si
+  aggiorna.
+- Un pacchetto nuovo, se la valuta non è indicata, è in oro; se il costo non è
+  indicato vale 10 oro oppure 2 sponsor. I pacchetti già creati non cambiano. Il
+  modulo dei pacchetti parte da 10 e, cambiando valuta, passa a 2 (e torna a 10) solo
+  se il costo non è stato scelto a mano.
+- Le impostazioni del campionato aperte dal negozio mostrano soltanto pacchetti, pool
+  completa e storico.
 
 ## 2. Tabelle nuove (create dalla migrazione della 12a)
 
@@ -44,76 +51,95 @@ colonna.
 
 ## 4. Servizi del backend
 
-- **Immagini dei pacchetti** (fatto nella 12a, `services/pack_images.py`):
-  caricamento (png, jpg/jpeg, webp; massimo 5 MB), conversione in webp e
-  ridimensionamento nella scatola 560x870 px con la logica di `services/images.py`;
-  elenco delle immagini disponibili; immagine predefinita da `defaultIllustration`.
-  Lo script `resize_cards` tratta anche le immagini dei pacchetti.
-- **Template di pacchetto e di negozio**: creazione, modifica, eliminazione con le
-  regole di `SHOP_DESIGN.md` (almeno un pacchetto alla creazione di un template di
+- **Immagini dei pacchetti** (12a, `services/pack_images.py`): caricamento (png,
+  jpg/jpeg, webp; massimo 5 MB), conversione in webp e ridimensionamento nella
+  scatola 560x870 px con la logica di `services/images.py`; elenco delle immagini
+  disponibili; immagine predefinita da `defaultIllustration`. Lo script
+  `resize_cards` tratta anche le immagini dei pacchetti.
+- **Template di pacchetto e di negozio** (12b): creazione, modifica, eliminazione con
+  le regole di `SHOP_DESIGN.md` (almeno un pacchetto alla creazione di un template di
   negozio; indicatore "vuoto" calcolato, non salvato).
-- **Pacchetti del campionato**: creazione da un template o da zero, modifica per
+- **Pacchetti del campionato** (12b): creazione da un template o da zero, modifica per
   intero, eliminazione. Creazione del campionato con `shop_template_id` facoltativo:
-  copia i pacchetti dei template di pacchetto collegati.
-- **Acquisto** (unico punto delicato), in una sola transazione:
+  copia i pacchetti dei template di pacchetto collegati. Cancellazione del campionato
+  elimina anche `pack` e `pack_purchase`.
+- **Estrazione** (12c-1, `services/shop_draw.py`): una carta alla volta con
+  probabilità proporzionale alle copie rimaste, ricalcolata dopo ogni estrazione;
+  filtro per nome senza distinguere le maiuscole (filtro disattivato = tutta la pool);
+  "Terminato" se le copie estraibili sono meno di quelle richieste.
+- **Acquisto** (12c-1, `services/shop_purchase.py`), in una sola transazione:
   1. verifica che il campionato sia attivo, che il pilota appartenga all'utente ed
      sia iscritto, e che non ci sia una gara in corso;
   2. verifica il saldo nella valuta del pacchetto;
-  3. per ciascuna pool (modifiche poi sponsor) prende le carte che corrispondono al
-     filtro (il nome contiene uno dei termini, senza distinguere le maiuscole;
-     filtro disattivato = tutta la pool); se le copie sono meno di quelle da
-     estrarre risponde "Terminato";
-  4. estrae una carta alla volta con probabilità proporzionale alle copie rimaste e
-     toglie una copia dalla pool del campionato;
+  3. per ciascuna pool (modifiche poi sponsor) estrae le carte che corrispondono al
+     filtro; se le copie sono meno di quelle da estrarre risponde "Terminato";
+  4. toglie le copie estratte dalla pool del campionato;
   5. somma le carte all'inventario delle modifiche o a quello sponsor (tetto 100 per
-     carta);
+     carta, altrimenti 409);
   6. scala il costo, scrive la riga dello storico e restituisce le carte uscite.
-  La transazione usa il blocco delle scritture di SQLite e il numero di versione dei
-  mazzi: un acquisto concorrente sulla stessa pool riceve l'errore 409 e può
-  riprovare.
-- **Storico**: elenco per pilota per l'utente (solo i propri piloti iscritti);
-  elenco completo per l'admin.
-- **Cancellazione del campionato**: deve eliminare anche `pack` e `pack_purchase`
-  (da fare nella 12b).
+  Gli acquisti sono serializzati: un lock di processo più, su SQLite, `BEGIN
+  IMMEDIATE` (`_lock_database`) prima di leggere pool e saldi, così anche più worker
+  non possono consumare la stessa copia. Con un database diverso da SQLite il blocco
+  sul database non è attivo e servirà un blocco sulla riga del pilota.
+- **Vista e accesso** (12c-1, `services/shop_view.py`): il giocatore entra con un
+  proprio pilota iscritto e solo a campionato attivo; l'admin entra sempre, in sola
+  lettura senza pilota o a campionato chiuso, e con un pilota iscritto si comporta
+  come un giocatore. Con una gara in corso gli acquisti sono bloccati.
+- **Storico e inventario** (12c-2, `services/shop_history.py` e
+  `services/shop_inventory.py`): storico dei propri piloti, cronologia completa per
+  l'admin raggruppata per pilota; inventari di modifiche e sponsor senza Velocità 1-4.
+  Il giocatore non vede gli acquisti di un pilota che ha eliminato; l'admin sì.
+- **Ricarica delle pool di base** (fuori dal negozio, ma ne alimenta le pool): prima
+  dell'applicazione l'admin vede un'anteprima (`GET /pools/base/{kind}/reload/preview`)
+  con le carte da togliere e l'indicazione "presente nella copia di pool di un
+  campionato attivo"; poi `POST /pools/base/{kind}/reload` applica.
 
-## 5. Rotte proposte (prefisso `/api`)
+## 5. Rotte (prefisso `/api`)
 
 | Rotta | Chi | Funzione |
 |---|---|---|
 | `GET/POST /shop/pack-templates`, `GET/PUT/DELETE /shop/pack-templates/{id}` | admin | Template di pacchetto. |
 | `GET/POST /shop/shop-templates`, `GET/PUT/DELETE /shop/shop-templates/{id}` | admin | Template di negozio. |
 | `GET/POST /shop/images` | admin | Elenco e caricamento delle immagini dei pacchetti. |
-| `GET /me/shops` | utente | Campionati attivi in cui ha un pilota iscritto (per la barra e l'elenco). |
-| `GET /championships/{id}/shop` | utente con pilota, admin | Pacchetti del negozio con stato (acquistabile, "Terminato", saldo insufficiente). |
 | `POST /championships/{id}/packs`, `PUT/DELETE /championships/{id}/packs/{pack_id}` | admin | Pacchetti del campionato (anche da `template_id`). |
-| `POST /championships/{id}/packs/{pack_id}/purchase` | utente con pilota | Acquisto; corpo: `pilot_id`. |
-| `GET /championships/{id}/shop/history` | utente (propri piloti), admin (tutti) | Storico. |
+| `GET /championships/{id}/shop?pilot_id=` | utente con pilota, admin | Pacchetti del negozio con stato (acquistabile, "Terminato", saldo insufficiente). |
+| `POST /championships/{id}/shop/purchases` | utente con pilota | Acquisto di un pacchetto con un pilota iscritto. |
+| `GET /championships/{id}/shop/inventory?pilot_id=` | utente con pilota, admin | Inventari di modifiche e sponsor. |
+| `GET /championships/{id}/shop/history` | utente (propri piloti), admin | Storico dei propri piloti. |
+| `GET /championships/{id}/shop/history/all` | admin | Cronologia completa. |
+| `GET /pools/base/{kind}/reload/preview`, `POST /pools/base/{kind}/reload` | admin | Anteprima e applicazione della ricarica. |
+
+L'elenco dei campionati con negozio (`GET /me/shops`) non è necessario: la pagina del
+negozio indica già i campionati del giocatore e chiede con quale pilota entrare.
 
 Errori: 403 senza permesso, 404 elemento assente, 409 negozio bloccato (gara in
-corso o campionato chiuso), pacchetto "Terminato", saldo insufficiente o conflitto
-di versione, 422 dati non validi.
+corso o campionato chiuso), pacchetto "Terminato", saldo insufficiente, tetto di copie
+dell'inventario o conflitto di versione, 422 dati non validi.
 
 ## 6. Pagine e componenti del frontend
 
 - Barra di navigazione: voce "Negozio" solo con un pilota iscritto.
-- `/shop`: elenco dei campionati con negozio. `/shop/[championshipId]`: scelta del
-  pilota, due sezioni, pacchetti con ordinamento e ricerca, popup inventario, popup
-  storico, animazione di apertura (busta, scorrimento verso il basso, carte verso
-  sinistra, sfondo sfocato e bloccato).
+- `/shop`: elenco dei campionati con negozio e scelta del pilota.
+  `/shop/[championshipId]`: due sezioni, pacchetti con ordinamento e ricerca, popup
+  inventario, popup storico, animazione di apertura (busta, scorrimento verso il
+  basso, carte verso sinistra, sfondo sfocato e bloccato).
 - Admin: pagina "Gestione negozio" con due schede (template di pacchetto, template
   di negozio con triangolo giallo); modulo di creazione del campionato con scelta
   del template di negozio; ingranaggio del campionato con "Crea pack", modifica ed
-  eliminazione dei pacchetti e storico di tutti i piloti.
+  eliminazione dei pacchetti e storico di tutti i piloti. Nel negozio l'ingranaggio
+  apre solo le impostazioni del negozio (pacchetti, pool completa, storico).
+- Pagina admin delle pool: la ricarica passa da un popup di conferma quando deve
+  togliere carte.
 
 ## 7. Sottofasi e verifiche
 
 | Sottofase | Contenuto | Test | Stato |
 |---|---|---|---|
 | 12a | Migrazione, modelli, inventario sponsor e reset, servizio e script delle immagini | Migrazione su e giù, reset all'iscrizione e alla chiusura, caricamento immagini | Completata (248 test) |
-| 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template, rotte delle immagini | Regole di creazione ed eliminazione, copie indipendenti, permessi | Da fare |
-| 12c | Acquisto, estrazione, storico | Probabilità per copia, filtro, "Terminato", saldo, gara in corso, campionato chiuso, concorrenza, tetto 100 | Da fare |
-| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | Test dei componenti e controlli del frontend | Da fare |
-| 12e | Frontend dell'admin: gestione negozio, "Crea pack", storico completo | Come sopra | Da fare |
+| 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template, rotte delle immagini | Regole di creazione ed eliminazione, copie indipendenti, permessi | Completata |
+| 12c | Acquisto, estrazione, storico, inventario (backend) | Probabilità per copia, filtro, "Terminato", saldo, gara in corso, campionato chiuso, concorrenza, tetto 100 | Completata e approvata il 10 ottobre 2026 |
+| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | Test dei componenti e controlli del frontend | In corso (pagine presenti da verificare) |
+| 12e | Frontend dell'admin: gestione negozio, "Crea pack", storico completo | Come sopra | In corso (pagine presenti da verificare) |
 | 12f | Documenti, `PROJECT_SPEC.md`, stato e note | Revisione finale | Da fare |
 
 Ogni sottofase si chiude con test, controlli e commit sul ramo `phase-12-shop`,
