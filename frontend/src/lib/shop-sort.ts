@@ -23,8 +23,8 @@ function compareNames(a: ShopPack, b: ShopPack): number {
 export function sortPacks(packs: ShopPack[], sort: PackSort): ShopPack[] {
 	const direction = sort.endsWith('desc') ? -1 : 1;
 	return [...packs].sort((a, b) => {
-		const primary = sort.startsWith('cost') ? (a.cost - b.cost) * direction : compareNames(a, b) * direction;
-		return primary || compareNames(a, b) || a.id - b.id;
+		const primary = sort.startsWith('cost') ? a.cost - b.cost : compareNames(a, b);
+		return primary * direction || compareNames(a, b) || a.id - b.id;
 	});
 }
 
