@@ -73,6 +73,7 @@ Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dent
 - Acquisto (`services/shop_purchase.py`): una transazione sola. Prima delle letture prende un lock di processo e, su SQLite, `BEGIN IMMEDIATE` (`_lock_database`); su altri database il blocco sul database non è attivo. Tetto di 100 copie per carta nell'inventario (409).
 - Pacchetti: se valuta e costo mancano valgono 10 oro; con valuta sponsor e costo mancante valgono 2 sponsor. Il modulo del frontend parte da 10 e passa a 2 cambiando valuta solo se il costo non è stato modificato a mano.
 - Pagina del giocatore: `frontend/src/routes/championships/[id]/shop/+page.svelte`. In alto a destra stanno il pilota scelto con oro e punti sponsor e i pulsanti (Inventario in popup, link Storico verso la pagina `history`, scelta del pilota, impostazioni per l'admin). Decisione del 10 ottobre: un solo pulsante Inventario e lo Storico come pagina separata, non come previsto in `SHOP_DESIGN.md` prima della modifica (il documento è stato aggiornato).
+- Animazione di apertura (decisione dell'11 ottobre): la striscia superiore della busta se ne va con uno strappo e la busta resta tagliata in alto (circa il 14%, bordo irregolare con `clip-path`, ombra con `drop-shadow`); è solo CSS, senza test dedicati, e non è ancora stata vista a schermo. I valori e i dettagli tecnici sono in `SHOP_SCHEMA.md`.
 - Ordinamento e ricerca dei pacchetti: `frontend/src/lib/shop-sort.ts` (`sortPacks`, `filterPacksByName`, `PACK_SORT_OPTIONS`, `DEFAULT_PACK_SORT`), con test in `shop-sort.spec.ts`. Predefinito: dal meno caro al più caro; a parità contano il nome e poi l'id. La scelta non viene salvata.
 - Le impostazioni del campionato aperte dal negozio usano l'opzione `shopOnly` di `championship-settings.svelte` e mostrano solo pacchetti, pool completa e storico.
 - Deploy online: un solo server con pochi worker (SQLite accetta una sola scrittura alla volta).
@@ -88,14 +89,14 @@ Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dent
 - Il lavoro avanza su un ramo per fase (ora `phase-12-shop`); prima di unire a `main` devono passare `python heat.py test` e `python heat.py check` (la CI li esegue a ogni pull request).
 - I documenti si aggiornano al momento, non a fine fase.
 
-## Contesto di lavoro (10 ottobre 2026)
+## Contesto di lavoro (11 ottobre 2026)
 
-Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 12 (Negozio e pacchetti) è sul ramo `phase-12-shop` (pull request #5, in bozza): backend 12a-12c completato e approvato; controlli verdi dopo le modifiche alla pagina del negozio (ordinamento, ricerca, saldo in alto a destra).
+Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 12 (Negozio e pacchetti) è sul ramo `phase-12-shop` (pull request #5, in bozza): backend 12a-12c completato e approvato; i tre controlli della CI (migrazioni, frontend, backend) sono verdi sul commit del taglio della busta (`707df16`). I commit successivi sono solo di documenti e la CI non è stata riletta su di essi.
 
 Da fare, in ordine:
 
-1. Riallineare `PROJECT_SPEC.md`, `SHOP_SCHEMA.md` e `OPEN_QUESTIONS.md` con le regole del Negozio e le decisioni del 10 ottobre (`SHOP_DESIGN.md`, `PROJECT_STATUS.md` e questo file sono già allineati).
-2. Sottofase 12d: verificare le altre pagine del giocatore (barra di navigazione, scelta del pilota, pagina dello storico, popup di inventario, animazione) e completare quanto manca.
+1. Riallineare `SHOP_DESIGN.md` e `OPEN_QUESTIONS.md` con l'animazione di apertura e le decisioni del 10-11 ottobre (`PROJECT_SPEC.md`, `SHOP_SCHEMA.md`, `PROJECT_STATUS.md` e questo file sono già allineati).
+2. Sottofase 12d: guardare a schermo lo strappo della busta e verificare le altre pagine del giocatore (barra di navigazione, scelta del pilota, pagina dello storico, popup di inventario) e completare quanto manca.
 3. Sottofase 12e: frontend admin (impostazioni del negozio, pacchetti, template, cronologia).
 4. Sottofase 12f: documenti finali, verifica complessiva e unione in `main`.
 
