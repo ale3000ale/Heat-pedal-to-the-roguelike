@@ -1,6 +1,6 @@
 # Specifiche del Progetto — Heat
 
-> STATO: APPROVATO. Si aggiorna nel tempo quando emergono nuove esigenze. Ultimo aggiornamento: 10 ottobre 2026 (fase 12, Negozio: backend completato, frontend in corso).
+> STATO: APPROVATO. Si aggiorna nel tempo quando emergono nuove esigenze. Ultimo aggiornamento: 11 ottobre 2026 (fase 12, Negozio: backend completato, frontend in corso; animazione di apertura con strappo della busta).
 
 ## 1. Stack e contesto
 
@@ -312,6 +312,7 @@ Il funzionamento esteso è in `SHOP_DESIGN.md`, lo schema tecnico, i servizi e l
 - Se le copie rimaste nel sottoinsieme filtrato sono meno di quelle richieste, il pacchetto non si compra e al posto del prezzo compare "Terminato".
 - Le copie ottenute si sommano a quelle possedute, con un tetto di 100 per carta (oltre, l'acquisto è rifiutato con 409). Gli acquisti sono serializzati con un blocco sul database.
 - Nell'animazione di apertura si mostrano prima le carte modifiche e poi le carte sponsor.
+- La busta si apre con uno strappo: la striscia superiore se ne va e la busta resta tagliata in alto, con il bordo irregolare, prima che compaiano le carte. È solo un effetto grafico: non cambia l'acquisto né il suo esito.
 
 ### Storico
 
