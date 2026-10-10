@@ -86,6 +86,9 @@ colonna.
   proprio pilota iscritto e solo a campionato attivo; l'admin entra sempre, in sola
   lettura senza pilota o a campionato chiuso, e con un pilota iscritto si comporta
   come un giocatore. Con una gara in corso gli acquisti sono bloccati.
+- **Elenco dei negozi dell'utente** (`api/shop_me.py`, `services/shop_list.py`,
+  `schemas/shop_list.py`): `list_my_shops` restituisce i campionati attivi a cui
+  l'utente partecipa con un pilota, con i piloti iscritti.
 - **Storico e inventario** (12c-2, `services/shop_history.py` e
   `services/shop_inventory.py`): storico dei propri piloti, cronologia completa per
   l'admin raggruppata per pilota; inventari di modifiche e sponsor senza Velocità 1-4.
@@ -103,6 +106,7 @@ colonna.
 | `GET/POST /shop/shop-templates`, `GET/PUT/DELETE /shop/shop-templates/{id}` | admin | Template di negozio. |
 | `GET/POST /shop/images` | admin | Elenco e caricamento delle immagini dei pacchetti. |
 | `POST /championships/{id}/packs`, `PUT/DELETE /championships/{id}/packs/{pack_id}` | admin | Pacchetti del campionato (anche da `template_id`). |
+| `GET /me/shops` | utente autenticato | Campionati attivi con negozio a cui l'utente partecipa con un pilota, con i piloti iscritti (alimenta la voce "Negozio" della barra e la scelta del pilota). |
 | `GET /championships/{id}/shop?pilot_id=` | utente con pilota, admin | Pacchetti del negozio con stato (acquistabile, "Terminato", saldo insufficiente). |
 | `POST /championships/{id}/shop/purchases` | utente con pilota | Acquisto di un pacchetto con un pilota iscritto. |
 | `GET /championships/{id}/shop/inventory?pilot_id=` | utente con pilota, admin | Inventari di modifiche e sponsor. |
@@ -110,8 +114,9 @@ colonna.
 | `GET /championships/{id}/shop/history/all` | admin | Cronologia completa. |
 | `GET /pools/base/{kind}/reload/preview`, `POST /pools/base/{kind}/reload` | admin | Anteprima e applicazione della ricarica. |
 
-L'elenco dei campionati con negozio (`GET /me/shops`) non è necessario: la pagina del
-negozio indica già i campionati del giocatore e chiede con quale pilota entrare.
+La rotta `GET /me/shops` era stata data per non necessaria (decisione del 10 ottobre
+mattina); è invece presente nel backend (`shop_me.py`, montata con prefisso `/api/me`
+in `main.py`) ed è usata dal frontend. Il documento è stato corretto leggendo il codice.
 
 Errori: 403 senza permesso, 404 elemento assente, 409 negozio bloccato (gara in
 corso o campionato chiuso), pacchetto "Terminato", saldo insufficiente, tetto di copie
@@ -120,7 +125,8 @@ dell'inventario o conflitto di versione, 422 dati non validi.
 ## 6. Pagine e componenti del frontend
 
 - Barra di navigazione: voce "Negozio" solo con un pilota iscritto.
-- `/shop`: elenco dei campionati con negozio e scelta del pilota.
+- `/shop`: elenco dei campionati con negozio e scelta del pilota (dati da
+  `GET /api/me/shops`).
 - `/championships/[id]/shop`: pagina del negozio. In alto a destra il pilota scelto
   con oro e punti sponsor, sotto il pulsante "Inventario" (popup con le carte in
   miniatura), il link "Storico", la scelta del pilota e, per l'admin, l'ingranaggio. Due
