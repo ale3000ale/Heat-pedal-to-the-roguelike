@@ -9,6 +9,13 @@
 	import { packImageUrl, revealOrder } from '$lib/shop-cards';
 	import { currencyLabel } from '$lib/shop-format';
 	import { shopSelection } from '$lib/shop-selection.svelte';
+	import {
+		DEFAULT_PACK_SORT,
+		PACK_SORT_OPTIONS,
+		filterPacksByName,
+		sortPacks,
+		type PackSort
+	} from '$lib/shop-sort';
 	import type { ChampionshipDetail } from '$lib/types';
 	import type { PurchaseResult, ShopPack, ShopPilotRef, ShopView } from '$lib/shop-types';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
@@ -28,6 +35,8 @@
 	let pilots = $state<ShopPilotRef[]>([]);
 	let selectedPilot = $state('');
 	let area = $state<Area>('modifiche');
+	let sortKey = $state<PackSort>(DEFAULT_PACK_SORT);
+	let search = $state('');
 	let fromList = $state(false);
 	let error = $state<string | null>(null);
 	let buyError = $state<string | null>(null);
@@ -39,8 +48,15 @@
 	let settingsOpen = $state(false);
 
 	// Area modifiche = pacchetti da pagare in oro; area sponsor = punti sponsor.
+	// Ordinamento e ricerca sono scelte del giocatore e non vengono salvate.
 	let visiblePacks = $derived(
-		shop?.packs.filter((p) => p.currency === (area === 'modifiche' ? 'gold' : 'sponsor')) ?? []
+		sortPacks(
+			filterPacksByName(
+				shop?.packs.filter((p) => p.currency === (area === 'modifiche' ? 'gold' : 'sponsor')) ?? [],
+				search
+			),
+			sortKey
+		)
 	);
 	let revealed = $derived(result ? revealOrder(result) : []);
 
@@ -275,6 +291,20 @@
 			<h2 class="text-lg font-semibold">
 				{area === 'modifiche' ? 'Pacchetti modifiche (oro)' : 'Pacchetti sponsor (punti sponsor)'}
 			</h2>
+			<div class="flex flex-wrap items-center gap-2">
+				<input
+					type="search"
+					class={`${selectClass} min-w-48 flex-1`}
+					placeholder="Cerca per nome"
+					aria-label="Cerca un pacchetto per nome"
+					bind:value={search}
+				/>
+				<select class={selectClass} bind:value={sortKey} aria-label="Ordinamento dei pacchetti">
+					{#each PACK_SORT_OPTIONS as option (option.value)}
+						<option value={option.value}>{option.label}</option>
+					{/each}
+				</select>
+			</div>
 			{@render packList(shop, visiblePacks)}
 		</section>
 	{/if}
