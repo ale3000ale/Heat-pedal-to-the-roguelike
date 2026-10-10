@@ -1,7 +1,9 @@
-> **STATO: BOZZA QUASI DEFINITIVA, NON ANCORA APPROVATA.** Descrive il
+> **STATO: APPROVATO PER IL BACKEND (aggiornato il 10 ottobre 2026).** Descrive il
 > funzionamento del Negozio come lo ha spiegato l'autore l'8 ottobre 2026, con le
-> risposte alle domande. Quando sarà approvata, le regole passano in
-> `PROJECT_SPEC.md`. Le parti ancora da decidere sono in `OPEN_QUESTIONS.md`.
+> risposte alle domande. Le regole sono riportate nella sezione 13 di
+> `PROJECT_SPEC.md`; lo schema tecnico è in `SHOP_SCHEMA.md`. Il backend (12a-12c) è
+> completato; il frontend (12d, 12e) è in corso. Le parti ancora da decidere sono in
+> `OPEN_QUESTIONS.md`.
 
 # Negozio — progetto della fase 12
 
@@ -17,7 +19,9 @@ pilota iscritto; le carte ottenute vanno nell'inventario di quel pilota.
   al negozio di quel campionato.
 - Dalla voce "Negozio" della barra di navigazione, che compare solo con almeno
   un pilota iscritto: elenco dei soli campionati a cui l'utente partecipa con un
-  pilota; il nome del campionato apre il suo negozio.
+  pilota; il nome del campionato apre il suo negozio. (Decisione del 10 ottobre:
+  l'elenco dei campionati con negozio non richiede una rotta dedicata `/me/shops`;
+  la pagina del negozio indica già i campionati del giocatore e chiede il pilota.)
 - **Scelta del pilota**: entrando nel negozio, se l'utente ha più piloti iscritti
   a quel campionato, gli viene chiesto con quale proseguire; con un solo pilota
   si entra direttamente con quello.
@@ -62,7 +66,9 @@ tempo).
   dalla pool sponsor, filtro per nome (attivabile o no).
 - **Costo e valuta**: li decide l'admin alla creazione (nel template o nelle
   impostazioni del pacchetto) e quando modifica il pacchetto; la valuta decide in
-  quale sezione compare il pacchetto. Il costo deve essere maggiore di 0.
+  quale sezione compare il pacchetto. Il costo deve essere maggiore di 0. Se non
+  indicati, un pacchetto nuovo costa 10 oro, oppure 2 punti sponsor se la valuta
+  scelta è lo sponsor; i pacchetti già creati non cambiano.
 - **Contenuto**: l'admin sceglie quante carte estrarre da ciascuna pool. Il
   numero per le modifiche è predefinito a 3. Ciascun numero può essere 0, ma la
   somma deve essere almeno 1. Un pacchetto può quindi dare carte di entrambi i
@@ -119,7 +125,9 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
   usano.
 - Se tutti i suoi template di pacchetto vengono eliminati, il template di negozio
   resta, ma nell'elenco mostra un **triangolo giallo** di avviso; può tornare
-  utilizzabile aggiungendogli almeno un template di pacchetto.
+  utilizzabile aggiungendogli almeno un template di pacchetto. Un template in
+  questo stato non è utilizzabile alla creazione del campionato: nell'elenco del
+  modulo è disattivato.
 
 ### Creare il negozio di un campionato
 
@@ -135,7 +143,8 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
   già compilate, che può modificare per intero prima di creare il pacchetto, oppure
   lo crea da zero senza template. Non è obbligatorio usare tutti i template.
 - Da qui l'admin modifica o elimina i pacchetti del negozio e vede lo storico di
-  tutti i piloti.
+  tutti i piloti. Aperte dal negozio, le impostazioni mostrano solo pacchetti,
+  pool completa e storico.
 - I campionati attivi esistenti prima della fase 12 hanno il negozio vuoto: i
   pacchetti si creano a mano con "Crea pack".
 
@@ -144,7 +153,8 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
 1. L'acquisto è un'unica operazione indivisibile: controllo del saldo, estrazione
    in ordine, aggiornamento della pool, assegnazione all'inventario e
    registrazione nello storico. Due acquisti contemporanei non possono consumare
-   la stessa copia (la pool rimane la fonte di verità).
+   la stessa copia (la pool rimane la fonte di verità): gli acquisti sono
+   serializzati con un lock di processo e, su SQLite, con `BEGIN IMMEDIATE`.
 2. Il backend restituisce al frontend l'elenco delle carte uscite. Le due pool
    sono separate e per il backend l'ordine è indifferente.
 3. A schermo, nell'animazione, si mostrano prima le carte modifiche e poi le
@@ -159,9 +169,9 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
 ## 7. Inventario
 
 - Le copie di una carta ottenute si **sommano** a quelle già possedute. Il tetto
-  di sicurezza è 100 copie per carta; il limite reale è la pool: se una carta ha 4
-  copie e due piloti ne hanno 3 e 1, nella pool ne restano 0 e non se ne possono
-  ottenere altre.
+  di sicurezza è 100 copie per carta (oltre, l'acquisto è rifiutato con 409); il
+  limite reale è la pool: se una carta ha 4 copie e due piloti ne hanno 3 e 1,
+  nella pool ne restano 0 e non se ne possono ottenere altre.
 - Le carte **sponsor** stanno in un inventario separato da quello delle
   modifiche, ma si vedono nella stessa pagina del pilota.
 - Le carte Calore non si distinguono più: sono carte modifiche come le altre.
@@ -177,7 +187,8 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
 - Ogni acquisto registra almeno: pilota, pacchetto, costo e valuta, data e ora,
   carte ottenute.
 - Si vede solo dal negozio, con il pulsante "Storico": un popup con i propri
-  piloti iscritti, ciascuno in una sezione espandibile.
+  piloti iscritti, ciascuno in una sezione espandibile. Il giocatore non vede gli
+  acquisti di un pilota che ha eliminato.
 - L'admin, dalle impostazioni del negozio, vede lo storico di tutti i piloti; nel
   negozio è come un giocatore qualsiasi.
 - Alla chiusura del campionato lo storico **resta solo per l'admin** e viene
@@ -192,9 +203,9 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
   di origine.
 - Le carte hanno `name`, `path` e `copies`: per il filtro per nome non serve
   nessuna categoria nuova.
-- Il pilota ha oggi un solo inventario (`inventory_deck_id`): per le carte
-  sponsor serve un secondo mazzo di inventario, con reset all'iscrizione e alla
-  chiusura come l'inventario attuale.
+- Il pilota ha un secondo mazzo di inventario per le carte sponsor
+  (`sponsor_inventory_deck_id`), con reset all'iscrizione e alla chiusura come
+  l'inventario delle modifiche.
 - Le carte Velocità 1-4 non fanno parte di nessuna pool e restano fuori dal
   riepilogo.
 - Oro e punti sponsor sono già sul pilota e si azzerano a ogni iscrizione e alla
