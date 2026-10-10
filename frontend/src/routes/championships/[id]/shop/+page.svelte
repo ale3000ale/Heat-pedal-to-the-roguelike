@@ -42,6 +42,8 @@
 	let buyError = $state<string | null>(null);
 	let busy = $state(false);
 	let result = $state<PurchaseResult | null>(null);
+	// Immagine del pacchetto appena acquistato: è la texture della busta nell'animazione.
+	let resultImage = $state<string | null>(null);
 	let resultOpen = $state(false);
 	let revealDone = $state(false);
 	let inventoryOpen = $state(false);
@@ -121,6 +123,7 @@
 		busy = true;
 		try {
 			result = await buyPack(championshipId, shop.pilot.id, pack.id);
+			resultImage = pack.image_path;
 			revealDone = false;
 			resultOpen = true;
 			await loadShop();
@@ -314,8 +317,14 @@
 	bind:open={resultOpen}
 	title={result ? result.pack_name : 'Pacchetto'}
 	closeOnOutside={revealDone}
+	blur
+	wide
 >
-	<PackReveal cards={revealed} bind:done={revealDone} />
+	<PackReveal
+		cards={revealed}
+		packImage={resultImage ? packImageUrl(resultImage) : null}
+		bind:done={revealDone}
+	/>
 </Modal>
 
 <ShopInventoryModal bind:open={inventoryOpen} {championshipId} pilotId={shop?.pilot?.id ?? null} />

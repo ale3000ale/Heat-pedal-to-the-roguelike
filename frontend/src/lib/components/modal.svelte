@@ -3,16 +3,21 @@
 	import { Button } from '$lib/components/ui/button';
 
 	// Con `closeOnOutside` falso la finestra si chiude solo con la X: il clic fuori e il
-	// tasto Esc non fanno nulla.
+	// tasto Esc non fanno nulla. Con `blur` lo sfondo è sfocato; con `wide` la finestra è
+	// più larga (serve all'apertura dei pacchetti). Senza queste opzioni nulla cambia.
 	let {
 		open = $bindable(false),
 		title,
 		closeOnOutside = true,
+		blur = false,
+		wide = false,
 		children
 	}: {
 		open?: boolean;
 		title: string;
 		closeOnOutside?: boolean;
+		blur?: boolean;
+		wide?: boolean;
 		children: Snippet;
 	} = $props();
 
@@ -31,7 +36,7 @@
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
 		<button
 			type="button"
-			class="absolute inset-0 cursor-default bg-black/50"
+			class={`absolute inset-0 cursor-default ${blur ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/50'}`}
 			aria-label="Chiudi"
 			tabindex={-1}
 			onclick={dismiss}
@@ -40,7 +45,7 @@
 			role="dialog"
 			aria-modal="true"
 			aria-label={title}
-			class="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border bg-background p-4 text-foreground shadow-lg"
+			class={`relative max-h-[90vh] w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} overflow-y-auto rounded-lg border bg-background p-4 text-foreground shadow-lg`}
 		>
 			<div class="mb-3 flex items-center justify-between gap-3">
 				<h2 class="text-lg font-semibold">{title}</h2>
