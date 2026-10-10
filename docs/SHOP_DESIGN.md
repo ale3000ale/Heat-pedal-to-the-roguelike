@@ -20,9 +20,10 @@ pilota iscritto; le carte ottenute vanno nell'inventario di quel pilota.
   al negozio di quel campionato.
 - Dalla voce "Negozio" della barra di navigazione, che compare solo con almeno
   un pilota iscritto: elenco dei soli campionati a cui l'utente partecipa con un
-  pilota; il nome del campionato apre il suo negozio. (Decisione del 10 ottobre:
-  l'elenco dei campionati con negozio non richiede una rotta dedicata `/me/shops`;
-  la pagina del negozio indica già i campionati del giocatore e chiede il pilota.)
+  pilota; il nome del campionato apre il suo negozio. L'elenco arriva dalla rotta
+  `GET /api/me/shops` (implementata in `shop_me.py`; una versione precedente di
+  questo documento la dava per non necessaria, ma serve alla barra di navigazione e
+  alla scelta del pilota).
 - **Scelta del pilota**: entrando nel negozio, se l'utente ha più piloti iscritti
   a quel campionato, gli viene chiesto con quale proseguire; con un solo pilota
   si entra direttamente con quello.
