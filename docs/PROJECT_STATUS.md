@@ -1,6 +1,6 @@
 # Stato del progetto — Heat
 
-Ultimo aggiornamento: 2026-10-10
+Ultimo aggiornamento: 2026-10-11
 
 ## Fasi
 
@@ -29,7 +29,7 @@ Ultimo aggiornamento: 2026-10-10
 | 12a | Tabelle del Negozio, inventario sponsor del pilota e reset, servizio e script delle immagini | Completata |
 | 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template | Completata (12b-1, 12b-2, 12b-3) |
 | 12c | Estrazione, acquisto, storico e riepilogo inventario (backend) | Completata e approvata (12c-1, 12c-2) |
-| 12d-12f | Frontend giocatore, frontend admin, documenti | In corso: la pagina del negozio ha ora ordinamento, ricerca per nome e saldo in alto a destra; restano da verificare le altre pagine sottofase per sottofase |
+| 12d-12f | Frontend giocatore, frontend admin, documenti | In corso: la pagina del negozio ha ordinamento, ricerca per nome, saldo in alto a destra e l'apertura animata dei pacchetti (CI verde); restano da verificare a mano l'aspetto dell'animazione e le altre pagine sottofase per sottofase |
 
 ## Backend
 
@@ -63,6 +63,7 @@ Ultimo aggiornamento: 2026-10-10
 
 - Pagine: login, registrazione, home, team (con ricerca e filtro piloti), dettaglio pilota (carte cliccabili tra inventario e mazzo da gioco), campionati, dettaglio campionato, dettaglio gara, negozio del campionato, pannello admin (utenti e ruoli, pool, campionati, nascosti, impostazioni generali, negozio).
 - Pagina del negozio (12d): in alto a destra il pilota scelto con oro e punti sponsor, sotto i pulsanti Inventario (popup), Storico (pagina separata), scelta del pilota e impostazioni (admin). Due pulsanti scelgono l'area modifiche (pacchetti in oro) o sponsor (punti sponsor). In ogni area una barra cerca i pacchetti per nome e un menu li ordina (predefinito dal meno caro al più caro, poi dal più caro, alfabetico, alfabetico inverso); ricerca e ordinamento sono scelte del giocatore e non vengono salvate. La logica sta in `frontend/src/lib/shop-sort.ts` con test in `shop-sort.spec.ts`.
+- Apertura animata dei pacchetti (12d): `components/pack-reveal.svelte`, con fasi e tempi in `lib/pack-reveal-phases.ts` (test in `pack-reveal-phases.spec.ts`). La busta ha come texture l'immagine del pacchetto acquistato; la striscia in alto si stacca, la busta scorre verso il basso, le carte entrano in fila da sinistra e si girano al tocco con una rotazione 3D. "Salta" salta le animazioni o gira tutte le carte; con il movimento ridotto del sistema si parte direttamente dalle carte. `components/modal.svelte` ha le opzioni `blur` (sfondo sfocato) e `wide` (finestra più larga), spente di default.
 - Popup propri al posto di `dialog` e `confirm` nativi; impostazioni del campionato in un popup aperto dall'ingranaggio (solo admin). Nel negozio lo stesso popup si apre in modalità "solo negozio" (`shopOnly`): mostra soltanto pacchetti, pool completa e storico, senza oro per gara e senza chiusura o eliminazione del campionato.
 - Pool completa: le miniature delle carte usano il prefisso `/media/` come le altre carte.
 - Pagina admin delle pool: «Ricarica» chiede l'anteprima e, se vanno tolte carte, apre un popup di conferma con i nomi delle carte e l'avviso "in uso in un campionato attivo"; senza carte da togliere la ricarica parte subito.
@@ -72,8 +73,9 @@ Ultimo aggiornamento: 2026-10-10
 
 ## Qualità verificata
 
-- CI su ogni pull request (pull request #5, in bozza): test backend, controlli frontend con build, migrazioni su un database di test creato da zero (upgrade, verifica di tabelle, colonne e indici, downgrade, nuovo upgrade). Il 2026-10-10, dopo i commit di ordinamento, ricerca e posizione del saldo nel negozio, i tre controlli (backend, frontend, migrazioni) sono risultati verdi; la prima esecuzione frontend aveva segnalato un problema di formattazione Prettier in `shop-sort.ts`, corretto subito.
-- Test nuovi: 9 test per ordinamento e ricerca dei pacchetti (`shop-sort.spec.ts`). Non sono stati scritti test nuovi per il costo predefinito dei pacchetti e per l'ordine delle gare (scelta dell'autore). L'anteprima della ricarica e il lock sul database non hanno test dedicati; il numero totale di test non è stato aggiornato qui.
+- CI su ogni pull request (pull request #5, in bozza): test backend, controlli frontend con build, migrazioni su un database di test creato da zero (upgrade, verifica di tabelle, colonne e indici, downgrade, nuovo upgrade). Il 2026-10-10, dopo i commit di ordinamento, ricerca e posizione del saldo nel negozio, i tre controlli (backend, frontend, migrazioni) sono risultati verdi; la prima esecuzione frontend aveva segnalato un problema di formattazione Prettier in `shop-sort.ts`, corretto subito. L'11 ottobre i tre controlli sono risultati verdi anche dopo il commit dell'apertura animata dei pacchetti (l'elenco dei controlli non riporta lo SHA, ma l'orario di avvio coincide con quel commit).
+- Test nuovi: 9 test per ordinamento e ricerca dei pacchetti (`shop-sort.spec.ts`) e 7 test sulle fasi dell'animazione di apertura (`pack-reveal-phases.spec.ts`). Non sono stati scritti test nuovi per il costo predefinito dei pacchetti e per l'ordine delle gare (scelta dell'autore). L'anteprima della ricarica, il lock sul database e il componente grafico `pack-reveal.svelte` non hanno test dedicati; il numero totale di test non è stato aggiornato qui.
+- Aspetto dell'animazione: non verificabile da CI. L'autore ha detto che, salvo segnalazioni, va considerata a posto; restano non letti `CardTile.svelte` dentro la faccia girata e i nomi delle variabili CSS del tema (`--muted`, `--border`, `--primary`), usati senza controllo.
 - Migrazioni Alembic: oro per gara (`c9f3a1b6d8e4`), tabelle del Negozio (`a1c5e9b3d7f2`) e unione delle due teste (`b2d6f0a4c8e1`), oltre a quelle elencate nella sezione 11 della specifica. Dopo un'unione di teste, `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa.
 
 ## API principali
@@ -99,13 +101,15 @@ Decisioni dell'autore (2026-10-08): tetto di 100 copie per carta, rifiuto dell'a
 
 Decisioni dell'autore (2026-10-10): la 12c è approvata; la ricarica delle pool chiede conferma elencando le carte da togliere, con l'indicazione "presente nella copia di pool di un campionato attivo"; per il deploy online gli acquisti si serializzano con un blocco sul database; la pool sponsor è usata dai pacchetti; i pacchetti nuovi costano 10 oro o 2 sponsor; nel negozio lo storico resta una pagina separata e l'inventario un solo pulsante (invece del popup con sezioni espandibili e del pulsante in ogni area previsti in `SHOP_DESIGN.md`).
 
+Decisione dell'autore (2026-10-11): nell'apertura del pacchetto la busta usa come texture l'immagine del pacchetto acquistato (non una busta grafica uguale per tutti).
+
 Correzione del 2026-10-10: una versione precedente di questo file e di `SHOP_SCHEMA.md` diceva che l'elenco dei campionati con negozio (`GET /api/me/shops`) non serviva. La rotta invece esiste nel backend (`shop_me.py`, montata con prefisso `/api/me` in `main.py`) ed è usata dal frontend; i documenti sono stati corretti dopo la lettura del codice.
 
 Questioni aperte:
 
 - Per il deploy: un solo server con pochi worker, perché SQLite accetta una sola scrittura alla volta; con un altro database serve un blocco sulla riga del pilota (`SELECT ... FOR UPDATE`).
 - Avviso quando un template di negozio non contiene pacchetti (da riportare in `SHOP_SCHEMA.md` a fine 12c).
-- Verifica sottofase per sottofase del frontend del Negozio (12d, 12e) rispetto a `SHOP_SCHEMA.md`.
+- Verifica sottofase per sottofase del frontend del Negozio (12d, 12e) rispetto a `SHOP_SCHEMA.md`; per la 12d restano l'elenco `/shop` e la pagina dello storico, non ancora letti.
 
 ## Documenti
 
@@ -118,7 +122,7 @@ Questioni aperte:
 
 ## Prossimi passi
 
-1. Riallineare `OPEN_QUESTIONS.md` e `PROJECT_SPEC.md` con le decisioni del 2026-10-10 (`SHOP_DESIGN.md`, `SHOP_SCHEMA.md`, `PROJECT_NOTES.md` e questo file sono già allineati).
-2. Sottofase 12d: verificare le altre pagine del negozio (barra di navigazione, scelta del pilota, pagina dello storico, popup di inventario, animazione delle carte) e completare quanto manca.
+1. Riportare l'apertura animata (busta con l'immagine come texture) in `PROJECT_SPEC.md` e `PROJECT_NOTES.md`, e controllare la descrizione in `SHOP_DESIGN.md`: in questo giro sono stati aggiornati solo questo file e `SHOP_SCHEMA.md`. Riallineare anche `OPEN_QUESTIONS.md` se serve.
+2. Sottofase 12d: verificare le altre pagine del negozio (elenco `/shop`, pagina dello storico, popup di inventario) e, se l'autore lo segnala, correggere l'aspetto dell'animazione.
 3. Sottofase 12e: frontend admin (impostazioni del negozio, pacchetti, template, cronologia).
 4. Sottofase 12f: documenti finali e verifica complessiva, poi unione di `phase-12-shop` in `main`.
