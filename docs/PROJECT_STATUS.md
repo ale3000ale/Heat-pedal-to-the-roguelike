@@ -29,7 +29,7 @@ Ultimo aggiornamento: 2026-10-10
 | 12a | Tabelle del Negozio, inventario sponsor del pilota e reset, servizio e script delle immagini | Completata |
 | 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template | Completata (12b-1, 12b-2, 12b-3) |
 | 12c | Estrazione, acquisto, storico e riepilogo inventario (backend) | Completata e approvata (12c-1, 12c-2) |
-| 12d-12f | Frontend giocatore, frontend admin, documenti | In corso: alcune pagine esistono già (negozio, impostazioni del negozio, pool completa, pacchetti); la verifica sottofase per sottofase è da fare |
+| 12d-12f | Frontend giocatore, frontend admin, documenti | In corso: la pagina del negozio ha ora ordinamento, ricerca per nome e saldo in alto a destra; restano da verificare le altre pagine sottofase per sottofase |
 
 ## Backend
 
@@ -61,6 +61,7 @@ Ultimo aggiornamento: 2026-10-10
 ## Frontend
 
 - Pagine: login, registrazione, home, team (con ricerca e filtro piloti), dettaglio pilota (carte cliccabili tra inventario e mazzo da gioco), campionati, dettaglio campionato, dettaglio gara, negozio del campionato, pannello admin (utenti e ruoli, pool, campionati, nascosti, impostazioni generali, negozio).
+- Pagina del negozio (12d): in alto a destra il pilota scelto con oro e punti sponsor, sotto i pulsanti Inventario (popup), Storico (pagina separata), scelta del pilota e impostazioni (admin). Due pulsanti scelgono l'area modifiche (pacchetti in oro) o sponsor (punti sponsor). In ogni area una barra cerca i pacchetti per nome e un menu li ordina (predefinito dal meno caro al più caro, poi dal più caro, alfabetico, alfabetico inverso); ricerca e ordinamento sono scelte del giocatore e non vengono salvate. La logica sta in `frontend/src/lib/shop-sort.ts` con test in `shop-sort.spec.ts`.
 - Popup propri al posto di `dialog` e `confirm` nativi; impostazioni del campionato in un popup aperto dall'ingranaggio (solo admin). Nel negozio lo stesso popup si apre in modalità "solo negozio" (`shopOnly`): mostra soltanto pacchetti, pool completa e storico, senza oro per gara e senza chiusura o eliminazione del campionato.
 - Pool completa: le miniature delle carte usano il prefisso `/media/` come le altre carte.
 - Pagina admin delle pool: «Ricarica» chiede l'anteprima e, se vanno tolte carte, apre un popup di conferma con i nomi delle carte e l'avviso "in uso in un campionato attivo"; senza carte da togliere la ricarica parte subito.
@@ -70,8 +71,8 @@ Ultimo aggiornamento: 2026-10-10
 
 ## Qualità verificata
 
-- CI su ogni pull request (pull request #5, in bozza): test backend, controlli frontend con build, migrazioni su un database di test creato da zero (upgrade, verifica di tabelle, colonne e indici, downgrade, nuovo upgrade). L'autore ha confermato il 2026-10-10 che, dopo la correzione di Prettier nella pagina delle pool, i controlli sono andati a buon fine.
-- Non sono stati scritti test nuovi per il costo predefinito dei pacchetti e per l'ordine delle gare (scelta dell'autore). L'anteprima della ricarica e il lock sul database non hanno test dedicati; il numero totale di test non è stato aggiornato qui.
+- CI su ogni pull request (pull request #5, in bozza): test backend, controlli frontend con build, migrazioni su un database di test creato da zero (upgrade, verifica di tabelle, colonne e indici, downgrade, nuovo upgrade). Il 2026-10-10, dopo i commit di ordinamento, ricerca e posizione del saldo nel negozio, i tre controlli (backend, frontend, migrazioni) sono risultati verdi; la prima esecuzione frontend aveva segnalato un problema di formattazione Prettier in `shop-sort.ts`, corretto subito.
+- Test nuovi: 9 test per ordinamento e ricerca dei pacchetti (`shop-sort.spec.ts`). Non sono stati scritti test nuovi per il costo predefinito dei pacchetti e per l'ordine delle gare (scelta dell'autore). L'anteprima della ricarica e il lock sul database non hanno test dedicati; il numero totale di test non è stato aggiornato qui.
 - Migrazioni Alembic: oro per gara (`c9f3a1b6d8e4`), tabelle del Negozio (`a1c5e9b3d7f2`) e unione delle due teste (`b2d6f0a4c8e1`), oltre a quelle elencate nella sezione 11 della specifica. Dopo un'unione di teste, `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa.
 
 ## API principali
@@ -94,7 +95,7 @@ Rotte del Negozio per il giocatore (12c): `GET /{id}/shop?pilot_id=`, `POST /{id
 
 Decisioni dell'autore (2026-10-08): tetto di 100 copie per carta, rifiuto dell'acquisto con 409; l'admin con un pilota iscritto è un normale giocatore, con in più il tasto delle impostazioni del negozio; durante un campionato attivo un pilota eliminato non può comprare; il giocatore non vede lo storico di un pilota eliminato.
 
-Decisioni dell'autore (2026-10-10): la 12c è approvata; la ricarica delle pool chiede conferma elencando le carte da togliere, con l'indicazione "presente nella copia di pool di un campionato attivo"; l'elenco dei campionati con negozio per la barra di navigazione non serve, perché la pagina del negozio indica già i campionati del giocatore e chiede il pilota; per il deploy online gli acquisti si serializzano con un blocco sul database; la pool sponsor è usata dai pacchetti; i pacchetti nuovi costano 10 oro o 2 sponsor.
+Decisioni dell'autore (2026-10-10): la 12c è approvata; la ricarica delle pool chiede conferma elencando le carte da togliere, con l'indicazione "presente nella copia di pool di un campionato attivo"; l'elenco dei campionati con negozio per la barra di navigazione non serve, perché la pagina del negozio indica già i campionati del giocatore e chiede il pilota; per il deploy online gli acquisti si serializzano con un blocco sul database; la pool sponsor è usata dai pacchetti; i pacchetti nuovi costano 10 oro o 2 sponsor; nel negozio lo storico resta una pagina separata e l'inventario un solo pulsante (invece del popup con sezioni espandibili e del pulsante in ogni area previsti in `SHOP_DESIGN.md`).
 
 Questioni aperte:
 
@@ -113,7 +114,7 @@ Questioni aperte:
 
 ## Prossimi passi
 
-1. Riallineare `SHOP_SCHEMA.md`, `OPEN_QUESTIONS.md`, `PROJECT_NOTES.md` e `PROJECT_SPEC.md` con le stesse modifiche.
-2. Sottofase 12d: verificare le pagine del negozio già presenti (barra di navigazione, scelta del pilota, popup di inventario e storico, animazione delle carte) e completare quanto manca.
+1. Riallineare `SHOP_DESIGN.md` (sezioni 3 e 8: storico come pagina, inventario come pulsante unico), `PROJECT_NOTES.md`, `SHOP_SCHEMA.md`, `OPEN_QUESTIONS.md` e `PROJECT_SPEC.md` con le stesse modifiche.
+2. Sottofase 12d: verificare le altre pagine del negozio (barra di navigazione, scelta del pilota, popup di inventario, animazione delle carte) e completare quanto manca.
 3. Sottofase 12e: frontend admin (impostazioni del negozio, pacchetti, template, cronologia).
 4. Sottofase 12f: documenti finali e verifica complessiva, poi unione di `phase-12-shop` in `main`.
