@@ -237,7 +237,7 @@ Lo stesso reset si applica ai piloti iscritti anche alla chiusura del campionato
 - Pilota: inventario e mazzo da gioco, con spostamento delle carte (massimo 15 nel mazzo) e campionato attivo.
 - Campionati: elenco di attivi e chiusi (pulsante "+" per crearne uno, solo admin), dettaglio con iscrizione di un pilota, gare ("in corso" o "terminata") e classifica; ingranaggio con le impostazioni del campionato (solo admin).
 - Gara: classifica, piloti da assegnare, non partecipanti, pulsante "Termina"; correzione solo per l'admin.
-- Negozio del campionato: sezioni modifiche e sponsor, pacchetti, acquisto con apertura animata, riepilogo dell'inventario e storico (sezione 13).
+- Negozio del campionato: sezioni modifiche e sponsor, pacchetti, acquisto con apertura animata e pulsante Inventario (popup di riepilogo); lo storico è una pagina separata (sezione 13).
 - Pannello admin, raggiungibile dal menu "Admin" in alto (visibile solo all'admin):
   - pool: elenco, pulsante "Ricarica" per le due pool di base (con conferma se toglie carte), creazione ed eliminazione delle pool derivate, dettaglio con carte rinominabili;
   - creazione, chiusura e cancellazione dei campionati, con la scelta delle due pool (modifiche e sponsor);
@@ -284,6 +284,7 @@ Il funzionamento esteso è in `SHOP_DESIGN.md`, lo schema tecnico, i servizi e l
 ### Accesso
 
 - Il giocatore entra nel negozio di un campionato solo con un proprio pilota iscritto; se ne ha più di uno nello stesso campionato sceglie con quale proseguire.
+- L'elenco dei campionati con negozio e dei piloti iscritti, usato per la barra di navigazione e per la scelta del pilota, viene da `GET /api/me/shops`.
 - L'admin entra in ogni negozio, anche senza pilota, in sola lettura; con un pilota iscritto nel campionato si comporta come un giocatore. Il giudice senza pilota iscritto non ha accesso.
 - Con una gara in corso il negozio si blocca (nessun acquisto). A campionato chiuso il negozio non è più disponibile per gli utenti; l'admin lo apre in sola lettura.
 - Un pilota eliminato non può comprare durante un campionato attivo.
@@ -292,7 +293,7 @@ Il funzionamento esteso è in `SHOP_DESIGN.md`, lo schema tecnico, i servizi e l
 
 - In alto a destra compaiono il nome del pilota scelto, il suo oro e i suoi punti sponsor.
 - Due sezioni, modifiche e sponsor, che distinguono **solo la valuta**: i pacchetti pagati in oro stanno nella sezione modifiche, quelli pagati in punti sponsor nella sezione sponsor. Le carte che escono da un pacchetto non dipendono dalla sezione.
-- In ogni sezione un popup mostra il riepilogo dell'inventario del pilota (miniature con il numero di copie, senza le carte Velocità 1-4); il resto della pagina elenca i pacchetti.
+- Un solo pulsante Inventario, uguale per le due sezioni, apre un popup con il riepilogo dell'inventario del pilota (miniature con il numero di copie, senza le carte Velocità 1-4); il resto della pagina elenca i pacchetti. Un pulsante separato, Storico, porta alla pagina dello storico.
 - Ordinamento e ricerca sono scelte del singolo giocatore e non vengono salvate: di default dal meno caro al più caro, oppure dal più caro al meno caro, alfabetico o alfabetico inverso, con una barra di ricerca per nome.
 - Con saldo insufficiente si disattiva solo il pulsante d'acquisto di quel pacchetto, che resta visibile con il suo prezzo.
 
@@ -314,7 +315,7 @@ Il funzionamento esteso è in `SHOP_DESIGN.md`, lo schema tecnico, i servizi e l
 
 ### Storico
 
-- Il giocatore vede dal negozio, con il pulsante "Storico", gli acquisti dei propri piloti iscritti, divisi per pilota; non vede quelli di un pilota che ha eliminato.
+- Il giocatore vede lo storico in una pagina separata, raggiungibile dal pulsante "Storico" del negozio: gli acquisti dei propri piloti iscritti, divisi per pilota; non vede quelli di un pilota che ha eliminato.
 - L'admin vede la cronologia completa dalle impostazioni del campionato. Dopo la chiusura lo storico resta visibile solo all'admin e sparisce con la cancellazione del campionato.
 - Le righe restano se pilota o pacchetto vengono eliminati.
 
