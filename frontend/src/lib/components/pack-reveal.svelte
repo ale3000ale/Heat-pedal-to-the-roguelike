@@ -13,9 +13,10 @@
 	import type { RevealedCard } from '$lib/shop-cards';
 
 	// Apertura in quattro fasi: busta chiusa (con l'immagine del pacchetto come texture),
-	// strappo della striscia in alto, scorrimento della busta verso il basso, carte in fila
-	// che entrano da sinistra. Ogni carta si gira da sola al tocco; `done` diventa vero
-	// quando sono tutte girate. Il componente nasce a ogni apertura, quindi riparte da zero.
+	// strappo della striscia in alto (la striscia se ne va e la busta resta tagliata),
+	// scorrimento della busta verso il basso, carte in fila che entrano da sinistra.
+	// Ogni carta si gira da sola al tocco; `done` diventa vero quando sono tutte girate.
+	// Il componente nasce a ogni apertura, quindi riparte da zero.
 	let {
 		cards,
 		packImage = null,
@@ -134,12 +135,13 @@
 		padding: 0.5rem 0;
 	}
 
+	/* L'ombra segue la forma reale della busta (anche tagliata), non il rettangolo. */
 	.pack {
 		position: relative;
 		width: min(60vw, 240px);
 		aspect-ratio: 560 / 870;
 		border-radius: 0.75rem;
-		box-shadow: 0 12px 28px rgb(0 0 0 / 0.35);
+		filter: drop-shadow(0 10px 12px rgb(0 0 0 / 0.35));
 		transition:
 			transform 600ms ease-in,
 			opacity 600ms ease-in;
@@ -169,6 +171,29 @@
 		border-radius: 0.75rem;
 		background-size: cover;
 		background-position: center;
+	}
+
+	/* Dopo lo strappo la parte alta della busta (14%) viene tagliata via, con un bordo
+	   leggermente irregolare: sotto resta solo il resto del pacchetto. Il taglio è
+	   immediato perché la striscia, che lo copriva, parte nello stesso istante. */
+	.pack.tearing .pack-body,
+	.pack.sliding .pack-body {
+		clip-path: polygon(
+			0% 14.5%,
+			8% 15.7%,
+			17% 14.2%,
+			26% 15.5%,
+			35% 14.3%,
+			44% 15.8%,
+			53% 14.4%,
+			62% 15.6%,
+			71% 14.2%,
+			80% 15.7%,
+			89% 14.4%,
+			100% 15.5%,
+			100% 100%,
+			0% 100%
+		);
 	}
 
 	/* La striscia in alto riusa la stessa texture, allineata alla parte alta della busta. */
