@@ -19,8 +19,8 @@ from app.services.shop_view import PilotNotEnrolledError, is_enrolled, load_pool
 # Tetto di sicurezza: copie massime di una carta nell'inventario di un pilota.
 MAX_COPIES_PER_CARD = 100
 
-# Un solo acquisto alla volta: la pool è la fonte di verità e due acquisti contemporanei
-# non devono consumare la stessa copia. Vale per un solo processo del backend (uso locale).
+# Un acquisto alla volta dentro lo stesso processo: evita attese inutili sul database.
+# Tra processi diversi (più worker) la serializzazione la garantisce _lock_database.
 _PURCHASE_LOCK = threading.Lock()
 
 
@@ -63,6 +63,19 @@ def _balance(pilot: Pilot, currency: str) -> int:
     return pilot.gold if currency == "gold" else pilot.sponsor
 
 
+def _lock_database(db: Session) -> None:
+    # Prende il blocco di scrittura del database prima di leggere pool e saldi, così due
+    # acquisti di processi diversi non possono consumare la stessa copia. Su SQLite apre
+    # una transazione con BEGIN IMMEDIATE (chi arriva dopo attende il busy timeout della
+    # connessione). Se una transazione è già aperta o il database non è SQLite non fa nulla.
+    connection = db.connection()
+    if connection.dialect.name != "sqlite":
+        return
+    if connection.connection.driver_connection.in_transaction:
+        return
+    connection.exec_driver_sql("BEGIN IMMEDIATE")
+
+
 def purchase_pack(
     db: Session,
     user: User,
@@ -80,6 +93,7 @@ def purchase_pack(
     rng = rng or random.SystemRandom()
     with _PURCHASE_LOCK:
         try:
+            _lock_database(db)
             result = _purchase(db, user, championship_id, pack_id, pilot_id, rng)
             db.commit()
         except Exception:
