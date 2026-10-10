@@ -140,12 +140,14 @@ dell'inventario o conflitto di versione, 422 dati non validi.
   si apre con sfondo sfocato e più larga (opzioni `blur` e `wide` di `modal.svelte`,
   spente per gli altri usi) e resta bloccata finché le carte non sono girate. Quattro
   fasi: busta chiusa, che ha come texture l'immagine del pacchetto acquistato
-  (`image_path`); strappo della striscia in alto (700 ms); scorrimento della busta verso
-  il basso (600 ms); carte in fila che entrano da sinistra (ritardo di 120 ms per carta,
-  massimo 1,2 s), ciascuna coperta da un dorso e girata al tocco con una rotazione 3D.
-  Il pulsante "Salta" salta le animazioni durante la busta e gira tutte le carte quando
-  sono in fila. Con `prefers-reduced-motion` l'animazione è saltata e si parte dalle
-  carte.
+  (`image_path`); strappo della striscia in alto (700 ms), con la striscia che se ne va e
+  la busta che resta tagliata in alto (la parte alta, il 14%, viene tolta con un bordo
+  leggermente irregolare, `clip-path`; l'ombra segue la forma con `drop-shadow`);
+  scorrimento della busta tagliata verso il basso (600 ms); carte in fila che entrano da
+  sinistra (ritardo di 120 ms per carta, massimo 1,2 s), ciascuna coperta da un dorso e
+  girata al tocco con una rotazione 3D. Il pulsante "Salta" salta le animazioni durante
+  la busta e gira tutte le carte quando sono in fila. Con `prefers-reduced-motion`
+  l'animazione è saltata e si parte dalle carte.
 - `/championships/[id]/shop/history`: storico acquisti come pagina separata (decisione
   del 10 ottobre 2026, al posto del popup previsto prima).
 - Admin: pagina "Gestione negozio" con due schede (template di pacchetto, template
@@ -163,7 +165,7 @@ dell'inventario o conflitto di versione, 422 dati non validi.
 | 12a | Migrazione, modelli, inventario sponsor e reset, servizio e script delle immagini | Migrazione su e giù, reset all'iscrizione e alla chiusura, caricamento immagini | Completata (248 test) |
 | 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template, rotte delle immagini | Regole di creazione ed eliminazione, copie indipendenti, permessi | Completata |
 | 12c | Acquisto, estrazione, storico, inventario (backend) | Probabilità per copia, filtro, "Terminato", saldo, gara in corso, campionato chiuso, concorrenza, tetto 100 | Completata e approvata il 10 ottobre 2026 |
-| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | `shop-sort.spec.ts` (9 test di ordinamento e ricerca), `pack-reveal-phases.spec.ts` (7 test sulle fasi dell'animazione) e controlli del frontend verdi in CI | Quasi chiusa: negozio con ordinamento, ricerca e saldo, apertura animata dei pacchetti con CI verde; restano da verificare a mano l'aspetto dell'animazione e le altre pagine (elenco, storico) |
+| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | `shop-sort.spec.ts` (9 test di ordinamento e ricerca), `pack-reveal-phases.spec.ts` (7 test sulle fasi dell'animazione) e controlli del frontend verdi in CI | Quasi chiusa: negozio con ordinamento, ricerca e saldo, apertura animata dei pacchetti con taglio della busta e CI verde; restano da verificare a mano l'aspetto dell'animazione e le altre pagine (elenco, storico) |
 | 12e | Frontend dell'admin: gestione negozio, "Crea pack", storico completo | Come sopra | In corso (pagine presenti da verificare) |
 | 12f | Documenti, `PROJECT_SPEC.md`, stato e note | Revisione finale | Da fare |
 
