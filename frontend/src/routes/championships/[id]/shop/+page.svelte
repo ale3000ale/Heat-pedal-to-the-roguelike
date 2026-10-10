@@ -211,48 +211,48 @@
 		<p class="text-muted-foreground">Caricamento…</p>
 	{:else}
 		<div class="flex flex-wrap items-start justify-between gap-3">
-			<div>
-				<h1 class="text-2xl font-bold">{shop.championship_name}</h1>
+			<h1 class="text-2xl font-bold">{shop.championship_name}</h1>
+			<div class="flex flex-col items-end gap-2">
 				{#if shop.pilot}
-					<p class="text-sm text-muted-foreground">
+					<p class="text-right text-sm text-muted-foreground">
 						{shop.pilot.name} · {shop.pilot.gold} oro · {shop.pilot.sponsor} punti sponsor
 					</p>
 				{/if}
-			</div>
-			<div class="flex items-center gap-2">
-				{#if shop.pilot}
-					<Button size="sm" variant="outline" onclick={() => (inventoryOpen = true)}>
-						Inventario
-					</Button>
-					<a
-						href={resolve('/championships/[id]/shop/history', { id: String(championshipId) })}
-						class="text-sm text-muted-foreground hover:text-foreground"
-					>
-						Storico
-					</a>
-				{/if}
-				{#if pilots.length > 1}
-					<select
-						class={selectClass}
-						bind:value={selectedPilot}
-						onchange={changePilot}
-						aria-label="Pilota"
-					>
-						{#each pilots as p (p.id)}
-							<option value={String(p.id)}>{p.name}</option>
-						{/each}
-					</select>
-				{/if}
-				{#if auth.isAdmin && championship}
-					<Button
-						size="sm"
-						variant="outline"
-						aria-label="Impostazioni del negozio"
-						onclick={() => (settingsOpen = true)}
-					>
-						⚙
-					</Button>
-				{/if}
+				<div class="flex flex-wrap items-center justify-end gap-2">
+					{#if shop.pilot}
+						<Button size="sm" variant="outline" onclick={() => (inventoryOpen = true)}>
+							Inventario
+						</Button>
+						<a
+							href={resolve('/championships/[id]/shop/history', { id: String(championshipId) })}
+							class="text-sm text-muted-foreground hover:text-foreground"
+						>
+							Storico
+						</a>
+					{/if}
+					{#if pilots.length > 1}
+						<select
+							class={selectClass}
+							bind:value={selectedPilot}
+							onchange={changePilot}
+							aria-label="Pilota"
+						>
+							{#each pilots as p (p.id)}
+								<option value={String(p.id)}>{p.name}</option>
+							{/each}
+						</select>
+					{/if}
+					{#if auth.isAdmin && championship}
+						<Button
+							size="sm"
+							variant="outline"
+							aria-label="Impostazioni del negozio"
+							onclick={() => (settingsOpen = true)}
+						>
+							⚙
+						</Button>
+					{/if}
+				</div>
 			</div>
 		</div>
 
