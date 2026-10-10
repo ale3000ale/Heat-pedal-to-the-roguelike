@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
+	import { onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import CardTile from '$lib/components/CardTile.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		PHASE_DURATIONS_MS,
-		cardDelayMs,
 		initialPhase,
 		nextPhase,
 		type RevealPhase
@@ -14,8 +13,9 @@
 
 	// Apertura in quattro fasi: busta chiusa (con l'immagine del pacchetto come texture),
 	// strappo della striscia in alto (la striscia se ne va e la busta resta tagliata),
-	// scorrimento della busta verso il basso, carte in fila che entrano da sinistra.
-	// Ogni carta si gira da sola al tocco; `done` diventa vero quando sono tutte girate.
+	// scorrimento della busta verso il basso, poi le carte UNA ALLA VOLTA: la prima compare
+	// al centro e ogni tocco la fa scorrere verso sinistra mostrando la seguente.
+	// `done` diventa vero quando e' visibile l'ultima carta.
 	// Il componente nasce a ogni apertura, quindi riparte da zero.
 	let {
 		cards,
@@ -24,13 +24,17 @@
 	}: { cards: RevealedCard[]; packImage?: string | null; done?: boolean } = $props();
 
 	let phase = $state<RevealPhase>('sealed');
-	let flipped = $state<boolean[]>(untrack(() => cards.map(() => false)));
-	let remaining = $derived(flipped.filter((value) => !value).length);
+	let current = $state(0);
+	let reduced = $state(false);
+	let lastIndex = $derived(Math.max(cards.length - 1, 0));
+	let item = $derived(cards[current]);
 	let textureStyle = $derived(packImage ? `background-image: url('${packImage}')` : '');
+	let slideMs = $derived(reduced ? 0 : 350);
 
 	// Con il movimento ridotto si salta busta e animazioni.
 	onMount(() => {
-		phase = initialPhase(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+		reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		phase = initialPhase(reduced);
 	});
 
 	// Strappo e scorrimento avanzano da soli dopo la loro durata.
@@ -42,7 +46,7 @@
 
 	// Aggiorna `done` solo quando cambia, così l'effetto non si ripete.
 	$effect(() => {
-		const finished = remaining === 0;
+		const finished = cards.length === 0 || current >= lastIndex;
 		if (done !== finished) done = finished;
 	});
 
@@ -50,17 +54,25 @@
 		if (phase === 'sealed') phase = nextPhase(phase);
 	}
 
-	function flip(index: number) {
-		flipped[index] = true;
+	// Passa alla carta seguente; sull'ultima non fa nulla.
+	function nextCard() {
+		if (current < lastIndex) current += 1;
 	}
 
-	// Durante la busta salta le animazioni; con le carte in fila le gira tutte.
+	function onCardKey(event: KeyboardEvent) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			nextCard();
+		}
+	}
+
+	// Durante la busta salta le animazioni; con le carte va direttamente all'ultima.
 	function skip() {
 		if (phase !== 'cards') {
 			phase = 'cards';
 			return;
 		}
-		flipped = flipped.map(() => true);
+		current = lastIndex;
 	}
 </script>
 
@@ -87,41 +99,49 @@
 				<p class="text-center text-sm text-muted-foreground">Tocca la busta per aprirla.</p>
 			{/if}
 		</div>
-	{:else}
-		<div class="row">
-			{#each cards as item, index (index)}
-				<div class="cell" in:fly={{ x: -80, duration: 400, delay: cardDelayMs(index) }}>
-					<div class="flip" class:is-flipped={flipped[index]}>
-						<button
-							type="button"
-							onclick={() => flip(index)}
-							disabled={flipped[index]}
-							aria-label={`Gira la carta ${index + 1}`}
-							class="face back"
-						>
-							?
-						</button>
-						<div class="face front">
-							<CardTile card={item.card} title="Copie ottenute" />
-						</div>
+	{:else if item}
+		<div class="viewer">
+			{#key current}
+				<div
+					class="slot"
+					in:fly={{ x: 160, duration: slideMs }}
+					out:fly={{ x: -160, duration: slideMs }}
+				>
+					<div
+						class="current"
+						role="button"
+						tabindex={current < lastIndex ? 0 : -1}
+						aria-label={current < lastIndex
+							? `Carta ${current + 1} di ${cards.length}: tocca per la successiva`
+							: `Ultima carta, ${current + 1} di ${cards.length}`}
+						onclick={nextCard}
+						onkeydown={onCardKey}
+					>
+						<CardTile card={item.card} title="Copie ottenute" />
 					</div>
-					<p class="mt-1 min-h-4 text-xs text-muted-foreground">
-						{#if flipped[index]}
-							{item.section === 'modifiche' ? 'Modifica' : 'Sponsor'}
-						{/if}
+					<p class="mt-2 text-center text-xs text-muted-foreground">
+						{item.section === 'modifiche' ? 'Modifica' : 'Sponsor'}
 					</p>
 				</div>
-			{/each}
+			{/key}
 		</div>
 	{/if}
 
-	{#if remaining > 0}
+	{#if cards.length > 0 && phase === 'cards'}
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			<p class="text-sm text-muted-foreground">Carte da girare: {remaining}</p>
+			{#if current < lastIndex}
+				<p class="text-sm text-muted-foreground">
+					Carta {current + 1} di {cards.length}: tocca per la successiva.
+				</p>
+				<Button size="sm" variant="outline" onclick={skip}>Salta</Button>
+			{:else}
+				<p class="text-sm text-muted-foreground">Ultima carta ({cards.length} di {cards.length}).</p>
+			{/if}
+		</div>
+	{:else if phase !== 'cards'}
+		<div class="flex justify-end">
 			<Button size="sm" variant="outline" onclick={skip}>Salta</Button>
 		</div>
-	{:else if cards.length > 0}
-		<p class="text-sm text-muted-foreground">Hai girato tutte le carte.</p>
 	{/if}
 </div>
 
@@ -216,60 +236,27 @@
 		opacity: 0;
 	}
 
-	.row {
-		display: flex;
-		gap: 0.75rem;
-		overflow-x: auto;
-		padding: 0.5rem 0.25rem;
-		perspective: 900px;
+	/* Una sola carta alla volta: entrante e uscente occupano la stessa cella della griglia,
+	   così durante lo scorrimento si sovrappongono invece di impilarsi. */
+	.viewer {
+		display: grid;
+		justify-items: center;
+		overflow: hidden;
+		padding: 0.5rem 0;
 	}
 
-	.cell {
-		flex: 0 0 8rem;
+	.slot {
+		grid-area: 1 / 1;
+		width: min(60vw, 240px);
 	}
 
-	.flip {
-		position: relative;
-		aspect-ratio: 2 / 3;
-		transform-style: preserve-3d;
-		transition: transform 600ms ease;
-	}
-
-	.flip.is-flipped {
-		transform: rotateY(180deg);
-	}
-
-	.face {
-		position: absolute;
-		inset: 0;
-		backface-visibility: hidden;
-		-webkit-backface-visibility: hidden;
-	}
-
-	.back {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border: 2px dashed var(--border);
+	.current {
+		cursor: pointer;
 		border-radius: 0.5rem;
-		background: var(--muted);
-		font-size: 1.5rem;
-		font-weight: 700;
 	}
 
-	.back:not(:disabled):hover {
+	.current:focus-visible {
 		outline: 2px solid var(--primary);
-	}
-
-	.front {
-		transform: rotateY(180deg);
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.pack,
-		.pack-strip,
-		.flip {
-			transition: none;
-		}
+		outline-offset: 2px;
 	}
 </style>
