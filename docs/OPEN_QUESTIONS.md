@@ -1,4 +1,4 @@
-> **STATO: AGGIORNATO IL 10 OTTOBRE 2026 (fase 12).**
+> **STATO: AGGIORNATO L'11 OTTOBRE 2026 (fase 12).**
 >
 > Domande aperte dopo la chiusura della fase 11. Le decisioni già prese sono in
 > `PROJECT_SPEC.md`; il funzionamento del Negozio è in `SHOP_DESIGN.md` e la sua
@@ -16,6 +16,14 @@ il frontend del giocatore (12d), il frontend admin (12e) e i documenti finali (1
   (`SELECT ... FOR UPDATE`).
 - **Template di negozio senza pacchetti**: non è utilizzabile alla creazione del
   campionato; l'avviso (triangolo giallo) va riportato in `SHOP_SCHEMA.md`.
+- **Strappo della busta**: l'effetto non è ancora stato visto a schermo; se non
+  convince, si ritocca solo il CSS (vedi decisione dell'11 ottobre).
+
+Decisione dell'11 ottobre 2026 (non più aperta):
+
+- Nell'apertura del pacchetto la busta si apre con uno strappo: la striscia superiore
+  se ne va e la busta resta tagliata in alto. È solo CSS, senza test dedicati; i
+  dettagli sono in `SHOP_DESIGN.md` (sezione 6) e `SHOP_SCHEMA.md`.
 
 Decisioni del 10 ottobre 2026 (non più aperte):
 
