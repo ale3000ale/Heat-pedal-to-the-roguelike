@@ -50,9 +50,7 @@
 	// Testo della conferma: ogni carta da togliere, con l'avviso se è in uso.
 	function removalMessage(preview: ReloadPreview): string {
 		const list = preview.removed
-			.map((card) =>
-				card.in_use ? `${card.name} (in uso in un campionato attivo)` : card.name
-			)
+			.map((card) => (card.in_use ? `${card.name} (in uso in un campionato attivo)` : card.name))
 			.join('; ');
 		return `La ricarica elimina dal database queste carte, il cui file non esiste più: ${list}. Le carte presenti nelle pool dei campionati già creati restano lì.`;
 	}
@@ -208,10 +206,7 @@
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Pool di base</Card.Title>
-				<Card.Description>
-					«Ricarica» sincronizza il database con la cartella; se deve togliere carte chiede
-					conferma.
-				</Card.Description>
+				<Card.Description>«Ricarica» sincronizza il database con la cartella.</Card.Description>
 			</Card.Header>
 			<Card.Content>
 				<ul class="divide-y">
