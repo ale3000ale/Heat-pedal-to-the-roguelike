@@ -37,7 +37,7 @@ Questo file serve a chi lavora sul progetto (anche l'assistente) per ripartire s
 - Dopo un `git pull` o un cambio di ramo: `python heat.py migrate` (l'avvio migra comunque da solo).
 - Test backend: `python heat.py test` (224 test alla chiusura della fase 11, 248 alla fine della 12a). Controlli frontend: `python heat.py check`.
 - Ridimensionare le carte, da `backend`: `python -m app.scripts.resize_cards [cartella] [--dry-run]`.
-- Il lint del frontend (`npm run lint`) esegue `prettier --check` e `eslint`: dopo ogni modifica a un file `.svelte` conviene lanciare `npx prettier --write` sul file.
+- Il lint del frontend (`npm run lint`) esegue `prettier --check` e `eslint`: dopo ogni modifica a un file `.svelte` o `.ts` conviene lanciare `npx prettier --write` sul file (le righe troppo lunghe sono la causa più comune di errore).
 
 ## Carte e immagini
 
@@ -72,6 +72,8 @@ Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dent
 - Regole e schema: `SHOP_DESIGN.md` e `SHOP_SCHEMA.md`. Backend completato (12a-12c); frontend in corso (12d, 12e).
 - Acquisto (`services/shop_purchase.py`): una transazione sola. Prima delle letture prende un lock di processo e, su SQLite, `BEGIN IMMEDIATE` (`_lock_database`); su altri database il blocco sul database non è attivo. Tetto di 100 copie per carta nell'inventario (409).
 - Pacchetti: se valuta e costo mancano valgono 10 oro; con valuta sponsor e costo mancante valgono 2 sponsor. Il modulo del frontend parte da 10 e passa a 2 cambiando valuta solo se il costo non è stato modificato a mano.
+- Pagina del giocatore: `frontend/src/routes/championships/[id]/shop/+page.svelte`. In alto a destra stanno il pilota scelto con oro e punti sponsor e i pulsanti (Inventario in popup, link Storico verso la pagina `history`, scelta del pilota, impostazioni per l'admin). Decisione del 10 ottobre: un solo pulsante Inventario e lo Storico come pagina separata, non come previsto in `SHOP_DESIGN.md` prima della modifica (il documento è stato aggiornato).
+- Ordinamento e ricerca dei pacchetti: `frontend/src/lib/shop-sort.ts` (`sortPacks`, `filterPacksByName`, `PACK_SORT_OPTIONS`, `DEFAULT_PACK_SORT`), con test in `shop-sort.spec.ts`. Predefinito: dal meno caro al più caro; a parità contano il nome e poi l'id. La scelta non viene salvata.
 - Le impostazioni del campionato aperte dal negozio usano l'opzione `shopOnly` di `championship-settings.svelte` e mostrano solo pacchetti, pool completa e storico.
 - Deploy online: un solo server con pochi worker (SQLite accetta una sola scrittura alla volta).
 
@@ -88,12 +90,12 @@ Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dent
 
 ## Contesto di lavoro (10 ottobre 2026)
 
-Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 12 (Negozio e pacchetti) è sul ramo `phase-12-shop` (pull request #5, in bozza): backend 12a-12c completato e approvato, controlli verdi dopo le ultime modifiche.
+Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 12 (Negozio e pacchetti) è sul ramo `phase-12-shop` (pull request #5, in bozza): backend 12a-12c completato e approvato; controlli verdi dopo le modifiche alla pagina del negozio (ordinamento, ricerca, saldo in alto a destra).
 
 Da fare, in ordine:
 
-1. Riallineare `PROJECT_SPEC.md` con le regole del Negozio e le decisioni del 10 ottobre.
-2. Sottofase 12d: verificare le pagine del giocatore già presenti (barra di navigazione, scelta del pilota, negozio, popup di inventario e storico, animazione) e completare quanto manca.
+1. Riallineare `PROJECT_SPEC.md`, `SHOP_SCHEMA.md` e `OPEN_QUESTIONS.md` con le regole del Negozio e le decisioni del 10 ottobre (`SHOP_DESIGN.md`, `PROJECT_STATUS.md` e questo file sono già allineati).
+2. Sottofase 12d: verificare le altre pagine del giocatore (barra di navigazione, scelta del pilota, pagina dello storico, popup di inventario, animazione) e completare quanto manca.
 3. Sottofase 12e: frontend admin (impostazioni del negozio, pacchetti, template, cronologia).
 4. Sottofase 12f: documenti finali, verifica complessiva e unione in `main`.
 
