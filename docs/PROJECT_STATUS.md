@@ -56,6 +56,7 @@ Ultimo aggiornamento: 2026-10-10
 - Negozio, estrazione e acquisto (12c-1): `services/shop_draw.py` (una carta alla volta, probabilità per copia ricalcolata dopo ogni estrazione, filtro per nome senza distinguere le maiuscole, "terminato" se una pool ha meno copie estraibili di quelle richieste) e `services/shop_purchase.py` (controlli, saldo, estrazione, pool, inventari e storico in un solo commit; un acquisto alla volta; tetto di 100 copie per carta nell'inventario, con errore 409). Le carte sponsor di un pacchetto (`sponsor_count`) sono estratte dalla copia della pool sponsor del campionato.
 - Serializzazione degli acquisti: lock di processo più `BEGIN IMMEDIATE` su SQLite (`_lock_database`), così due acquisti di processi o worker diversi non consumano la stessa copia. Con un database diverso da SQLite il blocco sul database non è attivo.
 - Negozio, accesso e vista (12c-1): `services/shop_view.py`. Il giocatore entra con un proprio pilota iscritto e solo a campionato attivo; l'admin entra sempre, in sola lettura senza pilota o a campionato chiuso; l'admin con un pilota iscritto si comporta come un giocatore. Con una gara in corso gli acquisti sono bloccati.
+- Negozio, elenco dei negozi dell'utente: `GET /api/me/shops` (`api/shop_me.py`, `services/shop_list.py`, `schemas/shop_list.py`) restituisce i campionati attivi a cui l'utente partecipa con un pilota, con i piloti iscritti; serve alla voce "Negozio" della barra di navigazione e alla scelta del pilota.
 - Negozio, storico e inventario (12c-2): `services/shop_history.py` (storico dei propri piloti, cronologia completa per l'admin, raggruppamento per pilota) e `services/shop_inventory.py` (inventari modifiche e sponsor senza Velocità 1-4). Il giocatore non vede gli acquisti di un pilota che ha eliminato; l'admin sì.
 
 ## Frontend
@@ -85,17 +86,20 @@ Ultimo aggiornamento: 2026-10-10
 | Pool (anche anteprima e ricarica) | `/api/pools` |
 | Campionati, iscrizioni, gare e classifica | `/api/championships` |
 | Negozio del giocatore (vista, acquisto, inventario, storico) | `/api/championships/{id}/shop` |
+| Negozi dell'utente (campionati con pilota iscritto) | `/api/me` |
 | Amministrazione e pulizia | `/api/admin` |
 | Template e immagini del Negozio (admin) | `/api/shop` |
 | Salute del servizio | `/health` |
 
-Rotte del Negozio per il giocatore (12c): `GET /{id}/shop?pilot_id=`, `POST /{id}/shop/purchases`, `GET /{id}/shop/inventory?pilot_id=`, `GET /{id}/shop/history`, `GET /{id}/shop/history/all` (solo admin).
+Rotte del Negozio per il giocatore (12c): `GET /{id}/shop?pilot_id=`, `POST /{id}/shop/purchases`, `GET /{id}/shop/inventory?pilot_id=`, `GET /{id}/shop/history`, `GET /{id}/shop/history/all` (solo admin). Elenco dei negozi dell'utente: `GET /api/me/shops`.
 
 ## Decisioni e questioni aperte
 
 Decisioni dell'autore (2026-10-08): tetto di 100 copie per carta, rifiuto dell'acquisto con 409; l'admin con un pilota iscritto è un normale giocatore, con in più il tasto delle impostazioni del negozio; durante un campionato attivo un pilota eliminato non può comprare; il giocatore non vede lo storico di un pilota eliminato.
 
-Decisioni dell'autore (2026-10-10): la 12c è approvata; la ricarica delle pool chiede conferma elencando le carte da togliere, con l'indicazione "presente nella copia di pool di un campionato attivo"; l'elenco dei campionati con negozio per la barra di navigazione non serve, perché la pagina del negozio indica già i campionati del giocatore e chiede il pilota; per il deploy online gli acquisti si serializzano con un blocco sul database; la pool sponsor è usata dai pacchetti; i pacchetti nuovi costano 10 oro o 2 sponsor; nel negozio lo storico resta una pagina separata e l'inventario un solo pulsante (invece del popup con sezioni espandibili e del pulsante in ogni area previsti in `SHOP_DESIGN.md`).
+Decisioni dell'autore (2026-10-10): la 12c è approvata; la ricarica delle pool chiede conferma elencando le carte da togliere, con l'indicazione "presente nella copia di pool di un campionato attivo"; per il deploy online gli acquisti si serializzano con un blocco sul database; la pool sponsor è usata dai pacchetti; i pacchetti nuovi costano 10 oro o 2 sponsor; nel negozio lo storico resta una pagina separata e l'inventario un solo pulsante (invece del popup con sezioni espandibili e del pulsante in ogni area previsti in `SHOP_DESIGN.md`).
+
+Correzione del 2026-10-10: una versione precedente di questo file e di `SHOP_SCHEMA.md` diceva che l'elenco dei campionati con negozio (`GET /api/me/shops`) non serviva. La rotta invece esiste nel backend (`shop_me.py`, montata con prefisso `/api/me` in `main.py`) ed è usata dal frontend; i documenti sono stati corretti dopo la lettura del codice.
 
 Questioni aperte:
 
@@ -114,7 +118,7 @@ Questioni aperte:
 
 ## Prossimi passi
 
-1. Riallineare `SHOP_DESIGN.md` (sezioni 3 e 8: storico come pagina, inventario come pulsante unico), `PROJECT_NOTES.md`, `SHOP_SCHEMA.md`, `OPEN_QUESTIONS.md` e `PROJECT_SPEC.md` con le stesse modifiche.
-2. Sottofase 12d: verificare le altre pagine del negozio (barra di navigazione, scelta del pilota, popup di inventario, animazione delle carte) e completare quanto manca.
+1. Riallineare `OPEN_QUESTIONS.md` e `PROJECT_SPEC.md` con le decisioni del 2026-10-10 (`SHOP_DESIGN.md`, `SHOP_SCHEMA.md`, `PROJECT_NOTES.md` e questo file sono già allineati).
+2. Sottofase 12d: verificare le altre pagine del negozio (barra di navigazione, scelta del pilota, pagina dello storico, popup di inventario, animazione delle carte) e completare quanto manca.
 3. Sottofase 12e: frontend admin (impostazioni del negozio, pacchetti, template, cronologia).
 4. Sottofase 12f: documenti finali e verifica complessiva, poi unione di `phase-12-shop` in `main`.
