@@ -6,6 +6,14 @@
 	import type { CardEntry, Pool, PoolDetail, PoolKind, ReloadResult } from '$lib/types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
+	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
+
+	// Anteprima della ricarica: carte che verrebbero tolte, con l'uso nei campionati attivi.
+	interface ReloadPreview {
+		added: string[];
+		removed: { name: string; in_use: boolean }[];
+		warnings: string[];
+	}
 
 	const kinds: PoolKind[] = ['modifiche', 'sponsor'];
 	const kindLabels: Record<PoolKind, string> = { modifiche: 'Modifiche', sponsor: 'Sponsor' };
@@ -19,6 +27,8 @@
 	let busy = $state<string | null>(null);
 	let loaded = $state(false);
 	let results = $state<Partial<Record<PoolKind, ReloadResult>>>({});
+	let confirmOpen = $state(false);
+	let pending = $state<{ kind: PoolKind; preview: ReloadPreview } | null>(null);
 
 	// Modulo di creazione: tipo, nome, carte della base e copie scelte per ciascuna.
 	let newKind = $state<PoolKind>('modifiche');
@@ -30,6 +40,19 @@
 
 	function message(e: unknown): string {
 		return e instanceof Error ? e.message : 'Errore sconosciuto';
+	}
+
+	// Riga di riepilogo dell'esito di una ricarica.
+	function summary(result: ReloadResult): string {
+		return `Aggiunte: ${result.added.length}, rimosse: ${result.removed.length}, già presenti: ${result.already_present}.`;
+	}
+
+	// Testo della conferma: ogni carta da togliere, con l'avviso se è in uso.
+	function removalMessage(preview: ReloadPreview): string {
+		const list = preview.removed
+			.map((card) => (card.in_use ? `${card.name} (in uso in un campionato attivo)` : card.name))
+			.join('; ');
+		return `La ricarica elimina dal database queste carte, il cui file non esiste più: ${list}. Le carte presenti nelle pool dei campionati già creati restano lì.`;
 	}
 
 	function baseOf(kind: PoolKind): Pool | undefined {
@@ -77,8 +100,8 @@
 		}
 	}
 
-	// Legge i file della cartella e aggiunge soltanto le carte nuove.
-	async function reload(kind: PoolKind) {
+	// Esegue la ricarica vera: aggiunge le carte nuove e toglie quelle senza più il file.
+	async function applyReload(kind: PoolKind) {
 		actionError = null;
 		busy = `reload-${kind}`;
 		try {
@@ -91,6 +114,33 @@
 		} finally {
 			busy = null;
 		}
+	}
+
+	// Chiede prima l'anteprima: se la ricarica toglie carte serve la conferma dell'admin.
+	async function reload(kind: PoolKind) {
+		actionError = null;
+		busy = `reload-${kind}`;
+		try {
+			const preview = await api<ReloadPreview>(`/pools/base/${kind}/reload/preview`);
+			if (preview.removed.length === 0) {
+				busy = null;
+				await applyReload(kind);
+				return;
+			}
+			pending = { kind, preview };
+			confirmOpen = true;
+		} catch (e) {
+			actionError = message(e);
+		} finally {
+			busy = null;
+		}
+	}
+
+	async function confirmReload() {
+		if (!pending) return;
+		const { kind } = pending;
+		pending = null;
+		await applyReload(kind);
 	}
 
 	async function remove(pool: Pool) {
@@ -156,10 +206,7 @@
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Pool di base</Card.Title>
-				<Card.Description>
-					«Ricarica» legge i file della cartella e aggiunge solo le carte nuove: non modifica né
-					toglie quelle già presenti.
-				</Card.Description>
+				<Card.Description>«Ricarica» sincronizza il database con la cartella.</Card.Description>
 			</Card.Header>
 			<Card.Content>
 				<ul class="divide-y">
@@ -193,11 +240,12 @@
 							</div>
 							{#if result}
 								<div class="mt-2 space-y-1 text-sm" role="status">
-									<p>
-										Aggiunte: {result.added.length}, già presenti: {result.already_present}.
-									</p>
+									<p>{summary(result)}</p>
 									{#if result.added.length > 0}
-										<p class="text-muted-foreground">{result.added.join(', ')}</p>
+										<p class="text-muted-foreground">Aggiunte: {result.added.join(', ')}</p>
+									{/if}
+									{#if result.removed.length > 0}
+										<p class="text-muted-foreground">Rimosse: {result.removed.join(', ')}</p>
 									{/if}
 									{#each result.warnings as warning (warning)}
 										<p class="text-destructive">{warning}</p>
@@ -317,5 +365,15 @@
 				</form>
 			</Card.Content>
 		</Card.Root>
+
+		{#if pending}
+			<ConfirmDialog
+				bind:open={confirmOpen}
+				title={`Rimuovere ${pending.preview.removed.length} carte dalla pool ${kindLabels[pending.kind].toLowerCase()}?`}
+				message={removalMessage(pending.preview)}
+				confirmLabel="Ricarica e rimuovi"
+				onconfirm={confirmReload}
+			/>
+		{/if}
 	{/if}
 </main>

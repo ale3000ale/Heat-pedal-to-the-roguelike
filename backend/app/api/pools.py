@@ -18,6 +18,7 @@ from app.services.pools import (
     get_pool,
     list_pools,
     pool_cards,
+    preview_reload,
     reload_base_pool,
 )
 
@@ -30,6 +31,18 @@ class CardRename(BaseModel):
     # La carta si indica con il suo percorso (non cambia), il nome è quello nuovo.
     path: str
     name: str
+
+
+class RemovedCardRead(BaseModel):
+    # Carta che la ricarica toglierebbe e se è nella pool di un campionato attivo.
+    name: str
+    in_use: bool
+
+
+class PoolReloadPreview(BaseModel):
+    added: list[str]
+    removed: list[RemovedCardRead]
+    warnings: list[str]
 
 
 def _summary(pool) -> PoolRead:
@@ -62,16 +75,32 @@ def list_all(admin: AdminUser, db: DbDep):
     return [_summary(pool) for pool in list_pools(db)]
 
 
+@router.get("/base/{kind}/reload/preview", response_model=PoolReloadPreview)
+def reload_preview(kind: PoolKind, admin: AdminUser, db: DbDep):
+    # Anteprima della ricarica (solo admin): non scrive nulla. Elenca le carte nuove e
+    # quelle da togliere, indicando se sono nella pool di un campionato attivo.
+    try:
+        preview = preview_reload(db, kind)
+    except PoolNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Pool di base non trovata")
+    return PoolReloadPreview(
+        added=preview.added,
+        removed=[RemovedCardRead(name=c.name, in_use=c.in_use) for c in preview.removed],
+        warnings=preview.warnings,
+    )
+
+
 @router.post("/base/{kind}/reload", response_model=PoolReloadResult)
 def reload(kind: PoolKind, admin: AdminUser, db: DbDep):
-    # Ricarica una pool di base dalla sua cartella: aggiunge le carte nuove, non toglie
-    # e non modifica quelle presenti (solo admin).
+    # Sincronizza una pool di base con la sua cartella (solo admin): aggiunge le carte
+    # nuove, toglie quelle il cui file non esiste più e non modifica quelle presenti.
     try:
         result = reload_base_pool(db, kind)
     except PoolNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Pool di base non trovata")
     return PoolReloadResult(
         added=result.added,
+        removed=result.removed,
         already_present=result.already_present,
         warnings=result.warnings,
     )

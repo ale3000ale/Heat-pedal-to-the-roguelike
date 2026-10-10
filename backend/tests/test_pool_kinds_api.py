@@ -82,6 +82,7 @@ def test_reload_adds_cards_found_in_folder(make_client, session_factory, media):
     assert r.status_code == 200
     assert r.json() == {
         "added": ["ruota da bagnato", "turbo"],
+        "removed": [],
         "already_present": 0,
         "warnings": [],
     }
@@ -121,8 +122,56 @@ def test_reload_recognizes_a_renamed_card_by_path(make_client, session_factory, 
     admin = make_admin(make_client, session_factory)
     touch(media, "modifiche", "turbo_2.webp")
     r = reload_pool(admin, "modifiche")
-    assert r.json() == {"added": [], "already_present": 1, "warnings": []}
+    assert r.json() == {"added": [], "removed": [], "already_present": 1, "warnings": []}
     assert [c["name"] for c in cards_of(admin, base_id(admin, "default"))] == ["Rinominata"]
+
+
+def test_reload_removes_cards_whose_file_is_gone(make_client, session_factory, media):
+    seed(session_factory, modifiche=MODIFICHE)
+    admin = make_admin(make_client, session_factory)
+    touch(media, "modifiche", "turbo_2.webp")
+    r = reload_pool(admin, "modifiche")
+    assert r.json() == {
+        "added": [],
+        "removed": ["Ruota da bagnato"],
+        "already_present": 1,
+        "warnings": [],
+    }
+    assert cards_of(admin, base_id(admin, "default")) == [
+        {"name": "Turbo", "path": "cards/base/modifiche/turbo_2.webp", "copies": 2}
+    ]
+
+
+def test_reload_adds_and_removes_in_the_same_run(make_client, session_factory, media):
+    seed(session_factory, modifiche=MODIFICHE)
+    admin = make_admin(make_client, session_factory)
+    touch(media, "modifiche", "turbo_2.webp", "nuova_1.webp")
+    r = reload_pool(admin, "modifiche").json()
+    assert r["added"] == ["nuova"]
+    assert r["removed"] == ["Ruota da bagnato"]
+    assert r["already_present"] == 1
+    names = [c["name"] for c in cards_of(admin, base_id(admin, "default"))]
+    assert names == ["Turbo", "nuova"]
+
+
+def test_reload_removes_nothing_when_the_folder_has_no_images(
+    make_client, session_factory, media
+):
+    seed(session_factory, modifiche=MODIFICHE)
+    admin = make_admin(make_client, session_factory)
+    touch(media, "modifiche", "nota.txt")
+    r = reload_pool(admin, "modifiche").json()
+    assert r["removed"] == []
+    assert len(r["warnings"]) == 1
+    assert len(cards_of(admin, base_id(admin, "default"))) == 2
+
+
+def test_reload_removes_nothing_when_the_folder_is_missing(make_client, session_factory, media):
+    seed(session_factory, modifiche=MODIFICHE)
+    admin = make_admin(make_client, session_factory)
+    r = reload_pool(admin, "modifiche").json()
+    assert r["removed"] == []
+    assert len(cards_of(admin, base_id(admin, "default"))) == 2
 
 
 def test_reload_twice_adds_nothing_the_second_time(make_client, session_factory, media):
@@ -132,6 +181,7 @@ def test_reload_twice_adds_nothing_the_second_time(make_client, session_factory,
     assert reload_pool(admin, "modifiche").json()["added"] == ["turbo"]
     second = reload_pool(admin, "modifiche").json()
     assert second["added"] == []
+    assert second["removed"] == []
     assert second["already_present"] == 1
 
 

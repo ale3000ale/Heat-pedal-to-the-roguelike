@@ -1,7 +1,9 @@
 # Fase 3: Bootstrap frontend
 
-> STATO: COMPLETATA. I limiti emersi alla chiusura sono stati risolti
-> durante la Fase 6 (vedi FRONTEND_AUTH.md).
+> STATO: COMPLETATA. **DOCUMENTO STORICO**: fotografia del frontend alla fase 3.
+> I limiti emersi alla chiusura sono stati risolti durante la Fase 6 (vedi
+> FRONTEND_AUTH.md). Le versioni indicate sotto sono quelle di allora: per lo
+> stato attuale vedi `PROJECT_STATUS.md` e `frontend/package.json`.
 
 ## Stack
 

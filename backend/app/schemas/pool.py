@@ -43,7 +43,9 @@ class PoolDetail(PoolRead):
 
 
 class PoolReloadResult(BaseModel):
-    # Esito della ricarica di una pool di base.
+    # Esito della ricarica di una pool di base: carte aggiunte, rimosse (file sparito),
+    # già presenti e avvisi.
     added: list[str]
+    removed: list[str]
     already_present: int
     warnings: list[str]

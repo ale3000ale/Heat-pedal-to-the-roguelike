@@ -2,14 +2,26 @@
 	import type { Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 
+	// Con `closeOnOutside` falso la finestra si chiude solo con la X: il clic fuori e il
+	// tasto Esc non fanno nulla.
 	let {
 		open = $bindable(false),
 		title,
+		closeOnOutside = true,
 		children
-	}: { open?: boolean; title: string; children: Snippet } = $props();
+	}: {
+		open?: boolean;
+		title: string;
+		closeOnOutside?: boolean;
+		children: Snippet;
+	} = $props();
+
+	function dismiss() {
+		if (closeOnOutside) open = false;
+	}
 
 	function onkeydown(event: KeyboardEvent) {
-		if (open && event.key === 'Escape') open = false;
+		if (open && event.key === 'Escape') dismiss();
 	}
 </script>
 
@@ -22,7 +34,7 @@
 			class="absolute inset-0 cursor-default bg-black/50"
 			aria-label="Chiudi"
 			tabindex={-1}
-			onclick={() => (open = false)}
+			onclick={dismiss}
 		></button>
 		<div
 			role="dialog"
