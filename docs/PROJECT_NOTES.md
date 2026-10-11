@@ -73,7 +73,7 @@ Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dent
 - Acquisto (`services/shop_purchase.py`): una transazione sola. Prima delle letture prende un lock di processo e, su SQLite, `BEGIN IMMEDIATE` (`_lock_database`); su altri database il blocco sul database non è attivo. Tetto di 100 copie per carta nell'inventario (409).
 - Pacchetti: se valuta e costo mancano valgono 10 oro; con valuta sponsor e costo mancante valgono 2 sponsor. Il modulo del frontend parte da 10 e passa a 2 cambiando valuta solo se il costo non è stato modificato a mano.
 - Pagina del giocatore: `frontend/src/routes/championships/[id]/shop/+page.svelte`. In alto a destra stanno il pilota scelto con oro e punti sponsor e i pulsanti (Inventario in popup, link Storico verso la pagina `history`, scelta del pilota, impostazioni per l'admin). Decisione del 10 ottobre: un solo pulsante Inventario e lo Storico come pagina separata, non come previsto in `SHOP_DESIGN.md` prima della modifica (il documento è stato aggiornato).
-- Animazione di apertura (decisione dell'11 ottobre): la striscia superiore della busta se ne va con uno strappo e la busta resta tagliata in alto (circa il 14%, bordo irregolare con `clip-path`, ombra con `drop-shadow`); è solo CSS, senza test dedicati, e non è ancora stata vista a schermo. I valori e i dettagli tecnici sono in `SHOP_SCHEMA.md`.
+- Animazione di apertura (decisioni dell'11 ottobre): componente `components/pack-reveal.svelte`, fasi e tempi in `lib/pack-reveal-phases.ts` (test in `pack-reveal-phases.spec.ts`). La busta ha come texture l'immagine del pacchetto; la striscia superiore se ne va con uno strappo e la busta resta tagliata in alto (circa il 14%, bordo irregolare con `clip-path`, ombra con `drop-shadow`). Poi le carte escono **una alla volta**, già scoperte: ogni tocco (o Invio, o Spazio) fa scorrere la corrente a sinistra e mostra la successiva; ci sono il contatore "Carta N di M" e il tasto "Salta"; con il movimento ridotto si parte dalle carte e lo scorrimento dura 0. Busta e scorrimento sono solo CSS, senza test dedicati, e non sono ancora stati visti a schermo. `cardDelayMs` resta solo per il suo test. I dettagli tecnici sono in `SHOP_SCHEMA.md`.
 - Ordinamento e ricerca dei pacchetti: `frontend/src/lib/shop-sort.ts` (`sortPacks`, `filterPacksByName`, `PACK_SORT_OPTIONS`, `DEFAULT_PACK_SORT`), con test in `shop-sort.spec.ts`. Predefinito: dal meno caro al più caro; a parità contano il nome e poi l'id. La scelta non viene salvata.
 - Le impostazioni del campionato aperte dal negozio usano l'opzione `shopOnly` di `championship-settings.svelte` e mostrano solo pacchetti, pool completa e storico.
 - Deploy online: un solo server con pochi worker (SQLite accetta una sola scrittura alla volta).
@@ -91,12 +91,12 @@ Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dent
 
 ## Contesto di lavoro (11 ottobre 2026)
 
-Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 12 (Negozio e pacchetti) è sul ramo `phase-12-shop` (pull request #5, in bozza): backend 12a-12c completato e approvato; i tre controlli della CI (migrazioni, frontend, backend) sono verdi sul commit del taglio della busta (`707df16`). I commit successivi sono solo di documenti e la CI non è stata riletta su di essi.
+Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 12 (Negozio e pacchetti) è sul ramo `phase-12-shop` (pull request #5, in bozza): backend 12a-12c completato e approvato; i tre controlli della CI (migrazioni, frontend, backend) sono verdi sul commit del taglio della busta (`707df16`). I commit successivi (carte una alla volta e documenti) non hanno la CI riletta. Tutti i documenti sono allineati all'apertura con carte una alla volta; `PROJECT_SPEC.md` è stato riscritto per intero e va ricontrollato nel diff.
 
 Da fare, in ordine:
 
-1. Riallineare `SHOP_DESIGN.md` e `OPEN_QUESTIONS.md` con l'animazione di apertura e le decisioni del 10-11 ottobre (`PROJECT_SPEC.md`, `SHOP_SCHEMA.md`, `PROJECT_STATUS.md` e questo file sono già allineati).
-2. Sottofase 12d: guardare a schermo lo strappo della busta e verificare le altre pagine del giocatore (barra di navigazione, scelta del pilota, pagina dello storico, popup di inventario) e completare quanto manca.
+1. Decidere con l'autore se durante l'apertura del pacchetto la finestra resta bloccata finché le carte non sono state viste (la frase è stata tolta da `SHOP_SCHEMA.md`), e rileggere la CI dei commit `0cd0fee` e `c83b114`.
+2. Sottofase 12d: guardare a schermo lo strappo della busta e lo scorrimento delle carte, e verificare le altre pagine del giocatore (barra di navigazione, scelta del pilota, elenco `/shop`, pagina dello storico, popup di inventario).
 3. Sottofase 12e: frontend admin (impostazioni del negozio, pacchetti, template, cronologia).
 4. Sottofase 12f: documenti finali, verifica complessiva e unione in `main`.
 
