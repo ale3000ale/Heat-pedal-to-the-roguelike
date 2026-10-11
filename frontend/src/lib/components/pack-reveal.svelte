@@ -135,7 +135,9 @@
 				</p>
 				<Button size="sm" variant="outline" onclick={skip}>Salta</Button>
 			{:else}
-				<p class="text-sm text-muted-foreground">Ultima carta ({cards.length} di {cards.length}).</p>
+				<p class="text-sm text-muted-foreground">
+					Ultima carta ({cards.length} di {cards.length}).
+				</p>
 			{/if}
 		</div>
 	{:else if phase !== 'cards'}
