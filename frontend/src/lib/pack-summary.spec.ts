@@ -10,7 +10,7 @@ describe('groupByCard', () => {
 		expect(groupByCard([])).toEqual([]);
 	});
 
-	it('conta le copie e mantiene l\'ordine della prima uscita', () => {
+	it("conta le copie e mantiene l'ordine della prima uscita", () => {
 		const result = groupByCard([a, b, a, a]);
 		expect(result.map((g) => g.entry.card.path)).toEqual(['/a.webp', '/b.webp']);
 		expect(result.map((g) => g.copies)).toEqual([3, 1]);
