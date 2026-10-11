@@ -92,11 +92,11 @@ Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dent
 
 ## Contesto di lavoro (11 ottobre 2026)
 
-Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 12 (Negozio e pacchetti) è sul ramo `phase-12-shop` (pull request #5, in bozza): backend 12a-12c completato e approvato. L'11 ottobre i tre controlli della CI (backend, frontend, migrazioni) sono risultati verdi su un'esecuzione partita otto secondi dopo il commit `ccf23e8` (riepilogo finale dell'apertura pacchetti); il legame con quel commit è dedotto dall'orario e la singola esecuzione non è stata aperta. Tutti i documenti sono allineati al riepilogo finale, ma `PROJECT_SPEC.md` (riscritto per intero) e `OPEN_QUESTIONS.md` non sono stati riletti dopo questa modifica.
+Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 12 (Negozio e pacchetti) è sul ramo `phase-12-shop` (pull request #5, in bozza): backend 12a-12c completato e approvato. L'11 ottobre i tre controlli della CI (backend, frontend, migrazioni) sono risultati verdi su un'esecuzione partita otto secondi dopo il commit `ccf23e8` (riepilogo finale dell'apertura pacchetti); il legame con quel commit è dedotto dall'orario e la singola esecuzione non è stata aperta. `SHOP_DESIGN.md`, `SHOP_SCHEMA.md`, `PROJECT_SPEC.md` (commit `912ee41`, riscritto per intero: diff da ricontrollare) e `PROJECT_STATUS.md` sono allineati al riepilogo finale; `OPEN_QUESTIONS.md` non è stato riletto dopo questa modifica.
 
 Da fare, in ordine:
 
-1. Rileggere `PROJECT_SPEC.md` e `OPEN_QUESTIONS.md` e correggere le parti sull'apertura dei pacchetti, se dicono ancora che sull'ultima carta il tocco non fa nulla o che "Salta" porta all'ultima carta.
+1. Rileggere `OPEN_QUESTIONS.md` e correggere le parti sull'apertura dei pacchetti, se dicono ancora che sull'ultima carta il tocco non fa nulla o che "Salta" porta all'ultima carta.
 2. Sottofase 12d: guardare a schermo strappo della busta, scorrimento delle carte e riepilogo, e verificare le altre pagine del giocatore (barra di navigazione, scelta del pilota, elenco `/shop`, pagina dello storico, popup di inventario).
 3. Sottofase 12e: frontend admin (impostazioni del negozio, pacchetti, template, cronologia).
 4. Sottofase 12f: documenti finali, verifica complessiva e unione in `main`.
