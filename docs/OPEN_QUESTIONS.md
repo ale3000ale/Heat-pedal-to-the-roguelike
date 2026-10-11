@@ -8,23 +8,16 @@
 
 ## Negozio (fase 12)
 
-Nessuna domanda aperta sul funzionamento. Il backend (12a-12c) è approvato; restano
-il frontend del giocatore (12d), il frontend admin (12e) e i documenti finali (12f).
+Nessuna domanda aperta sul funzionamento. Backend e frontend (12a-12e) sono
+completati; resta la 12f (documenti finali e unione in `main`).
 
 - **Deploy online**: un solo server con pochi worker, perché SQLite accetta una sola
   scrittura alla volta. Con un altro database servirà un blocco sulla riga del pilota
   (`SELECT ... FOR UPDATE`).
-- **Template di negozio senza pacchetti**: non è utilizzabile alla creazione del
-  campionato; l'avviso (triangolo giallo) va riportato in `SHOP_SCHEMA.md`.
-- **Strappo della busta e riepilogo finale**: l'effetto e il riepilogo non sono ancora
-  stati visti a schermo; se non convincono, si ritocca solo il CSS e il markup di
-  `pack-reveal.svelte` (vedi decisioni dell'11 ottobre).
-- **Copie della stessa carta nel riepilogo**: oggi una carta uscita più volte compare
-  una volta per ogni estrazione; va deciso se raggrupparla con il numero di copie
-  (da verificare in `CardTile.svelte`, non letto).
-- **Tasto Esc**: va deciso se debba chiudere la finestra prima del riepilogo; la
-  decisione dell'autore parla solo di X e di clic fuori (da verificare in
-  `modal.svelte`, non letto).
+- **Strappo della busta e riepilogo finale**: l'effetto e il riepilogo sono stati visti
+  a schermo e verificati a mano dall'autore; il componente grafico non ha test
+  automatici. Se in futuro non convincono, si ritocca solo il CSS e il markup di
+  `pack-reveal.svelte`.
 
 Decisioni dell'11 ottobre 2026 (non più aperte):
 
@@ -35,11 +28,18 @@ Decisioni dell'11 ottobre 2026 (non più aperte):
 - Dopo la busta le carte si vedono una alla volta, già scoperte: ogni tocco fa
   scorrere la carta a sinistra mostrando la seguente (non più tutte in fila e
   coperte da girare).
-- Dopo l'ultima carta un altro tocco apre il riepilogo finale, con tutte le carte
-  ottenute e la loro immagine. Il tasto "Salta" porta direttamente al riepilogo da
-  qualsiasi fase. Fino al riepilogo la finestra si chiude solo con la X; dal
-  riepilogo anche toccando fuori. Questo chiude la questione del blocco della
-  finestra durante l'apertura.
+- Dopo l'ultima carta un altro tocco apre il riepilogo finale, con le carte ottenute
+  e la loro immagine. Il tasto "Salta" porta direttamente al riepilogo da qualsiasi
+  fase.
+- **Copie della stessa carta nel riepilogo**: le copie uguali (stessa sezione e stesso
+  percorso immagine) compaiono una sola volta, con "x N"; il testo "Hai ottenuto N
+  carte" conta tutte le estrazioni. Il raggruppamento è in `src/lib/pack-summary.ts`.
+- **Tasto Esc e clic fuori**: fino al riepilogo la finestra si chiude solo con la X;
+  Esc e clic fuori chiudono solo dal riepilogo (`closeOnOutside` di `modal.svelte`).
+  Questo chiude la questione del blocco della finestra durante l'apertura.
+- **Template di negozio senza pacchetti**: non è utilizzabile alla creazione del
+  campionato; l'avviso (triangolo giallo) è in `SHOP_DESIGN.md` (sezione 5) e in
+  `SHOP_SCHEMA.md`.
 
 Decisioni del 10 ottobre 2026 (non più aperte):
 
