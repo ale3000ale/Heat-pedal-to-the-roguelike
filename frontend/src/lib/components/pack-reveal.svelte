@@ -9,6 +9,7 @@
 		nextPhase,
 		type RevealPhase
 	} from '$lib/pack-reveal-phases';
+	import { groupByCard } from '$lib/pack-summary';
 	import type { RevealedCard } from '$lib/shop-cards';
 
 	// Apertura in quattro fasi: busta chiusa (con l'immagine del pacchetto come texture),
@@ -16,9 +17,11 @@
 	// scorrimento della busta verso il basso, poi le carte UNA ALLA VOLTA: la prima compare
 	// al centro e ogni tocco la fa scorrere verso sinistra mostrando la seguente.
 	// Dopo l'ultima carta un ultimo tocco apre il riepilogo con TUTTE le carte e la loro
-	// immagine; il tasto "Salta" porta direttamente al riepilogo da qualsiasi fase.
+	// immagine; le copie uguali sono raggruppate con il numero di copie ("x N").
+	// Il tasto "Salta" porta direttamente al riepilogo da qualsiasi fase.
 	// `done` diventa vero solo quando e' visibile il riepilogo: da li' la finestra si chiude
-	// in ogni modo (anche toccando fuori), prima solo con la X.
+	// in ogni modo (anche toccando fuori), prima solo con la X (Esc compreso: lo gestisce
+	// `modal.svelte` tramite `closeOnOutside`).
 	// Il componente nasce a ogni apertura, quindi riparte da zero.
 	let {
 		cards,
@@ -32,6 +35,7 @@
 	let reduced = $state(false);
 	let lastIndex = $derived(Math.max(cards.length - 1, 0));
 	let item = $derived(cards[current]);
+	let grouped = $derived(groupByCard(cards));
 	let textureStyle = $derived(packImage ? `background-image: url('${packImage}')` : '');
 	let slideMs = $derived(reduced ? 0 : 350);
 
@@ -86,11 +90,13 @@
 	{#if summary && cards.length > 0}
 		<div class="max-h-[60vh] overflow-y-auto p-1">
 			<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-				{#each cards as entry, index (index)}
+				{#each grouped as group (`${group.entry.section}|${group.entry.card.path}`)}
 					<li class="space-y-1">
-						<CardTile card={entry.card} title="Copie ottenute" />
+						<CardTile card={group.entry.card} title="Copie ottenute" />
 						<p class="text-center text-xs text-muted-foreground">
-							{entry.section === 'modifiche' ? 'Modifica' : 'Sponsor'}
+							{group.entry.section === 'modifiche' ? 'Modifica' : 'Sponsor'}{group.copies > 1
+								? ` · x ${group.copies}`
+								: ''}
 						</p>
 					</li>
 				{/each}
