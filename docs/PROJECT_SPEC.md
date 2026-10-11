@@ -1,7 +1,7 @@
 # Specifiche del Progetto — Heat
 
 > STATO: APPROVATO. Si aggiorna nel tempo quando emergono nuove esigenze.
-> Ultimo aggiornamento: 11 ottobre 2026 (fase 12, Negozio: backend completato, frontend in corso; animazione di apertura con strappo della busta e carte mostrate una alla volta).
+> Ultimo aggiornamento: 11 ottobre 2026 (fase 12, Negozio: backend completato, frontend in corso; animazione di apertura con strappo della busta, carte mostrate una alla volta e riepilogo finale).
 
 ## 1. Stack e contesto
 
@@ -221,7 +221,7 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo. Lo
 - Pilota: inventario e mazzo da gioco, con spostamento delle carte (massimo 15 nel mazzo) e campionato attivo.
 - Campionati: elenco di attivi e chiusi (pulsante "+" per crearne uno, solo admin), dettaglio con iscrizione di un pilota, gare ("in corso" o "terminata") e classifica; ingranaggio con le impostazioni del campionato (solo admin).
 - Gara: classifica, piloti da assegnare, non partecipanti, pulsante "Termina"; correzione solo per l'admin.
-- Negozio del campionato: sezioni modifiche e sponsor, pacchetti, acquisto con apertura animata e pulsante Inventario (popup di riepilogo); lo storico è una pagina separata (sezione 13).
+- Negozio del campionato: sezioni modifiche e sponsor, pacchetti, acquisto con apertura animata e riepilogo finale, pulsante Inventario (popup di riepilogo); lo storico è una pagina separata (sezione 13).
 - Pannello admin, raggiungibile dal menu "Admin" in alto (visibile solo all'admin):
   - pool: elenco, pulsante "Ricarica" per le due pool di base (con conferma se toglie carte), creazione ed eliminazione delle pool derivate, dettaglio con carte rinominabili;
   - creazione, chiusura e cancellazione dei campionati, con la scelta delle due pool (modifiche e sponsor);
@@ -296,9 +296,11 @@ Il funzionamento esteso è in `SHOP_DESIGN.md`, lo schema tecnico, i servizi e l
 - Sequenza di apertura, solo grafica (non cambia l'acquisto né il suo esito):
   1. La busta si apre con uno strappo: la striscia superiore se ne va e la busta resta tagliata in alto, con il bordo irregolare.
   2. Le carte compaiono **una alla volta**, già scoperte, prima le carte modifiche e poi le carte sponsor, con il contatore "Carta N di M".
-  3. Ogni tocco (oppure Invio o Spazio) fa scorrere la carta corrente a sinistra e mostra la successiva; dopo l'ultima si chiude la sequenza.
-  4. Il pulsante "Salta" interrompe la sequenza durante la busta o durante le carte.
-  5. Con il movimento ridotto la sequenza parte direttamente dalle carte e lo scorrimento dura 0.
+  3. Ogni tocco (oppure Invio o Spazio) fa scorrere la carta corrente a sinistra e mostra la successiva; dopo l'ultima carta un altro tocco apre il riepilogo finale.
+  4. Il **riepilogo finale** mostra in una griglia tutte le carte ottenute, ciascuna con la sua immagine e l'etichetta "Modifica" o "Sponsor", con il testo "Hai ottenuto N carte"; una carta uscita più volte compare una volta per ogni estrazione.
+  5. Il pulsante "Salta", presente in ogni fase, porta direttamente al riepilogo.
+  6. La finestra si chiude sempre con la X; toccando fuori dalla finestra solo dal riepilogo.
+  7. Con il movimento ridotto la sequenza parte direttamente dalle carte e lo scorrimento dura 0.
 
 ### Storico
 
