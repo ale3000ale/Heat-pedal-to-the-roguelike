@@ -91,11 +91,11 @@ Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dent
 
 ## Contesto di lavoro (11 ottobre 2026)
 
-Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 12 (Negozio e pacchetti) è sul ramo `phase-12-shop` (pull request #5, in bozza): backend 12a-12c completato e approvato; i tre controlli della CI (migrazioni, frontend, backend) sono verdi sul commit del taglio della busta (`707df16`). I commit successivi (carte una alla volta e documenti) non hanno la CI riletta. Tutti i documenti sono allineati all'apertura con carte una alla volta; `PROJECT_SPEC.md` è stato riscritto per intero e va ricontrollato nel diff.
+Le fasi 8, 9, 10 e 11 sono concluse e unite a `main` (pull request #1, #2, #3 e #4). La fase 12 (Negozio e pacchetti) è sul ramo `phase-12-shop` (pull request #5, in bozza): backend 12a-12c completato e approvato. L'11 ottobre i tre controlli della CI (backend, frontend, migrazioni) sono risultati verdi su un'esecuzione partita nove secondi dopo il commit `eac89d1`, che include il codice delle carte una alla volta (`0cd0fee`, `c83b114`); il legame con `eac89d1` è dedotto dall'orario e le esecuzioni dei singoli commit non sono state lette. Tutti i documenti sono allineati all'apertura con carte una alla volta, tranne `SHOP_DESIGN.md` che va riletto; `PROJECT_SPEC.md` è stato riscritto per intero e va ricontrollato nel diff.
 
 Da fare, in ordine:
 
-1. Decidere con l'autore se durante l'apertura del pacchetto la finestra resta bloccata finché le carte non sono state viste (la frase è stata tolta da `SHOP_SCHEMA.md`), e rileggere la CI dei commit `0cd0fee` e `c83b114`.
+1. Rileggere `SHOP_DESIGN.md` e decidere con l'autore se durante l'apertura del pacchetto la finestra resta bloccata finché le carte non sono state viste (la frase è stata tolta da `SHOP_SCHEMA.md`).
 2. Sottofase 12d: guardare a schermo lo strappo della busta e lo scorrimento delle carte, e verificare le altre pagine del giocatore (barra di navigazione, scelta del pilota, elenco `/shop`, pagina dello storico, popup di inventario).
 3. Sottofase 12e: frontend admin (impostazioni del negozio, pacchetti, template, cronologia).
 4. Sottofase 12f: documenti finali, verifica complessiva e unione in `main`.
