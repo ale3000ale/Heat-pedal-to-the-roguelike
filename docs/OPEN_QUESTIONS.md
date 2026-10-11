@@ -16,8 +16,15 @@ il frontend del giocatore (12d), il frontend admin (12e) e i documenti finali (1
   (`SELECT ... FOR UPDATE`).
 - **Template di negozio senza pacchetti**: non è utilizzabile alla creazione del
   campionato; l'avviso (triangolo giallo) va riportato in `SHOP_SCHEMA.md`.
-- **Strappo della busta**: l'effetto non è ancora stato visto a schermo; se non
-  convince, si ritocca solo il CSS (vedi decisione dell'11 ottobre).
+- **Strappo della busta e riepilogo finale**: l'effetto e il riepilogo non sono ancora
+  stati visti a schermo; se non convincono, si ritocca solo il CSS e il markup di
+  `pack-reveal.svelte` (vedi decisioni dell'11 ottobre).
+- **Copie della stessa carta nel riepilogo**: oggi una carta uscita più volte compare
+  una volta per ogni estrazione; va deciso se raggrupparla con il numero di copie
+  (da verificare in `CardTile.svelte`, non letto).
+- **Tasto Esc**: va deciso se debba chiudere la finestra prima del riepilogo; la
+  decisione dell'autore parla solo di X e di clic fuori (da verificare in
+  `modal.svelte`, non letto).
 
 Decisioni dell'11 ottobre 2026 (non più aperte):
 
@@ -28,6 +35,11 @@ Decisioni dell'11 ottobre 2026 (non più aperte):
 - Dopo la busta le carte si vedono una alla volta, già scoperte: ogni tocco fa
   scorrere la carta a sinistra mostrando la seguente (non più tutte in fila e
   coperte da girare).
+- Dopo l'ultima carta un altro tocco apre il riepilogo finale, con tutte le carte
+  ottenute e la loro immagine. Il tasto "Salta" porta direttamente al riepilogo da
+  qualsiasi fase. Fino al riepilogo la finestra si chiude solo con la X; dal
+  riepilogo anche toccando fuori. Questo chiude la questione del blocco della
+  finestra durante l'apertura.
 
 Decisioni del 10 ottobre 2026 (non più aperte):
 
