@@ -1,7 +1,7 @@
 # Specifiche del Progetto — Heat
 
 > STATO: APPROVATO. Si aggiorna nel tempo quando emergono nuove esigenze.
-> Ultimo aggiornamento: 11 ottobre 2026 (fase 12, Negozio: backend completato, frontend in corso; animazione di apertura con strappo della busta, carte mostrate una alla volta e riepilogo finale).
+> Ultimo aggiornamento: 11 ottobre 2026 (fase 12, Negozio: backend e frontend di giocatore e admin completati; resta la sottofase 12f di documenti finali e unione in `main`).
 
 ## 1. Stack e contesto
 
@@ -24,7 +24,7 @@
 - Solo l'admin crea, chiude e cancella i campionati.
 - L'admin e il giudice creano le gare e le terminano inserendo i risultati; solo l'admin può correggere i risultati di una gara già terminata.
 - In un campionato c'è al massimo una gara in corso alla volta: finché non è terminata non se ne crea un'altra.
-- Il Negozio e i pacchetti di carte sono in realizzazione nella fase 12 (sezione 13). Amministrazione completa delle carte e spareggio sportivo sono rinviati e non bloccano la versione attuale.
+- Il Negozio e i pacchetti di carte sono realizzati nella fase 12 (sezione 13). Amministrazione completa delle carte e spareggio sportivo sono rinviati e non bloccano la versione attuale.
 - In caso di pari punti, l'ordine alfabetico serve solo come stabilizzatore di visualizzazione, non come spareggio.
 
 ## 3. Autenticazione
@@ -72,7 +72,7 @@ Nota di modellazione: inventario delle modifiche, inventario degli sponsor e maz
   - **Inventario degli sponsor**: le carte sponsor ottenute dai pacchetti; vuoto alla creazione.
   - **Mazzo da gioco**: le carte usate in gara, massimo 15 carte in totale (somma delle copie).
 - Il pilota costruisce il mazzo da gioco scegliendo carte dal proprio inventario: per ogni carta, le copie nel mazzo non superano quelle dell'inventario. Nella pagina del pilota le carte si spostano con un clic tra inventario e mazzo.
-- I mazzi si possono modificare anche con un campionato attivo; un eventuale blocco varrà solo durante una gara.
+- I mazzi si possono modificare anche con un campionato attivo; un eventuale blocco varà solo durante una gara.
 - Ogni mazzo ha un numero di versione (blocco ottimistico): se due modifiche si incrociano, la seconda riceve un errore 409.
 - Stato iniziale alla creazione del pilota (fisso, indipendente dalle pool):
   - Inventario delle modifiche: Velocità 1, Velocità 2, Velocità 3, Velocità 4, 3 copie ciascuna. La carta Calore parte con 0 copie e non compare nell'elenco.
@@ -221,6 +221,7 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo. Lo
 - Pilota: inventario e mazzo da gioco, con spostamento delle carte (massimo 15 nel mazzo) e campionato attivo.
 - Campionati: elenco di attivi e chiusi (pulsante "+" per crearne uno, solo admin), dettaglio con iscrizione di un pilota, gare ("in corso" o "terminata") e classifica; ingranaggio con le impostazioni del campionato (solo admin).
 - Gara: classifica, piloti da assegnare, non partecipanti, pulsante "Termina"; correzione solo per l'admin.
+- Elenco dei negozi (`/shop`): un riquadro per campionato attivo con i propri piloti iscritti e il loro saldo (oro e punti sponsor); un clic apre il negozio con quel pilota.
 - Negozio del campionato: sezioni modifiche e sponsor, pacchetti, acquisto con apertura animata e riepilogo finale, pulsante Inventario (popup di riepilogo); lo storico è una pagina separata (sezione 13).
 - Pannello admin, raggiungibile dal menu "Admin" in alto (visibile solo all'admin):
   - pool: elenco, pulsante "Ricarica" per le due pool di base (con conferma se toglie carte), creazione ed eliminazione delle pool derivate, dettaglio con carte rinominabili;
@@ -294,20 +295,20 @@ Il funzionamento esteso è in `SHOP_DESIGN.md`, lo schema tecnico, i servizi e l
 - Se le copie rimaste nel sottoinsieme filtrato sono meno di quelle richieste, il pacchetto non si compra e al posto del prezzo compare "Terminato".
 - Le copie ottenute si sommano a quelle possedute, con un tetto di 100 per carta (oltre, l'acquisto è rifiutato con 409). Gli acquisti sono serializzati con un blocco sul database.
 - Sequenza di apertura, solo grafica (non cambia l'acquisto né il suo esito):
-  1. La busta si apre con uno strappo: la striscia superiore se ne va e la busta resta tagliata in alto, con il bordo irregolare.
+  1. La busta ha come texture l'immagine del pacchetto acquistato e si apre con uno strappo: la striscia superiore se ne va e la busta resta tagliata in alto, con il bordo irregolare.
   2. Le carte compaiono **una alla volta**, già scoperte, prima le carte modifiche e poi le carte sponsor, con il contatore "Carta N di M".
   3. Ogni tocco (oppure Invio o Spazio) fa scorrere la carta corrente a sinistra e mostra la successiva; dopo l'ultima carta un altro tocco apre il riepilogo finale.
-  4. Il **riepilogo finale** mostra in una griglia tutte le carte ottenute, ciascuna con la sua immagine e l'etichetta "Modifica" o "Sponsor", con il testo "Hai ottenuto N carte"; una carta uscita più volte compare una volta per ogni estrazione.
+  4. Il **riepilogo finale** mostra in una griglia le carte ottenute, ciascuna con la sua immagine e l'etichetta "Modifica" o "Sponsor", con il testo "Hai ottenuto N carte" (N conta tutte le estrazioni). Le copie uguali (stessa sezione e stesso percorso immagine) compaiono una sola volta, con il numero di copie ("x N").
   5. Il pulsante "Salta", presente in ogni fase, porta direttamente al riepilogo.
-  6. La finestra si chiude sempre con la X; toccando fuori dalla finestra solo dal riepilogo.
+  6. Fino al riepilogo la finestra si chiude solo con la X: il clic fuori dalla finestra e il tasto Esc non la chiudono. Dal riepilogo si chiude in ogni modo.
   7. Con il movimento ridotto la sequenza parte direttamente dalle carte e lo scorrimento dura 0.
 
 ### Storico
 
 - Il giocatore vede lo storico in una pagina separata, raggiungibile dal pulsante "Storico" del negozio: gli acquisti dei propri piloti iscritti, divisi per pilota; non vede quelli di un pilota che ha eliminato.
-- L'admin vede la cronologia completa dalle impostazioni del campionato. Dopo la chiusura lo storico resta visibile solo all'admin e sparisce con la cancellazione del campionato.
+- L'admin vede la cronologia completa di tutti i piloti dal pulsante "Storico" delle impostazioni del campionato, anche quando sono aperte dal negozio. Dopo la chiusura lo storico resta visibile solo all'admin e sparisce con la cancellazione del campionato.
 - Le righe restano se pilota o pacchetto vengono eliminati.
 
 ### Stato
 
-Backend (12a-12c) completato e approvato; frontend del giocatore (12d) e dell'admin (12e) in corso.
+Backend (12a-12c) completato e approvato; frontend del giocatore (12d) e dell'admin (12e) completati e verificati a mano dall'autore; resta la sottofase 12f (documenti finali e unione in `main`).
