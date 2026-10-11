@@ -5,7 +5,8 @@
 > completato; il frontend (12d, 12e) è in corso. Le parti ancora da decidere sono in
 > `OPEN_QUESTIONS.md`. Il 10 ottobre 2026 l'autore ha scelto, per il frontend, un solo
 > pulsante Inventario e lo Storico come pagina separata (sezioni 3 e 8). L'11 ottobre
-> 2026 ha scelto l'apertura della busta con uno strappo (sezione 6).
+> 2026 ha scelto l'apertura della busta con uno strappo e il riepilogo finale con tutte
+> le carte (sezione 6).
 
 # Negozio — progetto della fase 12
 
@@ -44,8 +45,8 @@ pilota iscritto; le carte ottenute vanno nell'inventario di quel pilota.
   escono da un pacchetto non dipendono dalla sezione.
 - **Inventario** (decisione del 10 ottobre: un solo pulsante, non uno per sezione):
   un pulsante "Inventario", vicino al saldo in alto a destra, apre un popup con il
-  riepilogo dell'inventario del pilota: carte in miniatura, con in basso a destra
-  il numero di copie; le carte di default (Velocità 1-4) sono escluse; il popup si
+  riepilogo dell'inventario del pilota: carte in miniatura, con in basso a destra il
+  numero di copie; le carte di default (Velocità 1-4) sono escluse; il popup si
   chiude con una X in alto a destra.
 - Dentro ciascuna sezione ci sono i pacchetti di quella sezione.
 - **Ordinamento e ricerca** (scelta del singolo giocatore, non salvata nel
@@ -164,8 +165,7 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
    sono separate e per il backend l'ordine è indifferente.
 3. A schermo, nell'animazione, si mostrano prima le carte modifiche e poi le
    carte sponsor.
-4. Il pacchetto compare in primo piano; lo sfondo si sfoca e non è più
-   cliccabile.
+4. Il pacchetto compare in primo piano; lo sfondo si sfoca e non è più cliccabile.
 5. Prima si vede la busta chiusa. Un clic in qualsiasi punto la apre con uno
    strappo (decisione dell'11 ottobre): la striscia superiore se ne va e la busta
    resta tagliata in alto, con il bordo irregolare; poi compare la prima carta. È
@@ -173,6 +173,16 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
    `SHOP_SCHEMA.md`.
 6. Ogni clic successivo fa scorrere la carta verso sinistra e mostra la
    seguente, fino all'ultima.
+7. **Riepilogo finale** (decisione dell'11 ottobre): dopo l'ultima carta, un ultimo
+   clic apre una schermata con tutte le carte ottenute, ciascuna con la sua
+   immagine e l'indicazione "Modifica" o "Sponsor". Se la stessa carta esce più
+   volte compare una volta per ogni estrazione.
+8. **Salta**: il pulsante "Salta" porta direttamente al riepilogo da qualsiasi
+   momento, anche con la busta ancora chiusa.
+9. **Chiusura della finestra**: finché non si è arrivati al riepilogo la finestra
+   si chiude solo con la X in alto a destra; dal riepilogo si può uscire in qualsiasi
+   modo, anche cliccando fuori dalla finestra. Chiudere non annulla l'acquisto: le
+   carte sono già nell'inventario.
 
 ## 7. Inventario
 
