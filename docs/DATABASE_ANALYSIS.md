@@ -1,8 +1,13 @@
-> **STATO: BOZZA NON APPROVATA.** Questo documento separa i fatti verificati su
-> `HeatDB.sql` dalle differenze rispetto al modello target di `PROJECT_SPEC.md`.
-> Non contiene dati inventati.
+> **STATO: DOCUMENTO STORICO (fase 1).** Fotografia di `HeatDB.sql` com'era
+> prima delle migrazioni Alembic. Non descrive lo schema attuale: per quello
+> fanno fede i modelli in `backend/app/db/models/`, le migrazioni in
+> `backend/alembic/` e `PROJECT_SPEC.md`. Le differenze elencate nella sezione 6
+> sono state in gran parte risolte dalle fasi successive.
 
 # Analisi del database — Heat
+
+Questo documento separa i fatti verificati su `HeatDB.sql` dalle differenze
+rispetto al modello target di `PROJECT_SPEC.md`. Non contiene dati inventati.
 
 ## 1. Fonte analizzata
 
@@ -83,17 +88,19 @@ Foreign key: `deck` → `Deck(id)`.
 Tutte le foreign key usano `ON UPDATE NO ACTION ON DELETE NO ACTION`.
 
 ## 4. Relazioni presenti nello schema
+
+```text
 User (1) ── < user_id (Pilot)
 Team (1) ── < team (Pilot)
 "Championship " (1) ── < championship_id (Pilot)
 Deck_prototype (1) ── < id_prototype (Deck)
 Deck (1) ── < deck ("Championship ")
-
+```
 
 Nessuna FK da `Pilot` o `Team` verso `Deck`. Il solo collegamento verso `Deck`
 parte da `"Championship "`.
 
-## 5. Anomalie riscontrate (non corrette)
+## 5. Anomalie riscontrate (non corrette in `HeatDB.sql`)
 
 1. Nome tabella `"Championship "` con spazio finale; compare nel `CREATE TABLE`
    e nella FK di `Pilot.championship_id`.
@@ -107,15 +114,15 @@ parte da `"Championship "`.
 9. `Pilot.championship_id` è singolo: lo schema consente un solo campionato
    per pilota, coerente con la regola di `PROJECT_SPEC.md`.
 
-## 6. Differenze rispetto a PROJECT_SPEC.md (da risolvere con Alembic)
+## 6. Differenze rispetto a PROJECT_SPEC.md (risolte con Alembic)
 
-| Modello target | Stato attuale |
+| Modello target | Stato in `HeatDB.sql` |
 |---|---|
 | Tabella `ChampionshipPilot` | Assente; esiste `Championship.pilots` (TEXT) |
 | Tabelle `Race` e `RaceResult` | Assenti |
 | Pilot 1:1 Inventario e Pilot 1:1 Mazzo da gioco | `Deck` non collegato a `Pilot` |
 | Pool di carte per campionato da `DeckPrototype` | `Championship.deck` → `Deck` → `Deck_prototype` (corrispondenza da confermare) |
-| Ruoli `admin` e `player` | `User` senza ruolo |
+| Ruoli (`admin`, `player` e successivi) | `User` senza ruolo |
 | User 1:N Team | `Team` senza `user_id` |
 | Nome tabella `Championship` | Nome con spazio finale |
 

@@ -1,6 +1,8 @@
 # Fase 6: Frontend e autenticazione
 
-> STATO: COMPLETATA
+> STATO: COMPLETATA. **DOCUMENTO STORICO**: descrive il frontend alla fine
+> della fase 6 (14 test Vitest di allora). Pagine, popup e test attuali sono in
+> `PROJECT_STATUS.md`; i ruoli sono oggi `admin`, `judge` e `player`.
 
 ## Stack aggiunto
 
@@ -26,7 +28,7 @@
 - 401 su /auth/me non è un errore: significa "nessuna sessione"
 - Avvio e setup unificati in heat.py (menu interattivo, Windows e Unix)
 
-## Esiti
+## Esiti (alla fase 6)
 
 - 14 test Vitest passati (api: 6, auth: 7, esempio: 1)
 - check e lint senza errori

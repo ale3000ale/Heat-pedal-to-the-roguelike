@@ -7,9 +7,12 @@ from app.services.names import clean_name
 
 class ChampionshipCreate(BaseModel):
     # Dati per creare un campionato; senza pool_id e sponsor_pool_id usa le pool di base.
+    # Con shop_template_id il negozio parte con i pacchetti di quel template di negozio;
+    # senza, il negozio è vuoto.
     name: str = Field(min_length=2, max_length=40)
     pool_id: int | None = None
     sponsor_pool_id: int | None = None
+    shop_template_id: int | None = None
 
     @field_validator("name", mode="before")
     @classmethod

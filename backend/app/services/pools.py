@@ -6,7 +6,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import MEDIA_DIR
-from app.db.models.deck import DeckPrototype
+from app.db.models import Championship
+from app.db.models.deck import Deck, DeckPrototype
 from app.services.cards import (
     CardEntry,
     CardError,
@@ -44,10 +45,29 @@ class PoolRuleError(ValueError):
 
 @dataclass
 class ReloadResult:
-    # Esito della ricarica: carte aggiunte, carte già presenti e file scartati.
+    # Esito della ricarica: carte aggiunte, carte rimosse perché il file non esiste più
+    # (nomi e, in parallelo, percorsi), carte già presenti e file scartati.
     added: list[str] = field(default_factory=list)
+    removed: list[str] = field(default_factory=list)
+    removed_paths: list[str] = field(default_factory=list)
     already_present: int = 0
     warnings: list[str] = field(default_factory=list)
+
+
+@dataclass
+class RemovedCard:
+    # Carta che la ricarica toglierebbe; `in_use` è vero se è nella copia di pool di un
+    # campionato attivo.
+    name: str
+    in_use: bool
+
+
+@dataclass
+class ReloadPreview:
+    # Anteprima della ricarica: nulla è stato scritto nel database.
+    added: list[str]
+    removed: list[RemovedCard]
+    warnings: list[str]
 
 
 def list_pools(db: Session) -> list[DeckPrototype]:
@@ -132,11 +152,30 @@ def delete_pool(db: Session, pool_id: int) -> None:
     db.commit()
 
 
-def reload_base_pool(db: Session, kind: str) -> ReloadResult:
-    # Ricarica una pool di base dalla sua cartella (backend/media/cards/base/<tipo>).
-    # Aggiunge soltanto: le carte nuove vanno in fondo, quelle già presenti (stesso nome,
-    # senza distinguere le maiuscole, oppure stesso percorso) non si toccano mai, così
-    # nomi e copie corretti a mano si conservano. Le carte tolte dalla cartella restano.
+def _drop_missing(
+    cards: list[CardEntry], existing_paths: set[str], kind: str, result: ReloadResult
+) -> list[CardEntry]:
+    # Toglie le carte della cartella <tipo> il cui file non esiste più e ne annota nome e
+    # percorso in result.removed e result.removed_paths. Le carte con un percorso fuori da
+    # quella cartella non si toccano.
+    prefix = f"cards/base/{kind}/"
+    kept: list[CardEntry] = []
+    for card in cards:
+        if card.path.startswith(prefix) and card.path not in existing_paths:
+            result.removed.append(card.name)
+            result.removed_paths.append(card.path)
+        else:
+            kept.append(card)
+    return kept
+
+
+def reload_base_pool(db: Session, kind: str, apply: bool = True) -> ReloadResult:
+    # Sincronizza una pool di base con la sua cartella (backend/media/cards/base/<tipo>).
+    # Le carte già presenti (stesso nome, senza distinguere le maiuscole, oppure stesso
+    # percorso) non si toccano, così nomi e copie corretti a mano si conservano. Le carte
+    # nuove vanno in fondo. Le carte il cui file non esiste più vengono tolte dal database.
+    # Se la cartella manca o non contiene immagini non si toglie nulla.
+    # Con apply=False calcola l'esito senza scrivere nel database (anteprima).
     pool = get_base_pool(db, kind)
     result = ReloadResult()
     folder = MEDIA_DIR / "cards" / "base" / kind
@@ -145,13 +184,21 @@ def reload_base_pool(db: Session, kind: str) -> ReloadResult:
         return result
 
     cards = pool_cards(pool)
-    names = {card_key(card.name) for card in cards}
-    paths = {card.path for card in cards}
     files = sorted(
         path
         for path in folder.iterdir()
         if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
     )
+    if files:
+        existing_paths = {f"cards/base/{kind}/{path.name}" for path in files}
+        cards = _drop_missing(cards, existing_paths, kind, result)
+    elif cards:
+        result.warnings.append(
+            f"Nessuna immagine in cards/base/{kind}: nessuna carta è stata rimossa"
+        )
+
+    names = {card_key(card.name) for card in cards}
+    paths = {card.path for card in cards}
     webp_stems = {path.stem.casefold() for path in files if path.suffix.lower() == ".webp"}
 
     for path in files:
@@ -181,7 +228,35 @@ def reload_base_pool(db: Session, kind: str) -> ReloadResult:
         paths.add(entry.path)
         result.added.append(entry.name)
 
-    if result.added:
+    if apply and (result.added or result.removed):
         pool.base_cards = dump_cards(cards)
         db.commit()
     return result
+
+
+def _active_championship_paths(db: Session, kind: str) -> set[str]:
+    # Percorsi delle carte presenti nella copia di pool (del tipo richiesto) di ogni
+    # campionato attivo.
+    column = Championship.pool_deck_id if kind == "modifiche" else Championship.sponsor_pool_deck_id
+    deck_ids = list(
+        db.scalars(select(column).where(Championship.is_closed.is_(False), column.is_not(None)))
+    )
+    paths: set[str] = set()
+    for deck_id in deck_ids:
+        deck = db.get(Deck, deck_id)
+        if deck is not None:
+            paths.update(card.path for card in parse_cards(deck.cards))
+    return paths
+
+
+def preview_reload(db: Session, kind: str) -> ReloadPreview:
+    # Anteprima della ricarica: cosa verrebbe aggiunto e quali carte verrebbero tolte,
+    # con l'indicazione di quelle presenti nella copia di pool di un campionato attivo.
+    # Non scrive nel database. Errori: PoolNotFoundError.
+    result = reload_base_pool(db, kind, apply=False)
+    in_use_paths = _active_championship_paths(db, kind) if result.removed_paths else set()
+    removed = [
+        RemovedCard(name=name, in_use=path in in_use_paths)
+        for name, path in zip(result.removed, result.removed_paths)
+    ]
+    return ReloadPreview(added=result.added, removed=removed, warnings=result.warnings)

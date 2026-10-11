@@ -5,8 +5,10 @@ from app.db.models.pilot import Pilot
 from app.db.models.championship import Championship, ChampionshipPilot
 from app.db.models.race import Race, RaceResult
 from app.db.models.session import Session
+from app.db.models.shop import Pack, PackPurchase, PackTemplate, ShopTemplate, ShopTemplatePack
 
 __all__ = [
     "User", "Team", "Deck", "DeckPrototype", "Pilot",
     "Championship", "ChampionshipPilot", "Race", "RaceResult","Session",
+    "Pack", "PackPurchase", "PackTemplate", "ShopTemplate", "ShopTemplatePack",
 ]

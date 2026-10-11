@@ -18,11 +18,11 @@ def create_team(client, name="Scuderia Rossa"):
 
 
 def add_pilot(session_factory, user_id, team_id, name="Pilota Uno"):
-    # Inserisce un pilota direttamente nel database, con i suoi due mazzi vuoti
+    # Inserisce un pilota direttamente nel database, con i suoi tre mazzi vuoti
     # (l'API dei piloti non esiste ancora).
     with session_factory() as db:
-        inventory, game = Deck(cards="[]"), Deck(cards="[]")
-        db.add_all([inventory, game])
+        inventory, sponsor_inventory, game = Deck(cards="[]"), Deck(cards="[]"), Deck(cards="[]")
+        db.add_all([inventory, sponsor_inventory, game])
         db.flush()
         pilot = Pilot(
             name=name,
@@ -30,6 +30,7 @@ def add_pilot(session_factory, user_id, team_id, name="Pilota Uno"):
             user_id=user_id,
             team_id=team_id,
             inventory_deck_id=inventory.id,
+            sponsor_inventory_deck_id=sponsor_inventory.id,
             game_deck_id=game.id,
         )
         db.add(pilot)

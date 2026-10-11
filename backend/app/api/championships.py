@@ -27,6 +27,7 @@ from app.services.championships import (
 from app.services.gold import rules_of
 from app.services.pilots import PilotInActiveChampionshipError, PilotNotFoundError
 from app.services.pools import PoolNotFoundError, PoolRuleError
+from app.services.shop_templates import ShopTemplateEmptyError, ShopTemplateNotFoundError
 
 router = APIRouter(tags=["championships"])
 
@@ -51,17 +52,25 @@ def list_all(user: CurrentUser, db: DbDep):
 
 @router.post("", response_model=ChampionshipRead, status_code=status.HTTP_201_CREATED)
 def create(data: ChampionshipCreate, admin: AdminUser, db: DbDep):
-    # Crea un campionato (solo admin) con le pool di modifiche e sponsor scelte; 404 se
-    # una pool non esiste, 422 se non è del tipo giusto, 409 se il nome è in uso.
+    # Crea un campionato (solo admin) con le pool di modifiche e sponsor scelte e, se
+    # indicato, con il negozio che parte da un template di negozio. 404 se una pool o il
+    # template di negozio non esiste, 422 se una pool non è del tipo giusto o il template
+    # di negozio è vuoto, 409 se il nome è in uso.
     try:
         championship = create_championship(
-            db, data.name, data.pool_id, data.sponsor_pool_id
+            db, data.name, data.pool_id, data.sponsor_pool_id, data.shop_template_id
         )
         return _read(db, championship)
     except PoolNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Pool non trovata")
     except PoolRuleError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
+    except ShopTemplateNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Template di negozio non trovato")
+    except ShopTemplateEmptyError:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Il template di negozio è vuoto"
+        )
     except ChampionshipNameTakenError:
         raise HTTPException(status.HTTP_409_CONFLICT, "Nome già in uso")
 

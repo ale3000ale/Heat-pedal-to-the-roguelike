@@ -75,6 +75,9 @@
 						>
 							Campionati
 						</a>
+						<a href={resolve('/shop')} class="text-sm text-muted-foreground hover:text-foreground">
+							Negozio
+						</a>
 						{#if auth.isAdmin}
 							<!-- Tutti i link riservati all'admin stanno qui dentro -->
 							<details class="relative" bind:open={adminMenuOpen} bind:this={adminMenu}>
@@ -100,6 +103,14 @@
 											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
 										>
 											Pool di carte
+										</a>
+									</li>
+									<li>
+										<a
+											href={resolve('/admin/shop')}
+											class="block rounded-sm px-3 py-1.5 text-sm hover:bg-accent"
+										>
+											Gestione negozio
 										</a>
 									</li>
 									<li>

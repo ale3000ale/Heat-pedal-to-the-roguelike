@@ -1,6 +1,10 @@
 # Fase 4: Bootstrap backend e migrazioni
 
-> STATO: COMPLETATA.
+> STATO: COMPLETATA. **DOCUMENTO STORICO**: descrive il backend alla fine della
+> fase 4 (9 tabelle, ruoli `admin` e `player`). Lo stato attuale è in
+> `PROJECT_STATUS.md`, `PROJECT_SPEC.md` e nelle migrazioni in
+> `backend/alembic/versions/`; da allora sono stati aggiunti ruolo `judge`,
+> pool, gare, impostazioni e altre tabelle.
 
 ## Stack
 
@@ -56,6 +60,9 @@ python -m app.scripts.create_admin
 uvicorn app.main:app --reload --port 8000
 ```
 
+Da quando esiste `heat.py` (fase 6) avvio, setup, test e controlli passano
+dal suo menu: `python heat.py`.
+
 Variabili opzionali per `create_admin`: `HEAT_ADMIN_USERNAME`, `HEAT_ADMIN_PASSWORD`.
 
 ## Workaround applicati
@@ -72,7 +79,7 @@ Variabili opzionali per `create_admin`: `HEAT_ADMIN_USERNAME`, `HEAT_ADMIN_PASSW
 - `GET /health`: OK, `/docs`: OK
 - Seed prototipo e creazione admin: OK, password salvata con hash Argon2
 
-## Limiti noti
+## Limiti noti (alla fase 4)
 
 - Pool del prototipo `default` vuota (`[]`): mancano i dati reali delle carte.
 - Nessun login né endpoint applicativi: sono nella fase successiva.
