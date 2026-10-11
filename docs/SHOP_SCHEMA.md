@@ -9,7 +9,7 @@
 
 - Un template di negozio che ha perso tutti i suoi template di pacchetto (triangolo
   giallo) **non è utilizzabile**: nell'elenco del modulo di creazione del campionato
-  è disattivato. Questa regola va riportata anche in `SHOP_DESIGN.md`.
+  è disattivato. La regola è descritta anche in `SHOP_DESIGN.md` (sezione 5).
 - Un pacchetto nuovo, se la valuta non è indicata, è in oro; se il costo non è
   indicato vale 10 oro oppure 2 sponsor. I pacchetti già creati non cambiano. Il
   modulo dei pacchetti parte da 10 e, cambiando valuta, passa a 2 (e torna a 10) solo
