@@ -1,18 +1,16 @@
 # Specifiche del Progetto — Heat
 
-> STATO: APPROVATO. Si aggiorna nel tempo quando emergono nuove esigenze. Ultimo aggiornamento: 11 ottobre 2026 (fase 12, Negozio: backend completato, frontend in corso; animazione di apertura con strappo della busta).
+> STATO: APPROVATO. Si aggiorna nel tempo quando emergono nuove esigenze.
+> Ultimo aggiornamento: 11 ottobre 2026 (fase 12, Negozio: backend completato, frontend in corso; animazione di apertura con strappo della busta e carte mostrate una alla volta).
 
 ## 1. Stack e contesto
 
 - Applicazione web locale basata sul gioco da tavolo Heat.
-- Backend: FastAPI. Frontend: SvelteKit (minimal, TypeScript, npm, ESLint,
-  Prettier, Vitest) in `frontend/`.
+- Backend: FastAPI. Frontend: SvelteKit (minimal, TypeScript, npm, ESLint, Prettier, Vitest) in `frontend/`.
 - Database: SQLite, schema gestito da Alembic. `HeatDB.sql` è lo schema di partenza storico (solo DDL, nessun dato).
-- Migrazioni database: Alembic, una migrazione per ogni cambiamento di schema,
-  a partire da una migrazione iniziale che allinea lo schema al modello target.
+- Migrazioni database: Alembic, una migrazione per ogni cambiamento di schema, a partire da una migrazione iniziale che allinea lo schema al modello target.
 - Integrazione continua: GitHub Actions esegue i test del backend e i controlli del frontend a ogni pull request.
-- Sicurezza flessibile perché l'app è locale, ma progettata per un eventuale
-  uso online futuro. Per l'uso online con SQLite: un solo server con pochi worker, perché SQLite accetta una sola scrittura alla volta.
+- Sicurezza flessibile perché l'app è locale, ma progettata per un eventuale uso online futuro. Per l'uso online con SQLite: un solo server con pochi worker, perché SQLite accetta una sola scrittura alla volta.
 - Avvio e manutenzione: `python heat.py` (menu) oppure `setup`, `start`, `migrate`, `test`, `check`. L'avvio applica sempre le migrazioni in sospeso.
 - Mappa del codice, convenzioni e stato del lavoro: `docs/PROJECT_NOTES.md`.
 
@@ -39,8 +37,7 @@
 ## 4. Ruoli
 
 - Ruoli previsti: `admin`, `judge` (giudice) e `player`.
-- Il primo admin viene creato al primo avvio tramite comando di setup
-  o variabile d'ambiente.
+- Il primo admin viene creato al primo avvio tramite comando di setup o variabile d'ambiente.
 - Admin: crea, chiude e cancella i campionati, gestisce le pool, le impostazioni generali e il Negozio, crea le gare, inserisce e corregge i risultati, assegna il ruolo di giudice, pulisce gli elementi nascosti.
 - Giudice: ruolo fisso, valido per tutti i campionati, assegnato e tolto dall'admin a un utente. Serve a delegare del lavoro all'admin: può creare le gare e terminarle inserendo i risultati e i punti sponsor. Non può correggere una gara già terminata e non ha altri poteri di amministrazione. Può avere team e piloti come un giocatore.
 - Player: gestisce i propri team e piloti.
@@ -51,8 +48,7 @@
 
 - User 1:N Team
 - User 1:N Pilot
-- Team 1:N Pilot
-  (il team del pilota è facoltativo)
+- Team 1:N Pilot (il team del pilota è facoltativo)
 - Pilot 1:1 Inventario delle modifiche
 - Pilot 1:1 Inventario degli sponsor
 - Pilot 1:1 Mazzo da gioco
@@ -67,28 +63,22 @@
 - ChampionshipDefaults: una sola riga con le impostazioni generali (regole dell'oro per gara), copiate su ogni nuovo campionato.
 - PackTemplate e ShopTemplate: modelli del Negozio gestiti dall'admin (sezione 13).
 
-Nota di modellazione: inventario delle modifiche, inventario degli sponsor e mazzo da gioco sono tre mazzi distinti per
-pilota, rappresentati da tre riferimenti a `Deck` sul pilota (`inventory_deck_id`, `sponsor_inventory_deck_id` e `game_deck_id`, tutti univoci).
+Nota di modellazione: inventario delle modifiche, inventario degli sponsor e mazzo da gioco sono tre mazzi distinti per pilota, rappresentati da tre riferimenti a `Deck` sul pilota (`inventory_deck_id`, `sponsor_inventory_deck_id` e `game_deck_id`, tutti univoci).
 
 ## 6. Mazzi, inventario e pool di carte
 
 - Ogni pilota ha tre mazzi:
-  - **Inventario delle modifiche**: tutte le carte possedute dal pilota. Nessun limite di dimensione:
-    la composizione iniziale è solo il punto di partenza. Nel negozio ogni carta ha un tetto di 100 copie.
+  - **Inventario delle modifiche**: tutte le carte possedute dal pilota. Nessun limite di dimensione: la composizione iniziale è solo il punto di partenza. Nel negozio ogni carta ha un tetto di 100 copie.
   - **Inventario degli sponsor**: le carte sponsor ottenute dai pacchetti; vuoto alla creazione.
-  - **Mazzo da gioco**: le carte usate in gara, massimo 15 carte in totale
-    (somma delle copie).
-- Il pilota costruisce il mazzo da gioco scegliendo carte dal proprio inventario:
-  per ogni carta, le copie nel mazzo non superano quelle dell'inventario. Nella pagina del pilota le carte si spostano con un clic tra inventario e mazzo.
+  - **Mazzo da gioco**: le carte usate in gara, massimo 15 carte in totale (somma delle copie).
+- Il pilota costruisce il mazzo da gioco scegliendo carte dal proprio inventario: per ogni carta, le copie nel mazzo non superano quelle dell'inventario. Nella pagina del pilota le carte si spostano con un clic tra inventario e mazzo.
 - I mazzi si possono modificare anche con un campionato attivo; un eventuale blocco varrà solo durante una gara.
 - Ogni mazzo ha un numero di versione (blocco ottimistico): se due modifiche si incrociano, la seconda riceve un errore 409.
 - Stato iniziale alla creazione del pilota (fisso, indipendente dalle pool):
-  - Inventario delle modifiche: Velocità 1, Velocità 2, Velocità 3, Velocità 4, 3 copie ciascuna.
-    La carta Calore parte con 0 copie e non compare nell'elenco.
+  - Inventario delle modifiche: Velocità 1, Velocità 2, Velocità 3, Velocità 4, 3 copie ciascuna. La carta Calore parte con 0 copie e non compare nell'elenco.
   - Inventario degli sponsor: vuoto.
   - Mazzo da gioco: vuoto.
-- Il pilota ottiene nuove carte tramite i pacchetti del negozio, che consumano le pool
-  del campionato (sezione 13).
+- Il pilota ottiene nuove carte tramite i pacchetti del negozio, che consumano le pool del campionato (sezione 13).
 - L'uso delle carte sponsor in gara (a consumo) è rinviato.
 
 ### Pool di base, pool derivate e pool del campionato
@@ -147,17 +137,14 @@ Le carte delle cartelle `base/` entrano nel database con un pulsante "Ricarica" 
 
 ### Formato delle carte
 
-- `Deck.cards` e `DeckPrototype.base_cards`: array JSON di oggetti
-  `{"name": "...", "path": "...", "copies": N}`.
-  - `name`: nome della carta, unico nel mazzo (senza distinguere le maiuscole);
-    è l'identità della carta.
-  - `path`: percorso dell'immagine (es. `images/cards/ruota da bagnato_3.webp`).
-  - `copies`: numero di copie identiche, almeno 1.
+- `Deck.cards` e `DeckPrototype.base_cards`: array JSON di oggetti `{"name": "...", "path": "...", "copies": N}`.
+- `name`: nome della carta, unico nel mazzo (senza distinguere le maiuscole); è l'identità della carta.
+- `path`: percorso dell'immagine (es. `images/cards/ruota da bagnato_3.webp`).
+- `copies`: numero di copie identiche, almeno 1.
 - Nessun campo `value`: valori e simboli sono nell'immagine.
 - Nome dei file immagine: `nome_N.ext`, dove N è il numero di copie.
 - Il backend valida la struttura; il database non ha vincoli `CHECK`.
-- Immagini: ridimensionate senza tagliare dentro una scatola massima di
-  560x870 px (proporzione 5,6 x 8,7 cm).
+- Immagini: ridimensionate senza tagliare dentro una scatola massima di 560x870 px (proporzione 5,6 x 8,7 cm).
 
 ## 7. Risorse del pilota
 
@@ -169,15 +156,12 @@ Le carte delle cartelle `base/` entrano nel database con un pulsante "Ricarica" 
 
 Ad ogni iscrizione a un campionato, tutto il pilota viene reimpostato:
 
-- Inventario delle modifiche: composizione iniziale (Velocità 1-4, 3 copie ciascuna, 0 calore).
-  Il pilota può iscriversi solo se ha un team e non partecipa a un altro campionato attivo.
+- Inventario delle modifiche: composizione iniziale (Velocità 1-4, 3 copie ciascuna, 0 calore). Il pilota può iscriversi solo se ha un team e non partecipa a un altro campionato attivo.
 - Inventario degli sponsor: vuoto.
 - Mazzo da gioco: vuoto.
 - `gold`, `sponsor`, `point`: 0 (valore predefinito dello schema).
 
-Il pilota può iscriversi solo se non partecipa a un altro campionato attivo.
-
-Lo stesso reset si applica ai piloti iscritti anche alla chiusura del campionato; quello dell'iscrizione resta.
+Il pilota può iscriversi solo se non partecipa a un altro campionato attivo. Lo stesso reset si applica ai piloti iscritti anche alla chiusura del campionato; quello dell'iscrizione resta.
 
 ## 9. Campionati, gare e classifica
 
@@ -266,9 +250,7 @@ Lo schema è gestito da Alembic (`backend/alembic/versions`), su SQLite. Le migr
 | `a1c5e9b3d7f2` Negozio | Tabelle `pack_template`, `shop_template`, `shop_template_pack`, `pack`, `pack_purchase`; colonna `sponsor_inventory_deck_id` sul pilota (con un mazzo sponsor vuoto per ogni pilota esistente) |
 | `b2d6f0a4c8e1` unione delle teste | Unisce le due teste di migrazione; dopo l'unione `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa |
 
-Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni. I campionati presenti nel database sono solo di prova: non servono regole di conversione per dati reali.
-
-Dopo un cambio di computer o un `git pull` è necessario applicare le migrazioni: `python heat.py migrate` (l'avvio lo fa da solo).
+Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni. I campionati presenti nel database sono solo di prova: non servono regole di conversione per dati reali. Dopo un cambio di computer o un `git pull` è necessario applicare le migrazioni: `python heat.py migrate` (l'avvio lo fa da solo).
 
 ## 12. Domande aperte (rinviate)
 
@@ -311,8 +293,12 @@ Il funzionamento esteso è in `SHOP_DESIGN.md`, lo schema tecnico, i servizi e l
 - Operazione unica: controllo del saldo, estrazione di una carta alla volta con probabilità proporzionale alle copie rimaste (ricalcolata dopo ogni estrazione), filtro per nome, copie tolte dalla pool del campionato, carte aggiunte all'inventario, costo scalato e riga di storico.
 - Se le copie rimaste nel sottoinsieme filtrato sono meno di quelle richieste, il pacchetto non si compra e al posto del prezzo compare "Terminato".
 - Le copie ottenute si sommano a quelle possedute, con un tetto di 100 per carta (oltre, l'acquisto è rifiutato con 409). Gli acquisti sono serializzati con un blocco sul database.
-- Nell'animazione di apertura si mostrano prima le carte modifiche e poi le carte sponsor.
-- La busta si apre con uno strappo: la striscia superiore se ne va e la busta resta tagliata in alto, con il bordo irregolare, prima che compaiano le carte. È solo un effetto grafico: non cambia l'acquisto né il suo esito.
+- Sequenza di apertura, solo grafica (non cambia l'acquisto né il suo esito):
+  1. La busta si apre con uno strappo: la striscia superiore se ne va e la busta resta tagliata in alto, con il bordo irregolare.
+  2. Le carte compaiono **una alla volta**, già scoperte, prima le carte modifiche e poi le carte sponsor, con il contatore "Carta N di M".
+  3. Ogni tocco (oppure Invio o Spazio) fa scorrere la carta corrente a sinistra e mostra la successiva; dopo l'ultima si chiude la sequenza.
+  4. Il pulsante "Salta" interrompe la sequenza durante la busta o durante le carte.
+  5. Con il movimento ridotto la sequenza parte direttamente dalle carte e lo scorrimento dura 0.
 
 ### Storico
 
