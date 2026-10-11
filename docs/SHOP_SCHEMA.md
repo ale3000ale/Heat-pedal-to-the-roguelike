@@ -2,9 +2,10 @@
 > `SHOP_DESIGN.md`. Le sottofasi 12a, 12b e 12c (backend) sono completate; restano il
 > frontend del giocatore (12d, quasi chiuso), il frontend admin (12e) e i documenti (12f).
 > La pagina del negozio ha ordinamento, ricerca, saldo in alto a destra e l'apertura
-> animata dei pacchetti con l'immagine del pacchetto come texture della busta e le carte
-> mostrate una alla volta; le altre pagine esistono già e vanno verificate. Quando il
-> Negozio sarà finito, le regole passano in `PROJECT_SPEC.md`.
+> animata dei pacchetti con l'immagine del pacchetto come texture della busta, le carte
+> mostrate una alla volta e il riepilogo finale con tutte le carte; le altre pagine
+> esistono già e vanno verificate. Quando il Negozio sarà finito, le regole passano in
+> `PROJECT_SPEC.md`.
 
 # Negozio — schema, servizi, rotte e sottofasi
 
@@ -144,12 +145,21 @@ dell'inventario o conflitto di versione, 422 dati non validi.
   14%, viene tolta con un bordo leggermente irregolare, `clip-path`; l'ombra segue la
   forma con `drop-shadow`); scorrimento della busta tagliata verso il basso (600 ms);
   carte una alla volta, già scoperte: la prima compare al centro e ogni tocco (o Invio,
-  o Spazio) la fa scorrere a sinistra mostrando la seguente; sull'ultima il tocco non fa
-  nulla. Sotto la carta ci sono il contatore "Carta N di M" e il pulsante "Salta", che
-  durante la busta salta le animazioni e durante le carte porta all'ultima. Con
+  o Spazio) la fa scorrere a sinistra mostrando la seguente. Sull'ultima carta il tocco
+  successivo apre il **riepilogo**: una griglia (2 colonne su telefono, 3 da schermi più
+  larghi, con scorrimento se le carte sono tante) con tutte le carte ottenute, ciascuna
+  con la sua immagine e l'etichetta "Modifica" o "Sponsor", e il testo "Hai ottenuto N
+  carte". Se la stessa carta esce più volte compare una volta per ogni estrazione. Sotto
+  la carta ci sono il contatore "Carta N di M" (sull'ultima "Ultima carta: tocca per il
+  riepilogo") e il pulsante "Salta", che da qualsiasi fase (anche durante la busta)
+  porta direttamente al riepilogo.
+  Chiusura: la X del popup funziona sempre; toccando fuori dalla finestra la chiusura
+  è consentita solo dal riepilogo (`pack-reveal.svelte` espone `done`, che diventa
+  vero solo lì, e la pagina lo passa a `closeOnOutside` di `modal.svelte`). Con
   `prefers-reduced-motion` l'animazione della busta è saltata, si parte dalle carte e lo
   scorrimento dura 0. `cardDelayMs` in `pack-reveal-phases.ts` non è più usato dal
-  componente ed è rimasto solo per il suo test.
+  componente ed è rimasto solo per il suo test. Il comportamento del riepilogo non ha
+  test automatici (il componente grafico non ne ha); si verifica a mano.
 - `/championships/[id]/shop/history`: storico acquisti come pagina separata (decisione
   del 10 ottobre 2026, al posto del popup previsto prima).
 - Admin: pagina "Gestione negozio" con due schede (template di pacchetto, template
@@ -167,7 +177,7 @@ dell'inventario o conflitto di versione, 422 dati non validi.
 | 12a | Migrazione, modelli, inventario sponsor e reset, servizio e script delle immagini | Migrazione su e giù, reset all'iscrizione e alla chiusura, caricamento immagini | Completata (248 test) |
 | 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template, rotte delle immagini | Regole di creazione ed eliminazione, copie indipendenti, permessi | Completata |
 | 12c | Acquisto, estrazione, storico, inventario (backend) | Probabilità per copia, filtro, "Terminato", saldo, gara in corso, campionato chiuso, concorrenza, tetto 100 | Completata e approvata il 10 ottobre 2026 |
-| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | `shop-sort.spec.ts` (9 test di ordinamento e ricerca), `pack-reveal-phases.spec.ts` (7 test sulle fasi dell'animazione) e controlli del frontend verdi in CI | Quasi chiusa: negozio con ordinamento, ricerca e saldo, apertura animata dei pacchetti con taglio della busta e carte una alla volta; restano da verificare a mano l'aspetto dell'animazione e le altre pagine (elenco, storico) |
+| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | `shop-sort.spec.ts` (9 test di ordinamento e ricerca), `pack-reveal-phases.spec.ts` (7 test sulle fasi dell'animazione) e controlli del frontend verdi in CI | Quasi chiusa: negozio con ordinamento, ricerca e saldo, apertura animata dei pacchetti con taglio della busta, carte una alla volta e riepilogo finale; restano da verificare a mano l'aspetto dell'animazione, il riepilogo e le altre pagine (elenco, storico) |
 | 12e | Frontend dell'admin: gestione negozio, "Crea pack", storico completo | Come sopra | In corso (pagine presenti da verificare) |
 | 12f | Documenti, `PROJECT_SPEC.md`, stato e note | Revisione finale | Da fare |
 
