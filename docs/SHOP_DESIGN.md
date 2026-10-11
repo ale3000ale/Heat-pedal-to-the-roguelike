@@ -1,12 +1,13 @@
-> **STATO: APPROVATO PER IL BACKEND (aggiornato l'11 ottobre 2026).** Descrive il
+> **STATO: APPROVATO E REALIZZATO (aggiornato l'11 ottobre 2026).** Descrive il
 > funzionamento del Negozio come lo ha spiegato l'autore l'8 ottobre 2026, con le
 > risposte alle domande. Le regole sono riportate nella sezione 13 di
-> `PROJECT_SPEC.md`; lo schema tecnico è in `SHOP_SCHEMA.md`. Il backend (12a-12c) è
-> completato; il frontend (12d, 12e) è in corso. Le parti ancora da decidere sono in
-> `OPEN_QUESTIONS.md`. Il 10 ottobre 2026 l'autore ha scelto, per il frontend, un solo
-> pulsante Inventario e lo Storico come pagina separata (sezioni 3 e 8). L'11 ottobre
-> 2026 ha scelto l'apertura della busta con uno strappo e il riepilogo finale con tutte
-> le carte (sezione 6).
+> `PROJECT_SPEC.md`; lo schema tecnico è in `SHOP_SCHEMA.md`. Il backend (12a-12c) e
+> il frontend (12d, 12e) sono completati; resta la 12f (documenti finali e unione in
+> `main`). Le parti ancora da decidere sono in `OPEN_QUESTIONS.md`. Il 10 ottobre 2026
+> l'autore ha scelto, per il frontend, un solo pulsante Inventario e lo Storico come
+> pagina separata (sezioni 3 e 8). L'11 ottobre 2026 ha scelto l'apertura della busta
+> con uno strappo, il riepilogo finale con le carte raggruppate e la chiusura della
+> finestra solo dal riepilogo (sezione 6).
 
 # Negozio — progetto della fase 12
 
@@ -22,10 +23,10 @@ pilota iscritto; le carte ottenute vanno nell'inventario di quel pilota.
   al negozio di quel campionato.
 - Dalla voce "Negozio" della barra di navigazione, che compare solo con almeno
   un pilota iscritto: elenco dei soli campionati a cui l'utente partecipa con un
-  pilota; il nome del campionato apre il suo negozio. L'elenco arriva dalla rotta
-  `GET /api/me/shops` (implementata in `shop_me.py`; una versione precedente di
-  questo documento la dava per non necessaria, ma serve alla barra di navigazione e
-  alla scelta del pilota).
+  pilota (pagina `/shop`, con il saldo di ciascun pilota); il nome del campionato
+  apre il suo negozio. L'elenco arriva dalla rotta `GET /api/me/shops` (implementata
+  in `shop_me.py`; una versione precedente di questo documento la dava per non
+  necessaria, ma serve alla barra di navigazione e alla scelta del pilota).
 - **Scelta del pilota**: entrando nel negozio, se l'utente ha più piloti iscritti
   a quel campionato, gli viene chiesto con quale proseguire; con un solo pilota
   si entra direttamente con quello.
@@ -149,8 +150,8 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
   già compilate, che può modificare per intero prima di creare il pacchetto, oppure
   lo crea da zero senza template. Non è obbligatorio usare tutti i template.
 - Da qui l'admin modifica o elimina i pacchetti del negozio e vede lo storico di
-  tutti i piloti. Aperte dal negozio, le impostazioni mostrano solo pacchetti,
-  pool completa e storico.
+  tutti i piloti (pulsante "Storico"). Aperte dal negozio, le impostazioni mostrano
+  solo pacchetti, pool completa e storico.
 - I campionati attivi esistenti prima della fase 12 hanno il negozio vuoto: i
   pacchetti si creano a mano con "Crea pack".
 
@@ -166,23 +167,25 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
 3. A schermo, nell'animazione, si mostrano prima le carte modifiche e poi le
    carte sponsor.
 4. Il pacchetto compare in primo piano; lo sfondo si sfoca e non è più cliccabile.
-5. Prima si vede la busta chiusa. Un clic in qualsiasi punto la apre con uno
-   strappo (decisione dell'11 ottobre): la striscia superiore se ne va e la busta
-   resta tagliata in alto, con il bordo irregolare; poi compare la prima carta. È
-   solo un effetto grafico (CSS) e non cambia l'acquisto. I valori tecnici sono in
-   `SHOP_SCHEMA.md`.
-6. Ogni clic successivo fa scorrere la carta verso sinistra e mostra la
-   seguente, fino all'ultima.
+5. Prima si vede la busta chiusa, che ha come texture l'immagine del pacchetto
+   acquistato. Un clic in qualsiasi punto la apre con uno strappo (decisione
+   dell'11 ottobre): la striscia superiore se ne va e la busta resta tagliata in alto,
+   con il bordo irregolare; poi compare la prima carta. È solo un effetto grafico
+   (CSS) e non cambia l'acquisto. I valori tecnici sono in `SHOP_SCHEMA.md`.
+6. Ogni clic successivo (o Invio, o Spazio) fa scorrere la carta verso sinistra e
+   mostra la seguente, fino all'ultima.
 7. **Riepilogo finale** (decisione dell'11 ottobre): dopo l'ultima carta, un ultimo
-   clic apre una schermata con tutte le carte ottenute, ciascuna con la sua
-   immagine e l'indicazione "Modifica" o "Sponsor". Se la stessa carta esce più
-   volte compare una volta per ogni estrazione.
+   clic apre una schermata con le carte ottenute, ciascuna con la sua immagine e
+   l'indicazione "Modifica" o "Sponsor", e il testo "Hai ottenuto N carte" (N conta
+   tutte le estrazioni). Se la stessa carta esce più volte (stessa sezione e stessa
+   immagine) compare una sola volta, con il numero di copie ("x N").
 8. **Salta**: il pulsante "Salta" porta direttamente al riepilogo da qualsiasi
    momento, anche con la busta ancora chiusa.
 9. **Chiusura della finestra**: finché non si è arrivati al riepilogo la finestra
-   si chiude solo con la X in alto a destra; dal riepilogo si può uscire in qualsiasi
-   modo, anche cliccando fuori dalla finestra. Chiudere non annulla l'acquisto: le
-   carte sono già nell'inventario.
+   si chiude solo con la X in alto a destra; il clic fuori e il tasto Esc non la
+   chiudono. Dal riepilogo si può uscire in qualsiasi modo, anche cliccando fuori
+   dalla finestra. Chiudere non annulla l'acquisto: le carte sono già
+   nell'inventario.
 
 ## 7. Inventario
 
@@ -196,9 +199,9 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
 - **Uso delle carte sponsor (fase futura)**: sono carte a consumo. Si possono
   usare in gara e, una volta usate, vengono cancellate; in gara se ne possono
   anche ottenere. A fine gara l'inventario sponsor può quindi avere meno o più
-  carte, anche tutte diverse da quelle di partenza. Come gestirlo si decide in una
-  fase successiva: nella fase 12 le carte sponsor si ottengono e si vedono, ma non
-  si usano.
+  carte, anche tutte diverse da quelle di partenza. Come gestirlo si decide in
+  una fase successiva: nella fase 12 le carte sponsor si ottengono e si vedono, ma
+  non si usano.
 
 ## 8. Storico acquisti
 
@@ -207,8 +210,8 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
 - Si vede solo dal negozio, con il link "Storico" (decisione del 10 ottobre: pagina
   separata invece del popup): mostra i propri piloti iscritti, divisi per pilota.
   Il giocatore non vede gli acquisti di un pilota che ha eliminato.
-- L'admin, dalle impostazioni del negozio, vede lo storico di tutti i piloti; nel
-  negozio è come un giocatore qualsiasi.
+- L'admin, dal pulsante "Storico" delle impostazioni del campionato o del negozio,
+  vede la cronologia di tutti i piloti; nel negozio è come un giocatore qualsiasi.
 - Alla chiusura del campionato lo storico **resta solo per l'admin** e viene
   cancellato insieme al campionato.
 - Lo storico non è collegato in modo vincolante al pilota: se il pilota viene
