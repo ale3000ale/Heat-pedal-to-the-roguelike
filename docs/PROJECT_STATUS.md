@@ -78,6 +78,7 @@ Ultimo aggiornamento: 2026-10-11
 - Test nuovi: 9 test per ordinamento e ricerca dei pacchetti (`shop-sort.spec.ts`) e 7 test sulle fasi dell'animazione di apertura (`pack-reveal-phases.spec.ts`). Non sono stati scritti test nuovi per il costo predefinito dei pacchetti e per l'ordine delle gare (scelta dell'autore). L'anteprima della ricarica, il lock sul database e il componente grafico `pack-reveal.svelte` (compreso il taglio della busta, che è solo CSS, e lo scorrimento delle carte) non hanno test dedicati; il numero totale di test non è stato aggiornato qui. `cardDelayMs` in `pack-reveal-phases.ts` non è più usato dal componente ed è rimasto solo per il suo test.
 - Aspetto dell'animazione: non verificabile da CI. L'autore ha detto che, salvo segnalazioni, va considerata a posto; il taglio della busta dopo lo strappo è stato scritto su sua richiesta e non è stato visto a schermo da chi ha scritto il codice. Restano non letti `CardTile.svelte` dentro la carta mostrata e i nomi delle variabili CSS del tema (`--muted`, `--border`, `--primary`), usati senza controllo.
 - Migrazioni Alembic: oro per gara (`c9f3a1b6d8e4`), tabelle del Negozio (`a1c5e9b3d7f2`) e unione delle due teste (`b2d6f0a4c8e1`), oltre a quelle elencate nella sezione 11 della specifica. Dopo un'unione di teste, `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa.
+- Documenti: gli interventi di sola documentazione dell'11 ottobre (`SHOP_DESIGN.md`, `SHOP_SCHEMA.md`, `OPEN_QUESTIONS.md`, `PROJECT_SPEC.md`, questo file) non hanno test da eseguire; per `PROJECT_SPEC.md` il file è stato riscritto per intero, da ricontrollare nel diff.
 
 ## API principali
 
@@ -111,6 +112,7 @@ Questioni aperte:
 - Per il deploy: un solo server con pochi worker, perché SQLite accetta una sola scrittura alla volta; con un altro database serve un blocco sulla riga del pilota (`SELECT ... FOR UPDATE`).
 - Avviso quando un template di negozio non contiene pacchetti (da riportare in `SHOP_SCHEMA.md` a fine 12c).
 - Verifica sottofase per sottofase del frontend del Negozio (12d, 12e) rispetto a `SHOP_SCHEMA.md`; per la 12d restano l'elenco `/shop` e la pagina dello storico, non ancora letti.
+- Blocco della finestra durante l'apertura: la vecchia descrizione in `SHOP_SCHEMA.md` diceva che la finestra restava bloccata finché le carte non erano girate; con le carte una alla volta non è deciso se vada mantenuto (da chiedere all'autore o da verificare in `pack-reveal.svelte`).
 
 ## Documenti
 
@@ -123,7 +125,7 @@ Questioni aperte:
 
 ## Prossimi passi
 
-1. Riportare l'apertura animata (busta con l'immagine come texture, striscia che se ne va, busta tagliata, carte una alla volta che scorrono a sinistra) in `PROJECT_SPEC.md`, `PROJECT_NOTES.md` e `SHOP_SCHEMA.md`, e controllare `OPEN_QUESTIONS.md`: in questo passaggio è stato aggiornato solo questo file. Il file `SHOP_DESIGN.md` descrive già le carte una alla volta.
+1. Allineare `PROJECT_NOTES.md` sull'apertura animata dei pacchetti (busta con l'immagine come texture, striscia che se ne va, busta tagliata, carte una alla volta che scorrono a sinistra): `PROJECT_SPEC.md`, `SHOP_SCHEMA.md`, `OPEN_QUESTIONS.md` e questo file sono già aggiornati. Il file `SHOP_DESIGN.md` descrive già le carte una alla volta.
 2. Sottofase 12d: verificare le altre pagine del negozio (elenco `/shop`, pagina dello storico, popup di inventario) e, se l'autore lo segnala, correggere l'aspetto dell'animazione.
 3. Sottofase 12e: frontend admin (impostazioni del negozio, pacchetti, template, cronologia).
 4. Sottofase 12f: documenti finali e verifica complessiva, poi unione di `phase-12-shop` in `main`.
