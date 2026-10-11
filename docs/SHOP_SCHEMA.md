@@ -1,11 +1,7 @@
 > **STATO: IN IMPLEMENTAZIONE (aggiornato l'11 ottobre 2026).** Traduzione tecnica di
-> `SHOP_DESIGN.md`. Le sottofasi 12a, 12b e 12c (backend) sono completate; restano il
-> frontend del giocatore (12d, quasi chiuso), il frontend admin (12e) e i documenti (12f).
-> La pagina del negozio ha ordinamento, ricerca, saldo in alto a destra e l'apertura
-> animata dei pacchetti con l'immagine del pacchetto come texture della busta, le carte
-> mostrate una alla volta e il riepilogo finale con tutte le carte; le altre pagine
-> esistono già e vanno verificate. Quando il Negozio sarà finito, le regole passano in
-> `PROJECT_SPEC.md`.
+> `SHOP_DESIGN.md`. Le sottofasi 12a-12e sono completate (backend, frontend del
+> giocatore e frontend admin); resta la 12f (documenti finali e unione in `main`).
+> Quando il Negozio sarà unito a `main`, le regole passano in `PROJECT_SPEC.md`.
 
 # Negozio — schema, servizi, rotte e sottofasi
 
@@ -13,14 +9,15 @@
 
 - Un template di negozio che ha perso tutti i suoi template di pacchetto (triangolo
   giallo) **non è utilizzabile**: nell'elenco del modulo di creazione del campionato
-  è disattivato. Questa regola va riportata anche in `SHOP_DESIGN.md` quando lo si
-  aggiorna.
+  è disattivato. Questa regola va riportata anche in `SHOP_DESIGN.md`.
 - Un pacchetto nuovo, se la valuta non è indicata, è in oro; se il costo non è
   indicato vale 10 oro oppure 2 sponsor. I pacchetti già creati non cambiano. Il
   modulo dei pacchetti parte da 10 e, cambiando valuta, passa a 2 (e torna a 10) solo
   se il costo non è stato scelto a mano.
 - Le impostazioni del campionato aperte dal negozio mostrano soltanto pacchetti, pool
-  completa e storico.
+  completa e storico (cronologia di tutti i piloti, solo admin).
+- Nel riepilogo dell'apertura di un pacchetto le copie uguali (stessa sezione e stesso
+  percorso immagine) sono raggruppate con il numero di copie.
 
 ## 2. Tabelle nuove (create dalla migrazione della 12a)
 
@@ -116,10 +113,6 @@ colonna.
 | `GET /championships/{id}/shop/history/all` | admin | Cronologia completa. |
 | `GET /pools/base/{kind}/reload/preview`, `POST /pools/base/{kind}/reload` | admin | Anteprima e applicazione della ricarica. |
 
-La rotta `GET /me/shops` era stata data per non necessaria (decisione del 10 ottobre
-mattina); è invece presente nel backend (`shop_me.py`, montata con prefisso `/api/me`
-in `main.py`) ed è usata dal frontend. Il documento è stato corretto leggendo il codice.
-
 Errori: 403 senza permesso, 404 elemento assente, 409 negozio bloccato (gara in
 corso o campionato chiuso), pacchetto "Terminato", saldo insufficiente, tetto di copie
 dell'inventario o conflitto di versione, 422 dati non validi.
@@ -127,8 +120,8 @@ dell'inventario o conflitto di versione, 422 dati non validi.
 ## 6. Pagine e componenti del frontend
 
 - Barra di navigazione: voce "Negozio" solo con un pilota iscritto.
-- `/shop`: elenco dei campionati con negozio e scelta del pilota (dati da
-  `GET /api/me/shops`).
+- `/shop`: elenco dei campionati con negozio e scelta del pilota, con il saldo di ogni
+  pilota (dati da `GET /api/me/shops` e dalla vista del negozio).
 - `/championships/[id]/shop`: pagina del negozio. In alto a destra il pilota scelto
   con oro e punti sponsor, sotto il pulsante "Inventario" (popup con le carte in
   miniatura), il link "Storico", la scelta del pilota e, per l'admin, l'ingranaggio. Due
@@ -147,26 +140,30 @@ dell'inventario o conflitto di versione, 422 dati non validi.
   carte una alla volta, già scoperte: la prima compare al centro e ogni tocco (o Invio,
   o Spazio) la fa scorrere a sinistra mostrando la seguente. Sull'ultima carta il tocco
   successivo apre il **riepilogo**: una griglia (2 colonne su telefono, 3 da schermi più
-  larghi, con scorrimento se le carte sono tante) con tutte le carte ottenute, ciascuna
-  con la sua immagine e l'etichetta "Modifica" o "Sponsor", e il testo "Hai ottenuto N
-  carte". Se la stessa carta esce più volte compare una volta per ogni estrazione. Sotto
-  la carta ci sono il contatore "Carta N di M" (sull'ultima "Ultima carta: tocca per il
-  riepilogo") e il pulsante "Salta", che da qualsiasi fase (anche durante la busta)
-  porta direttamente al riepilogo.
-  Chiusura: la X del popup funziona sempre; toccando fuori dalla finestra la chiusura
-  è consentita solo dal riepilogo (`pack-reveal.svelte` espone `done`, che diventa
-  vero solo lì, e la pagina lo passa a `closeOnOutside` di `modal.svelte`). Con
-  `prefers-reduced-motion` l'animazione della busta è saltata, si parte dalle carte e lo
-  scorrimento dura 0. `cardDelayMs` in `pack-reveal-phases.ts` non è più usato dal
-  componente ed è rimasto solo per il suo test. Il comportamento del riepilogo non ha
-  test automatici (il componente grafico non ne ha); si verifica a mano.
+  larghi, con scorrimento se le carte sono tante) con le carte ottenute, ciascuna con
+  la sua immagine e l'etichetta "Modifica" o "Sponsor", e il testo "Hai ottenuto N
+  carte" (conta tutte le estrazioni). Le copie uguali (stessa sezione e stesso percorso
+  immagine) compaiono una sola volta, con "x N" accanto all'etichetta; il
+  raggruppamento è nella funzione `groupByCard` di `src/lib/pack-summary.ts`, con test
+  in `pack-summary.spec.ts`. Sotto la carta ci sono il contatore "Carta N di M"
+  (sull'ultima "Ultima carta: tocca per il riepilogo") e il pulsante "Salta", che da
+  qualsiasi fase (anche durante la busta) porta direttamente al riepilogo.
+  Chiusura: la X del popup funziona sempre; il clic fuori e il tasto Esc chiudono solo
+  dal riepilogo (`pack-reveal.svelte` espone `done`, che diventa vero solo lì, e la
+  pagina lo passa a `closeOnOutside` di `modal.svelte`, che gestisce clic fuori ed Esc
+  con la stessa funzione). Con `prefers-reduced-motion` l'animazione della busta è
+  saltata, si parte dalle carte e lo scorrimento dura 0. `cardDelayMs` in
+  `pack-reveal-phases.ts` non è più usato dal componente ed è rimasto solo per il suo
+  test. Il componente grafico non ha test automatici; si verifica a mano.
 - `/championships/[id]/shop/history`: storico acquisti come pagina separata (decisione
   del 10 ottobre 2026, al posto del popup previsto prima).
 - Admin: pagina "Gestione negozio" con due schede (template di pacchetto, template
   di negozio con triangolo giallo); modulo di creazione del campionato con scelta
   del template di negozio; ingranaggio del campionato con "Crea pack", modifica ed
-  eliminazione dei pacchetti e storico di tutti i piloti. Nel negozio l'ingranaggio
-  apre solo le impostazioni del negozio (pacchetti, pool completa, storico).
+  eliminazione dei pacchetti e storico di tutti i piloti (`championship-settings.svelte`
+  e `championship-history-panel.svelte`, che usa la cronologia completa `history/all`).
+  Nel negozio l'ingranaggio apre solo le impostazioni del negozio (pacchetti, pool
+  completa, storico), con lo stesso storico completo.
 - Pagina admin delle pool: la ricarica passa da un popup di conferma quando deve
   togliere carte.
 
@@ -177,9 +174,9 @@ dell'inventario o conflitto di versione, 422 dati non validi.
 | 12a | Migrazione, modelli, inventario sponsor e reset, servizio e script delle immagini | Migrazione su e giù, reset all'iscrizione e alla chiusura, caricamento immagini | Completata (248 test) |
 | 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template, rotte delle immagini | Regole di creazione ed eliminazione, copie indipendenti, permessi | Completata |
 | 12c | Acquisto, estrazione, storico, inventario (backend) | Probabilità per copia, filtro, "Terminato", saldo, gara in corso, campionato chiuso, concorrenza, tetto 100 | Completata e approvata il 10 ottobre 2026 |
-| 12d | Frontend del giocatore: elenco, negozio, popup, animazione | `shop-sort.spec.ts` (9 test di ordinamento e ricerca), `pack-reveal-phases.spec.ts` (7 test sulle fasi dell'animazione) e controlli del frontend verdi in CI | Quasi chiusa: negozio con ordinamento, ricerca e saldo, apertura animata dei pacchetti con taglio della busta, carte una alla volta e riepilogo finale; restano da verificare a mano l'aspetto dell'animazione, il riepilogo e le altre pagine (elenco, storico) |
-| 12e | Frontend dell'admin: gestione negozio, "Crea pack", storico completo | Come sopra | In corso (pagine presenti da verificare) |
-| 12f | Documenti, `PROJECT_SPEC.md`, stato e note | Revisione finale | Da fare |
+| 12d | Frontend del giocatore: elenco, negozio, popup, animazione, riepilogo | `shop-sort.spec.ts` (9), `pack-reveal-phases.spec.ts` (7), `pack-summary.spec.ts` (3); resto verificato a mano dall'autore | Completata |
+| 12e | Frontend dell'admin: gestione negozio, "Crea pack", storico completo | Verificato a mano dall'autore | Completata |
+| 12f | Documenti, `PROJECT_SPEC.md`, stato e note | Revisione finale | In corso |
 
 Ogni sottofase si chiude con test, controlli e commit sul ramo `phase-12-shop`,
 come nelle fasi precedenti.
