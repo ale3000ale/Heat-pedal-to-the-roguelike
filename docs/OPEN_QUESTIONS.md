@@ -19,11 +19,15 @@ il frontend del giocatore (12d), il frontend admin (12e) e i documenti finali (1
 - **Strappo della busta**: l'effetto non è ancora stato visto a schermo; se non
   convince, si ritocca solo il CSS (vedi decisione dell'11 ottobre).
 
-Decisione dell'11 ottobre 2026 (non più aperta):
+Decisioni dell'11 ottobre 2026 (non più aperte):
 
-- Nell'apertura del pacchetto la busta si apre con uno strappo: la striscia superiore
-  se ne va e la busta resta tagliata in alto. È solo CSS, senza test dedicati; i
-  dettagli sono in `SHOP_DESIGN.md` (sezione 6) e `SHOP_SCHEMA.md`.
+- Nell'apertura del pacchetto la busta ha come texture l'immagine del pacchetto
+  acquistato e si apre con uno strappo: la striscia superiore se ne va e la busta
+  resta tagliata in alto. È solo CSS, senza test dedicati; i dettagli sono in
+  `SHOP_DESIGN.md` (sezione 6) e `SHOP_SCHEMA.md`.
+- Dopo la busta le carte si vedono una alla volta, già scoperte: ogni tocco fa
+  scorrere la carta a sinistra mostrando la seguente (non più tutte in fila e
+  coperte da girare).
 
 Decisioni del 10 ottobre 2026 (non più aperte):
 
