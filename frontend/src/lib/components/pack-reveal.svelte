@@ -15,7 +15,10 @@
 	// strappo della striscia in alto (la striscia se ne va e la busta resta tagliata),
 	// scorrimento della busta verso il basso, poi le carte UNA ALLA VOLTA: la prima compare
 	// al centro e ogni tocco la fa scorrere verso sinistra mostrando la seguente.
-	// `done` diventa vero quando e' visibile l'ultima carta.
+	// Dopo l'ultima carta un ultimo tocco apre il riepilogo con TUTTE le carte e la loro
+	// immagine; il tasto "Salta" porta direttamente al riepilogo da qualsiasi fase.
+	// `done` diventa vero solo quando e' visibile il riepilogo: da li' la finestra si chiude
+	// in ogni modo (anche toccando fuori), prima solo con la X.
 	// Il componente nasce a ogni apertura, quindi riparte da zero.
 	let {
 		cards,
@@ -25,6 +28,7 @@
 
 	let phase = $state<RevealPhase>('sealed');
 	let current = $state(0);
+	let summary = $state(false);
 	let reduced = $state(false);
 	let lastIndex = $derived(Math.max(cards.length - 1, 0));
 	let item = $derived(cards[current]);
@@ -46,7 +50,7 @@
 
 	// Aggiorna `done` solo quando cambia, così l'effetto non si ripete.
 	$effect(() => {
-		const finished = cards.length === 0 || current >= lastIndex;
+		const finished = cards.length === 0 || summary;
 		if (done !== finished) done = finished;
 	});
 
@@ -54,9 +58,10 @@
 		if (phase === 'sealed') phase = nextPhase(phase);
 	}
 
-	// Passa alla carta seguente; sull'ultima non fa nulla.
+	// Passa alla carta seguente; dopo l'ultima apre il riepilogo.
 	function nextCard() {
 		if (current < lastIndex) current += 1;
+		else summary = true;
 	}
 
 	function onCardKey(event: KeyboardEvent) {
@@ -66,13 +71,10 @@
 		}
 	}
 
-	// Durante la busta salta le animazioni; con le carte va direttamente all'ultima.
+	// Porta direttamente al riepilogo di tutte le carte, da qualsiasi fase.
 	function skip() {
-		if (phase !== 'cards') {
-			phase = 'cards';
-			return;
-		}
-		current = lastIndex;
+		phase = 'cards';
+		summary = true;
 	}
 </script>
 
@@ -81,7 +83,20 @@
 		<p class="text-sm text-muted-foreground">Nessuna carta.</p>
 	{/if}
 
-	{#if phase !== 'cards'}
+	{#if summary && cards.length > 0}
+		<div class="max-h-[60vh] overflow-y-auto p-1">
+			<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+				{#each cards as entry, index (index)}
+					<li class="space-y-1">
+						<CardTile card={entry.card} title="Copie ottenute" />
+						<p class="text-center text-xs text-muted-foreground">
+							{entry.section === 'modifiche' ? 'Modifica' : 'Sponsor'}
+						</p>
+					</li>
+				{/each}
+			</ul>
+		</div>
+	{:else if phase !== 'cards'}
 		<div class="stage">
 			<button
 				type="button"
@@ -110,10 +125,10 @@
 					<div
 						class="current"
 						role="button"
-						tabindex={current < lastIndex ? 0 : -1}
+						tabindex="0"
 						aria-label={current < lastIndex
 							? `Carta ${current + 1} di ${cards.length}: tocca per la successiva`
-							: `Ultima carta, ${current + 1} di ${cards.length}`}
+							: `Ultima carta, ${current + 1} di ${cards.length}: tocca per il riepilogo`}
 						onclick={nextCard}
 						onkeydown={onCardKey}
 					>
@@ -127,18 +142,18 @@
 		</div>
 	{/if}
 
-	{#if cards.length > 0 && phase === 'cards'}
+	{#if cards.length > 0 && summary}
+		<p class="text-sm text-muted-foreground">Hai ottenuto {cards.length} carte.</p>
+	{:else if cards.length > 0 && phase === 'cards'}
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			{#if current < lastIndex}
-				<p class="text-sm text-muted-foreground">
+			<p class="text-sm text-muted-foreground">
+				{#if current < lastIndex}
 					Carta {current + 1} di {cards.length}: tocca per la successiva.
-				</p>
-				<Button size="sm" variant="outline" onclick={skip}>Salta</Button>
-			{:else}
-				<p class="text-sm text-muted-foreground">
-					Ultima carta ({cards.length} di {cards.length}).
-				</p>
-			{/if}
+				{:else}
+					Ultima carta ({cards.length} di {cards.length}): tocca per il riepilogo.
+				{/if}
+			</p>
+			<Button size="sm" variant="outline" onclick={skip}>Salta</Button>
 		</div>
 	{:else if phase !== 'cards'}
 		<div class="flex justify-end">
