@@ -1,15 +1,17 @@
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import User
 from app.db.models.race import Race
 from app.services.card_play_close import consume_plays
+from app.services.cards import CardError
 from app.services.championships import ChampionshipClosedError, get_championship
 from app.services.races import RaceNotFoundError, count_participants, get_race
 from app.services.shop_purchase import _lock_database
 
-# Dopo questo tempo dall'apertura la revisione si libera e un altro giudice può prenderla.
+# Dopo questo tempo dall'apertura la revisione scade e viene confermata così com'è.
 REVIEW_MINUTES = 15
 
 
@@ -30,7 +32,19 @@ class ReviewHeldByOtherError(Exception):
 
 
 class ReviewNotActiveError(Exception):
-    """La revisione non è aperta o è scaduta: va aperta di nuovo."""
+    """La revisione non è aperta o è scaduta."""
+
+
+class RaceNotLastError(Exception):
+    """Solo l'ultima gara del campionato si può rivedere di nuovo."""
+
+
+class ReviewNotConfirmedError(Exception):
+    """La revisione non è ancora stata confermata: non c'è nulla da riaprire."""
+
+
+class ReviewReopenForbiddenError(Exception):
+    """Solo l'admin può riaprire una revisione già confermata."""
 
 
 def _utc(value: datetime) -> datetime:
@@ -40,11 +54,17 @@ def _utc(value: datetime) -> datetime:
 
 def is_review_active(race: Race, now: datetime | None = None) -> bool:
     # Vera se la revisione è stata aperta da meno di REVIEW_MINUTES e non è confermata.
-    # Una revisione scaduta vale come non aperta, senza scrivere nulla nel database.
+    # Una revisione scaduta non è più attiva, senza scrivere nulla nel database.
     if race.review_started_at is None or race.review_closed_at is not None:
         return False
     current = now or datetime.now(timezone.utc)
     return current - _utc(race.review_started_at) < timedelta(minutes=REVIEW_MINUTES)
+
+
+def is_last_race(db: Session, race: Race) -> bool:
+    # Vera se la gara ha il numero più alto del suo campionato.
+    last = db.scalar(select(func.max(Race.number)).where(Race.championship_id == race.championship_id))
+    return last == race.number
 
 
 def _open_race(db: Session, championship_id: int, race_id: int) -> Race:
@@ -82,8 +102,8 @@ def _clear_review(race: Race) -> None:
 
 def begin_review(db: Session, championship_id: int, race_id: int, user: User) -> Race:
     # Apre la revisione delle carte per l'utente (giudice o admin) o la riprende se è la
-    # sua. Se è aperta da un altro e non è scaduta, nessuno può prenderla (nemmeno l'admin);
-    # se è scaduta, riparte da zero con il nuovo revisore. Un solo commit.
+    # sua. Se è aperta da un altro e non è scaduta, nessuno può prenderla (nemmeno l'admin).
+    # Un solo commit.
     # Errori: quelli di _closed_race, ReviewHeldByOtherError.
     try:
         _lock_database(db)
@@ -127,9 +147,8 @@ def confirm_review(
 ) -> Race:
     # Conferma la revisione: le carte giocate (non annullate) escono dall'inventario e
     # tornano nella pool, la gara si chiude del tutto. Con la revisione attiva conferma solo
-    # il revisore; con la revisione scaduta o mai aperta confermano le giocate così come
-    # sono, come se non servissero modifiche, solo l'admin. Un solo commit: in caso di
-    # errore carte e gara non cambiano.
+    # il revisore; con la revisione scaduta o mai aperta solo l'admin. Un solo commit: in
+    # caso di errore carte e gara non cambiano.
     # Errori: quelli di _closed_race, ReviewHeldByOtherError, ReviewNotActiveError,
     # CardError (carta giocata non più nell'inventario).
     try:
@@ -143,6 +162,81 @@ def confirm_review(
             raise ReviewNotActiveError
         consume_plays(db, race.id, championship.sponsor_pool_deck_id)
         race.review_closed_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(race)
+    except Exception:
+        db.rollback()
+        raise
+    return race
+
+
+def settle_expired_reviews(
+    db: Session, championship_id: int, now: datetime | None = None
+) -> int:
+    # Conferma così com'è ogni revisione scaduta del campionato: le giocate non annullate
+    # vengono consumate e la gara si chiude. Va chiamata prima di leggere lo stato di una
+    # revisione e prima di creare una nuova gara. Ogni gara ha il suo commit; se una carta
+    # giocata non è più nell'inventario quella gara resta com'è e la sistema l'admin.
+    # Ritorna: il numero di revisioni confermate.
+    # Errori: ChampionshipNotFoundError.
+    get_championship(db, championship_id)
+    stmt = select(Race).where(
+        Race.championship_id == championship_id,
+        Race.review_closed_at.is_(None),
+        Race.review_started_at.is_not(None),
+    )
+    candidates = [
+        race.id
+        for race in db.scalars(stmt)
+        if count_participants(db, race.id) > 0 and not is_review_active(race, now)
+    ]
+    db.rollback()
+    settled = 0
+    for race_id in candidates:
+        try:
+            _lock_database(db)
+            championship = get_championship(db, championship_id)
+            race = db.get(Race, race_id)
+            if race.review_closed_at is not None or is_review_active(race, now):
+                db.rollback()
+                continue
+            consume_plays(db, race.id, championship.sponsor_pool_deck_id)
+            race.review_closed_at = now or datetime.now(timezone.utc)
+            db.commit()
+            settled += 1
+        except CardError:
+            db.rollback()
+        except Exception:
+            db.rollback()
+            raise
+    return settled
+
+
+def reopen_review(
+    db: Session, championship_id: int, race_id: int, user: User, is_admin: bool
+) -> Race:
+    # L'admin riapre la revisione di una gara già confermata, solo se è l'ultima del
+    # campionato: da quel momento è lui il revisore, con 15 minuti di tempo. Un solo commit.
+    # Errori: ChampionshipNotFoundError, RaceNotFoundError, ChampionshipClosedError,
+    # ReviewReopenForbiddenError, RaceNotClosedError, ReviewNotConfirmedError,
+    # RaceNotLastError.
+    try:
+        _lock_database(db)
+        if not is_admin:
+            raise ReviewReopenForbiddenError
+        championship = get_championship(db, championship_id)
+        race = get_race(db, championship_id, race_id)
+        if championship.is_closed:
+            raise ChampionshipClosedError
+        if count_participants(db, race.id) == 0:
+            raise RaceNotClosedError
+        if race.review_closed_at is None:
+            raise ReviewNotConfirmedError
+        if not is_last_race(db, race):
+            raise RaceNotLastError
+        race.review_closed_at = None
+        race.review_started_at = datetime.now(timezone.utc)
+        race.review_started_by_user_id = user.id
         db.commit()
         db.refresh(race)
     except Exception:
