@@ -10,6 +10,7 @@ from app.schemas.race import (
     StandingRead,
 )
 from app.services.championships import standings, ChampionshipClosedError, ChampionshipNotFoundError
+from app.services.race_review import settle_expired_reviews
 from app.services.races import (
     RaceAlreadyClosedError,
     RaceInProgressError,
@@ -73,7 +74,9 @@ def list_all(championship_id: int, user: CurrentUser, db: DbDep):
 )
 def create(championship_id: int, judge: JudgeUser, db: DbDep, data: RaceCreate | None = None):
     # Crea la gara successiva (giudice o admin), solo se non ce n'è una in corso.
+    # Prima conferma così com'è le revisioni scadute, che altrimenti la terrebbero aperta.
     try:
+        settle_expired_reviews(db, championship_id)
         return _read(db, create_race(db, championship_id, data.date if data else None))
     except ChampionshipNotFoundError:
         raise CHAMPIONSHIP_NOT_FOUND
@@ -99,7 +102,8 @@ def put_results(
     championship_id: int, race_id: int, data: ResultsSet, judge: JudgeUser, db: DbDep
 ):
     # Termina la gara registrando classifica, sponsor e assenti (giudice o admin).
-    # Se la gara ha già i risultati, solo l'admin può correggerli.
+    # Alla prima registrazione chi preme Termina diventa il revisore e la revisione delle
+    # carte parte subito. Se la gara ha già i risultati, solo l'admin può correggerli.
     entries = [(entry.pilot_id, entry.sponsor_points) for entry in data.results]
     try:
         set_results(
@@ -109,6 +113,7 @@ def put_results(
             entries,
             can_correct=judge.role == "admin",
             absent=data.absent,
+            reviewer_id=judge.id,
         )
         return _detail(db, championship_id, race_id)
     except ChampionshipNotFoundError:
@@ -134,7 +139,7 @@ def get_standings(championship_id: int, user: CurrentUser, db: DbDep):
                 pilot_id=row.pilot_id,
                 pilot_name=row.pilot_name,
                 points=row.points,
-                races_played=row.races_played,
+                sponsor_points=row.sponsor_points,
             )
             for row in standings(db, championship_id)
         ]

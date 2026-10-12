@@ -68,6 +68,7 @@ def has_race_in_progress(db: Session, championship_id: int) -> bool:
 def create_race(db: Session, championship_id: int, date: datetime | None = None) -> Race:
     # Nuova gara con il numero successivo, datata al momento della creazione se non
     # indicato altrimenti. Non si crea in un campionato chiuso né con una gara non conclusa.
+    # Le revisioni scadute vanno confermate prima (race_review.settle_expired_reviews).
     championship = get_championship(db, championship_id)
     if championship.is_closed:
         raise ChampionshipClosedError
@@ -96,16 +97,20 @@ def set_results(
     entries: list[tuple[int, int]],
     can_correct: bool = False,
     absent: list[int] | None = None,
+    reviewer_id: int | None = None,
 ) -> Race:
     # entries: (pilot_id, punti sponsor) nell'ordine di arrivo.
     # absent: piloti dichiarati assenti; se indicato, ogni iscritto deve essere o in
     # entries o in absent.
+    # reviewer_id: utente che preme "Termina"; alla prima registrazione dei risultati
+    # diventa il revisore e la revisione delle carte parte subito, nello stesso commit.
+    # Le correzioni dell'admin non riaprono la revisione.
     # Una gara ha i risultati quando ha almeno un risultato: da allora solo chi ha
     # can_correct (l'admin) può sostituirli. Il campionato deve essere attivo.
     # L'oro si assegna una sola volta, alla prima registrazione dei risultati, con le
     # regole del campionato di quel momento: le correzioni non lo toccano.
     # Le carte sponsor giocate NON si consumano qui: lo fa la conferma della revisione
-    # (race_review.confirm_review), che segue la conferma dei risultati.
+    # (race_review.confirm_review o la conferma alla scadenza).
     championship = get_championship(db, championship_id)
     race = get_race(db, championship_id, race_id)
     if championship.is_closed:
@@ -154,6 +159,9 @@ def set_results(
     _apply_sponsor_delta(db, old_sponsor, dict(entries))
     if not old_sponsor:
         award_race_gold(entrants, rules_of(championship), pilot_ids)
+        if reviewer_id is not None:
+            race.review_started_at = datetime.now(timezone.utc)
+            race.review_started_by_user_id = reviewer_id
     db.commit()
     db.refresh(race)
     return race

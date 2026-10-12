@@ -2,7 +2,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import User
-from app.db.models.card_play import STATUS_PLAYED, STATUS_UNDONE, CardPlay
+from app.db.models.card_play import STATUS_CONSUMED, STATUS_PLAYED, STATUS_UNDONE, CardPlay
+from app.db.models.championship import Championship
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race
@@ -27,7 +28,7 @@ class CardPlayNotFoundError(Exception):
 
 
 class CardPlayNotActiveError(Exception):
-    """La giocata non è attiva: è già annullata o consumata."""
+    """La giocata è già annullata: non si può annullare di nuovo."""
 
 
 class CardNotRemovableError(Exception):
@@ -61,19 +62,44 @@ def get_card_summary(
     return [(db.get(Pilot, pilot_id), items) for pilot_id, items in grouped.items()]
 
 
+def _return_consumed_card(db: Session, championship: Championship, play: CardPlay) -> None:
+    # Annullo di una giocata già consumata (revisione riaperta dall'admin): la carta torna
+    # dalla pool sponsor all'inventario del pilota. Non fa commit.
+    # Errori: CardNotAvailableError se la pool non ha più la carta.
+    pilot = db.get(Pilot, play.pilot_id)
+    pool_deck = (
+        db.get(Deck, championship.sponsor_pool_deck_id) if championship.sponsor_pool_deck_id else None
+    )
+    pool = parse_cards(pool_deck.cards) if pool_deck else []
+    key = card_key(play.card_name)
+    picked = next((card for card in pool if card_key(card.name) == key), None)
+    if picked is None:
+        raise CardNotAvailableError
+    inventory_deck = db.get(Deck, pilot.sponsor_inventory_deck_id)
+    inventory_deck.cards = dump_cards(
+        _with_one_more_copy(parse_cards(inventory_deck.cards), picked)
+    )
+    pool_deck.cards = dump_cards(_without_one_copy(pool, picked))
+
+
 def cancel_play(
     db: Session, championship_id: int, race_id: int, play_id: int, user: User
 ) -> CardPlay:
-    # Il revisore annulla una giocata attiva: resta nello storico con stato "annullata" e
-    # la carta resta al pilota. Possibile solo con la revisione attiva. Un solo commit.
-    # Errori: quelli di _reviewed_race, CardPlayNotFoundError, CardPlayNotActiveError.
+    # Il revisore annulla una giocata: resta nello storico con stato "annullata".
+    # Se era attiva la carta resta al pilota; se era già consumata (revisione riaperta
+    # dall'admin) la carta torna al pilota dalla pool. Possibile solo con la revisione
+    # attiva. Un solo commit.
+    # Errori: quelli di _reviewed_race, CardPlayNotFoundError, CardPlayNotActiveError,
+    # CardNotAvailableError (giocata consumata e carta non più nella pool).
     try:
         _lock_database(db)
         race = _reviewed_race(db, championship_id, race_id, user)
         play = db.get(CardPlay, play_id)
         if play is None or play.race_id != race.id:
             raise CardPlayNotFoundError
-        if play.status != STATUS_PLAYED:
+        if play.status == STATUS_CONSUMED:
+            _return_consumed_card(db, get_championship(db, championship_id), play)
+        elif play.status != STATUS_PLAYED:
             raise CardPlayNotActiveError
         play.status = STATUS_UNDONE
         db.commit()
