@@ -135,6 +135,8 @@ def remove_card(
     # Il revisore toglie una copia dall'inventario sponsor del pilota e la rimette nella
     # pool sponsor del campionato (inverso del bonus). Possibile solo con la revisione
     # attiva e se almeno una copia non è impegnata in una giocata attiva. Un solo commit.
+    # Nota: _without_one_copy confronta per identità, quindi riceve `held`, cioè lo stesso
+    # oggetto presente nella lista dell'inventario, non una copia.
     # Errori: quelli di _reviewed_race, PilotNotFoundError, PilotNotEnrolledError,
     # CardNotRemovableError (pool assente, carta non in inventario, copie tutte in gioco).
     try:
@@ -158,7 +160,7 @@ def remove_card(
         if held.copies <= _active_copies(db, race.id, pilot.id, held.name):
             raise CardNotRemovableError("Tutte le copie della carta sono in gioco")
         one = CardEntry(name=held.name, path=held.path, copies=1)
-        inventory_deck.cards = dump_cards(_without_one_copy(inventory, one))
+        inventory_deck.cards = dump_cards(_without_one_copy(inventory, held))
         pool_deck.cards = dump_cards(_with_one_more_copy(parse_cards(pool_deck.cards), one))
         db.commit()
     except Exception:
