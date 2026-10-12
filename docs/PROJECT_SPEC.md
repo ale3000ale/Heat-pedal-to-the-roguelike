@@ -80,7 +80,7 @@ Nota di modellazione: inventario delle modifiche, inventario degli sponsor e maz
   - Inventario degli sponsor: vuoto.
   - Mazzo da gioco: vuoto.
 - Il pilota ottiene nuove carte tramite i pacchetti del negozio, che consumano le pool del campionato (sezione 13).
-- Le carte sponsor si giocano in gara, a consumo, dall'inventario degli sponsor, senza modificarlo: regole nella sezione 14.
+- Le carte sponsor non entrano nel mazzo da gioco. Si giocano in gara dall'inventario degli sponsor ed escono dall'inventario in modo definitivo alla chiusura della gara, tornando nella pool sponsor del campionato: regole nella sezione 14.
 
 ### Pool di base, pool derivate e pool del campionato
 
@@ -256,9 +256,9 @@ La migrazione della fase 13a (tabella `card_play`) si aggiunge qui quando viene 
 
 ## 12. Domande aperte (rinviate)
 
-1. Amministrazione carte: caricamento singolo da interfaccia in `uploads/`, modifica e reset delle carte già presenti nelle pool di base (la ricarica aggiunge e toglie solo in base ai file).
+1. Amministrazione carte: caricamento singolo da interfaccia in `uploads/`, modifica e reset delle carte già presenti nelle pool di base (la ricarica aggiunge e toglie solo in base ai file). Previsto nelle fasi 13e e 13f (`PHASE_13_SPEC.md`, parte B).
 2. Spareggio sportivo: criterio in caso di pari punti.
-3. Carte sponsor, parte rinviata: la revisione di fine gara da parte del giudice e l'eventuale consumo definitivo delle carte giocate (fase 13b, sezione 14). L'uso in gara è definito nella fase 13a.
+3. Carte sponsor, parte successiva alla 13a: stato "in revisione", riepilogo del giudice e dell'admin, ripristino e bonus, tasto S e notifica di carta ottenuta (fasi 13b-13d, `PHASE_13_SPEC.md`, parte A).
 4. Uso online con un database diverso da SQLite: servirà un blocco sulla riga del pilota negli acquisti.
 
 ## 13. Negozio e pacchetti (fase 12)
@@ -316,37 +316,40 @@ Backend (12a-12c) completato e approvato; frontend del giocatore (12d) e dell'ad
 
 ## 14. Carte sponsor in gara (fase 13)
 
-La fase 13 è divisa in due: **13a** (le giocate del pilota, questa sezione) e **13b** (la revisione di fine gara). Regole fissate per la 13a:
+La fase 13 ha sottofasi 13a-13g; il piano completo e le decisioni approvate sono in `PHASE_13_SPEC.md`. Questa sezione fissa le regole della **13a**, il backend dell'uso delle carte sponsor da parte del pilota. Lo stato "in revisione", il riepilogo, il tasto S e i frontend sono nelle sottofasi successive.
 
 ### Chi gioca e quando
 
-- Gioca il **pilota**, cioè l'utente proprietario del pilota (anche se è giudice; l'admin solo se ha un pilota iscritto, come nel negozio). Il giudice non gioca al posto degli altri: interviene solo nella 13b, a fine gara, per correggere eventuali errori.
-- Si gioca solo con il pilota iscritto al campionato, con campionato attivo e con la gara **in corso**, cioè senza risultati. Con la gara terminata, o in revisione (13b), la giocata è rifiutata.
+- Gioca il **pilota**, cioè l'utente proprietario del pilota (anche se è giudice; l'admin solo se ha un pilota iscritto, come nel negozio).
+- Si gioca solo con il pilota iscritto al campionato, con campionato attivo e con la gara **in corso**, cioè senza risultati. Con la gara terminata la giocata e l'annullamento sono rifiutati. Il blocco per lo stato "in revisione" arriva con la 13b.
 - Un pilota eliminato non può giocare.
 
 ### Cosa si gioca
 
 - Solo carte **sponsor**, scelte dall'**inventario degli sponsor** del pilota (`sponsor_inventory_deck_id`). Le carte modifiche e il mazzo da gioco non c'entrano.
-- Le carte sponsor sono **monouso**: in una gara una copia giocata non è più disponibile.
-- Il mazzo dell'inventario sponsor **non viene modificato** dalle giocate. Le giocate sono registrate in una tabella a parte, `card_play`, e le copie ancora disponibili in una gara sono quelle dell'inventario meno le giocate non annullate di quella gara.
+- **Nessun limite al numero di giocate**: il pilota gioca le carte che vuole, finché ne ha copie disponibili.
+- Durante la gara l'inventario sponsor **non viene modificato**. Le giocate sono registrate in una tabella a parte, `card_play`; le copie disponibili di una carta in una gara sono quelle dell'inventario meno le giocate non annullate di quella gara.
 - La carta si identifica per `name` (come nel formato delle carte, sezione 6); la giocata conserva anche `path` e l'orario.
 
-### Limite e annullamento
+### Annullamento (Indietro)
 
-- Limite di **5 giocate non annullate per pilota in ogni gara**. Il limite è per pilota, non per l'intera gara.
-- Il pilota può **annullare** una propria giocata finché la gara è in corso: la carta torna disponibile in quella gara e il conteggio delle giocate attive scende. Le giocate annullate restano nel registro con lo stato `annullata`.
-- Non si può annullare dopo la fine della gara.
+- Il pilota può annullare **solo l'ultima carta giocata** (la più recente tra quelle non annullate), fino a un massimo di **5 annullamenti consecutivi**. Annullando, la carta torna disponibile.
+- Il conteggio degli annullamenti consecutivi sta nel backend e sopravvive al ricaricamento della pagina. Si azzera quando il pilota gioca una nuova carta.
+- Il limite di 5 vale solo per l'annullamento. Il registro completo delle giocate della gara resta intero: le giocate annullate restano nel registro con lo stato `annullata`.
+- Non si può annullare a gara terminata.
 
 ### Registro delle giocate (`card_play`)
 
-- Una riga per ogni giocata: gara, pilota, nome e percorso della carta, stato (`giocata` o `annullata`), data e ora della giocata e dell'eventuale annullamento.
+- Una riga per ogni giocata: gara, pilota, nome e percorso della carta, stato (`giocata`, `annullata` o `consumata`), data e ora della giocata e dell'eventuale annullamento.
 - Le righe seguono la gara: se la gara o il pilota vengono eliminati definitivamente, le righe corrispondenti vengono rimosse.
 
-### Fuori dalla 13a
+### Chiusura della gara
 
-- La **revisione** del giudice a fine gara e il suo stato (la gara "in revisione" che blocca i giocatori) sono la fase 13b.
-- Il **consumo definitivo** delle carte giocate (togliere davvero le copie dall'inventario) e l'eventuale ritorno nella pool sponsor del campionato non sono ancora decisi: si definiscono con la 13b.
+- Alla chiusura della gara (inserimento dei risultati) le carte giocate e non annullate escono **in modo definitivo** dall'inventario sponsor dei piloti e **tornano nella copia di pool sponsor del campionato**. Le righe corrispondenti passano allo stato `consumata`.
+- La chiusura e il passaggio delle carte avvengono nella stessa operazione: se uno dei due fallisce, non viene salvato nessuno dei due.
+- Il passaggio avviene una sola volta, alla prima chiusura della gara. Le correzioni successive dei risultati non lo ripetono.
+- Il ripristino di una carta da parte dell'admin dopo la chiusura, e le correzioni del giudice durante la revisione, non fanno parte della 13a: sono nella 13b.
 
 ### Stato
 
-Specifica fissata il 12 ottobre 2026; codice non ancora scritto. Elenco dei file e conferma di avvio in attesa di approvazione.
+Specifica fissata il 12 ottobre 2026 e allineata a `PHASE_13_SPEC.md`; codice non ancora scritto. Elenco dei file e conferma di avvio in attesa di approvazione.
