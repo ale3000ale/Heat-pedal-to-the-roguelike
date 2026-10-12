@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { api } from '$lib/api';
-	import type { AvailableCard, CardGift, CardPlayState } from '$lib/card-play-types';
+	import type { AvailableCard, CardGift, CardPlay, CardPlayState } from '$lib/card-play-types';
 	import type { CardEntry } from '$lib/types';
 	import CardTile from '$lib/components/CardTile.svelte';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
@@ -18,15 +18,18 @@
 	} = $props();
 
 	let open = $state(false);
-	let state = $state<CardPlayState | null>(null);
+	// Non chiamare questa variabile `state`: nasconderebbe la rune $state.
+	let cardState = $state<CardPlayState | null>(null);
 	let error = $state<string | null>(null);
 	let busy = $state(false);
 	let confirmOpen = $state(false);
 	let pending = $state<AvailableCard | null>(null);
 
 	const base = $derived(`/championships/${championshipId}`);
-	let activePlays = $derived(state ? state.plays.filter((p) => p.status === 'giocata') : []);
-	let locked = $derived(busy || state === null || state.in_review);
+	let activePlays = $derived(
+		cardState ? cardState.plays.filter((p: CardPlay) => p.status === 'giocata') : []
+	);
+	let locked = $derived(busy || cardState === null || cardState.in_review);
 
 	// Converte la carta giocabile nel formato di CardTile: le copie mostrate sono quelle disponibili.
 	function toEntry(card: AvailableCard): CardEntry {
@@ -48,7 +51,7 @@
 
 	async function load() {
 		await run(async () => {
-			state = await api<CardPlayState>(`${base}/card-plays?pilot_id=${pilot.id}`);
+			cardState = await api<CardPlayState>(`${base}/card-plays?pilot_id=${pilot.id}`);
 		});
 	}
 
@@ -66,7 +69,7 @@
 		const card = pending;
 		if (!card) return;
 		await run(async () => {
-			state = await api<CardPlayState>(`${base}/card-plays`, {
+			cardState = await api<CardPlayState>(`${base}/card-plays`, {
 				method: 'POST',
 				body: { pilot_id: pilot.id, card_name: card.name }
 			});
@@ -75,7 +78,7 @@
 
 	async function undo() {
 		await run(async () => {
-			state = await api<CardPlayState>(`${base}/card-plays/undo`, {
+			cardState = await api<CardPlayState>(`${base}/card-plays/undo`, {
 				method: 'POST',
 				body: { pilot_id: pilot.id }
 			});
@@ -90,7 +93,7 @@
 				body: { pilot_id: pilot.id }
 			});
 			ongift(gift);
-			state = await api<CardPlayState>(`${base}/card-plays?pilot_id=${pilot.id}`);
+			cardState = await api<CardPlayState>(`${base}/card-plays?pilot_id=${pilot.id}`);
 		});
 	}
 </script>
@@ -105,12 +108,12 @@
 
 	{#if open}
 		<div class="mt-3 space-y-3">
-			{#if state === null}
+			{#if cardState === null}
 				{#if !error}
 					<p class="text-sm text-muted-foreground">Caricamento…</p>
 				{/if}
 			{:else}
-				{#if state.in_review}
+				{#if cardState.in_review}
 					<p class="text-sm text-muted-foreground">
 						La gara è in revisione: non si possono più giocare né annullare carte.
 					</p>
@@ -122,17 +125,17 @@
 						size="sm"
 						variant="outline"
 						onclick={undo}
-						disabled={locked || activePlays.length === 0 || state.undo_remaining === 0}
+						disabled={locked || activePlays.length === 0 || cardState.undo_remaining === 0}
 					>
-						Annulla ultima ({state.undo_remaining} rimasti)
+						Annulla ultima ({cardState.undo_remaining} rimasti)
 					</Button>
 				</div>
 
-				{#if state.available.length === 0}
+				{#if cardState.available.length === 0}
 					<p class="text-sm text-muted-foreground">Nessuna carta sponsor nell'inventario.</p>
 				{:else}
 					<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-						{#each state.available as card (card.name)}
+						{#each cardState.available as card (card.name)}
 							<li>
 								<CardTile
 									card={toEntry(card)}
