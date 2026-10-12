@@ -21,7 +21,7 @@ La fase 14 (dopo la 13) è dedicata alla sistemazione generale e ai migliorament
 - Le copie uguali di una stessa carta sono raggruppate con "x N", come nel riepilogo del negozio.
 - Il registro completo delle carte giocate nella gara resta intero: il limite di 5 vale solo per l'annullamento, non per il riepilogo del giudice.
 - Il giocatore può giocare e annullare solo per i propri piloti. Giudice e admin, quando agiscono come giocatori, valgono come tutti gli altri: non giocano mai per un pilota altrui.
-- Nella sezione di gioco il giocatore ha anche il tasto **S** sui propri piloti: dopo conferma ottiene una carta sponsor casuale per sé.
+- Nella sezione di gioco il giocatore aveva anche il tasto **S** sui propri piloti: dopo conferma otteneva una carta sponsor casuale per sé.
   - Aggiornamento 13d (decisione dell'autore, 12 ottobre 2026): il tasto S non sta più nella sezione del giocatore ma nella pagina della gara, visibile solo a giudice e admin.
 
 ### Stato della gara: "in revisione"
@@ -40,11 +40,15 @@ La fase 14 (dopo la 13) è dedicata alla sistemazione generale e ai migliorament
 
 - Giudice e admin sono come giocatori: giocano solo per i propri piloti. Il loro potere in più è il tasto S sugli altri piloti e la revisione a fine gara.
 - Durante la gara hanno l'elenco completo dei piloti iscritti; accanto al nome un tasto **S** assegna una carta sponsor **casuale** dalla pool sponsor del campionato, dopo conferma: il pilota di quella riga la riceve. È un regalo: non costa punti sponsor.
-- Il tasto S funziona solo con una gara in corso. Con la pool sponsor vuota è disabilitato, con un avviso.
+- Il backend ammette giudice e admin su qualsiasi pilota iscritto non eliminato (404 per pilota inesistente o eliminato, 403 per pilota non iscritto); il giocatore resta limitato ai propri piloti.
+- Il tasto S funziona solo con una gara in corso. Con la pool sponsor vuota la specifica prevedeva il tasto disabilitato con un avviso.
+  - Aggiornamento 13d (scelta dell'assistente, da confermare): il tasto resta sempre attivo e l'avviso arriva dal backend con un errore 409, perché il frontend non può leggere lo stato della pool senza una rotta nuova.
 - La carta entra nell'inventario del pilota e l'inventario si aggiorna in tempo reale (controllo periodico ogni pochi secondi, senza canali continui).
+- **Intervallo di controllo** (13c-1, decisione dell'autore, 12 ottobre 2026): è un'impostazione generale dell'admin, `card_poll_seconds`, da 1 a 10 secondi con predefinito 5, valida per tutti i campionati, anche quelli già creati. Rotte `GET /api/admin/card-poll` (ogni utente collegato) e `PUT /api/admin/card-poll` (solo admin). Il giocatore legge l'intervallo una volta all'apertura della pagina: una modifica dell'admin vale dopo il ricaricamento.
 - Al giocatore compare un popup con la carta ottenuta e il testo "Hai ottenuto una carta sponsor".
 - Il giudice (e l'admin) non vede quale carta è uscita: la vede solo nel riepilogo finale.
 - Nel riepilogo (con immagini), visibile solo al revisore, vedono le carte sponsor giocate da tutti i piloti, possono ripristinare una carta giocata per errore, rimuovere una carta e assegnarne altre come bonus.
+- Il bonus non crea notifiche e serve solo a correggere errori: la notifica "Hai ottenuto una carta sponsor" nasce solo dal tasto S.
 - Ogni assegnazione o ripristino dipende dalla disponibilità della pool.
 
 ### Chiusura della gara
@@ -100,14 +104,15 @@ Tutte sotto `/api/championships/{championship_id}/races/{race_id}`.
 |---|---|
 | 13a | Backend carte sponsor: registro delle carte giocate, stack da 5 annullamenti, uso e annullamento, restituzione alla pool alla chiusura |
 | 13b | Backend: stato "in revisione" con revisore unico e scadenza di 15 minuti con conferma automatica, riepilogo, correzione, rimozione e bonus (solo in revisione), riapertura dell'admin, tasto S, notifica di carta ottenuta |
-| 13c | Frontend giocatore: sezioni a scomparsa per pilota, uso delle carte, Indietro, inventario in due sezioni, popup "Hai ottenuto una carta sponsor" |
+| 13c-1 | Backend: intervallo di controllo delle notifiche (`card_poll_seconds`, da 1 a 10 secondi, predefinito 5, modificabile solo dall'admin) |
+| 13c | Frontend giocatore: sezioni a scomparsa per pilota, uso delle carte, Indietro, inventario in due sezioni, popup "Hai ottenuto una carta sponsor", controllo periodico con l'intervallo della 13c-1 e campo nelle impostazioni generali |
 | 13d | Frontend giudice e admin: elenco piloti con tasto S, revisione nella pagina della gara con immagini, correzioni |
 | — | Dopo la 13d: riallineamento di tutti i documenti (richiesta dell'autore) |
 | 13e | Backend amministrazione carte: caricamento, conversione, eliminazione, origine "caricata" |
 | 13f | Frontend: ritaglio con zoom, nome e quantità, nomi in arancione, tasti di esclusione nelle pool personalizzate |
 | 13g | Documenti e test finali, unione in `main` |
 
-Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file previsti.
+Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file previsti. Tutto il lavoro della fase 13 resta nel ramo `phase-13a-card-plays`, senza rami separati per le sottofasi.
 
 ## Avanzamento della 13b
 
@@ -117,4 +122,6 @@ Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file
 - Rimozione, regole: serve la revisione attiva del revisore; 409 se il campionato non ha una pool sponsor, se la carta non è nell'inventario del pilota o se tutte le copie sono impegnate in giocate attive (il revisore deve prima annullarle); 404 per pilota inesistente o eliminato; 403 per pilota non iscritto. La copia va dall'inventario sponsor del pilota alla pool sponsor del campionato in un solo commit.
 - Rimozione, nota tecnica: `_without_one_copy` (in `services/card_gift.py`) confronta le carte per identità (`is`), quindi `remove_card` le passa lo stesso oggetto presente nella lista dell'inventario e non una copia.
 - Test: 13 test della rimozione in `backend/tests/test_card_judge.py`; i test di stato, scadenza e riapertura sono in `backend/tests/test_race_review_reopen.py`; 6 test dell'annullo di giocate già consumate dopo la riapertura (carta che torna dalla pool, 409 se la pool ha perso la carta, 409 senza revisione attiva o con un altro revisore, nuova conferma che consuma solo la giocata rimasta) in `backend/tests/test_card_judge_reopen.py` (commit `55fbcea`). La scadenza è provata portando la data di apertura a 20 minuti prima direttamente nel database, senza orologio finto. Esito verde della CI sulla pull request #9 (backend pytest, migrazioni, frontend) letto da GitHub il 13 ottobre 2026 sull'esecuzione partita subito dopo il commit `55fbcea`; lo SHA esatto dell'esecuzione non è riportato dall'elenco dei controlli.
-- Da fare: frontend del revisore (13d: riepilogo con immagini, annullo, bonus, rimozione, riapertura per l'admin con il prefisso dei percorsi `/media/cards/`); riallineamento di `PROJECT_STATUS.md` e `PROJECT_SPEC.md`.
+- Fatto: la pull request #11 (merge `f733886`, commit dei test `2f12768`) ha aggiunto test sulla scadenza della revisione e sul secondo giudice, su bonus e annullo. L'esito della CI su quel commit non è stato letto per questo documento.
+- Fatto: `PROJECT_SPEC.md` riallineata alla fase 13 (revisione, intervallo notifiche, tasto S, migrazioni) nel commit `bc0fbfb`.
+- Da fare: frontend del revisore (13d: riepilogo con immagini, annullo, bonus, rimozione, riapertura per l'admin con il prefisso dei percorsi `/media/cards/`); riallineamento di `PROJECT_STATUS.md`, `PROJECT_NOTES.md` e `SHOP_DESIGN.md`.
