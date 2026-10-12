@@ -57,7 +57,10 @@ def _http_error(exc: Exception) -> HTTPException:
     if isinstance(exc, NoRaceInProgressError):
         return HTTPException(status.HTTP_409_CONFLICT, "Nessuna gara in corso")
     if isinstance(exc, RaceInReviewError):
-        return HTTPException(status.HTTP_409_CONFLICT, "La gara è in revisione")
+        return HTTPException(
+            status.HTTP_409_CONFLICT,
+            "La gara è in revisione: giocate, annullamenti e tasto S sono bloccati",
+        )
     if isinstance(exc, CardNotAvailableError):
         return HTTPException(status.HTTP_409_CONFLICT, "Carta non disponibile")
     if isinstance(exc, NothingToUndoError):

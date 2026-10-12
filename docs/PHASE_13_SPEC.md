@@ -26,12 +26,12 @@ La fase 14 (dopo la 13) è dedicata alla sistemazione generale e ai migliorament
 ### Stato della gara: "in revisione"
 
 - La revisione si avvia quando il giudice o l'admin preme **termina gara** nella pagina della gara, prima dell'inserimento dei risultati. Chi la avvia diventa il **revisore**.
-- In revisione i giocatori non possono più giocare, annullare carte sponsor né usare il tasto S.
+- In revisione i giocatori non possono più giocare, annullare carte sponsor né usare il tasto S. Il rifiuto è un 409 con il messaggio "La gara è in revisione: giocate, annullamenti e tasto S sono bloccati".
 - **Revisore unico**: solo il revisore vede la revisione e può agire. Qualsiasi altro utente, giudici e admin compresi, non vi accede e riceve un rifiuto (409). Nemmeno l'admin subentra durante la revisione.
 - Se il revisore se ne va e rientra, riprende la propria revisione dalla pagina della gara.
 - **Scadenza**: 15 minuti dall'inizio della revisione (non dall'ultima azione, valore di configurazione). Alla prima richiesta successiva la revisione risulta scaduta: la gara torna allo stato **in corso**, revisore e data di avvio sono azzerati e si attende una nuova revisione. Nessun processo in background. Dopo la scadenza, se serve, l'admin sistema le carte.
 - Il revisore può rilasciare la revisione in qualsiasi momento: la gara torna in corso.
-- Azioni del revisore (solo in revisione): annullare una carta giocata, assegnare una carta bonus dalla pool, **rimuovere** una carta sponsor dall'inventario di un pilota quando è stata assegnata per errore o non è stata giocata. La carta rimossa torna nella pool, come se fosse stata giocata e il giocatore si fosse dimenticato di toglierla.
+- Azioni del revisore (solo in revisione): annullare una carta giocata, assegnare una carta bonus dalla pool, **rimuovere** una carta sponsor dall'inventario di un pilota quando è stata assegnata per errore o non è stata giocata. La carta rimossa torna nella pool, come se fosse stata giocata e il giocatore si fosse dimenticato di toglierla. La rimozione è rifiutata (409) se la carta non è nell'inventario o se tutte le copie sono impegnate in giocate attive: in quel caso va prima annullata la giocata.
 - Il riepilogo e le correzioni avvengono un attimo prima della chiusura (inserimento dei risultati).
 
 ### Giudice e admin
@@ -92,5 +92,8 @@ Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file
 
 ## Avanzamento della 13b
 
-- Fatto: colonna `race.review_started_by_user_id` (migrazione `a9c3e7b1d5f0` e modello `Race`), test verdi.
-- Da fare: servizi e rotte con revisore unico, scadenza e rimozione carta; poi test e riallineamento degli altri documenti.
+- Fatto: colonna `race.review_started_by_user_id` (migrazione `a9c3e7b1d5f0` e modello `Race`).
+- Fatto: servizi e rotte con revisore unico, scadenza di 15 minuti, annullo di una giocata, bonus dalla pool e rimozione di una carta dall'inventario (`remove_card`, rotta `POST /{championship_id}/races/{race_id}/card-removal`). Branch `phase-13b-card-removal`, commit `be1ef5e` sopra `phase-13a-card-plays` (PR #9).
+- Fatto: test della rimozione (copia libera, copia impegnata in una giocata attiva, carta inesistente, revisione non attiva), di un revisore diverso su annullo, bonus e rimozione, e della scadenza con orologio simulato. Esito verde dichiarato dall'autore il 12 ottobre 2026; i comandi lanciati non sono stati registrati.
+- Fatto: messaggio 409 più chiaro quando la gara è in revisione (`api/card_play.py`). Se un test confronta il testo esatto del vecchio messaggio, va aggiornato.
+- Da fare: verifica dell'uso di `start_review` e `cancel_review` in `services/race_review.py` e rimozione se inutilizzate; riallineamento di `PROJECT_STATUS.md` e `PROJECT_SPEC.md`; apertura della PR verso `phase-13a-card-plays`.
