@@ -1,8 +1,9 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, HTTPException, status
+from sqlalchemy.orm import Session
 
-from app.api.deps import DbDep, JudgeUser
+from app.api.deps import CurrentUser, DbDep, JudgeUser
 from app.db.models.race import Race
 from app.schemas.card_judge import (
     CardBonusRead,
@@ -29,16 +30,22 @@ from app.services.pilots import PilotNotFoundError
 from app.services.race_review import (
     REVIEW_MINUTES,
     RaceNotClosedError,
+    RaceNotLastError,
     ReviewAlreadyConfirmedError,
     ReviewHeldByOtherError,
     ReviewNotActiveError,
+    ReviewNotConfirmedError,
+    ReviewReopenForbiddenError,
     _utc,
     abandon_review,
     begin_review,
     confirm_review,
+    is_last_race as _is_last_race,
     is_review_active,
+    reopen_review,
+    settle_expired_reviews,
 )
-from app.services.races import RaceNotFoundError
+from app.services.races import RaceNotFoundError, get_race
 from app.services.shop_view import PilotNotEnrolledError
 
 router = APIRouter(tags=["race-review"])
@@ -48,9 +55,12 @@ DOMAIN_ERRORS = (
     RaceNotFoundError,
     ChampionshipClosedError,
     RaceNotClosedError,
+    RaceNotLastError,
     ReviewAlreadyConfirmedError,
     ReviewHeldByOtherError,
     ReviewNotActiveError,
+    ReviewNotConfirmedError,
+    ReviewReopenForbiddenError,
     PilotNotFoundError,
     PilotNotEnrolledError,
     CardNotAvailableError,
@@ -61,7 +71,7 @@ DOMAIN_ERRORS = (
 )
 
 
-def _read(race: Race) -> RaceReviewRead:
+def _read(db: Session, race: Race) -> RaceReviewRead:
     # Stato della revisione: revisore e scadenza solo se la revisione è attiva.
     active = is_review_active(race)
     expires = (
@@ -74,6 +84,7 @@ def _read(race: Race) -> RaceReviewRead:
         reviewer_user_id=race.review_started_by_user_id if active else None,
         review_expires_at=expires,
         review_closed_at=race.review_closed_at,
+        is_last_race=_is_last_race(db, race),
     )
 
 
@@ -89,10 +100,22 @@ def _http_error(exc: Exception) -> HTTPException:
         return HTTPException(status.HTTP_404_NOT_FOUND, "Giocata non trovata")
     if isinstance(exc, PilotNotEnrolledError):
         return HTTPException(status.HTTP_403_FORBIDDEN, "Il pilota non è iscritto al campionato")
+    if isinstance(exc, ReviewReopenForbiddenError):
+        return HTTPException(
+            status.HTTP_403_FORBIDDEN, "Solo l'admin può riaprire una revisione confermata"
+        )
     if isinstance(exc, ChampionshipClosedError):
         return HTTPException(status.HTTP_409_CONFLICT, "Campionato chiuso")
     if isinstance(exc, RaceNotClosedError):
         return HTTPException(status.HTTP_409_CONFLICT, "La gara non ha ancora i risultati")
+    if isinstance(exc, RaceNotLastError):
+        return HTTPException(
+            status.HTTP_409_CONFLICT, "Solo l'ultima gara del campionato si può rivedere di nuovo"
+        )
+    if isinstance(exc, ReviewNotConfirmedError):
+        return HTTPException(
+            status.HTTP_409_CONFLICT, "La revisione non è ancora stata confermata"
+        )
     if isinstance(exc, ReviewAlreadyConfirmedError):
         return HTTPException(status.HTTP_409_CONFLICT, "La revisione è già stata confermata")
     if isinstance(exc, ReviewHeldByOtherError):
@@ -110,12 +133,23 @@ def _http_error(exc: Exception) -> HTTPException:
     raise exc
 
 
+@router.get("/{championship_id}/races/{race_id}/review", response_model=RaceReviewRead)
+def read_review(championship_id: int, race_id: int, user: CurrentUser, db: DbDep):
+    # Stato della revisione. Prima conferma così com'è le revisioni scadute del campionato,
+    # così chi legge non vede mai una revisione scaduta come attiva.
+    try:
+        settle_expired_reviews(db, championship_id)
+        return _read(db, get_race(db, championship_id, race_id))
+    except DOMAIN_ERRORS as exc:
+        raise _http_error(exc)
+
+
 @router.post("/{championship_id}/races/{race_id}/review", response_model=RaceReviewRead)
 def open_review(championship_id: int, race_id: int, judge: JudgeUser, db: DbDep):
     # Apre la revisione delle carte dopo i risultati (giudice o admin) o la riprende se
     # è la propria: gli altri ricevono 409 finché non scade.
     try:
-        return _read(begin_review(db, championship_id, race_id, judge))
+        return _read(db, begin_review(db, championship_id, race_id, judge))
     except DOMAIN_ERRORS as exc:
         raise _http_error(exc)
 
@@ -124,7 +158,7 @@ def open_review(championship_id: int, race_id: int, judge: JudgeUser, db: DbDep)
 def close_review(championship_id: int, race_id: int, judge: JudgeUser, db: DbDep):
     # Il revisore rinuncia alla revisione: la gara torna "da rivedere".
     try:
-        return _read(abandon_review(db, championship_id, race_id, judge))
+        return _read(db, abandon_review(db, championship_id, race_id, judge))
     except DOMAIN_ERRORS as exc:
         raise _http_error(exc)
 
@@ -135,7 +169,18 @@ def confirm_card_review(championship_id: int, race_id: int, judge: JudgeUser, db
     # attiva; l'admin con la revisione scaduta o mai aperta.
     try:
         race = confirm_review(db, championship_id, race_id, judge, judge.role == "admin")
-        return _read(race)
+        return _read(db, race)
+    except DOMAIN_ERRORS as exc:
+        raise _http_error(exc)
+
+
+@router.post("/{championship_id}/races/{race_id}/review/reopen", response_model=RaceReviewRead)
+def reopen_card_review(championship_id: int, race_id: int, judge: JudgeUser, db: DbDep):
+    # Riapre la revisione di una gara già confermata: solo l'admin e solo l'ultima gara.
+    # L'admin diventa il revisore, con 15 minuti di tempo.
+    try:
+        race = reopen_review(db, championship_id, race_id, judge, judge.role == "admin")
+        return _read(db, race)
     except DOMAIN_ERRORS as exc:
         raise _http_error(exc)
 
@@ -163,7 +208,7 @@ def read_card_summary(championship_id: int, race_id: int, judge: JudgeUser, db: 
 def cancel_card_play(
     championship_id: int, race_id: int, play_id: int, judge: JudgeUser, db: DbDep
 ):
-    # Annulla una giocata attiva: solo il revisore, con la revisione attiva.
+    # Annulla una giocata (anche già consumata): solo il revisore, con la revisione attiva.
     try:
         return JudgePlayRead.model_validate(
             cancel_play(db, championship_id, race_id, play_id, judge)
