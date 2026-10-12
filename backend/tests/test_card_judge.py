@@ -1,7 +1,10 @@
+from datetime import datetime, timedelta, timezone
+
 from app.db.models import User
 from app.db.models.championship import Championship
 from app.db.models.deck import Deck, DeckPrototype
 from app.db.models.pilot import Pilot
+from app.db.models.race import Race
 from app.security import hash_password
 from app.services.cards import CardEntry, dump_cards, parse_cards
 
@@ -34,6 +37,18 @@ def setup_world(make_client, session_factory):
         == 201
     )
     return admin, player
+
+
+def judge_client(make_client, session_factory, username="giudice"):
+    with session_factory() as db:
+        db.add(User(username=username, password=hash_password(PASSWORD), role="judge"))
+        db.commit()
+    judge = make_client()
+    assert (
+        judge.post("/api/auth/login", json={"username": username, "password": PASSWORD}).status_code
+        == 200
+    )
+    return judge
 
 
 def enrolled_pilot(player, championship_id, name="Ayrton"):
@@ -71,6 +86,13 @@ def sponsor_pool(session_factory, championship_id):
     with session_factory() as db:
         deck_id = db.get(Championship, championship_id).sponsor_pool_deck_id
         return {c.name: c.copies for c in parse_cards(db.get(Deck, deck_id).cards)}
+
+
+def expire_review(session_factory, race_id):
+    # Porta l'apertura della revisione 20 minuti indietro: oltre i 15 di scadenza.
+    with session_factory() as db:
+        db.get(Race, race_id).review_started_at = datetime.now(timezone.utc) - timedelta(minutes=20)
+        db.commit()
 
 
 def start_race(admin, championship_id):
@@ -121,6 +143,13 @@ def cancel(admin, championship_id, race_id, play_id):
 def bonus(admin, championship_id, race_id, pilot_id, card_name=CARD):
     return admin.post(
         f"/api/championships/{championship_id}/races/{race_id}/card-bonus",
+        json={"pilot_id": pilot_id, "card_name": card_name},
+    )
+
+
+def removal(admin, championship_id, race_id, pilot_id, card_name=CARD):
+    return admin.post(
+        f"/api/championships/{championship_id}/races/{race_id}/card-removal",
         json={"pilot_id": pilot_id, "card_name": card_name},
     )
 
@@ -214,3 +243,76 @@ def test_players_cannot_play_or_gift_while_the_race_is_in_review(make_client, se
     assert play(player, champ, pilot).status_code == 409
     assert gift(player, champ, pilot).status_code == 409
     assert bonus(admin, champ, race, pilot).status_code == 201
+
+
+def test_removal_moves_a_free_copy_back_to_the_pool(make_client, session_factory):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory, copies=2, pool_copies=2)
+    reviewing(admin, champ, race, pilot)
+    r = removal(admin, champ, race, pilot)
+    assert r.status_code == 200
+    assert r.json()["pilot_id"] == pilot
+    assert r.json()["card_name"] == CARD
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 1}
+    assert sponsor_pool(session_factory, champ) == {CARD: 3}
+
+
+def test_removal_is_refused_while_all_copies_are_in_active_plays(make_client, session_factory):
+    admin, player, champ, pilot, race = scenario(make_client, session_factory, copies=1)
+    assert play(player, champ, pilot).status_code == 201
+    play_id = summary(admin, champ, race).json()[0]["plays"][0]["id"]
+    reviewing(admin, champ, race, pilot)
+    assert removal(admin, champ, race, pilot).status_code == 409
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 1}
+    assert sponsor_pool(session_factory, champ) == {CARD: 2}
+    assert cancel(admin, champ, race, play_id).status_code == 200
+    assert removal(admin, champ, race, pilot).status_code == 200
+    assert sponsor_pool(session_factory, champ) == {CARD: 3}
+
+
+def test_removal_is_refused_for_a_card_the_pilot_does_not_have(make_client, session_factory):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory)
+    reviewing(admin, champ, race, pilot)
+    assert removal(admin, champ, race, pilot, "Inesistente").status_code == 409
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
+
+
+def test_removal_is_refused_without_an_active_review(make_client, session_factory):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory)
+    assert removal(admin, champ, race, pilot).status_code == 409
+    finish_race(admin, champ, race, pilot)
+    assert removal(admin, champ, race, pilot).status_code == 409
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
+
+
+def test_another_user_cannot_cancel_bonus_or_remove_during_an_active_review(
+    make_client, session_factory
+):
+    admin, player, champ, pilot, race = scenario(make_client, session_factory)
+    assert play(player, champ, pilot).status_code == 201
+    play_id = summary(admin, champ, race).json()[0]["plays"][0]["id"]
+    finish_race(admin, champ, race, pilot)
+    judge = judge_client(make_client, session_factory)
+    assert open_review(judge, champ, race).status_code == 200
+    assert cancel(admin, champ, race, play_id).status_code == 409
+    assert bonus(admin, champ, race, pilot).status_code == 409
+    assert removal(admin, champ, race, pilot).status_code == 409
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
+    assert sponsor_pool(session_factory, champ) == {CARD: 2}
+    assert cancel(judge, champ, race, play_id).status_code == 200
+
+
+def test_an_expired_review_can_be_taken_over_and_the_old_reviewer_is_refused(
+    make_client, session_factory
+):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory)
+    finish_race(admin, champ, race, pilot)
+    assert open_review(admin, champ, race).status_code == 200
+    expire_review(session_factory, race)
+    assert bonus(admin, champ, race, pilot).status_code == 409
+    assert removal(admin, champ, race, pilot).status_code == 409
+    judge = judge_client(make_client, session_factory)
+    taken = open_review(judge, champ, race)
+    assert taken.status_code == 200
+    assert taken.json()["in_review"] is True
+    assert bonus(admin, champ, race, pilot).status_code == 409
+    assert bonus(judge, champ, race, pilot).status_code == 201
