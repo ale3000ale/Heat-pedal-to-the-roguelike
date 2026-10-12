@@ -46,11 +46,15 @@ class Championship(GoldRulesMixin, Base):
 
 
 class ChampionshipDefaults(GoldRulesMixin, Base):
-    # Impostazioni generali dei campionati: una sola riga (id=1). Alla creazione di un
-    # campionato i valori si copiano; cambiarli dopo non tocca i campionati esistenti.
+    # Impostazioni generali dei campionati: una sola riga (id=1). Le regole dell'oro si
+    # copiano alla creazione di un campionato; cambiarle dopo non tocca i campionati
+    # esistenti. L'intervallo di controllo delle notifiche delle carte NON si copia:
+    # vale subito per tutti.
     __tablename__ = "championship_defaults"
 
     id = Column(Integer, primary_key=True)
+    # Secondi tra due controlli delle notifiche delle carte sponsor (da 1 a 10).
+    card_poll_seconds = Column(Integer, nullable=False, default=5, server_default="5")
 
 
 class ChampionshipPilot(Base):
