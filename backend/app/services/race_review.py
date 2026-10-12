@@ -149,36 +149,3 @@ def confirm_review(
         db.rollback()
         raise
     return race
-
-
-def start_review(db: Session, championship_id: int, race_id: int) -> Race:
-    # Porta la gara in revisione. Se è già in revisione non cambia nulla (resta la data
-    # originale). Un solo commit; in caso di errore non cambia nulla.
-    # Errori: quelli di _open_race.
-    try:
-        _lock_database(db)
-        race = _open_race(db, championship_id, race_id)
-        if race.review_started_at is None:
-            race.review_started_at = datetime.now(timezone.utc)
-        db.commit()
-        db.refresh(race)
-    except Exception:
-        db.rollback()
-        raise
-    return race
-
-
-def cancel_review(db: Session, championship_id: int, race_id: int) -> Race:
-    # Riporta la gara allo stato "in corso", com'era prima della revisione: le giocate
-    # non cambiano. Se non è in revisione non cambia nulla.
-    # Errori: quelli di _open_race.
-    try:
-        _lock_database(db)
-        race = _open_race(db, championship_id, race_id)
-        race.review_started_at = None
-        db.commit()
-        db.refresh(race)
-    except Exception:
-        db.rollback()
-        raise
-    return race
