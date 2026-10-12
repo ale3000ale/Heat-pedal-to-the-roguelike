@@ -96,6 +96,14 @@ def finish_race(admin, championship_id, race_id, pilot_id):
     assert r.status_code == 200
 
 
+def close_and_confirm(admin, championship_id, race_id, pilot_id):
+    # Il consumo delle carte avviene solo alla conferma della revisione.
+    finish_race(admin, championship_id, race_id, pilot_id)
+    base = f"/api/championships/{championship_id}/races/{race_id}/review"
+    assert admin.post(base).status_code == 200
+    assert admin.post(f"{base}/confirm").status_code == 200
+
+
 def play(player, championship_id, pilot_id):
     return player.post(
         f"/api/championships/{championship_id}/card-plays",
@@ -211,11 +219,16 @@ def test_a_deleted_pilot_cannot_play_or_undo(make_client, session_factory):
     assert undo(player, champ, pilot).status_code == 404
 
 
-def test_closing_the_race_consumes_the_played_cards(make_client, session_factory):
+def test_confirming_the_review_consumes_the_played_cards(make_client, session_factory):
     admin, player, champ, pilot, race = scenario(make_client, session_factory, copies=3, pool_copies=1)
     assert play(player, champ, pilot).status_code == 201
     assert play(player, champ, pilot).status_code == 201
     finish_race(admin, champ, race, pilot)
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 3}
+    close_and_confirm_review = f"/api/championships/{champ}/races/{race}/review"
+    assert admin.post(close_and_confirm_review).status_code == 200
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 3}
+    assert admin.post(f"{close_and_confirm_review}/confirm").status_code == 200
     assert sponsor_inventory(session_factory, pilot) == {CARD: 1}
     assert sponsor_pool(session_factory, champ) == {CARD: 3}
     assert play_statuses(session_factory) == ["consumata", "consumata"]
@@ -226,7 +239,7 @@ def test_undone_plays_are_not_consumed(make_client, session_factory):
     assert play(player, champ, pilot).status_code == 201
     assert play(player, champ, pilot).status_code == 201
     assert undo(player, champ, pilot).status_code == 200
-    finish_race(admin, champ, race, pilot)
+    close_and_confirm(admin, champ, race, pilot)
     assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
     assert sponsor_pool(session_factory, champ) == {CARD: 2}
     assert play_statuses(session_factory) == ["consumata", "annullata"]
@@ -235,6 +248,6 @@ def test_undone_plays_are_not_consumed(make_client, session_factory):
 def test_consuming_the_last_copy_removes_the_card_from_the_inventory(make_client, session_factory):
     admin, player, champ, pilot, race = scenario(make_client, session_factory, copies=1, pool_copies=1)
     assert play(player, champ, pilot).status_code == 201
-    finish_race(admin, champ, race, pilot)
+    close_and_confirm(admin, champ, race, pilot)
     assert sponsor_inventory(session_factory, pilot) == {}
     assert sponsor_pool(session_factory, champ) == {CARD: 2}
