@@ -109,13 +109,17 @@ export class RaceReviewStore {
 
 	/** Dà una carta bonus a un pilota. Ritorna true se riuscito. */
 	async bonus(pilotId: number, cardName: string): Promise<boolean> {
-		const move = await this.run(() => grantBonus(this.championshipId, this.raceId, pilotId, cardName));
+		const move = await this.run(() =>
+			grantBonus(this.championshipId, this.raceId, pilotId, cardName)
+		);
 		return this.report(move, 'Bonus assegnato');
 	}
 
 	/** Toglie una carta a un pilota. Ritorna true se riuscito. */
 	async remove(pilotId: number, cardName: string): Promise<boolean> {
-		const move = await this.run(() => removeCard(this.championshipId, this.raceId, pilotId, cardName));
+		const move = await this.run(() =>
+			removeCard(this.championshipId, this.raceId, pilotId, cardName)
+		);
 		return this.report(move, 'Carta rimossa');
 	}
 
