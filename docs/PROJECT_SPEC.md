@@ -1,7 +1,7 @@
 # Specifiche del Progetto — Heat
 
 > STATO: APPROVATO. Si aggiorna nel tempo quando emergono nuove esigenze.
-> Ultimo aggiornamento: 11 ottobre 2026 (fase 12, Negozio: backend e frontend di giocatore e admin completati; resta la sottofase 12f di documenti finali e unione in `main`).
+> Ultimo aggiornamento: 12 ottobre 2026 (fase 13a, carte sponsor giocate in gara: specifica fissata, sezione 14; codice non ancora scritto. La fase 12, Negozio, è unita in `main`).
 
 ## 1. Stack e contesto
 
@@ -24,7 +24,7 @@
 - Solo l'admin crea, chiude e cancella i campionati.
 - L'admin e il giudice creano le gare e le terminano inserendo i risultati; solo l'admin può correggere i risultati di una gara già terminata.
 - In un campionato c'è al massimo una gara in corso alla volta: finché non è terminata non se ne crea un'altra.
-- Il Negozio e i pacchetti di carte sono realizzati nella fase 12 (sezione 13). Amministrazione completa delle carte e spareggio sportivo sono rinviati e non bloccano la versione attuale.
+- Il Negozio e i pacchetti di carte sono realizzati nella fase 12 (sezione 13). Le carte sponsor giocate in gara sono la fase 13a (sezione 14). Amministrazione completa delle carte e spareggio sportivo sono rinviati e non bloccano la versione attuale.
 - In caso di pari punti, l'ordine alfabetico serve solo come stabilizzatore di visualizzazione, non come spareggio.
 
 ## 3. Autenticazione
@@ -39,7 +39,7 @@
 - Ruoli previsti: `admin`, `judge` (giudice) e `player`.
 - Il primo admin viene creato al primo avvio tramite comando di setup o variabile d'ambiente.
 - Admin: crea, chiude e cancella i campionati, gestisce le pool, le impostazioni generali e il Negozio, crea le gare, inserisce e corregge i risultati, assegna il ruolo di giudice, pulisce gli elementi nascosti.
-- Giudice: ruolo fisso, valido per tutti i campionati, assegnato e tolto dall'admin a un utente. Serve a delegare del lavoro all'admin: può creare le gare e terminarle inserendo i risultati e i punti sponsor. Non può correggere una gara già terminata e non ha altri poteri di amministrazione. Può avere team e piloti come un giocatore.
+- Giudice: ruolo fisso, valido per tutti i campionati, assegnato e tolto dall'admin a un utente. Serve a delegare del lavoro all'admin: può creare le gare e terminarle inserendo i risultati e i punti sponsor. Non può correggere una gara già terminata e non ha altri poteri di amministrazione. Può avere team e piloti come un giocatore. La revisione delle carte sponsor giocate, a fine gara, è prevista nella fase 13b (sezione 14).
 - Player: gestisce i propri team e piloti.
 - Il ruolo dell'admin non si può cambiare, nemmeno da parte dell'admin stesso. Dall'interfaccia si assegna solo `player` o `judge`; l'admin si crea con il setup.
 - Ogni risposta dell'API che descrive un utente (login, utente corrente, registrazione) deve poter restituire tutti e tre i ruoli.
@@ -57,6 +57,7 @@
 - Championship 1:N Race
 - Race 1:N RaceResult
 - Pilot 1:N RaceResult
+- Race 1:N CardPlay; Pilot 1:N CardPlay (carte sponsor giocate in gara, sezione 14).
 - Championship N:2 pool: una copia della pool delle modifiche e una della pool degli sponsor.
 - Championship 1:N Pack (pacchetti del negozio); Championship 1:N PackPurchase (storico).
 - DeckPrototype: indipendente, ha un tipo (`modifiche` o `sponsor`); sorgente delle pool di ogni campionato.
@@ -79,7 +80,7 @@ Nota di modellazione: inventario delle modifiche, inventario degli sponsor e maz
   - Inventario degli sponsor: vuoto.
   - Mazzo da gioco: vuoto.
 - Il pilota ottiene nuove carte tramite i pacchetti del negozio, che consumano le pool del campionato (sezione 13).
-- L'uso delle carte sponsor in gara (a consumo) è rinviato.
+- Le carte sponsor si giocano in gara, a consumo, dall'inventario degli sponsor, senza modificarlo: regole nella sezione 14.
 
 ### Pool di base, pool derivate e pool del campionato
 
@@ -251,13 +252,13 @@ Lo schema è gestito da Alembic (`backend/alembic/versions`), su SQLite. Le migr
 | `a1c5e9b3d7f2` Negozio | Tabelle `pack_template`, `shop_template`, `shop_template_pack`, `pack`, `pack_purchase`; colonna `sponsor_inventory_deck_id` sul pilota (con un mazzo sponsor vuoto per ogni pilota esistente) |
 | `b2d6f0a4c8e1` unione delle teste | Unisce le due teste di migrazione; dopo l'unione `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa |
 
-Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni. I campionati presenti nel database sono solo di prova: non servono regole di conversione per dati reali. Dopo un cambio di computer o un `git pull` è necessario applicare le migrazioni: `python heat.py migrate` (l'avvio lo fa da solo).
+La migrazione della fase 13a (tabella `card_play`) si aggiunge qui quando viene scritta. Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni. I campionati presenti nel database sono solo di prova: non servono regole di conversione per dati reali. Dopo un cambio di computer o un `git pull` è necessario applicare le migrazioni: `python heat.py migrate` (l'avvio lo fa da solo).
 
 ## 12. Domande aperte (rinviate)
 
 1. Amministrazione carte: caricamento singolo da interfaccia in `uploads/`, modifica e reset delle carte già presenti nelle pool di base (la ricarica aggiunge e toglie solo in base ai file).
 2. Spareggio sportivo: criterio in caso di pari punti.
-3. Carte sponsor a consumo: uso in gara, consumo, ingresso nel mazzo da gioco (vedi `OPEN_QUESTIONS.md`).
+3. Carte sponsor, parte rinviata: la revisione di fine gara da parte del giudice e l'eventuale consumo definitivo delle carte giocate (fase 13b, sezione 14). L'uso in gara è definito nella fase 13a.
 4. Uso online con un database diverso da SQLite: servirà un blocco sulla riga del pilota negli acquisti.
 
 ## 13. Negozio e pacchetti (fase 12)
@@ -311,4 +312,41 @@ Il funzionamento esteso è in `SHOP_DESIGN.md`, lo schema tecnico, i servizi e l
 
 ### Stato
 
-Backend (12a-12c) completato e approvato; frontend del giocatore (12d) e dell'admin (12e) completati e verificati a mano dall'autore; resta la sottofase 12f (documenti finali e unione in `main`).
+Backend (12a-12c) completato e approvato; frontend del giocatore (12d) e dell'admin (12e) completati e verificati a mano dall'autore. La fase 12 è unita in `main`.
+
+## 14. Carte sponsor in gara (fase 13)
+
+La fase 13 è divisa in due: **13a** (le giocate del pilota, questa sezione) e **13b** (la revisione di fine gara). Regole fissate per la 13a:
+
+### Chi gioca e quando
+
+- Gioca il **pilota**, cioè l'utente proprietario del pilota (anche se è giudice; l'admin solo se ha un pilota iscritto, come nel negozio). Il giudice non gioca al posto degli altri: interviene solo nella 13b, a fine gara, per correggere eventuali errori.
+- Si gioca solo con il pilota iscritto al campionato, con campionato attivo e con la gara **in corso**, cioè senza risultati. Con la gara terminata, o in revisione (13b), la giocata è rifiutata.
+- Un pilota eliminato non può giocare.
+
+### Cosa si gioca
+
+- Solo carte **sponsor**, scelte dall'**inventario degli sponsor** del pilota (`sponsor_inventory_deck_id`). Le carte modifiche e il mazzo da gioco non c'entrano.
+- Le carte sponsor sono **monouso**: in una gara una copia giocata non è più disponibile.
+- Il mazzo dell'inventario sponsor **non viene modificato** dalle giocate. Le giocate sono registrate in una tabella a parte, `card_play`, e le copie ancora disponibili in una gara sono quelle dell'inventario meno le giocate non annullate di quella gara.
+- La carta si identifica per `name` (come nel formato delle carte, sezione 6); la giocata conserva anche `path` e l'orario.
+
+### Limite e annullamento
+
+- Limite di **5 giocate non annullate per pilota in ogni gara**. Il limite è per pilota, non per l'intera gara.
+- Il pilota può **annullare** una propria giocata finché la gara è in corso: la carta torna disponibile in quella gara e il conteggio delle giocate attive scende. Le giocate annullate restano nel registro con lo stato `annullata`.
+- Non si può annullare dopo la fine della gara.
+
+### Registro delle giocate (`card_play`)
+
+- Una riga per ogni giocata: gara, pilota, nome e percorso della carta, stato (`giocata` o `annullata`), data e ora della giocata e dell'eventuale annullamento.
+- Le righe seguono la gara: se la gara o il pilota vengono eliminati definitivamente, le righe corrispondenti vengono rimosse.
+
+### Fuori dalla 13a
+
+- La **revisione** del giudice a fine gara e il suo stato (la gara "in revisione" che blocca i giocatori) sono la fase 13b.
+- Il **consumo definitivo** delle carte giocate (togliere davvero le copie dall'inventario) e l'eventuale ritorno nella pool sponsor del campionato non sono ancora decisi: si definiscono con la 13b.
+
+### Stato
+
+Specifica fissata il 12 ottobre 2026; codice non ancora scritto. Elenco dei file e conferma di avvio in attesa di approvazione.
