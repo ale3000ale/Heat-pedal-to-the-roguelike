@@ -155,3 +155,10 @@ def pilot_decks(db: Session, pilot: Pilot) -> tuple[list[CardEntry], list[CardEn
     inventory = db.get(Deck, pilot.inventory_deck_id)
     game = db.get(Deck, pilot.game_deck_id)
     return parse_cards(inventory.cards), parse_cards(game.cards)
+
+
+def sponsor_cards(db: Session, pilot: Pilot) -> list[CardEntry]:
+    # Restituisce le carte dell'inventario sponsor del pilota, solo per la lettura:
+    # le carte sponsor non si spostano nel mazzo da gioco.
+    sponsor = db.get(Deck, pilot.sponsor_inventory_deck_id)
+    return parse_cards(sponsor.cards)

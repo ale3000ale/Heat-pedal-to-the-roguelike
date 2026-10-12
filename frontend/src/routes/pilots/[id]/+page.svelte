@@ -5,6 +5,7 @@
 	import { api } from '$lib/api';
 	import type { PilotDetail } from '$lib/types';
 	import CardTile from '$lib/components/CardTile.svelte';
+	import InventorySection from '$lib/components/inventory-section.svelte';
 	import * as Card from '$lib/components/ui/card';
 
 	const MAX_GAME_DECK = 15;
@@ -111,24 +112,37 @@
 			<Card.Header>
 				<Card.Title>Inventario</Card.Title>
 				<Card.Description>
-					{total(pilot.inventory)} carte · clicca una carta per metterla nel mazzo
+					Clicca una modifica per metterla nel mazzo. Gli sponsor restano qui.
 				</Card.Description>
 			</Card.Header>
-			<Card.Content>
-				{#if pilot.inventory.length === 0}
-					<p class="text-sm text-muted-foreground">L'inventario è vuoto.</p>
-				{:else}
-					<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-						{#each pilot.inventory as card (card.path)}
-							<CardTile
-								{card}
-								disabled={busy || full}
-								title="Copie in inventario"
-								onclick={() => move(card.path, 'add')}
-							/>
-						{/each}
-					</div>
-				{/if}
+			<Card.Content class="space-y-3">
+				<InventorySection title="Modifiche" count={total(pilot.inventory)}>
+					{#if pilot.inventory.length === 0}
+						<p class="text-sm text-muted-foreground">Nessuna carta.</p>
+					{:else}
+						<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+							{#each pilot.inventory as card (card.path)}
+								<CardTile
+									{card}
+									disabled={busy || full}
+									title="Copie in inventario"
+									onclick={() => move(card.path, 'add')}
+								/>
+							{/each}
+						</div>
+					{/if}
+				</InventorySection>
+				<InventorySection title="Sponsor" count={total(pilot.sponsor_inventory)}>
+					{#if pilot.sponsor_inventory.length === 0}
+						<p class="text-sm text-muted-foreground">Nessuna carta.</p>
+					{:else}
+						<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+							{#each pilot.sponsor_inventory as card (card.path)}
+								<CardTile {card} title="Copie in inventario" />
+							{/each}
+						</div>
+					{/if}
+				</InventorySection>
 			</Card.Content>
 		</Card.Root>
 	{/if}

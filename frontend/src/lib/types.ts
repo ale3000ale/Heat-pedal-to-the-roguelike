@@ -39,9 +39,11 @@ export interface CardEntry {
 	copies: number;
 }
 
-// Pilota con i suoi due mazzi (dettaglio) e il campionato attivo, se iscritto.
+// Pilota con i suoi mazzi (dettaglio) e il campionato attivo, se iscritto.
+// L'inventario sponsor è in sola lettura: le carte sponsor non vanno nel mazzo da gioco.
 export interface PilotDetail extends Pilot {
 	inventory: CardEntry[];
+	sponsor_inventory: CardEntry[];
 	game_deck: CardEntry[];
 	championship: ChampionshipRef | null;
 }

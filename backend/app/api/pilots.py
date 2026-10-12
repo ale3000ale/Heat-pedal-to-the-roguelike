@@ -29,6 +29,7 @@ from app.services.pilots import (
     pilot_decks,
     rename_pilot,
     set_pilot_team,
+    sponsor_cards,
 )
 from app.services.teams import TeamNotFoundError
 
@@ -72,11 +73,12 @@ def _ref(found: tuple[int, str] | None) -> ChampionshipRef | None:
 
 
 def _detail(db, pilot) -> PilotDeckDetail:
-    # Costruisce il dettaglio unendo i dati del pilota ai suoi due mazzi.
+    # Costruisce il dettaglio unendo i dati del pilota ai suoi tre mazzi.
     inventory, game = pilot_decks(db, pilot)
     return PilotDeckDetail(
         **PilotRead.model_validate(pilot).model_dump(),
         inventory=inventory,
+        sponsor_inventory=sponsor_cards(db, pilot),
         game_deck=game,
         championship=_ref(active_championship(db, pilot)),
     )

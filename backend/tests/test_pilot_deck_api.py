@@ -5,6 +5,7 @@ from app.services.cards import CardEntry, dump_cards
 from .test_pilots_api import create_pilot, enroll, register
 
 FIRST = "cards/starter/velocita-1.webp"
+SPONSOR_PATH = "cards/test/sponsor-uno.webp"
 
 
 def add(client, pilot_id, path=FIRST):
@@ -27,6 +28,17 @@ def give_extra_cards(session_factory, pilot_id, amount):
         deck = db.get(Deck, pilot.inventory_deck_id)
         deck.cards = dump_cards(
             [CardEntry(name="Extra", path="cards/test/extra.webp", copies=amount)]
+        )
+        db.commit()
+
+
+def give_sponsor_cards(session_factory, pilot_id):
+    # Mette una carta sponsor in due copie nel mazzo sponsor del pilota.
+    with session_factory() as db:
+        pilot = db.get(Pilot, pilot_id)
+        deck = db.get(Deck, pilot.sponsor_inventory_deck_id)
+        deck.cards = dump_cards(
+            [CardEntry(name="Sponsor Uno", path=SPONSOR_PATH, copies=2)]
         )
         db.commit()
 
@@ -143,3 +155,30 @@ def test_active_championship_is_shown_in_detail_and_list(client, session_factory
     assert listed["Concluso"] is None
     assert listed["Attivo"]["name"] == f"Campionato {active}"
     assert listed["Attivo"]["id"] == detail["id"]
+
+
+def test_detail_shows_an_empty_sponsor_inventory(client):
+    register(client)
+    pilot_id = create_pilot(client).json()["id"]
+    body = client.get(f"/api/pilots/{pilot_id}").json()
+    assert body["sponsor_inventory"] == []
+
+
+def test_detail_shows_the_sponsor_cards_apart_from_the_inventory(client, session_factory):
+    register(client)
+    pilot_id = create_pilot(client).json()["id"]
+    give_sponsor_cards(session_factory, pilot_id)
+    body = client.get(f"/api/pilots/{pilot_id}").json()
+    assert copies(body["sponsor_inventory"], "Sponsor Uno") == 2
+    assert copies(body["inventory"], "Sponsor Uno") == 0
+    assert copies(body["game_deck"], "Sponsor Uno") == 0
+
+
+def test_sponsor_cards_cannot_go_in_the_game_deck(client, session_factory):
+    register(client)
+    pilot_id = create_pilot(client).json()["id"]
+    give_sponsor_cards(session_factory, pilot_id)
+    assert add(client, pilot_id, SPONSOR_PATH).status_code == 404
+    body = add(client, pilot_id).json()
+    assert copies(body["sponsor_inventory"], "Sponsor Uno") == 2
+    assert copies(body["game_deck"], "Sponsor Uno") == 0
