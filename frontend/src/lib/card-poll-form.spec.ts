@@ -31,7 +31,7 @@ describe('submitCardPoll', () => {
 		expect(result.message).toBe('Solo admin');
 	});
 
-	it('usa un messaggio generico se l\'errore non è un Error', async () => {
+	it('usa un messaggio generico se il rifiuto non è un Error', async () => {
 		const save = vi.fn().mockRejectedValue('boom');
 		const result = await submitCardPoll('5', save);
 		expect(result.message).toBe('Salvataggio non riuscito');
