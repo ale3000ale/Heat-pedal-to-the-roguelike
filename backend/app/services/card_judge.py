@@ -1,15 +1,22 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db.models import User
 from app.db.models.card_play import STATUS_PLAYED, STATUS_UNDONE, CardPlay
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
+from app.db.models.race import Race
 from app.services.card_gift import _with_one_more_copy, _without_one_copy
 from app.services.card_play import CardNotAvailableError
 from app.services.cards import CardEntry, card_key, dump_cards, parse_cards
-from app.services.championships import ChampionshipClosedError, get_championship
+from app.services.championships import get_championship
 from app.services.pilots import PilotNotFoundError
-from app.services.race_review import _open_race
+from app.services.race_review import (
+    ReviewHeldByOtherError,
+    ReviewNotActiveError,
+    _closed_race,
+    is_review_active,
+)
 from app.services.races import get_race
 from app.services.shop_purchase import _lock_database
 from app.services.shop_view import PilotNotEnrolledError, is_enrolled
@@ -21,6 +28,19 @@ class CardPlayNotFoundError(Exception):
 
 class CardPlayNotActiveError(Exception):
     """La giocata non è attiva: è già annullata o consumata."""
+
+
+def _reviewed_race(db: Session, championship_id: int, race_id: int, user: User) -> Race:
+    # Gara con i risultati e revisione delle carte attiva, aperta da questo utente.
+    # Errori: ChampionshipNotFoundError, RaceNotFoundError, ChampionshipClosedError,
+    # RaceNotClosedError, ReviewAlreadyConfirmedError, ReviewNotActiveError,
+    # ReviewHeldByOtherError.
+    race = _closed_race(db, championship_id, race_id)
+    if not is_review_active(race):
+        raise ReviewNotActiveError
+    if race.review_started_by_user_id != user.id:
+        raise ReviewHeldByOtherError
+    return race
 
 
 def get_card_summary(
@@ -37,13 +57,15 @@ def get_card_summary(
     return [(db.get(Pilot, pilot_id), items) for pilot_id, items in grouped.items()]
 
 
-def cancel_play(db: Session, championship_id: int, race_id: int, play_id: int) -> CardPlay:
-    # Il giudice annulla una giocata attiva: resta nello storico con stato "annullata".
-    # Possibile solo finché la gara non ha risultati. Un solo commit.
-    # Errori: quelli di _open_race, CardPlayNotFoundError, CardPlayNotActiveError.
+def cancel_play(
+    db: Session, championship_id: int, race_id: int, play_id: int, user: User
+) -> CardPlay:
+    # Il revisore annulla una giocata attiva: resta nello storico con stato "annullata" e
+    # la carta resta al pilota. Possibile solo con la revisione attiva. Un solo commit.
+    # Errori: quelli di _reviewed_race, CardPlayNotFoundError, CardPlayNotActiveError.
     try:
         _lock_database(db)
-        race = _open_race(db, championship_id, race_id)
+        race = _reviewed_race(db, championship_id, race_id, user)
         play = db.get(CardPlay, play_id)
         if play is None or play.race_id != race.id:
             raise CardPlayNotFoundError
@@ -59,18 +81,16 @@ def cancel_play(db: Session, championship_id: int, race_id: int, play_id: int) -
 
 
 def grant_bonus(
-    db: Session, championship_id: int, race_id: int, pilot_id: int, card_name: str
+    db: Session, championship_id: int, race_id: int, pilot_id: int, card_name: str, user: User
 ) -> tuple[Pilot, CardEntry]:
-    # Bonus del giudice per correggere errori: una copia dalla pool all'inventario del
-    # pilota, senza notifica. Un solo commit.
-    # Errori: ChampionshipNotFoundError, RaceNotFoundError, ChampionshipClosedError,
-    # PilotNotFoundError, PilotNotEnrolledError, CardNotAvailableError.
+    # Bonus del revisore per correggere errori: una copia dalla pool all'inventario del
+    # pilota, senza notifica. Possibile solo con la revisione attiva. Un solo commit.
+    # Errori: quelli di _reviewed_race, PilotNotFoundError, PilotNotEnrolledError,
+    # CardNotAvailableError.
     try:
         _lock_database(db)
+        _reviewed_race(db, championship_id, race_id, user)
         championship = get_championship(db, championship_id)
-        get_race(db, championship_id, race_id)
-        if championship.is_closed:
-            raise ChampionshipClosedError
         pilot = db.get(Pilot, pilot_id)
         if pilot is None or pilot.deleted_at is not None:
             raise PilotNotFoundError
