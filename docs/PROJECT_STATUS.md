@@ -32,8 +32,8 @@ Ultimo aggiornamento: 2026-10-12
 | 12d | Frontend giocatore: elenco `/shop`, negozio con ordinamento e ricerca, inventario, storico, apertura animata dei pacchetti, riepilogo finale con copie raggruppate | Completata (verifica a mano dell'autore) |
 | 12e | Frontend admin: gestione negozio, template, pacchetti del campionato, storico completo di tutti i piloti dalle impostazioni del negozio | Completata (verifica a mano dell'autore) |
 | 12f | Verifica complessiva e unione di `phase-12-shop` in `main` | Completata (CI verde sull'ultimo commit `24388ea`) |
-| 13 | Carte sponsor in gara e amministrazione delle carte (decisioni in `PHASE_13_SPEC.md`) | Decisioni approvate, nessun codice |
-| 13a | Backend carte sponsor: registro delle carte giocate, stack da 5 annullamenti, uso e annullamento, restituzione alla pool alla chiusura | Da approvare |
+| 13 | Carte sponsor in gara e amministrazione delle carte (decisioni in `PHASE_13_SPEC.md`) | In corso |
+| 13a | Backend carte sponsor: registro delle carte giocate, stack da 5 annullamenti, uso e annullamento, restituzione alla pool alla chiusura | Completata nel ramo `phase-13a-card-plays` (pull request #9 in bozza, CI verde sul commit dei test `8f852d7`) |
 | 13b | Backend: stato "in revisione", riepilogo, correzione e bonus, tasto S, notifica di carta ottenuta | Da fare |
 | 13c | Frontend giocatore: sezioni per pilota, uso delle carte, Indietro, inventario in due sezioni, popup "Hai ottenuto una carta sponsor" | Da fare |
 | 13d | Frontend giudice e admin: elenco piloti con tasto S, riepilogo con immagini, correzioni | Da fare |
@@ -65,6 +65,8 @@ Ultimo aggiornamento: 2026-10-12
 - Negozio, accesso e vista (`services/shop_view.py`): il giocatore entra con un proprio pilota iscritto e solo a campionato attivo; l'admin entra sempre (sola lettura senza pilota o a campionato chiuso, come un giocatore con un pilota iscritto). Con una gara in corso gli acquisti sono bloccati.
 - Negozio, elenco dei negozi dell'utente: `GET /api/me/shops` (`api/shop_me.py`, `services/shop_list.py`).
 - Negozio, storico e inventario (12c-2): `services/shop_history.py` e `services/shop_inventory.py`. Il giocatore non vede gli acquisti di un pilota che ha eliminato; l'admin sì.
+- Carte sponsor giocate (13a): tabella `card_play` (modello `CardPlay`, migrazione `c3e7a1d5b9f2`) con gara, pilota, nome e percorso della carta, stato (`giocata`, `annullata`, `consumata`) e data. `services/card_play.py` gestisce giocata, annullamento e stato; le copie disponibili sono quelle dell'inventario sponsor meno le giocate attive della gara in corso, e l'inventario non cambia durante la gara. Gli annullamenti consecutivi sono le giocate annullate dopo l'ultima ancora attiva (massimo 5, si azzera giocando una nuova carta); non c'è una colonna dedicata. Il pilota deve essere del giocatore e iscritto; serve una gara in corso in un campionato attivo.
+- Carte sponsor, chiusura della gara (13a): `services/card_play_close.py` (`consume_plays`), richiamato da `set_results` in `services/races.py` solo alla prima chiusura della gara e nella stessa transazione. Le giocate attive passano a `consumata`, escono dall'inventario sponsor del pilota e tornano nella pool sponsor del campionato; le annullate restano in inventario. Le correzioni dell'admin non toccano le carte. Senza pool sponsor sul campionato le carte escono dall'inventario ma non tornano in nessuna pool; se una carta giocata non è più in inventario la chiusura si ferma con un errore.
 
 ## Frontend
 
@@ -78,15 +80,19 @@ Ultimo aggiornamento: 2026-10-12
 - Modulo dei pacchetti: costo iniziale 10; cambiando valuta passa a 2 sponsor (e torna a 10 oro) solo se il costo non è stato modificato a mano.
 - Pagina admin delle pool: «Ricarica» chiede l'anteprima e, se vanno tolte carte, apre un popup di conferma con i nomi e l'avviso "in uso in un campionato attivo".
 - Dettaglio campionato: gare dalla più recente, con stato "in corso" o "terminata"; dettaglio gara con classifica, "Da assegnare" e "Non partecipano"; popup "Esci / Rimani" se si lascia una gara in corso non salvata.
+- Carte sponsor in gara (13a): nessuna interfaccia ancora, arriva con la 13c.
 
 ## Qualità verificata
 
 - CI su ogni pull request: test backend, controlli frontend con lint, test e build, migrazioni su un database creato da zero (upgrade, verifica, downgrade, nuovo upgrade). Sulla pull request #5 i tre controlli erano verdi sull'ultimo commit `24388ea` prima dell'unione in `main`.
+- Pull request #9 (13a): i tre controlli (test backend, migrazioni, frontend) sono verdi sul commit dei test `8f852d7`, secondo l'elenco dei controlli letto il 2026-10-12. I test non sono stati eseguiti in locale da chi ha scritto il codice.
+- Test backend delle carte giocate (`backend/tests/test_card_plays.py`, 13 test): giocata e copie disponibili fino a esaurimento, inventario invariato durante la gara, carta inesistente, annullamento (copia liberata e registro conservato), annullamento senza giocate, cinque annullamenti e limite, azzeramento giocando una nuova carta, nessuna giocata a gara chiusa, pilota di un altro utente (404), consumo alla chiusura, annullate non consumate, ultima copia rimossa dall'inventario.
+- Non coperti dai test della 13a: correzione dei risultati da parte dell'admin dopo la chiusura (le carte non devono cambiare), campionato senza pool sponsor, carta giocata sparita dall'inventario, campionato chiuso.
 - Test frontend del Negozio: 9 in `shop-sort.spec.ts`, 7 in `pack-reveal-phases.spec.ts`, 3 in `pack-summary.spec.ts`. Il componente grafico `pack-reveal.svelte` (taglio della busta, scorrimento, riepilogo) non ha test dedicati e si verifica a mano; l'autore ha verificato a mano riepilogo, elenco `/shop`, storico e storico completo dell'admin. Il numero totale di test non è stato aggiornato qui.
 - Non hanno test dedicati: costo predefinito dei pacchetti, ordine delle gare, anteprima della ricarica, lock sul database. `cardDelayMs` in `pack-reveal-phases.ts` non è più usato dal componente ed è rimasto solo per il suo test.
 - Non letti: `shop-api.ts` (si presume che `fetchAllHistory` chiami `GET .../shop/history/all`) e `shop-history-list.svelte` (non si sa se raggruppi per pilota).
-- Migrazioni Alembic: oro per gara (`c9f3a1b6d8e4`), tabelle del Negozio (`a1c5e9b3d7f2`), unione delle teste (`b2d6f0a4c8e1`). Dopo un'unione di teste `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa.
-- Documenti ancora da riallineare (dopo la 13d, su richiesta dell'autore): `PROJECT_SPEC.md` (refuso "varà", righe su spareggio e carte sponsor rinviate, nuova sezione 14), `SHOP_DESIGN.md` e `PROJECT_NOTES.md` (descrivono ancora ogni estrazione come carta separata e Esc come non vincolato).
+- Migrazioni Alembic: oro per gara (`c9f3a1b6d8e4`), tabelle del Negozio (`a1c5e9b3d7f2`), unione delle teste (`b2d6f0a4c8e1`), tabella `card_play` (`c3e7a1d5b9f2`). Dopo un'unione di teste `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa.
+- Documenti ancora da riallineare (dopo la 13d, su richiesta dell'autore): `PROJECT_SPEC.md` (refuso "varà", righe su spareggio e carte sponsor rinviate, nuova sezione 14), `SHOP_DESIGN.md` e `PROJECT_NOTES.md` (descrivono ancora ogni estrazione come carta separata e Esc come non vincolato; `PROJECT_NOTES.md` non elenca ancora i file della 13a).
 
 ## API principali
 
@@ -98,12 +104,15 @@ Ultimo aggiornamento: 2026-10-12
 | Pool (anche anteprima e ricarica) | `/api/pools` |
 | Campionati, iscrizioni, gare e classifica | `/api/championships` |
 | Negozio del giocatore (vista, acquisto, inventario, storico) | `/api/championships/{id}/shop` |
+| Carte sponsor giocate (giocata, annullamento, stato) | `/api/championships/{id}/card-plays` |
 | Negozi dell'utente (campionati con pilota iscritto) | `/api/me` |
 | Amministrazione e pulizia | `/api/admin` |
 | Template e immagini del Negozio (admin) | `/api/shop` |
 | Salute del servizio | `/health` |
 
 Rotte del Negozio per il giocatore: `GET /{id}/shop?pilot_id=`, `POST /{id}/shop/purchases`, `GET /{id}/shop/inventory?pilot_id=`, `GET /{id}/shop/history`, `GET /{id}/shop/history/all` (solo admin). Elenco dei negozi dell'utente: `GET /api/me/shops`.
+
+Rotte delle carte sponsor giocate (13a): `GET /{id}/card-plays?pilot_id=` (giocate, copie disponibili, annullamenti rimasti), `POST /{id}/card-plays` (giocata, 201), `POST /{id}/card-plays/undo` (annullamento). Errori: 404 campionato o pilota inesistenti, 403 pilota non iscritto, 409 campionato chiuso, nessuna gara in corso, carta non disponibile, niente da annullare, limite di 5 annullamenti.
 
 ## Decisioni e questioni aperte
 
@@ -114,6 +123,8 @@ Decisioni dell'autore (2026-10-10): la 12c è approvata; la ricarica delle pool 
 Decisioni dell'autore (2026-10-11): la busta usa come texture l'immagine del pacchetto acquistato; la striscia strappata se ne va e la busta resta tagliata; le carte si vedono una alla volta e ogni tocco le fa scorrere a sinistra; alla fine compare un riepilogo con tutte le carte; "Salta" porta al riepilogo; fino al riepilogo la finestra si chiude solo con la X, dal riepilogo in ogni modo. Le copie uguali nel riepilogo sono raggruppate con il numero di copie; Esc non chiude prima del riepilogo. L'elenco `/shop` e lo storico sono considerati a posto, come lo storico completo dell'admin dalle impostazioni del negozio. La pull request #5 è stata unita in `main` (merge `6dd5619`).
 
 Decisioni dell'autore (2026-10-12): lo spareggio sportivo non serve; le pool di base esistono e funzionano; l'uso online è rinviato a dopo la fase 14; la fase 13 realizza le carte sponsor in gara (uso con conferma, annullamento fino a 5, stato "in revisione", tasto S, restituzione alla pool alla chiusura) e l'amministrazione delle carte (caricamento con ritaglio e zoom, nome e quantità, nomi in arancione, esclusione di caricate o di base nelle pool personalizzate); la fase 14 è di sistemazione generale e miglioramenti; i documenti si riallineano dopo la 13d. I dettagli sono in `PHASE_13_SPEC.md`.
+
+Scelte della 13a da confermare (dell'assistente, non ancora approvate): gli annullamenti consecutivi si calcolano dal registro senza colonna dedicata; il consumo alla chiusura sta in un modulo separato (`card_play_close.py`) per evitare un import circolare; con una pool sponsor assente le carte consumate non tornano in nessuna pool.
 
 Correzione del 2026-10-10: una versione precedente di questo file e di `SHOP_SCHEMA.md` dava per non necessaria `GET /api/me/shops`; la rotta esiste ed è usata dal frontend.
 
@@ -133,6 +144,7 @@ Questioni rinviate:
 
 ## Prossimi passi
 
-1. Approvazione dell'elenco dei file della sottofase 13a (backend delle carte sponsor).
-2. Unione del ramo `phase-12f-docs` (solo documenti) in `main`, a cura dell'autore.
-3. Dopo la 13d: riallineamento di tutti i documenti, correzione del refuso "varà" e nuova sezione 14 in `PROJECT_SPEC.md`.
+1. Approvazione della 13a (pull request #9) e delle tre scelte da confermare; poi uscita dalla bozza e unione, a cura dell'autore.
+2. Elenco dei file della 13b (backend: stato "in revisione", riepilogo, correzione e bonus, tasto S, notifica di carta ottenuta), da approvare prima di iniziare.
+3. Unione del ramo `phase-12f-docs` (solo documenti) in `main`, a cura dell'autore.
+4. Dopo la 13d: riallineamento di tutti i documenti, correzione del refuso "varà" e nuova sezione 14 in `PROJECT_SPEC.md`.
