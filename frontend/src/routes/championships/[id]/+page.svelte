@@ -93,12 +93,6 @@
 		}
 	}
 
-	// Popup aperto subito dopo aver premuto il tasto S.
-	function showGift(gift: CardGift) {
-		gifts = [gift];
-		giftOpen = true;
-	}
-
 	// Alla chiusura del popup le notifiche dei miei piloti risultano viste.
 	async function onGiftsClosed() {
 		if (!championship) return;
@@ -307,7 +301,7 @@
 				</Card.Header>
 				<Card.Content class="space-y-3">
 					{#each enrolled as p (p.id)}
-						<PilotCardPlays championshipId={championship.id} pilot={p} ongift={showGift} />
+						<PilotCardPlays championshipId={championship.id} pilot={p} />
 					{/each}
 				</Card.Content>
 			</Card.Root>

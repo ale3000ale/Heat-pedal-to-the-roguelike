@@ -9,6 +9,7 @@
 	import type { RaceDetail } from '$lib/race-types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
+	import PilotGiftButton from '$lib/components/pilot-gift-button.svelte';
 
 	// Una riga della classifica: un pilota in ordine di arrivo con i suoi punti sponsor.
 	interface Row {
@@ -49,6 +50,10 @@
 			!championship.is_closed &&
 			auth.canManageRaces &&
 			(!isRaceClosed || auth.canCorrectRaces)
+	);
+	// Il tasto S compare solo a giudice e admin, con la gara in corso e il campionato aperto.
+	let canGift = $derived(
+		championship !== null && !championship.is_closed && auth.canManageRaces && !isRaceClosed
 	);
 	// Iscritti non ancora assegnati né alla classifica né ai non partecipanti.
 	let available = $derived(
@@ -237,6 +242,25 @@
 							{/each}
 						</ol>
 					{/if}
+				</Card.Content>
+			</Card.Root>
+		{/if}
+
+		{#if canGift}
+			<Card.Root>
+				<Card.Header>
+					<Card.Title>Piloti iscritti</Card.Title>
+					<Card.Description>
+						Con il tasto S assegni una carta sponsor casuale al pilota. La carta la vede solo lui.
+					</Card.Description>
+				</Card.Header>
+				<Card.Content class="space-y-2">
+					{#each race.results as result (result.pilot_id)}
+						<PilotGiftButton
+							championshipId={Number(page.params.id)}
+							pilot={{ id: result.pilot_id, name: result.pilot_name }}
+						/>
+					{/each}
 				</Card.Content>
 			</Card.Root>
 		{/if}
