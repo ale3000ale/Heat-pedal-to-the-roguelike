@@ -10,6 +10,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import PilotGiftButton from '$lib/components/pilot-gift-button.svelte';
+	import RaceReviewPanel from '$lib/components/race-review-panel.svelte';
 
 	// Una riga della classifica: un pilota in ordine di arrivo con i suoi punti sponsor.
 	interface Row {
@@ -54,6 +55,10 @@
 	// Il tasto S compare solo a giudice e admin, con la gara in corso e il campionato aperto.
 	let canGift = $derived(
 		championship !== null && !championship.is_closed && auth.canManageRaces && !isRaceClosed
+	);
+	// La revisione delle carte serve a giudice e admin, con la gara terminata e il campionato aperto.
+	let canReview = $derived(
+		championship !== null && !championship.is_closed && auth.canManageRaces && isRaceClosed
 	);
 	// Iscritti non ancora assegnati né alla classifica né ai non partecipanti.
 	let available = $derived(
@@ -244,6 +249,13 @@
 					{/if}
 				</Card.Content>
 			</Card.Root>
+		{/if}
+
+		{#if canReview}
+			<RaceReviewPanel
+				championshipId={Number(page.params.id)}
+				raceId={Number(page.params.raceId)}
+			/>
 		{/if}
 
 		{#if canGift}
