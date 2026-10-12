@@ -22,6 +22,7 @@ La fase 14 (dopo la 13) è dedicata alla sistemazione generale e ai migliorament
 - Il registro completo delle carte giocate nella gara resta intero: il limite di 5 vale solo per l'annullamento, non per il riepilogo del giudice.
 - Il giocatore può giocare e annullare solo per i propri piloti. Giudice e admin, quando agiscono come giocatori, valgono come tutti gli altri: non giocano mai per un pilota altrui.
 - Nella sezione di gioco il giocatore ha anche il tasto **S** sui propri piloti: dopo conferma ottiene una carta sponsor casuale per sé.
+  - Aggiornamento 13d (decisione dell'autore, 12 ottobre 2026): il tasto S non sta più nella sezione del giocatore ma nella pagina della gara, visibile solo a giudice e admin.
 
 ### Stato della gara: "in revisione"
 
@@ -92,5 +93,9 @@ Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file
 
 ## Avanzamento della 13b
 
-- Fatto: colonna `race.review_started_by_user_id` (migrazione `a9c3e7b1d5f0` e modello `Race`), test verdi.
-- Da fare: servizi e rotte con revisore unico, scadenza e rimozione carta; poi test e riallineamento degli altri documenti.
+- Fatto: colonna `race.review_started_by_user_id` (migrazione `a9c3e7b1d5f0` e modello `Race`).
+- Fatto: revisore unico (`_reviewed_race` in `services/card_judge.py`: revisione attiva e aperta dall'utente che agisce, altrimenti rifiuto), annullamento della giocata, bonus dalla pool e **rimozione di una carta dall'inventario del pilota** con ritorno alla pool (`remove_card`, rotta `POST /api/championships/{id}/races/{race_id}/card-removal`, commit `86e5893` e correzione `1bfba4b`).
+- Rimozione, regole: serve la revisione attiva del revisore; 409 se il campionato non ha una pool sponsor, se la carta non è nell'inventario del pilota o se tutte le copie sono impegnate in giocate attive (il revisore deve prima annullarle); 404 per pilota inesistente o eliminato; 403 per pilota non iscritto. La copia va dall'inventario sponsor del pilota alla pool sponsor del campionato in un solo commit.
+- Rimozione, nota tecnica: `_without_one_copy` (in `services/card_gift.py`) confronta le carte per identità (`is`), quindi `remove_card` le passa lo stesso oggetto presente nella lista dell'inventario e non una copia.
+- Test: 13 test della rimozione in `backend/tests/test_card_judge.py`; l'esito 408 passati su 412 prima della correzione è stato risolto e la CI della pull request #9 risulta verde dopo `1bfba4b` (comunicato dall'autore, non riletto qui).
+- Da fare: verificare che la scadenza dei 15 minuti sia coperta da test con orologio finto; frontend del revisore (13d: riepilogo con immagini, annullo, bonus, rimozione); riallineamento degli altri documenti (`PROJECT_STATUS.md` e `PROJECT_SPEC.md`).
