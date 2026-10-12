@@ -6,7 +6,12 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
 	import { standingKey } from '$lib/standings';
-	import { fetchUnseenGifts, markGiftsSeen, startGiftPolling } from '$lib/card-poll.svelte';
+	import {
+		fetchUnseenGifts,
+		loadPollIntervalMs,
+		markGiftsSeen,
+		startGiftPolling
+	} from '$lib/card-poll.svelte';
 	import type { CardGift } from '$lib/card-play-types';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
 	import type { Race, Standing } from '$lib/race-types';
@@ -109,12 +114,23 @@
 	}
 
 	// Avvia il controllo periodico quando ci sono piloti miei iscritti a un campionato attivo.
+	// L'intervallo è quello impostato dall'admin: va letto prima di avviare il controllo, e se
+	// la pagina cambia nel frattempo `cancelled` impedisce di avviarlo dopo la chiusura.
 	$effect(() => {
 		if (!championship || championship.is_closed) return;
 		const championshipId = championship.id;
 		const pilotIds = enrolled.map((p) => p.id);
 		if (pilotIds.length === 0) return;
-		return startGiftPolling(() => checkGifts(championshipId, pilotIds));
+		let stop: (() => void) | null = null;
+		let cancelled = false;
+		void loadPollIntervalMs().then((intervalMs) => {
+			if (cancelled) return;
+			stop = startGiftPolling(() => checkGifts(championshipId, pilotIds), intervalMs);
+		});
+		return () => {
+			cancelled = true;
+			stop?.();
+		};
 	});
 
 	onMount(async () => {
