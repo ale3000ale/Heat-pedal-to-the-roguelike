@@ -91,6 +91,10 @@ def open_review(client, championship_id, race_id):
     return client.post(f"/api/championships/{championship_id}/races/{race_id}/review")
 
 
+def leave_review(client, championship_id, race_id):
+    return client.delete(f"/api/championships/{championship_id}/races/{race_id}/review")
+
+
 def confirm_review(client, championship_id, race_id):
     return client.post(f"/api/championships/{championship_id}/races/{race_id}/review/confirm")
 
@@ -154,7 +158,7 @@ def scenario(make_client, session_factory, copies=2, pool_copies=2):
 
 
 def reviewing(admin, championship_id, race_id, pilot_id):
-    # Chiude la gara con i risultati e apre la revisione delle carte come admin.
+    # Chiude la gara con i risultati: chi preme Termina diventa il revisore e la revisione parte.
     finish_race(admin, championship_id, race_id, pilot_id)
     assert open_review(admin, championship_id, race_id).status_code == 200
 
@@ -223,6 +227,7 @@ def test_bonus_is_refused_without_an_active_review(make_client, session_factory)
     admin, _, champ, pilot, race = scenario(make_client, session_factory)
     assert bonus(admin, champ, race, pilot).status_code == 409
     finish_race(admin, champ, race, pilot)
+    assert leave_review(admin, champ, race).status_code == 200
     assert bonus(admin, champ, race, pilot).status_code == 409
 
 
@@ -294,6 +299,7 @@ def test_removal_is_refused_without_an_active_review(make_client, session_factor
     admin, _, champ, pilot, race = scenario(make_client, session_factory)
     assert removal(admin, champ, race, pilot).status_code == 409
     finish_race(admin, champ, race, pilot)
+    assert leave_review(admin, champ, race).status_code == 200
     assert removal(admin, champ, race, pilot).status_code == 409
     assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
 

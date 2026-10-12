@@ -103,8 +103,9 @@ def start_race(admin, championship_id):
     return r.json()["id"]
 
 
-def finish_race(admin, championship_id, race_id, pilot_id):
-    r = admin.put(
+def finish_race(finisher, championship_id, race_id, pilot_id):
+    # Chi preme Termina diventa il revisore: la revisione parte con questa chiamata.
+    r = finisher.put(
         f"/api/championships/{championship_id}/races/{race_id}/results",
         json={"results": [{"pilot_id": pilot_id, "sponsor_points": 0}]},
     )
@@ -153,7 +154,7 @@ def scenario(make_client, session_factory, copies=3, pool_copies=1):
 
 
 def closed_scenario(make_client, session_factory, copies=3, pool_copies=1, plays=0):
-    # Come scenario, ma con le giocate fatte e la gara chiusa con i risultati.
+    # Come scenario, ma con le giocate fatte e la gara terminata dall'admin (che diventa revisore).
     admin, player, champ, pilot, race = scenario(make_client, session_factory, copies, pool_copies)
     for _ in range(plays):
         assert play(player, champ, pilot).status_code == 201
@@ -161,7 +162,17 @@ def closed_scenario(make_client, session_factory, copies=3, pool_copies=1, plays
     return admin, player, champ, pilot, race
 
 
-def test_admin_opens_the_review_after_the_results(make_client, session_factory):
+def judge_closed_scenario(make_client, session_factory, copies=3, pool_copies=1, plays=0):
+    # Come closed_scenario, ma la gara la termina un giudice, che diventa il revisore.
+    admin, player, champ, pilot, race = scenario(make_client, session_factory, copies, pool_copies)
+    judge = judge_client(make_client, session_factory)
+    for _ in range(plays):
+        assert play(player, champ, pilot).status_code == 201
+    finish_race(judge, champ, race, pilot)
+    return admin, player, champ, pilot, race, judge
+
+
+def test_finishing_the_race_starts_the_review_for_the_one_who_finishes(make_client, session_factory):
     admin, _, champ, _, race = closed_scenario(make_client, session_factory)
     r = open_review(admin, champ, race)
     assert r.status_code == 200
@@ -174,9 +185,8 @@ def test_admin_opens_the_review_after_the_results(make_client, session_factory):
     assert body["review_closed_at"] is None
 
 
-def test_judge_can_open_and_leave_the_review(make_client, session_factory):
-    _, _, champ, _, race = closed_scenario(make_client, session_factory)
-    judge = judge_client(make_client, session_factory)
+def test_judge_who_finishes_the_race_can_leave_the_review(make_client, session_factory):
+    _, _, champ, _, race, judge = judge_closed_scenario(make_client, session_factory)
     assert open_review(judge, champ, race).json()["in_review"] is True
     left = leave_review(judge, champ, race)
     assert left.status_code == 200
@@ -202,15 +212,15 @@ def test_opening_the_review_twice_keeps_the_first_date(make_client, session_fact
 def test_a_second_reviewer_is_refused_while_the_review_is_active(make_client, session_factory):
     admin, _, champ, _, race = closed_scenario(make_client, session_factory)
     judge = judge_client(make_client, session_factory)
-    assert open_review(judge, champ, race).status_code == 200
-    assert open_review(admin, champ, race).status_code == 409
-    assert leave_review(admin, champ, race).status_code == 409
-    assert confirm_review(admin, champ, race).status_code == 409
-    assert open_review(judge, champ, race).status_code == 200
+    assert open_review(judge, champ, race).status_code == 409
+    assert leave_review(judge, champ, race).status_code == 409
+    assert confirm_review(judge, champ, race).status_code == 409
+    assert open_review(admin, champ, race).status_code == 200
 
 
 def test_leaving_a_review_that_is_not_open_is_refused(make_client, session_factory):
     admin, _, champ, _, race = closed_scenario(make_client, session_factory)
+    assert leave_review(admin, champ, race).status_code == 200
     assert leave_review(admin, champ, race).status_code == 409
 
 
@@ -276,14 +286,14 @@ def test_confirming_twice_does_not_consume_the_cards_twice(make_client, session_
     assert sponsor_pool(session_factory, champ) == {CARD: 3}
 
 
-def test_admin_confirms_without_opening_the_review(make_client, session_factory):
+def test_admin_confirms_the_review_started_by_finishing_the_race(make_client, session_factory):
     admin, _, champ, pilot, race = closed_scenario(make_client, session_factory, copies=3, plays=2)
     assert confirm_review(admin, champ, race).status_code == 200
     assert sponsor_inventory(session_factory, pilot) == {CARD: 1}
     assert play_statuses(session_factory) == ["consumata", "consumata"]
 
 
-def test_a_judge_cannot_confirm_without_an_active_review(make_client, session_factory):
+def test_a_judge_cannot_confirm_the_review_of_someone_else(make_client, session_factory):
     _, _, champ, pilot, race = closed_scenario(make_client, session_factory, copies=3, plays=2)
     judge = judge_client(make_client, session_factory)
     assert confirm_review(judge, champ, race).status_code == 409
@@ -291,8 +301,9 @@ def test_a_judge_cannot_confirm_without_an_active_review(make_client, session_fa
 
 
 def test_a_judge_confirms_his_own_review(make_client, session_factory):
-    _, _, champ, pilot, race = closed_scenario(make_client, session_factory, copies=3, plays=2)
-    judge = judge_client(make_client, session_factory)
+    _, _, champ, pilot, race, judge = judge_closed_scenario(
+        make_client, session_factory, copies=3, plays=2
+    )
     assert open_review(judge, champ, race).status_code == 200
     assert confirm_review(judge, champ, race).status_code == 200
     assert sponsor_inventory(session_factory, pilot) == {CARD: 1}
