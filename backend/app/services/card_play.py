@@ -22,6 +22,10 @@ class NoRaceInProgressError(Exception):
     """Nel campionato non c'è nessuna gara in corso."""
 
 
+class RaceInReviewError(Exception):
+    """La gara è in revisione: i giocatori non possono più giocare né annullare carte."""
+
+
 class CardNotAvailableError(Exception):
     """La carta non è nell'inventario sponsor del pilota o le copie sono finite."""
 
@@ -49,6 +53,7 @@ class PlayState:
     plays: list[CardPlay]
     available: list[AvailableCard]
     undo_remaining: int
+    in_review: bool
 
 
 def _race_in_progress(db: Session, championship_id: int) -> Race:
@@ -77,6 +82,12 @@ def _authorize(db: Session, user: User, championship_id: int, pilot_id: int) -> 
     if not is_enrolled(db, championship_id, pilot.id):
         raise PilotNotEnrolledError
     return pilot, _race_in_progress(db, championship_id)
+
+
+def _ensure_not_in_review(race: Race) -> None:
+    # Errori: RaceInReviewError.
+    if race.review_started_at is not None:
+        raise RaceInReviewError
 
 
 def _plays(db: Session, race_id: int, pilot_id: int) -> list[CardPlay]:
@@ -117,11 +128,13 @@ def _state(db: Session, pilot: Pilot, race: Race) -> PlayState:
         plays=plays,
         available=_available(inventory, plays),
         undo_remaining=max(0, MAX_UNDOS - _undo_streak(plays)),
+        in_review=race.review_started_at is not None,
     )
 
 
 def get_play_state(db: Session, user: User, championship_id: int, pilot_id: int) -> PlayState:
-    # Giocate e copie disponibili del pilota nella gara in corso.
+    # Giocate e copie disponibili del pilota nella gara in corso (anche se in revisione:
+    # la lettura resta consentita, il campo in_review lo indica).
     # Errori: quelli di _authorize.
     pilot, race = _authorize(db, user, championship_id, pilot_id)
     return _state(db, pilot, race)
@@ -132,10 +145,11 @@ def play_card(
 ) -> PlayState:
     # Registra la giocata di una carta sponsor. Non cambia l'inventario: quello cambia
     # solo alla chiusura della gara. Un solo commit; in caso di errore non cambia nulla.
-    # Errori: quelli di _authorize, CardNotAvailableError.
+    # Errori: quelli di _authorize, RaceInReviewError, CardNotAvailableError.
     try:
         _lock_database(db)
         pilot, race = _authorize(db, user, championship_id, pilot_id)
+        _ensure_not_in_review(race)
         state = _state(db, pilot, race)
         key = card_key(card_name)
         card = next((c for c in state.available if card_key(c.name) == key), None)
@@ -153,10 +167,11 @@ def play_card(
 
 def undo_last_play(db: Session, user: User, championship_id: int, pilot_id: int) -> PlayState:
     # Annulla l'ultima giocata attiva, fino a MAX_UNDOS volte di fila.
-    # Errori: quelli di _authorize, NothingToUndoError, UndoLimitError.
+    # Errori: quelli di _authorize, RaceInReviewError, NothingToUndoError, UndoLimitError.
     try:
         _lock_database(db)
         pilot, race = _authorize(db, user, championship_id, pilot_id)
+        _ensure_not_in_review(race)
         plays = _plays(db, race.id, pilot.id)
         active = [p for p in plays if p.status == STATUS_PLAYED]
         if not active:

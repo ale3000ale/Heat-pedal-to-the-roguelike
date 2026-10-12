@@ -13,6 +13,7 @@ from app.services.card_play import (
     NoRaceInProgressError,
     NothingToUndoError,
     PlayState,
+    RaceInReviewError,
     UndoLimitError,
     get_play_state,
     play_card,
@@ -32,6 +33,7 @@ def _state_read(state: PlayState) -> CardPlayStateRead:
         plays=[CardPlayRead.model_validate(play) for play in state.plays],
         available=[AvailableCardRead(**vars(card)) for card in state.available],
         undo_remaining=state.undo_remaining,
+        in_review=state.in_review,
     )
 
 
@@ -47,6 +49,8 @@ def _http_error(exc: Exception) -> HTTPException:
         return HTTPException(status.HTTP_409_CONFLICT, "Campionato chiuso")
     if isinstance(exc, NoRaceInProgressError):
         return HTTPException(status.HTTP_409_CONFLICT, "Nessuna gara in corso")
+    if isinstance(exc, RaceInReviewError):
+        return HTTPException(status.HTTP_409_CONFLICT, "La gara è in revisione")
     if isinstance(exc, CardNotAvailableError):
         return HTTPException(status.HTTP_409_CONFLICT, "Carta non disponibile")
     if isinstance(exc, NothingToUndoError):
@@ -62,6 +66,7 @@ DOMAIN_ERRORS = (
     PilotNotEnrolledError,
     ChampionshipClosedError,
     NoRaceInProgressError,
+    RaceInReviewError,
     CardNotAvailableError,
     NothingToUndoError,
     UndoLimitError,
@@ -83,7 +88,8 @@ def read_card_plays(championship_id: int, pilot_id: int, user: CurrentUser, db: 
     status_code=status.HTTP_201_CREATED,
 )
 def create_card_play(championship_id: int, data: CardPlayRequest, user: CurrentUser, db: DbDep):
-    # Gioca una carta sponsor. 409 se la carta non è disponibile o non c'è una gara in corso.
+    # Gioca una carta sponsor. 409 se la carta non è disponibile, se non c'è una gara in
+    # corso o se la gara è in revisione.
     try:
         return _state_read(play_card(db, user, championship_id, data.pilot_id, data.card_name))
     except DOMAIN_ERRORS as exc:
@@ -92,7 +98,7 @@ def create_card_play(championship_id: int, data: CardPlayRequest, user: CurrentU
 
 @router.post("/{championship_id}/card-plays/undo", response_model=CardPlayStateRead)
 def undo_card_play(championship_id: int, data: CardUndoRequest, user: CurrentUser, db: DbDep):
-    # Annulla l'ultima giocata attiva, fino a 5 volte consecutive.
+    # Annulla l'ultima giocata attiva, fino a 5 volte consecutive (409 se la gara è in revisione).
     try:
         return _state_read(undo_last_play(db, user, championship_id, data.pilot_id))
     except DOMAIN_ERRORS as exc:

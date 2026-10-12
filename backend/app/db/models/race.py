@@ -9,6 +9,9 @@ class Race(Base):
     championship_id = Column(Integer, ForeignKey("championship.id"), nullable=False)
     number = Column(Integer, nullable=False)
     date = Column(DateTime, nullable=True)
+    # Valorizzata quando il giudice o l'admin apre il riepilogo: la gara è "in revisione"
+    # e i giocatori non possono più giocare né annullare carte. Vuota = gara in corso.
+    review_started_at = Column(DateTime, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("championship_id", "number"),

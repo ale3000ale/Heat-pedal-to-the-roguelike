@@ -31,9 +31,11 @@ class AvailableCardRead(BaseModel):
 
 
 class CardPlayStateRead(BaseModel):
-    # Stato delle giocate di un pilota nella gara in corso.
+    # Stato delle giocate di un pilota nella gara in corso; in_review indica che la gara
+    # è in revisione e non si può più giocare né annullare.
     race_id: int
     pilot_id: int
     plays: list[CardPlayRead]
     available: list[AvailableCardRead]
     undo_remaining: int
+    in_review: bool
