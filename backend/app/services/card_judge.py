@@ -30,6 +30,10 @@ class CardPlayNotActiveError(Exception):
     """La giocata non è attiva: è già annullata o consumata."""
 
 
+class CardNotRemovableError(Exception):
+    """La carta non si può togliere dall'inventario del pilota (il messaggio dice perché)."""
+
+
 def _reviewed_race(db: Session, championship_id: int, race_id: int, user: User) -> Race:
     # Gara con i risultati e revisione delle carte attiva, aperta da questo utente.
     # Errori: ChampionshipNotFoundError, RaceNotFoundError, ChampionshipClosedError,
@@ -110,3 +114,54 @@ def grant_bonus(
         db.rollback()
         raise
     return pilot, picked
+
+
+def _active_copies(db: Session, race_id: int, pilot_id: int, card_name: str) -> int:
+    # Copie della carta impegnate in giocate attive del pilota nella gara.
+    key = card_key(card_name)
+    plays = db.scalars(
+        select(CardPlay).where(
+            CardPlay.race_id == race_id,
+            CardPlay.pilot_id == pilot_id,
+            CardPlay.status == STATUS_PLAYED,
+        )
+    )
+    return sum(1 for play in plays if card_key(play.card_name) == key)
+
+
+def remove_card(
+    db: Session, championship_id: int, race_id: int, pilot_id: int, card_name: str, user: User
+) -> tuple[Pilot, CardEntry]:
+    # Il revisore toglie una copia dall'inventario sponsor del pilota e la rimette nella
+    # pool sponsor del campionato (inverso del bonus). Possibile solo con la revisione
+    # attiva e se almeno una copia non è impegnata in una giocata attiva. Un solo commit.
+    # Errori: quelli di _reviewed_race, PilotNotFoundError, PilotNotEnrolledError,
+    # CardNotRemovableError (pool assente, carta non in inventario, copie tutte in gioco).
+    try:
+        _lock_database(db)
+        race = _reviewed_race(db, championship_id, race_id, user)
+        championship = get_championship(db, championship_id)
+        pilot = db.get(Pilot, pilot_id)
+        if pilot is None or pilot.deleted_at is not None:
+            raise PilotNotFoundError
+        if not is_enrolled(db, championship_id, pilot.id):
+            raise PilotNotEnrolledError
+        pool_deck = db.get(Deck, championship.sponsor_pool_deck_id) if championship.sponsor_pool_deck_id else None
+        if pool_deck is None:
+            raise CardNotRemovableError("Il campionato non ha una pool sponsor")
+        inventory_deck = db.get(Deck, pilot.sponsor_inventory_deck_id)
+        inventory = parse_cards(inventory_deck.cards)
+        key = card_key(card_name)
+        held = next((card for card in inventory if card_key(card.name) == key), None)
+        if held is None:
+            raise CardNotRemovableError("La carta non è nell'inventario sponsor del pilota")
+        if held.copies <= _active_copies(db, race.id, pilot.id, held.name):
+            raise CardNotRemovableError("Tutte le copie della carta sono in gioco")
+        one = CardEntry(name=held.name, path=held.path, copies=1)
+        inventory_deck.cards = dump_cards(_without_one_copy(inventory, one))
+        pool_deck.cards = dump_cards(_with_one_more_copy(parse_cards(pool_deck.cards), one))
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return pilot, one

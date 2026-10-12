@@ -125,6 +125,24 @@ def bonus(admin, championship_id, race_id, pilot_id, card_name=CARD):
     )
 
 
+def removal(client, championship_id, race_id, pilot_id, card_name=CARD):
+    return client.post(
+        f"/api/championships/{championship_id}/races/{race_id}/card-removal",
+        json={"pilot_id": pilot_id, "card_name": card_name},
+    )
+
+
+def other_judge(make_client, session_factory):
+    # Secondo utente con ruolo giudice, già collegato.
+    with session_factory() as db:
+        db.add(User(username="giudice", password=hash_password(PASSWORD), role="judge"))
+        db.commit()
+    judge = make_client()
+    r = judge.post("/api/auth/login", json={"username": "giudice", "password": PASSWORD})
+    assert r.status_code == 200
+    return judge
+
+
 def scenario(make_client, session_factory, copies=2, pool_copies=2):
     admin, player = setup_world(make_client, session_factory)
     championship_id = admin.post("/api/championships", json={"name": "Estate"}).json()["id"]
@@ -214,3 +232,111 @@ def test_players_cannot_play_or_gift_while_the_race_is_in_review(make_client, se
     assert play(player, champ, pilot).status_code == 409
     assert gift(player, champ, pilot).status_code == 409
     assert bonus(admin, champ, race, pilot).status_code == 201
+
+
+def test_removal_moves_a_copy_from_the_inventory_to_the_pool(make_client, session_factory):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory, copies=2, pool_copies=1)
+    reviewing(admin, champ, race, pilot)
+    r = removal(admin, champ, race, pilot)
+    assert r.status_code == 200
+    assert r.json() == {"pilot_id": pilot, "card_name": CARD, "card_path": "cards/sponsor/turbo.webp"}
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 1}
+    assert sponsor_pool(session_factory, champ) == {CARD: 2}
+
+
+def test_removal_of_the_last_copy_empties_the_inventory(make_client, session_factory):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory, copies=1, pool_copies=1)
+    reviewing(admin, champ, race, pilot)
+    assert removal(admin, champ, race, pilot).status_code == 200
+    assert sponsor_inventory(session_factory, pilot).get(CARD, 0) == 0
+    assert sponsor_pool(session_factory, champ) == {CARD: 2}
+
+
+def test_removal_is_refused_for_a_card_not_in_the_inventory(make_client, session_factory):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory)
+    reviewing(admin, champ, race, pilot)
+    assert removal(admin, champ, race, pilot, "Inesistente").status_code == 409
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
+    assert sponsor_pool(session_factory, champ) == {CARD: 2}
+
+
+def test_removal_is_refused_when_every_copy_is_in_an_active_play(make_client, session_factory):
+    admin, player, champ, pilot, race = scenario(make_client, session_factory, copies=1)
+    assert play(player, champ, pilot).status_code == 201
+    reviewing(admin, champ, race, pilot)
+    assert removal(admin, champ, race, pilot).status_code == 409
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 1}
+    assert sponsor_pool(session_factory, champ) == {CARD: 2}
+
+
+def test_removal_takes_only_the_copies_not_in_play(make_client, session_factory):
+    admin, player, champ, pilot, race = scenario(make_client, session_factory, copies=2)
+    assert play(player, champ, pilot).status_code == 201
+    reviewing(admin, champ, race, pilot)
+    assert removal(admin, champ, race, pilot).status_code == 200
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 1}
+    assert removal(admin, champ, race, pilot).status_code == 409
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 1}
+
+
+def test_removal_is_possible_after_the_judge_cancels_the_play(make_client, session_factory):
+    admin, player, champ, pilot, race = scenario(make_client, session_factory, copies=1)
+    assert play(player, champ, pilot).status_code == 201
+    play_id = summary(admin, champ, race).json()[0]["plays"][0]["id"]
+    reviewing(admin, champ, race, pilot)
+    assert removal(admin, champ, race, pilot).status_code == 409
+    assert cancel(admin, champ, race, play_id).status_code == 200
+    assert removal(admin, champ, race, pilot).status_code == 200
+    assert sponsor_inventory(session_factory, pilot).get(CARD, 0) == 0
+
+
+def test_removal_is_refused_without_an_active_review(make_client, session_factory):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory)
+    assert removal(admin, champ, race, pilot).status_code == 409
+    finish_race(admin, champ, race, pilot)
+    assert removal(admin, champ, race, pilot).status_code == 409
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
+
+
+def test_removal_is_refused_to_a_reviewer_who_does_not_hold_the_review(
+    make_client, session_factory
+):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory)
+    reviewing(admin, champ, race, pilot)
+    judge = other_judge(make_client, session_factory)
+    assert removal(judge, champ, race, pilot).status_code == 409
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
+
+
+def test_removal_is_refused_for_a_pilot_not_enrolled(make_client, session_factory):
+    admin, player, champ, pilot, race = scenario(make_client, session_factory)
+    team_id = player.post("/api/teams", json={"name": "Team Libero"}).json()["id"]
+    free = player.post("/api/pilots", json={"name": "Libero", "team_id": team_id}).json()["id"]
+    reviewing(admin, champ, race, pilot)
+    assert removal(admin, champ, race, free).status_code == 403
+
+
+def test_removal_is_refused_for_an_unknown_pilot(make_client, session_factory):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory)
+    reviewing(admin, champ, race, pilot)
+    assert removal(admin, champ, race, 99999).status_code == 404
+
+
+def test_a_player_cannot_remove_a_card(make_client, session_factory):
+    admin, player, champ, pilot, race = scenario(make_client, session_factory)
+    reviewing(admin, champ, race, pilot)
+    assert removal(player, champ, race, pilot).status_code in (401, 403)
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
+
+
+def test_removal_is_refused_when_the_championship_has_no_sponsor_pool(
+    make_client, session_factory
+):
+    admin, player = setup_world(make_client, session_factory)
+    champ = admin.post("/api/championships", json={"name": "Estate"}).json()["id"]
+    pilot = enrolled_pilot(player, champ)
+    give_sponsor_cards(session_factory, pilot, 2)
+    race = start_race(admin, champ)
+    reviewing(admin, champ, race, pilot)
+    assert removal(admin, champ, race, pilot).status_code == 409
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 2}

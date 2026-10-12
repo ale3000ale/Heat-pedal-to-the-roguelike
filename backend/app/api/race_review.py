@@ -7,16 +7,20 @@ from app.db.models.race import Race
 from app.schemas.card_judge import (
     CardBonusRead,
     CardBonusRequest,
+    CardRemovalRead,
+    CardRemovalRequest,
     JudgePlayRead,
     PilotPlaysRead,
 )
 from app.schemas.race_review import RaceReviewRead
 from app.services.card_judge import (
+    CardNotRemovableError,
     CardPlayNotActiveError,
     CardPlayNotFoundError,
     cancel_play,
     get_card_summary,
     grant_bonus,
+    remove_card,
 )
 from app.services.card_play import CardNotAvailableError
 from app.services.cards import CardError
@@ -50,6 +54,7 @@ DOMAIN_ERRORS = (
     PilotNotFoundError,
     PilotNotEnrolledError,
     CardNotAvailableError,
+    CardNotRemovableError,
     CardPlayNotFoundError,
     CardPlayNotActiveError,
     CardError,
@@ -96,6 +101,8 @@ def _http_error(exc: Exception) -> HTTPException:
         return HTTPException(status.HTTP_409_CONFLICT, "La revisione non è aperta o è scaduta")
     if isinstance(exc, CardNotAvailableError):
         return HTTPException(status.HTTP_409_CONFLICT, "Carta non disponibile nella pool")
+    if isinstance(exc, CardNotRemovableError):
+        return HTTPException(status.HTTP_409_CONFLICT, str(exc))
     if isinstance(exc, CardPlayNotActiveError):
         return HTTPException(status.HTTP_409_CONFLICT, "La giocata non è più attiva")
     if isinstance(exc, CardError):
@@ -179,5 +186,22 @@ def create_card_bonus(
             db, championship_id, race_id, data.pilot_id, data.card_name, judge
         )
         return CardBonusRead(pilot_id=pilot.id, card_name=card.name, card_path=card.path)
+    except DOMAIN_ERRORS as exc:
+        raise _http_error(exc)
+
+
+@router.post(
+    "/{championship_id}/races/{race_id}/card-removal",
+    response_model=CardRemovalRead,
+)
+def create_card_removal(
+    championship_id: int, race_id: int, data: CardRemovalRequest, judge: JudgeUser, db: DbDep
+):
+    # Rimozione del revisore: una copia dall'inventario del pilota alla pool sponsor.
+    try:
+        pilot, card = remove_card(
+            db, championship_id, race_id, data.pilot_id, data.card_name, judge
+        )
+        return CardRemovalRead(pilot_id=pilot.id, card_name=card.name, card_path=card.path)
     except DOMAIN_ERRORS as exc:
         raise _http_error(exc)

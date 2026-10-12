@@ -28,3 +28,14 @@ class CardBonusRead(BaseModel):
     pilot_id: int
     card_name: str
     card_path: str
+
+
+class CardRemovalRequest(BaseModel):
+    pilot_id: int
+    card_name: str
+
+
+class CardRemovalRead(BaseModel):
+    pilot_id: int
+    card_name: str
+    card_path: str
