@@ -1,5 +1,10 @@
 <script lang="ts">
-	import { api } from '$lib/api';
+	import {
+		fetchCardPlayState,
+		giveRandomCard,
+		playCard,
+		undoCard
+	} from '$lib/card-play-api';
 	import type { AvailableCard, CardGift, CardPlay, CardPlayState } from '$lib/card-play-types';
 	import type { CardEntry } from '$lib/types';
 	import CardTile from '$lib/components/CardTile.svelte';
@@ -25,7 +30,6 @@
 	let confirmOpen = $state(false);
 	let pending = $state<AvailableCard | null>(null);
 
-	const base = $derived(`/championships/${championshipId}`);
 	let activePlays = $derived(
 		cardState ? cardState.plays.filter((p: CardPlay) => p.status === 'giocata') : []
 	);
@@ -51,7 +55,7 @@
 
 	async function load() {
 		await run(async () => {
-			cardState = await api<CardPlayState>(`${base}/card-plays?pilot_id=${pilot.id}`);
+			cardState = await fetchCardPlayState(championshipId, pilot.id);
 		});
 	}
 
@@ -69,31 +73,22 @@
 		const card = pending;
 		if (!card) return;
 		await run(async () => {
-			cardState = await api<CardPlayState>(`${base}/card-plays`, {
-				method: 'POST',
-				body: { pilot_id: pilot.id, card_name: card.name }
-			});
+			cardState = await playCard(championshipId, pilot.id, card.name);
 		});
 	}
 
 	async function undo() {
 		await run(async () => {
-			cardState = await api<CardPlayState>(`${base}/card-plays/undo`, {
-				method: 'POST',
-				body: { pilot_id: pilot.id }
-			});
+			cardState = await undoCard(championshipId, pilot.id);
 		});
 	}
 
 	// Tasto S: una carta casuale dalla pool sponsor; il popup lo mostra la pagina.
 	async function pressS() {
 		await run(async () => {
-			const gift = await api<CardGift>(`${base}/card-gifts`, {
-				method: 'POST',
-				body: { pilot_id: pilot.id }
-			});
+			const gift = await giveRandomCard(championshipId, pilot.id);
 			ongift(gift);
-			cardState = await api<CardPlayState>(`${base}/card-plays?pilot_id=${pilot.id}`);
+			cardState = await fetchCardPlayState(championshipId, pilot.id);
 		});
 	}
 </script>
