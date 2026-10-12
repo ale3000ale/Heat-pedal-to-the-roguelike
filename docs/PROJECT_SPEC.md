@@ -1,7 +1,7 @@
 # Specifiche del Progetto — Heat
 
 > STATO: APPROVATO. Si aggiorna nel tempo quando emergono nuove esigenze.
-> Ultimo aggiornamento: 12 ottobre 2026 (fasi 13a e 13b: backend delle carte sponsor in gara, della revisione della gara, del tasto S e del bonus del giudice; sezione 14. Le interfacce non sono ancora scritte. La fase 12, Negozio, è unita in `main`).
+> Ultimo aggiornamento: 13 ottobre 2026 (fase 13: backend delle carte sponsor in gara, della revisione con revisore unico, del tasto S e della rimozione di carte, intervallo di controllo delle notifiche; interfacce in corso nelle sottofasi 13c e 13d; sezione 14. La fase 12, Negozio, è unita in `main`).
 
 ## 1. Stack e contesto
 
@@ -25,8 +25,9 @@
 - L'admin e il giudice creano le gare e le terminano inserendo i risultati; solo l'admin può correggere i risultati di una gara già terminata.
 - In un campionato c'è al massimo una gara in corso alla volta: finché non è terminata non se ne crea un'altra.
 - Le gare non si eliminano a mano: esistono finché esiste il campionato.
-- Il Negozio e i pacchetti di carte sono realizzati nella fase 12 (sezione 13). Le carte sponsor giocate in gara sono le fasi 13a e 13b (sezione 14). Amministrazione completa delle carte e spareggio sportivo sono rinviati e non bloccano la versione attuale.
-- In caso di pari punti, l'ordine alfabetico serve solo come stabilizzatore di visualizzazione, non come spareggio.
+- Il Negozio e i pacchetti di carte sono realizzati nella fase 12 (sezione 13). Le carte sponsor giocate in gara sono la fase 13 (sezione 14). L'amministrazione delle carte (caricamento, ritaglio, esclusione nelle pool personalizzate) è prevista nelle sottofasi 13e e 13f (`PHASE_13_SPEC.md`, parte B).
+- Lo spareggio sportivo non serve (decisione del 2026-10-12): in caso di pari punti, l'ordine alfabetico serve solo come stabilizzatore di visualizzazione.
+- Tutto il lavoro della fase 13 resta nel ramo `phase-13a-card-plays` e nella pull request #9: non si creano rami separati per le sottofasi.
 
 ## 3. Autenticazione
 
@@ -39,8 +40,8 @@
 
 - Ruoli previsti: `admin`, `judge` (giudice) e `player`.
 - Il primo admin viene creato al primo avvio tramite comando di setup o variabile d'ambiente.
-- Admin: crea, chiude e cancella i campionati, gestisce le pool, le impostazioni generali e il Negozio, crea le gare, inserisce e corregge i risultati, assegna il ruolo di giudice, pulisce gli elementi nascosti.
-- Giudice: ruolo fisso, valido per tutti i campionati, assegnato e tolto dall'admin a un utente. Serve a delegare del lavoro all'admin: può creare le gare e terminarle inserendo i risultati e i punti sponsor. Non può correggere una gara già terminata e non ha altri poteri di amministrazione. Può avere team e piloti come un giocatore. Durante la revisione di una gara può vedere le carte sponsor giocate, annullarne una e dare un bonus (sezione 14, backend della 13b; l'interfaccia è nelle fasi successive).
+- Admin: crea, chiude e cancella i campionati, gestisce le pool, le impostazioni generali (compreso l'intervallo di controllo delle notifiche) e il Negozio, crea le gare, inserisce e corregge i risultati, assegna il ruolo di giudice, pulisce gli elementi nascosti, riapre la revisione dell'ultima gara.
+- Giudice: ruolo fisso, valido per tutti i campionati, assegnato e tolto dall'admin a un utente. Serve a delegare del lavoro all'admin: può creare le gare e terminarle inserendo i risultati e i punti sponsor. Non può correggere una gara già terminata e non ha altri poteri di amministrazione. Può avere team e piloti come un giocatore. Può usare il tasto S su qualsiasi pilota iscritto. Se avvia la revisione di una gara ne diventa il revisore unico e può vedere le carte sponsor giocate, annullarne una, dare un bonus e rimuovere carte (sezione 14).
 - Player: gestisce i propri team e piloti.
 - Il ruolo dell'admin non si può cambiare, nemmeno da parte dell'admin stesso. Dall'interfaccia si assegna solo `player` o `judge`; l'admin si crea con il setup.
 - Ogni risposta dell'API che descrive un utente (login, utente corrente, registrazione) deve poter restituire tutti e tre i ruoli.
@@ -60,10 +61,11 @@
 - Pilot 1:N RaceResult
 - Race 1:N CardPlay; Pilot 1:N CardPlay (carte sponsor giocate in gara, sezione 14).
 - Race 1:N CardGift; Pilot 1:N CardGift (carte sponsor regalate con il tasto S, sezione 14).
+- Race N:1 User tramite `review_started_by_user_id` (revisore unico della gara, facoltativo).
 - Championship N:2 pool: una copia della pool delle modifiche e una della pool degli sponsor.
 - Championship 1:N Pack (pacchetti del negozio); Championship 1:N PackPurchase (storico).
 - DeckPrototype: indipendente, ha un tipo (`modifiche` o `sponsor`); sorgente delle pool di ogni campionato.
-- ChampionshipDefaults: una sola riga con le impostazioni generali (regole dell'oro per gara), copiate su ogni nuovo campionato.
+- ChampionshipDefaults: una sola riga con le impostazioni generali (regole dell'oro per gara, copiate su ogni nuovo campionato; `card_poll_seconds`, che non si copia e vale per tutti).
 - PackTemplate e ShopTemplate: modelli del Negozio gestiti dall'admin (sezione 13).
 
 Nota di modellazione: inventario delle modifiche, inventario degli sponsor e mazzo da gioco sono tre mazzi distinti per pilota, rappresentati da tre riferimenti a `Deck` sul pilota (`inventory_deck_id`, `sponsor_inventory_deck_id` e `game_deck_id`, tutti univoci).
@@ -72,21 +74,22 @@ Nota di modellazione: inventario delle modifiche, inventario degli sponsor e maz
 
 - Ogni pilota ha tre mazzi:
   - **Inventario delle modifiche**: tutte le carte possedute dal pilota. Nessun limite di dimensione: la composizione iniziale è solo il punto di partenza. Nel negozio ogni carta ha un tetto di 100 copie.
-  - **Inventario degli sponsor**: le carte sponsor ottenute dai pacchetti; vuoto alla creazione.
+  - **Inventario degli sponsor**: le carte sponsor ottenute dai pacchetti e dal tasto S; vuoto alla creazione.
   - **Mazzo da gioco**: le carte usate in gara, massimo 15 carte in totale (somma delle copie).
 - Il pilota costruisce il mazzo da gioco scegliendo carte dal proprio inventario: per ogni carta, le copie nel mazzo non superano quelle dell'inventario. Nella pagina del pilota le carte si spostano con un clic tra inventario e mazzo.
-- I mazzi si possono modificare anche con un campionato attivo; un eventuale blocco varà solo durante una gara.
+- I mazzi si possono modificare anche con un campionato attivo; un eventuale blocco varrà solo durante una gara.
 - Ogni mazzo ha un numero di versione (blocco ottimistico): se due modifiche si incrociano, la seconda riceve un errore 409.
 - Stato iniziale alla creazione del pilota (fisso, indipendente dalle pool):
   - Inventario delle modifiche: Velocità 1, Velocità 2, Velocità 3, Velocità 4, 3 copie ciascuna. La carta Calore parte con 0 copie e non compare nell'elenco.
   - Inventario degli sponsor: vuoto.
   - Mazzo da gioco: vuoto.
-- Il pilota ottiene nuove carte tramite i pacchetti del negozio, che consumano le pool del campionato (sezione 13).
+- Il pilota ottiene nuove carte tramite i pacchetti del negozio, che consumano le pool del campionato (sezione 13), e le carte sponsor anche con il tasto S (sezione 14).
 - Le carte sponsor non entrano nel mazzo da gioco. Si giocano in gara dall'inventario degli sponsor ed escono dall'inventario in modo definitivo alla chiusura della gara, tornando nella pool sponsor del campionato: regole nella sezione 14.
+- Nel dettaglio del pilota l'inventario ha due sezioni a scomparsa, "Modifiche" e "Sponsor". Le carte modifica si cliccano per metterle nel mazzo da gioco; le carte sponsor sono in sola lettura.
 
 ### Pool di base, pool derivate e pool del campionato
 
-- **Due pool di base, distinte**: la pool delle **modifiche** e la pool degli **sponsor**. Ciascuna è un `DeckPrototype` con il suo tipo ed è il catalogo completo delle carte e delle copie di quel tipo. Nomi tecnici: `default` per le modifiche e `sponsor` per gli sponsor. La pool degli sponsor è usata dai pacchetti per le carte sponsor.
+- **Due pool di base, distinte**: la pool delle **modifiche** e la pool degli **sponsor**. Ciascuna è un `DeckPrototype` con il suo tipo ed è il catalogo completo delle carte e delle copie di quel tipo. Nomi tecnici: `default` per le modifiche e `sponsor` per gli sponsor. La pool degli sponsor è usata dai pacchetti per le carte sponsor e dal tasto S.
 - Le carte Velocità 1-4 non fanno parte di nessuna pool di base, perché sono assegnate di default a tutti i piloti. Le carte Calore sono carte modifiche come le altre.
 - **Pool derivata**: l'admin la crea sempre a partire dalla pool di base dello stesso tipo, senza nuove immagini. Sceglie le carte da includere, il numero di copie di ciascuna (mai superiore a quello della base) e assegna un nome univoco.
 - Le pool derivate usano nome, immagine e percorso delle carte già presenti nella pool di base. Le carte di una pool si possono rinominare dalla pagina di dettaglio della pool.
@@ -125,7 +128,7 @@ Le carte delle cartelle `base/` entrano nel database con un pulsante "Ricarica" 
 - L'eliminazione logica di un team nasconde anche tutti i suoi piloti visibili.
 - Un elemento nascosto continua a occupare il suo nome fino all'eliminazione definitiva.
 - L'admin può eliminare definitivamente un pilota nascosto in qualsiasi momento, purché non sia iscritto a un campionato attivo.
-- L'eliminazione definitiva di un pilota rimuove pilota, mazzi, iscrizioni, risultati gara e giocate di carte; non modifica la classifica finale congelata dei campionati chiusi. Lo storico degli acquisti resta, con il nome del pilota copiato al momento dell'acquisto.
+- L'eliminazione definitiva di un pilota rimuove pilota, mazzi, iscrizioni, risultati gara, giocate e notifiche di carte; non modifica la classifica finale congelata dei campionati chiusi. Lo storico degli acquisti resta, con il nome del pilota copiato al momento dell'acquisto.
 - L'admin può eliminare definitivamente un team nascosto solo se non contiene più piloti, inclusi quelli già nascosti.
 - Dopo 365 giorni dall'eliminazione logica, la pulizia avviene automaticamente: prima i piloti, poi i team. Gli elementi ancora bloccati vengono saltati e riprovati in seguito.
 - L'admin può anche eseguire manualmente la pulizia automatica e cancellare prima del termine gli elementi che rispettano le regole.
@@ -176,7 +179,8 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo. Lo
 
 ### Impostazioni generali e regole dell'oro
 
-- Le **impostazioni generali** contengono le regole dell'oro per gara e si modificano dal pannello admin. Valgono solo per i campionati creati dopo la modifica.
+- Le **impostazioni generali** contengono le regole dell'oro per gara e l'intervallo di controllo delle notifiche di carta ottenuta; si modificano dal pannello admin. Le regole dell'oro valgono solo per i campionati creati dopo la modifica.
+- L'**intervallo di controllo** (`card_poll_seconds`) è un intero da 1 a 10 secondi, predefinito 5, modificabile solo dall'admin, valido per tutti i campionati (anche quelli già creati). Il giocatore lo legge una volta all'apertura della pagina del campionato.
 - Ogni campionato ha le proprie regole dell'oro, copiate dalle impostazioni generali alla creazione. L'admin le modifica dal popup delle impostazioni del campionato (ingranaggio), insieme a chiusura e cancellazione. Aperto dal negozio, lo stesso popup mostra solo pacchetti, pool completa e storico.
 - Le regole sono: un **oro base** dato a tutti gli iscritti, un **modificatore** per ciascuna delle posizioni 1-6 e un modificatore "altre" per le posizioni dalla 7ª in poi. Chi non ha corso riceve solo l'oro base. L'oro di una gara non scende mai sotto zero.
 - L'oro si assegna **una sola volta**, alla prima chiusura della gara, con le regole del campionato di quel momento. Le correzioni dei risultati non lo modificano.
@@ -188,7 +192,7 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo. Lo
 - La gara la crea l'admin o il giudice. In un campionato c'è una sola gara in corso alla volta: una gara è **in corso** finché non ha risultati, **terminata** quando ne ha almeno uno. Creare una nuova gara con una in corso è rifiutato (errore 409); l'interfaccia mostra l'avviso solo quando si preme "Nuova gara".
 - Una gara in corso può essere **in revisione** (sezione 14): è uno stato della gara in corso, non una terza fase.
 - Massimo 12 piloti partecipanti per gara.
-- **Terminare la gara**: coincide con l'inserimento dei risultati. L'admin o il giudice inseriscono la classifica (la posizione deriva dall'ordine) con i punti sponsor di ciascun pilota e indicano a mano i piloti che non partecipano. Ogni iscritto va assegnato alla classifica o ai non partecipanti, e serve almeno un pilota in classifica. Non esiste uno stato salvato.
+- **Terminare la gara**: coincide con l'inserimento dei risultati. L'admin o il giudice inseriscono la classifica (la posizione deriva dall'ordine) con i punti sponsor di ciascun pilota e indicano a mano i piloti che non partecipano. Ogni iscritto va assegnato alla classifica o ai non partecipanti, e serve almeno un pilota in classifica. Non esiste uno stato salvato. Premere "termina gara" avvia anche la revisione delle carte sponsor (sezione 14).
 - **Uscita dalla pagina**: se si lascia una gara in corso con una classifica non salvata, un popup chiede conferma ("Esci" o "Rimani"); chiudendo o ricaricando la scheda compare l'avviso del browser.
 - **Correzione**: solo l'admin può sostituire i risultati di una gara già terminata (in caso di errore), e solo finché il campionato è attivo. Il giudice che ci prova riceve un rifiuto.
 - Un campionato chiuso è in sola lettura per tutti: nessuna creazione di gare e nessuna correzione, nemmeno dell'admin.
@@ -222,15 +226,15 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo. Lo
 - Login e registrazione.
 - Dashboard con i propri team e piloti.
 - Gestione di team e piloti, con ricerca per nome e filtro per team.
-- Pilota: inventario e mazzo da gioco, con spostamento delle carte (massimo 15 nel mazzo) e campionato attivo.
-- Campionati: elenco di attivi e chiusi (pulsante "+" per crearne uno, solo admin), dettaglio con iscrizione di un pilota, gare ("in corso" o "terminata") e classifica; ingranaggio con le impostazioni del campionato (solo admin).
-- Gara: classifica, piloti da assegnare, non partecipanti, pulsante "Termina"; correzione solo per l'admin.
+- Pilota: inventario in due sezioni (modifiche e sponsor) e mazzo da gioco, con spostamento delle carte (massimo 15 nel mazzo) e campionato attivo.
+- Campionati: elenco di attivi e chiusi (pulsante "+" per crearne uno, solo admin), dettaglio con iscrizione di un pilota, gare ("in corso" o "terminata") e classifica; con una gara in corso, blocco "Le tue carte sponsor" con una sezione per pilota (uso con conferma, annulla ultima); ingranaggio con le impostazioni del campionato (solo admin).
+- Gara: classifica, piloti da assegnare, non partecipanti, pulsante "Termina"; correzione solo per l'admin; per giudice e admin, con la gara in corso, la scheda "Piloti iscritti" con il tasto S accanto a ogni pilota; la revisione delle carte è in realizzazione (13d).
 - Elenco dei negozi (`/shop`): un riquadro per campionato attivo con i propri piloti iscritti e il loro saldo (oro e punti sponsor); un clic apre il negozio con quel pilota.
 - Negozio del campionato: sezioni modifiche e sponsor, pacchetti, acquisto con apertura animata e riepilogo finale, pulsante Inventario (popup di riepilogo); lo storico è una pagina separata (sezione 13).
 - Pannello admin, raggiungibile dal menu "Admin" in alto (visibile solo all'admin):
   - pool: elenco, pulsante "Ricarica" per le due pool di base (con conferma se toglie carte), creazione ed eliminazione delle pool derivate, dettaglio con carte rinominabili;
   - creazione, chiusura e cancellazione dei campionati, con la scelta delle due pool (modifiche e sponsor);
-  - impostazioni generali (regole dell'oro per i nuovi campionati);
+  - impostazioni generali (regole dell'oro per i nuovi campionati e intervallo di controllo delle notifiche);
   - elenco degli utenti e assegnazione o rimozione del ruolo di giudice;
   - elenco e pulizia di team e piloti nascosti;
   - gestione del negozio: template di pacchetto e di negozio.
@@ -257,15 +261,16 @@ Lo schema è gestito da Alembic (`backend/alembic/versions`), su SQLite. Le migr
 | `c3e7a1d5b9f2` registro carte giocate | Tabella `card_play` (gara, pilota, nome e percorso della carta, stato `giocata`/`annullata`/`consumata`, `played_at`), indice su gara e pilota |
 | `d4f8b2e6a0c3` gara in revisione | Colonna `review_started_at` (facoltativa) su `race` |
 | `e7a3c9d1f5b2` carte regalate | Tabella `card_gift` (gara, pilota, nome e percorso della carta, `created_at`, `seen_at`), indice su pilota e `seen_at` |
+| `f8a4d2c6e0b1` intervallo di controllo | Colonna `card_poll_seconds` su `championship_defaults` (valore 5 per la riga esistente) |
+| `a9c3e7b1d5f0` revisore unico | Colonna `review_started_by_user_id` (facoltativa) su `race` |
 
 Le differenze elencate nelle prime versioni di questo documento (nome della tabella con lo spazio, elenco piloti in campo testo, mancanza di gare e risultati, mazzi non collegati al pilota, team senza utente, ruolo utente mancante, `deleted_at`) sono risolte da queste migrazioni. I campionati presenti nel database sono solo di prova: non servono regole di conversione per dati reali. Dopo un cambio di computer o un `git pull` è necessario applicare le migrazioni: `python heat.py migrate` (l'avvio lo fa da solo).
 
 ## 12. Domande aperte (rinviate)
 
 1. Amministrazione carte: caricamento singolo da interfaccia in `uploads/`, modifica e reset delle carte già presenti nelle pool di base (la ricarica aggiunge e toglie solo in base ai file). Previsto nelle fasi 13e e 13f (`PHASE_13_SPEC.md`, parte B).
-2. Spareggio sportivo: criterio in caso di pari punti.
-3. Carte sponsor, parte successiva al backend della 13b: interfacce del giocatore e del giudice, notifica a schermo (fasi successive, `PHASE_13_SPEC.md`, parte A). Il ripristino di una carta da parte dell'admin dopo la chiusura della gara, previsto dalla sezione 14, non è ancora realizzato.
-4. Uso online con un database diverso da SQLite: servirà un blocco sulla riga del pilota negli acquisti.
+2. Interfacce delle carte sponsor non ancora complete: tasto Indietro del giocatore (13c) e revisione nella pagina della gara (13d).
+3. Uso online con un database diverso da SQLite: servirà un blocco sulla riga del pilota negli acquisti. L'uso online è rinviato a dopo la fase 14.
 
 ## 13. Negozio e pacchetti (fase 12)
 
@@ -322,7 +327,7 @@ Backend (12a-12c) completato e approvato; frontend del giocatore (12d) e dell'ad
 
 ## 14. Carte sponsor in gara (fase 13)
 
-La fase 13 ha sottofasi 13a-13g; il piano completo e le decisioni approvate sono in `PHASE_13_SPEC.md`. Questa sezione fissa le regole del backend delle sottofasi **13a** (uso delle carte sponsor da parte del pilota) e **13b** (stato "in revisione", riepilogo e correzioni del giudice, tasto S e notifica). Le interfacce sono nelle sottofasi successive.
+La fase 13 ha sottofasi 13a-13g; il piano completo e le decisioni approvate sono in `PHASE_13_SPEC.md`. Questa sezione fissa le regole del backend (13a, 13b, 13c-1) e l'interfaccia realizzata finora (13c, 13d parziale).
 
 ### Chi gioca e quando
 
@@ -334,7 +339,7 @@ La fase 13 ha sottofasi 13a-13g; il piano completo e le decisioni approvate sono
 
 - Solo carte **sponsor**, scelte dall'**inventario degli sponsor** del pilota (`sponsor_inventory_deck_id`). Le carte modifiche e il mazzo da gioco non c'entrano.
 - **Nessun limite al numero di giocate**: il pilota gioca le carte che vuole, finché ne ha copie disponibili.
-- Giocando una carta l'inventario sponsor **non viene modificato**. Le giocate sono registrate in una tabella a parte, `card_play`; le copie disponibili di una carta in una gara sono quelle dell'inventario meno le giocate non annullate di quella gara. L'inventario cambia durante la gara solo con il tasto S e con il bonus del giudice (più sotto).
+- Giocando una carta l'inventario sponsor **non viene modificato**. Le giocate sono registrate in una tabella a parte, `card_play`; le copie disponibili di una carta in una gara sono quelle dell'inventario meno le giocate non annullate di quella gara. L'inventario cambia durante la gara solo con il tasto S, con il bonus e con la rimozione del revisore (più sotto).
 - La carta si identifica per `name` (come nel formato delle carte, sezione 6); la giocata conserva anche `path` e l'orario.
 
 ### Annullamento (Indietro)
@@ -349,31 +354,40 @@ La fase 13 ha sottofasi 13a-13g; il piano completo e le decisioni approvate sono
 - Una riga per ogni giocata: gara, pilota, nome e percorso della carta, stato (`giocata`, `annullata` o `consumata`) e data e ora della giocata (`played_at`). Non si conserva la data dell'annullamento.
 - Le righe non si cancellano durante il gioco: una giocata annullata o consumata resta nello storico. Si rimuovono solo con l'eliminazione definitiva del pilota. Le gare non si eliminano a mano.
 
-### Chiusura della gara
+### Chiusura della gara e consumo delle carte
 
-- Alla chiusura della gara (inserimento dei risultati) le carte giocate e non annullate escono **in modo definitivo** dall'inventario sponsor dei piloti e **tornano nella copia di pool sponsor del campionato**. Le righe corrispondenti passano allo stato `consumata`.
+- Alla chiusura della gara le carte giocate e non annullate escono **in modo definitivo** dall'inventario sponsor dei piloti e **tornano nella copia di pool sponsor del campionato**. Le righe corrispondenti passano allo stato `consumata`. Senza pool sponsor sul campionato le carte escono dall'inventario ma non tornano in nessuna pool.
 - La chiusura e il passaggio delle carte avvengono nella stessa operazione: se uno dei due fallisce, non viene salvato nessuno dei due.
-- Il passaggio avviene una sola volta, alla prima chiusura della gara. Le correzioni successive dei risultati non lo ripetono.
-- Il ripristino di una carta da parte dell'admin dopo la chiusura non è ancora realizzato (sezione 12).
+- Il passaggio avviene una sola volta, alla prima chiusura della gara. Le correzioni dei risultati e le riconferme della revisione non lo ripetono.
 
-### Revisione della gara
+### Revisione della gara (13b)
 
-- Il giudice o l'admin porta una gara in corso "in revisione" (`review_started_at` valorizzata): da quel momento i giocatori non possono più giocare, annullare né usare il tasto S.
-- Il giudice o l'admin può riportare la gara in corso, come prima della revisione. Una gara già terminata non può entrare in revisione né uscirne (errore 409).
-- Lo stato dice se la gara è in revisione e da quando; la lettura dello stato di gioco del pilota restituisce lo stesso indicatore.
+- La revisione si avvia con "termina gara", da giudice o admin: chi la avvia diventa il **revisore unico** (`review_started_by_user_id`). Ogni altro utente, giudici e admin compresi, riceve 409 su tutte le azioni della revisione.
+- Durante la revisione i giocatori non possono giocare, annullare né usare il tasto S (409).
+- La revisione **scade dopo 15 minuti** dall'inizio (`review_started_at`): alla prima richiesta successiva (lettura dello stato o creazione di una nuova gara) viene confermata così com'è, senza processi in background.
+- Il revisore può **rinunciare** (le giocate non cambiano) o **confermare**. Con la revisione scaduta o mai aperta può confermare solo l'admin.
+- L'**admin** può **riaprire** la revisione già confermata della sola ultima gara del campionato: diventa il revisore con altri 15 minuti. Per chi non è admin la riapertura dà 403; per una gara non ultima o una revisione non confermata dà 409.
+- Lo stato della revisione (`GET .../review`) è leggibile da ogni utente collegato e riporta `in_review`, `reviewer_user_id`, `review_expires_at`, `review_closed_at` e `is_last_race`.
 
-### Riepilogo e correzioni del giudice
+### Riepilogo e correzioni del revisore
 
-- Il giudice o l'admin vedono le carte giocate da tutti i piloti nella gara, raggruppate per pilota e in ordine cronologico, con lo stato di ciascuna giocata.
-- Il giudice o l'admin possono annullare una giocata attiva di qualsiasi pilota, solo finché la gara non ha risultati; la giocata resta nel registro con stato `annullata`. Una giocata già annullata o consumata è rifiutata (409).
-- **Bonus**: il giudice o l'admin possono dare a un pilota iscritto una copia di una carta presente nella pool sponsor del campionato, per correggere errori. La copia passa dalla pool all'inventario del pilota, senza notifica. Con campionato chiuso o carta non disponibile nella pool l'operazione è rifiutata.
+- Il revisore vede le carte giocate da tutti i piloti della gara, raggruppate per pilota, con lo stato di ciascuna giocata.
+- **Annullo**: porta una giocata a `annullata` (resta nel registro), anche se già consumata: in quel caso la carta torna al pilota dalla pool sponsor solo se la pool ha ancora una copia uguale, altrimenti 409. Una giocata già annullata è rifiutata (409).
+- **Bonus**: una copia di una carta della pool sponsor passa all'inventario del pilota iscritto, senza notifica, per correggere errori. 409 se la carta non è in pool o il campionato è chiuso.
+- **Rimozione**: una copia passa dall'inventario sponsor del pilota alla pool sponsor del campionato. 409 se il campionato non ha pool sponsor, se la carta non è nell'inventario o se tutte le copie sono impegnate in giocate attive; 404 per pilota inesistente o eliminato; 403 per pilota non iscritto.
 
 ### Tasto S e notifica
 
-- Il giocatore preme il tasto S con il proprio pilota durante la gara: riceve una carta sponsor **casuale** dalla pool sponsor del campionato, con probabilità proporzionale alle copie rimaste. La copia passa dalla pool all'inventario del pilota, e viene creata una riga in `card_gift`.
-- Con la pool sponsor vuota, senza gara in corso o con la gara in revisione il tasto S è rifiutato (409).
-- La notifica "Hai ottenuto una carta sponsor" resta da leggere finché `seen_at` è vuoto; il giocatore la segna come vista con una richiesta apposita, che chiude tutte le notifiche del suo pilota nel campionato. Il bonus del giudice non crea notifiche.
+- Il tasto S dà al pilota una carta sponsor **casuale** dalla pool sponsor del campionato, con probabilità proporzionale alle copie rimaste. La copia passa dalla pool all'inventario del pilota, e viene creata una riga in `card_gift`; la carta è subito giocabile nella stessa gara.
+- Lo premono **giudice e admin**, dalla pagina della gara, su qualsiasi pilota iscritto non eliminato; il giocatore non ha più il tasto S. Chi lo preme vede solo "Carta assegnata a [nome]", non la carta. A livello di backend il giocatore può ancora usarlo solo sui propri piloti (404 sugli altri).
+- Con la pool sponsor vuota (409), senza gara in corso o con la gara in revisione il tasto S è rifiutato (409).
+- La notifica "Hai ottenuto una carta sponsor" va al proprietario del pilota e resta da leggere finché `seen_at` è vuoto: il giocatore la vede in un popup che si chiude solo con la X e, chiudendosi, segna come viste le notifiche del suo pilota nel campionato. Il bonus del revisore non crea notifiche.
+
+### Intervallo di controllo (13c-1)
+
+- Il giocatore controlla le nuove notifiche a intervalli: valore `card_poll_seconds` delle impostazioni generali (1-10 secondi, predefinito 5), letto con `GET /api/admin/card-poll` e modificato dall'admin con `PUT`. Se la lettura fallisce o il valore non è valido il frontend usa 5 secondi.
+- Il controllo parte solo con campionato attivo e almeno un proprio pilota iscritto, e non fa nulla mentre il popup è aperto.
 
 ### Stato
 
-Backend delle sottofasi 13a e 13b scritto. Le interfacce (gioco, revisione, notifica) e il ripristino dell'admin dopo la chiusura non sono ancora realizzati.
+Backend delle sottofasi 13a, 13b e 13c-1 scritto. Frontend: realizzati la sezione per pilota con uso e annulla ultima, il popup della notifica, il controllo periodico, il campo dell'intervallo nelle impostazioni generali, l'inventario in due sezioni e il tasto S nella pagina della gara. Da fare: tasto Indietro (13c) e revisione nella pagina della gara (13d). Il ripristino di una carta da parte dell'admin dopo la chiusura non è previsto: la riapertura della revisione e l'annullo di giocate consumate lo sostituiscono.
