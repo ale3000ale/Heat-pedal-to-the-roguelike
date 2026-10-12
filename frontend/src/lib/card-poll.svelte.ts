@@ -1,8 +1,25 @@
-import { api } from '$lib/api';
+import {
+	fetchCardPoll,
+	fetchUnseenGifts as fetchPilotGifts,
+	markGiftsSeen as markPilotGiftsSeen
+} from '$lib/card-play-api';
 import type { CardGift } from '$lib/card-play-types';
+import { CARD_POLL_DEFAULT, CARD_POLL_MAX, CARD_POLL_MIN } from '$lib/card-poll-validation';
 
-// Intervallo fisso del controllo delle notifiche (l'impostazione configurabile arriva dopo).
-export const GIFT_POLL_INTERVAL_MS = 15000;
+/**
+ * Legge l'intervallo di controllo delle notifiche impostato dall'admin.
+ * @returns Millisecondi tra due controlli. Se la lettura fallisce o il valore non rientra
+ * nei limiti (da 1 a 10 secondi) si usa il valore predefinito di 5 secondi.
+ */
+export async function loadPollIntervalMs(): Promise<number> {
+	try {
+		const { seconds } = await fetchCardPoll();
+		const valid = Number.isInteger(seconds) && seconds >= CARD_POLL_MIN && seconds <= CARD_POLL_MAX;
+		return (valid ? seconds : CARD_POLL_DEFAULT) * 1000;
+	} catch {
+		return CARD_POLL_DEFAULT * 1000;
+	}
+}
 
 /**
  * Legge le carte ottenute e non ancora viste dei piloti indicati.
@@ -17,9 +34,7 @@ export async function fetchUnseenGifts(
 ): Promise<CardGift[]> {
 	const lists = await Promise.all(
 		pilotIds.map((pilotId) =>
-			api<CardGift[]>(`/championships/${championshipId}/card-gifts?pilot_id=${pilotId}`).catch(
-				() => [] as CardGift[]
-			)
+			fetchPilotGifts(championshipId, pilotId).catch(() => [] as CardGift[])
 		)
 	);
 	return lists.flat();
@@ -32,25 +47,18 @@ export async function fetchUnseenGifts(
  * @throws ApiError se il backend rifiuta la richiesta.
  */
 export async function markGiftsSeen(championshipId: number, pilotIds: number[]): Promise<void> {
-	await Promise.all(
-		pilotIds.map((pilotId) =>
-			api(`/championships/${championshipId}/card-gifts/seen`, {
-				method: 'POST',
-				body: { pilot_id: pilotId }
-			})
-		)
-	);
+	await Promise.all(pilotIds.map((pilotId) => markPilotGiftsSeen(championshipId, pilotId)));
 }
 
 /**
  * Esegue `check` subito e poi a intervalli regolari.
  * @param check Funzione da richiamare; gli errori vengono ignorati.
- * @param intervalMs Pausa tra due controlli.
+ * @param intervalMs Pausa tra due controlli (predefinita: 5 secondi).
  * @returns Funzione che ferma il controllo (da restituire da un $effect).
  */
 export function startGiftPolling(
 	check: () => Promise<void>,
-	intervalMs: number = GIFT_POLL_INTERVAL_MS
+	intervalMs: number = CARD_POLL_DEFAULT * 1000
 ): () => void {
 	const run = () => {
 		check().catch(() => {});
