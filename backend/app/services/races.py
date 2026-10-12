@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race, RaceResult
+from app.services.card_play_close import consume_plays
 from app.services.championships import (
     ChampionshipClosedError,
     get_championship,
@@ -95,6 +96,8 @@ def set_results(
     # can_correct (l'admin) può sostituirli. Il campionato deve essere attivo.
     # L'oro si assegna una sola volta, alla prima chiusura della gara, con le regole
     # del campionato di quel momento: le correzioni non lo toccano.
+    # Alla prima chiusura le carte sponsor giocate vengono consumate (escono
+    # dall'inventario e tornano nella pool) nella stessa transazione.
     championship = get_championship(db, championship_id)
     race = get_race(db, championship_id, race_id)
     if championship.is_closed:
@@ -143,6 +146,7 @@ def set_results(
     _apply_sponsor_delta(db, old_sponsor, dict(entries))
     if not old_sponsor:
         award_race_gold(entrants, rules_of(championship), pilot_ids)
+        consume_plays(db, race.id, championship.sponsor_pool_deck_id)
     db.commit()
     db.refresh(race)
     return race
