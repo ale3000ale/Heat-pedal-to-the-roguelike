@@ -1,0 +1,175 @@
+<script lang="ts">
+	import { api } from '$lib/api';
+	import type { AvailableCard, CardGift, CardPlayState } from '$lib/card-play-types';
+	import type { CardEntry } from '$lib/types';
+	import CardTile from '$lib/components/CardTile.svelte';
+	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
+	import { Button } from '$lib/components/ui/button';
+
+	// Sezione a scomparsa di un pilota: carte sponsor giocabili, annulla e tasto S.
+	let {
+		championshipId,
+		pilot,
+		ongift
+	}: {
+		championshipId: number;
+		pilot: { id: number; name: string };
+		ongift: (gift: CardGift) => void;
+	} = $props();
+
+	let open = $state(false);
+	let state = $state<CardPlayState | null>(null);
+	let error = $state<string | null>(null);
+	let busy = $state(false);
+	let confirmOpen = $state(false);
+	let pending = $state<AvailableCard | null>(null);
+
+	const base = $derived(`/championships/${championshipId}`);
+	let activePlays = $derived(state ? state.plays.filter((p) => p.status === 'giocata') : []);
+	let locked = $derived(busy || state === null || state.in_review);
+
+	// Converte la carta giocabile nel formato di CardTile: le copie mostrate sono quelle disponibili.
+	function toEntry(card: AvailableCard): CardEntry {
+		return { name: card.name, path: card.path, copies: card.copies_available };
+	}
+
+	// Esegue un'azione sul backend e mostra il messaggio d'errore sotto i pulsanti.
+	async function run(action: () => Promise<void>) {
+		error = null;
+		busy = true;
+		try {
+			await action();
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Errore sconosciuto';
+		} finally {
+			busy = false;
+		}
+	}
+
+	async function load() {
+		await run(async () => {
+			state = await api<CardPlayState>(`${base}/card-plays?pilot_id=${pilot.id}`);
+		});
+	}
+
+	function toggle() {
+		open = !open;
+		if (open) void load();
+	}
+
+	function askPlay(card: AvailableCard) {
+		pending = card;
+		confirmOpen = true;
+	}
+
+	async function playPending() {
+		const card = pending;
+		if (!card) return;
+		await run(async () => {
+			state = await api<CardPlayState>(`${base}/card-plays`, {
+				method: 'POST',
+				body: { pilot_id: pilot.id, card_name: card.name }
+			});
+		});
+	}
+
+	async function undo() {
+		await run(async () => {
+			state = await api<CardPlayState>(`${base}/card-plays/undo`, {
+				method: 'POST',
+				body: { pilot_id: pilot.id }
+			});
+		});
+	}
+
+	// Tasto S: una carta casuale dalla pool sponsor; il popup lo mostra la pagina.
+	async function pressS() {
+		await run(async () => {
+			const gift = await api<CardGift>(`${base}/card-gifts`, {
+				method: 'POST',
+				body: { pilot_id: pilot.id }
+			});
+			ongift(gift);
+			state = await api<CardPlayState>(`${base}/card-plays?pilot_id=${pilot.id}`);
+		});
+	}
+</script>
+
+<section class="rounded-lg border p-3">
+	<div class="flex items-center justify-between gap-3">
+		<h3 class="font-medium">{pilot.name}</h3>
+		<Button size="sm" variant="outline" onclick={toggle} aria-expanded={open}>
+			{open ? 'Chiudi' : 'Carte sponsor'}
+		</Button>
+	</div>
+
+	{#if open}
+		<div class="mt-3 space-y-3">
+			{#if state === null}
+				{#if !error}
+					<p class="text-sm text-muted-foreground">Caricamento…</p>
+				{/if}
+			{:else}
+				{#if state.in_review}
+					<p class="text-sm text-muted-foreground">
+						La gara è in revisione: non si possono più giocare né annullare carte.
+					</p>
+				{/if}
+
+				<div class="flex flex-wrap items-center gap-2">
+					<Button size="sm" onclick={pressS} disabled={locked}>S</Button>
+					<Button
+						size="sm"
+						variant="outline"
+						onclick={undo}
+						disabled={locked || activePlays.length === 0 || state.undo_remaining === 0}
+					>
+						Annulla ultima ({state.undo_remaining} rimasti)
+					</Button>
+				</div>
+
+				{#if state.available.length === 0}
+					<p class="text-sm text-muted-foreground">Nessuna carta sponsor nell'inventario.</p>
+				{:else}
+					<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+						{#each state.available as card (card.name)}
+							<li>
+								<CardTile
+									card={toEntry(card)}
+									title="Copie ancora giocabili"
+									disabled={locked || card.copies_available < 1}
+									onclick={() => askPlay(card)}
+								/>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+
+				<div>
+					<h4 class="mb-1 text-sm font-medium">Giocate in questa gara</h4>
+					{#if activePlays.length === 0}
+						<p class="text-sm text-muted-foreground">Nessuna carta giocata.</p>
+					{:else}
+						<ol class="list-decimal pl-5 text-sm">
+							{#each activePlays as play (play.id)}
+								<li>{play.card_name}</li>
+							{/each}
+						</ol>
+					{/if}
+				</div>
+			{/if}
+
+			{#if error}
+				<p class="text-sm text-destructive" role="alert">{error}</p>
+			{/if}
+		</div>
+	{/if}
+</section>
+
+<ConfirmDialog
+	bind:open={confirmOpen}
+	title="Giocare la carta?"
+	message={pending ? `Vuoi giocare «${pending.name}» con ${pilot.name}?` : ''}
+	confirmLabel="Gioca"
+	onconfirm={playPending}
+/>
