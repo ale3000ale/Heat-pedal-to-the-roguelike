@@ -9,6 +9,10 @@ class Race(Base):
     championship_id = Column(Integer, ForeignKey("championship.id"), nullable=False)
     number = Column(Integer, nullable=False)
     date = Column(DateTime, nullable=True)
+    # Giudice che sta chiudendo la gara e momento dell'ultimo rinnovo del blocco
+    # (UTC senza fuso). Vuoti se nessuno la sta revisionando.
+    reviewer_id = Column(Integer, ForeignKey("user.id"), nullable=True)
+    review_started_at = Column(DateTime, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("championship_id", "number"),
