@@ -71,8 +71,27 @@ def _race_in_progress(db: Session, championship_id: int) -> Race:
     return race
 
 
-def _authorize(db: Session, user: User, championship_id: int, pilot_id: int) -> tuple[Pilot, Race]:
-    # Solo il proprietario del pilota, iscritto, in un campionato attivo con gara in corso.
+def _race_to_read(db: Session, championship_id: int) -> Race:
+    # Gara di cui mostrare lo stato = la più recente con la revisione delle carte non
+    # ancora confermata: può essere in corso (senza risultati) o chiusa e in revisione.
+    # Errori: NoRaceInProgressError.
+    stmt = (
+        select(Race)
+        .where(Race.championship_id == championship_id, Race.review_closed_at.is_(None))
+        .order_by(Race.number.desc())
+        .limit(1)
+    )
+    race = db.scalar(stmt)
+    if race is None:
+        raise NoRaceInProgressError
+    return race
+
+
+def _authorize(
+    db: Session, user: User, championship_id: int, pilot_id: int, find_race=_race_in_progress
+) -> tuple[Pilot, Race]:
+    # Solo il proprietario del pilota, iscritto, in un campionato attivo. La gara la sceglie
+    # find_race: per giocare e annullare la gara in corso, per leggere anche quella in revisione.
     # Errori: ChampionshipNotFoundError, ChampionshipClosedError, PilotNotFoundError,
     # PilotNotEnrolledError, NoRaceInProgressError.
     championship = get_championship(db, championship_id)
@@ -81,7 +100,7 @@ def _authorize(db: Session, user: User, championship_id: int, pilot_id: int) -> 
     pilot = get_own_pilot(db, user, pilot_id)
     if not is_enrolled(db, championship_id, pilot.id):
         raise PilotNotEnrolledError
-    return pilot, _race_in_progress(db, championship_id)
+    return pilot, find_race(db, championship_id)
 
 
 def _ensure_not_in_review(race: Race) -> None:
@@ -133,10 +152,10 @@ def _state(db: Session, pilot: Pilot, race: Race) -> PlayState:
 
 
 def get_play_state(db: Session, user: User, championship_id: int, pilot_id: int) -> PlayState:
-    # Giocate e copie disponibili del pilota nella gara in corso (anche se in revisione:
-    # la lettura resta consentita, il campo in_review lo indica).
+    # Giocate e copie disponibili del pilota nella gara in corso o in revisione: la lettura
+    # resta consentita anche dopo i risultati, il campo in_review indica se la revisione è aperta.
     # Errori: quelli di _authorize.
-    pilot, race = _authorize(db, user, championship_id, pilot_id)
+    pilot, race = _authorize(db, user, championship_id, pilot_id, _race_to_read)
     return _state(db, pilot, race)
 
 
