@@ -87,6 +87,14 @@ def finish_race(admin, championship_id, race_id, pilot_id):
     assert r.status_code == 200
 
 
+def open_review(client, championship_id, race_id):
+    return client.post(f"/api/championships/{championship_id}/races/{race_id}/review")
+
+
+def confirm_review(client, championship_id, race_id):
+    return client.post(f"/api/championships/{championship_id}/races/{race_id}/review/confirm")
+
+
 def play(player, championship_id, pilot_id):
     return player.post(
         f"/api/championships/{championship_id}/card-plays",
@@ -127,6 +135,12 @@ def scenario(make_client, session_factory, copies=2, pool_copies=2):
     return admin, player, championship_id, pilot_id, race_id
 
 
+def reviewing(admin, championship_id, race_id, pilot_id):
+    # Chiude la gara con i risultati e apre la revisione delle carte come admin.
+    finish_race(admin, championship_id, race_id, pilot_id)
+    assert open_review(admin, championship_id, race_id).status_code == 200
+
+
 def test_summary_lists_the_plays_of_every_pilot(make_client, session_factory):
     admin, player, champ, pilot, race = scenario(make_client, session_factory)
     assert play(player, champ, pilot).status_code == 201
@@ -146,6 +160,7 @@ def test_judge_cancel_keeps_the_log_and_frees_the_copy(make_client, session_fact
     admin, player, champ, pilot, race = scenario(make_client, session_factory, copies=1)
     assert play(player, champ, pilot).status_code == 201
     play_id = summary(admin, champ, race).json()[0]["plays"][0]["id"]
+    reviewing(admin, champ, race, pilot)
     r = cancel(admin, champ, race, play_id)
     assert r.status_code == 200
     assert r.json()["status"] == "annullata"
@@ -154,19 +169,24 @@ def test_judge_cancel_keeps_the_log_and_frees_the_copy(make_client, session_fact
     assert [p["status"] for p in state["plays"]] == ["annullata"]
 
 
-def test_judge_cancel_is_refused_twice_and_after_the_race_closes(make_client, session_factory):
+def test_judge_cancel_is_refused_without_review_twice_and_after_the_confirm(
+    make_client, session_factory
+):
     admin, player, champ, pilot, race = scenario(make_client, session_factory)
     assert play(player, champ, pilot).status_code == 201
     assert play(player, champ, pilot).status_code == 201
     first, second = [p["id"] for p in summary(admin, champ, race).json()[0]["plays"]]
+    assert cancel(admin, champ, race, first).status_code == 409
+    reviewing(admin, champ, race, pilot)
     assert cancel(admin, champ, race, first).status_code == 200
     assert cancel(admin, champ, race, first).status_code == 409
-    finish_race(admin, champ, race, pilot)
+    assert confirm_review(admin, champ, race).status_code == 200
     assert cancel(admin, champ, race, second).status_code == 409
 
 
 def test_bonus_moves_a_copy_to_the_inventory_without_a_notification(make_client, session_factory):
     admin, player, champ, pilot, race = scenario(make_client, session_factory, copies=1, pool_copies=2)
+    reviewing(admin, champ, race, pilot)
     r = bonus(admin, champ, race, pilot)
     assert r.status_code == 201
     assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
@@ -177,13 +197,20 @@ def test_bonus_moves_a_copy_to_the_inventory_without_a_notification(make_client,
 
 def test_bonus_is_refused_for_a_card_not_in_the_pool(make_client, session_factory):
     admin, _, champ, pilot, race = scenario(make_client, session_factory)
+    reviewing(admin, champ, race, pilot)
     assert bonus(admin, champ, race, pilot, "Inesistente").status_code == 409
+
+
+def test_bonus_is_refused_without_an_active_review(make_client, session_factory):
+    admin, _, champ, pilot, race = scenario(make_client, session_factory)
+    assert bonus(admin, champ, race, pilot).status_code == 409
+    finish_race(admin, champ, race, pilot)
+    assert bonus(admin, champ, race, pilot).status_code == 409
 
 
 def test_players_cannot_play_or_gift_while_the_race_is_in_review(make_client, session_factory):
     admin, player, champ, pilot, race = scenario(make_client, session_factory)
-    r = admin.post(f"/api/championships/{champ}/races/{race}/review")
-    assert r.status_code == 200
+    reviewing(admin, champ, race, pilot)
     assert play(player, champ, pilot).status_code == 409
     assert gift(player, champ, pilot).status_code == 409
     assert bonus(admin, champ, race, pilot).status_code == 201
