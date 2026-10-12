@@ -1,20 +1,19 @@
 <script lang="ts">
-	import { fetchCardPlayState, giveRandomCard, playCard, undoCard } from '$lib/card-play-api';
-	import type { AvailableCard, CardGift, CardPlay, CardPlayState } from '$lib/card-play-types';
+	import { fetchCardPlayState, playCard, undoCard } from '$lib/card-play-api';
+	import type { AvailableCard, CardPlay, CardPlayState } from '$lib/card-play-types';
 	import type { CardEntry } from '$lib/types';
 	import CardTile from '$lib/components/CardTile.svelte';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 
-	// Sezione a scomparsa di un pilota: carte sponsor giocabili, annulla e tasto S.
+	// Sezione a scomparsa di un pilota: carte sponsor giocabili e annulla.
+	// Il tasto S non è qui: giudice e admin lo trovano nella pagina della gara.
 	let {
 		championshipId,
-		pilot,
-		ongift
+		pilot
 	}: {
 		championshipId: number;
 		pilot: { id: number; name: string };
-		ongift: (gift: CardGift) => void;
 	} = $props();
 
 	let open = $state(false);
@@ -77,15 +76,6 @@
 			cardState = await undoCard(championshipId, pilot.id);
 		});
 	}
-
-	// Tasto S: una carta casuale dalla pool sponsor; il popup lo mostra la pagina.
-	async function pressS() {
-		await run(async () => {
-			const gift = await giveRandomCard(championshipId, pilot.id);
-			ongift(gift);
-			cardState = await fetchCardPlayState(championshipId, pilot.id);
-		});
-	}
 </script>
 
 <section class="rounded-lg border p-3">
@@ -110,7 +100,6 @@
 				{/if}
 
 				<div class="flex flex-wrap items-center gap-2">
-					<Button size="sm" onclick={pressS} disabled={locked}>S</Button>
 					<Button
 						size="sm"
 						variant="outline"
