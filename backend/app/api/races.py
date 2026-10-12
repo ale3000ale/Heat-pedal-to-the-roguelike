@@ -139,7 +139,7 @@ def get_standings(championship_id: int, user: CurrentUser, db: DbDep):
                 pilot_id=row.pilot_id,
                 pilot_name=row.pilot_name,
                 points=row.points,
-                sponsor_points=row.sponsor_points,
+                races_played=row.races_played,
             )
             for row in standings(db, championship_id)
         ]
