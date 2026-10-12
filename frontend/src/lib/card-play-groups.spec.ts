@@ -13,7 +13,7 @@ function play(id: number, name: string, status: CardPlay['status'] = 'giocata'):
 }
 
 describe('groupActivePlays', () => {
-	it('raggruppa le copie uguali e conserva l\'ordine di prima comparsa', () => {
+	it("raggruppa le copie uguali e conserva l'ordine di prima comparsa", () => {
 		const groups = groupActivePlays([play(1, 'Turbo'), play(2, 'Freni'), play(3, 'Turbo')]);
 		expect(groups.map((g) => [g.name, g.count])).toEqual([
 			['Turbo', 2],
