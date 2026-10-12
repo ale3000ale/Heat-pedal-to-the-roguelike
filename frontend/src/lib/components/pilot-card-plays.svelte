@@ -1,10 +1,5 @@
 <script lang="ts">
-	import {
-		fetchCardPlayState,
-		giveRandomCard,
-		playCard,
-		undoCard
-	} from '$lib/card-play-api';
+	import { fetchCardPlayState, giveRandomCard, playCard, undoCard } from '$lib/card-play-api';
 	import type { AvailableCard, CardGift, CardPlay, CardPlayState } from '$lib/card-play-types';
 	import type { CardEntry } from '$lib/types';
 	import CardTile from '$lib/components/CardTile.svelte';
