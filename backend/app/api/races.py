@@ -10,6 +10,16 @@ from app.schemas.race import (
     StandingRead,
 )
 from app.services.championships import standings, ChampionshipClosedError, ChampionshipNotFoundError
+from app.services.race_review import (
+    NotReviewerError,
+    RaceLockedError,
+    RaceNotInProgressError,
+    active_reviewer,
+    clear_review,
+    ensure_not_locked,
+    open_review,
+    release_review,
+)
 from app.services.races import (
     RaceAlreadyClosedError,
     RaceInProgressError,
@@ -17,6 +27,7 @@ from app.services.races import (
     RaceResultError,
     count_participants,
     create_race,
+    get_race,
     list_races,
     race_table,
     set_results,
@@ -33,14 +44,29 @@ RACE_IN_PROGRESS = HTTPException(
 RACE_CLOSED = HTTPException(
     status.HTTP_403_FORBIDDEN, "Gara già chiusa: solo l'admin può correggere i risultati"
 )
+RACE_NOT_IN_PROGRESS = HTTPException(
+    status.HTTP_409_CONFLICT, "Gara già terminata: non c'è nulla da revisionare"
+)
+NOT_REVIEWER = HTTPException(
+    status.HTTP_403_FORBIDDEN,
+    "Solo il giudice che sta chiudendo la gara o l'admin può liberarla",
+)
+
+
+def _locked(exc: RaceLockedError) -> HTTPException:
+    return HTTPException(
+        status.HTTP_409_CONFLICT, f"Il giudice {exc.judge_name} sta chiudendo la gara"
+    )
 
 
 def _read(db, race) -> RaceRead:
+    holder = active_reviewer(db, race)
     return RaceRead(
         id=race.id,
         number=race.number,
         date=race.date,
         participants=count_participants(db, race.id),
+        reviewer=holder.username if holder else None,
     )
 
 
@@ -94,14 +120,47 @@ def detail(championship_id: int, race_id: int, user: CurrentUser, db: DbDep):
         raise RACE_NOT_FOUND
 
 
+@router.put("/{championship_id}/races/{race_id}/review", response_model=RaceRead)
+def put_review(championship_id: int, race_id: int, judge: JudgeUser, db: DbDep):
+    # Il giudice (o l'admin) apre la chiusura della gara; se il blocco è già suo lo rinnova.
+    # Se un altro giudice la sta chiudendo risponde 409 con il suo nome.
+    try:
+        return _read(db, open_review(db, championship_id, race_id, judge))
+    except ChampionshipNotFoundError:
+        raise CHAMPIONSHIP_NOT_FOUND
+    except RaceNotFoundError:
+        raise RACE_NOT_FOUND
+    except ChampionshipClosedError:
+        raise CLOSED
+    except RaceNotInProgressError:
+        raise RACE_NOT_IN_PROGRESS
+    except RaceLockedError as exc:
+        raise _locked(exc)
+
+
+@router.delete("/{championship_id}/races/{race_id}/review", response_model=RaceRead)
+def delete_review(championship_id: int, race_id: int, judge: JudgeUser, db: DbDep):
+    # Libera il blocco: solo il giudice che lo ha o l'admin.
+    try:
+        return _read(db, release_review(db, championship_id, race_id, judge))
+    except ChampionshipNotFoundError:
+        raise CHAMPIONSHIP_NOT_FOUND
+    except RaceNotFoundError:
+        raise RACE_NOT_FOUND
+    except NotReviewerError:
+        raise NOT_REVIEWER
+
+
 @router.put("/{championship_id}/races/{race_id}/results", response_model=RaceDetail)
 def put_results(
     championship_id: int, race_id: int, data: ResultsSet, judge: JudgeUser, db: DbDep
 ):
     # Termina la gara registrando classifica, sponsor e assenti (giudice o admin).
     # Se la gara ha già i risultati, solo l'admin può correggerli.
+    # Se un altro giudice ha il blocco di revisione risponde 409.
     entries = [(entry.pilot_id, entry.sponsor_points) for entry in data.results]
     try:
+        ensure_not_locked(db, championship_id, race_id, judge)
         set_results(
             db,
             championship_id,
@@ -110,6 +169,7 @@ def put_results(
             can_correct=judge.role == "admin",
             absent=data.absent,
         )
+        clear_review(db, championship_id, race_id)
         return _detail(db, championship_id, race_id)
     except ChampionshipNotFoundError:
         raise CHAMPIONSHIP_NOT_FOUND
@@ -117,6 +177,8 @@ def put_results(
         raise RACE_NOT_FOUND
     except ChampionshipClosedError:
         raise CLOSED
+    except RaceLockedError as exc:
+        raise _locked(exc)
     except RaceAlreadyClosedError:
         raise RACE_CLOSED
     except RaceResultError as exc:

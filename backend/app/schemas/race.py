@@ -27,6 +27,8 @@ class RaceRead(BaseModel):
     number: int
     date: datetime | None
     participants: int
+    # Nome del giudice che sta chiudendo la gara (blocco valido), altrimenti None.
+    reviewer: str | None = None
 
 
 class RaceResultRead(BaseModel):
