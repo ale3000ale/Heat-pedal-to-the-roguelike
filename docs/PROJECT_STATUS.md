@@ -1,6 +1,6 @@
 # Stato del progetto — Heat
 
-Ultimo aggiornamento: 2026-10-11
+Ultimo aggiornamento: 2026-10-12
 
 ## Fasi
 
@@ -25,13 +25,23 @@ Ultimo aggiornamento: 2026-10-11
 | 9 | Ricerca piloti per nome e filtro per team, paginazione dell'elenco piloti | Completata |
 | 10 | CI con GitHub Actions: test backend e controlli frontend a ogni pull request | Completata |
 | 11 | Oro per gara, impostazioni generali e del campionato, popup propri, una sola gara in corso, assenti espliciti | Completata (pull request #4 unita a `main`) |
-| 12 | Negozio e pacchetti di carte | In corso sul ramo `phase-12-shop` (sottofasi in `SHOP_SCHEMA.md`) |
+| 12 | Negozio e pacchetti di carte | Completata (pull request #5 unita a `main`, commit `6dd5619`) |
 | 12a | Tabelle del Negozio, inventario sponsor del pilota e reset, servizio e script delle immagini | Completata |
 | 12b | Template di pacchetto e di negozio, pacchetti del campionato, creazione del campionato con template | Completata |
 | 12c | Estrazione, acquisto, storico e riepilogo inventario (backend) | Completata e approvata |
 | 12d | Frontend giocatore: elenco `/shop`, negozio con ordinamento e ricerca, inventario, storico, apertura animata dei pacchetti, riepilogo finale con copie raggruppate | Completata (verifica a mano dell'autore) |
 | 12e | Frontend admin: gestione negozio, template, pacchetti del campionato, storico completo di tutti i piloti dalle impostazioni del negozio | Completata (verifica a mano dell'autore) |
-| 12f | Documenti finali, verifica complessiva, unione di `phase-12-shop` in `main` | In corso |
+| 12f | Verifica complessiva e unione di `phase-12-shop` in `main` | Completata (CI verde sull'ultimo commit `24388ea`) |
+| 13 | Carte sponsor in gara e amministrazione delle carte (decisioni in `PHASE_13_SPEC.md`) | Decisioni approvate, nessun codice |
+| 13a | Backend carte sponsor: registro delle carte giocate, stack da 5 annullamenti, uso e annullamento, restituzione alla pool alla chiusura | Da approvare |
+| 13b | Backend: stato "in revisione", riepilogo, correzione e bonus, tasto S, notifica di carta ottenuta | Da fare |
+| 13c | Frontend giocatore: sezioni per pilota, uso delle carte, Indietro, inventario in due sezioni, popup "Hai ottenuto una carta sponsor" | Da fare |
+| 13d | Frontend giudice e admin: elenco piloti con tasto S, riepilogo con immagini, correzioni | Da fare |
+| 13d+ | Riallineamento di tutti i documenti (richiesto dall'autore) | Da fare |
+| 13e | Backend amministrazione carte: caricamento, conversione, eliminazione, origine "caricata" | Da fare |
+| 13f | Frontend: ritaglio con zoom, nome e quantità, nomi in arancione, tasti di esclusione nelle pool personalizzate | Da fare |
+| 13g | Documenti e test finali, unione in `main` | Da fare |
+| 14 | Sistemazione generale, modifiche di vivibilità e miglioramenti | Da definire a fine fase 13 |
 
 ## Backend
 
@@ -71,13 +81,12 @@ Ultimo aggiornamento: 2026-10-11
 
 ## Qualità verificata
 
-- CI su ogni pull request (pull request #5, in bozza): test backend, controlli frontend con lint, test e build, migrazioni su un database creato da zero (upgrade, verifica, downgrade, nuovo upgrade). Sono stati letti come verdi gli esiti fino al commit `ccf23e8` (riepilogo finale).
-- Commit successivi: `06ac748` (copie raggruppate nel riepilogo) ha fatto segnalare a `npm run lint` un problema di formato Prettier in `pack-summary.spec.ts`, corretto in `58ca7d3`; l'autore ha confermato che ora è a posto. Gli esiti della CI di questi due commit non sono stati letti.
+- CI su ogni pull request: test backend, controlli frontend con lint, test e build, migrazioni su un database creato da zero (upgrade, verifica, downgrade, nuovo upgrade). Sulla pull request #5 i tre controlli erano verdi sull'ultimo commit `24388ea` prima dell'unione in `main`.
 - Test frontend del Negozio: 9 in `shop-sort.spec.ts`, 7 in `pack-reveal-phases.spec.ts`, 3 in `pack-summary.spec.ts`. Il componente grafico `pack-reveal.svelte` (taglio della busta, scorrimento, riepilogo) non ha test dedicati e si verifica a mano; l'autore ha verificato a mano riepilogo, elenco `/shop`, storico e storico completo dell'admin. Il numero totale di test non è stato aggiornato qui.
 - Non hanno test dedicati: costo predefinito dei pacchetti, ordine delle gare, anteprima della ricarica, lock sul database. `cardDelayMs` in `pack-reveal-phases.ts` non è più usato dal componente ed è rimasto solo per il suo test.
 - Non letti: `shop-api.ts` (si presume che `fetchAllHistory` chiami `GET .../shop/history/all`) e `shop-history-list.svelte` (non si sa se raggruppi per pilota).
 - Migrazioni Alembic: oro per gara (`c9f3a1b6d8e4`), tabelle del Negozio (`a1c5e9b3d7f2`), unione delle teste (`b2d6f0a4c8e1`). Dopo un'unione di teste `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa.
-- Documenti: `PROJECT_STATUS.md` e `SHOP_SCHEMA.md` sono riallineati dopo 12d e 12e. Restano da riallineare `PROJECT_SPEC.md`, `SHOP_DESIGN.md`, `PROJECT_NOTES.md` e `OPEN_QUESTIONS.md`, che descrivono ancora ogni estrazione come carta separata.
+- Documenti ancora da riallineare (dopo la 13d, su richiesta dell'autore): `PROJECT_SPEC.md` (refuso "varà", righe su spareggio e carte sponsor rinviate, nuova sezione 14), `SHOP_DESIGN.md` e `PROJECT_NOTES.md` (descrivono ancora ogni estrazione come carta separata e Esc come non vincolato).
 
 ## API principali
 
@@ -102,26 +111,28 @@ Decisioni dell'autore (2026-10-08): tetto di 100 copie per carta (409); l'admin 
 
 Decisioni dell'autore (2026-10-10): la 12c è approvata; la ricarica delle pool chiede conferma elencando le carte da togliere; per il deploy online gli acquisti si serializzano con un blocco sul database; la pool sponsor è usata dai pacchetti; i pacchetti nuovi costano 10 oro o 2 sponsor; lo storico resta una pagina separata e l'inventario un solo pulsante.
 
-Decisioni dell'autore (2026-10-11): la busta usa come texture l'immagine del pacchetto acquistato; la striscia strappata se ne va e la busta resta tagliata; le carte si vedono una alla volta e ogni tocco le fa scorrere a sinistra; alla fine compare un riepilogo con tutte le carte; "Salta" porta al riepilogo; fino al riepilogo la finestra si chiude solo con la X, dal riepilogo in ogni modo. Le copie uguali nel riepilogo sono raggruppate con il numero di copie; Esc non chiude prima del riepilogo. L'elenco `/shop` e lo storico sono considerati a posto, come lo storico completo dell'admin dalle impostazioni del negozio.
+Decisioni dell'autore (2026-10-11): la busta usa come texture l'immagine del pacchetto acquistato; la striscia strappata se ne va e la busta resta tagliata; le carte si vedono una alla volta e ogni tocco le fa scorrere a sinistra; alla fine compare un riepilogo con tutte le carte; "Salta" porta al riepilogo; fino al riepilogo la finestra si chiude solo con la X, dal riepilogo in ogni modo. Le copie uguali nel riepilogo sono raggruppate con il numero di copie; Esc non chiude prima del riepilogo. L'elenco `/shop` e lo storico sono considerati a posto, come lo storico completo dell'admin dalle impostazioni del negozio. La pull request #5 è stata unita in `main` (merge `6dd5619`).
+
+Decisioni dell'autore (2026-10-12): lo spareggio sportivo non serve; le pool di base esistono e funzionano; l'uso online è rinviato a dopo la fase 14; la fase 13 realizza le carte sponsor in gara (uso con conferma, annullamento fino a 5, stato "in revisione", tasto S, restituzione alla pool alla chiusura) e l'amministrazione delle carte (caricamento con ritaglio e zoom, nome e quantità, nomi in arancione, esclusione di caricate o di base nelle pool personalizzate); la fase 14 è di sistemazione generale e miglioramenti; i documenti si riallineano dopo la 13d. I dettagli sono in `PHASE_13_SPEC.md`.
 
 Correzione del 2026-10-10: una versione precedente di questo file e di `SHOP_SCHEMA.md` dava per non necessaria `GET /api/me/shops`; la rotta esiste ed è usata dal frontend.
 
-Questioni aperte:
+Questioni rinviate:
 
-- Per il deploy: un solo server con pochi worker, perché SQLite accetta una sola scrittura alla volta; con un altro database serve un blocco sulla riga del pilota (`SELECT ... FOR UPDATE`).
-- Avviso quando un template di negozio non contiene pacchetti (da riportare in `SHOP_SCHEMA.md` a fine 12c).
+- Per il deploy online: un solo server con pochi worker, perché SQLite accetta una sola scrittura alla volta; con un altro database serve un blocco sulla riga del pilota (`SELECT ... FOR UPDATE`).
 
 ## Documenti
 
 - `PROJECT_SPEC.md`: specifiche funzionali (fonte delle regole).
 - `PROJECT_NOTES.md`: mappa del codice, comandi, convenzioni e contesto di lavoro.
 - `OPEN_QUESTIONS.md`: decisioni ancora rinviate.
+- `PHASE_13_SPEC.md`: decisioni e sottofasi della fase 13 (carte sponsor e amministrazione delle carte).
 - `SHOP_DESIGN.md`: funzionamento del Negozio spiegato dall'autore.
 - `SHOP_SCHEMA.md`: schema, servizi, rotte e sottofasi del Negozio.
 - Documenti storici (fotografie di una fase): `DATABASE_ANALYSIS.md`, `BACKEND_BOOTSTRAP.md`, `BACKEND_AUTH.md`, `FRONTEND_BOOTSTRAP.md`, `FRONTEND_AUTH.md`.
 
 ## Prossimi passi
 
-1. Sottofase 12f: riallineare `PROJECT_SPEC.md`, `SHOP_DESIGN.md`, `PROJECT_NOTES.md` e `OPEN_QUESTIONS.md` (copie raggruppate, Esc, 12d e 12e chiuse).
-2. Leggere gli esiti della CI della pull request #5 sugli ultimi commit e fare la verifica complessiva.
-3. Togliere la bozza dalla pull request #5 e unire `phase-12-shop` in `main`.
+1. Approvazione dell'elenco dei file della sottofase 13a (backend delle carte sponsor).
+2. Unione del ramo `phase-12f-docs` (solo documenti) in `main`, a cura dell'autore.
+3. Dopo la 13d: riallineamento di tutti i documenti, correzione del refuso "varà" e nuova sezione 14 in `PROJECT_SPEC.md`.
