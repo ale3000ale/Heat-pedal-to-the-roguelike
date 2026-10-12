@@ -12,6 +12,13 @@ class Race(Base):
     # Valorizzata quando il giudice o l'admin apre il riepilogo: la gara è "in revisione"
     # e i giocatori non possono più giocare né annullare carte. Vuota = gara in corso.
     review_started_at = Column(DateTime, nullable=True)
+    # Utente (giudice o admin) che ha aperto la revisione: è l'unico che può vederla e agire.
+    # Vuota quando la gara non è in revisione.
+    review_started_by_user_id = Column(
+        Integer,
+        ForeignKey("user.id", name="fk_race_review_started_by_user_id"),
+        nullable=True,
+    )
 
     __table_args__ = (
         UniqueConstraint("championship_id", "number"),
