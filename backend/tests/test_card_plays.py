@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from app.db.models import User
 from app.db.models.card_play import CardPlay
 from app.db.models.championship import Championship
@@ -196,6 +198,17 @@ def test_a_player_cannot_play_with_someone_elses_pilot(make_client, session_fact
         json={"pilot_id": pilot, "card_name": CARD},
     )
     assert r.status_code == 404
+
+
+def test_a_deleted_pilot_cannot_play_or_undo(make_client, session_factory):
+    _, player, champ, pilot, _ = scenario(make_client, session_factory, copies=2)
+    assert play(player, champ, pilot).status_code == 201
+    # L'eliminazione via API è vietata in un campionato attivo: si simula l'eliminazione logica.
+    with session_factory() as db:
+        db.get(Pilot, pilot).deleted_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        db.commit()
+    assert play(player, champ, pilot).status_code == 404
+    assert undo(player, champ, pilot).status_code == 404
 
 
 def test_closing_the_race_consumes_the_played_cards(make_client, session_factory):
