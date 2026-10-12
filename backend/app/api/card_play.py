@@ -1,12 +1,19 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import CurrentUser, DbDep
+from app.schemas.card_gift import CardGiftRead, CardGiftRequest
 from app.schemas.card_play import (
     AvailableCardRead,
     CardPlayRead,
     CardPlayRequest,
     CardPlayStateRead,
     CardUndoRequest,
+)
+from app.services.card_gift import (
+    SponsorPoolEmptyError,
+    draw_gift,
+    list_unseen_gifts,
+    mark_gifts_seen,
 )
 from app.services.card_play import (
     CardNotAvailableError,
@@ -57,6 +64,8 @@ def _http_error(exc: Exception) -> HTTPException:
         return HTTPException(status.HTTP_409_CONFLICT, "Nessuna giocata da annullare")
     if isinstance(exc, UndoLimitError):
         return HTTPException(status.HTTP_409_CONFLICT, "Limite di annullamenti consecutivi raggiunto")
+    if isinstance(exc, SponsorPoolEmptyError):
+        return HTTPException(status.HTTP_409_CONFLICT, "La pool sponsor è vuota")
     raise exc
 
 
@@ -70,6 +79,7 @@ DOMAIN_ERRORS = (
     CardNotAvailableError,
     NothingToUndoError,
     UndoLimitError,
+    SponsorPoolEmptyError,
 )
 
 
@@ -101,5 +111,41 @@ def undo_card_play(championship_id: int, data: CardUndoRequest, user: CurrentUse
     # Annulla l'ultima giocata attiva, fino a 5 volte consecutive (409 se la gara è in revisione).
     try:
         return _state_read(undo_last_play(db, user, championship_id, data.pilot_id))
+    except DOMAIN_ERRORS as exc:
+        raise _http_error(exc)
+
+
+@router.post(
+    "/{championship_id}/card-gifts",
+    response_model=CardGiftRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_card_gift(championship_id: int, data: CardGiftRequest, user: CurrentUser, db: DbDep):
+    # Tasto S: una carta casuale dalla pool sponsor all'inventario del pilota. 409 se la
+    # pool è vuota, se non c'è una gara in corso o se la gara è in revisione.
+    try:
+        return CardGiftRead.model_validate(draw_gift(db, user, championship_id, data.pilot_id))
+    except DOMAIN_ERRORS as exc:
+        raise _http_error(exc)
+
+
+@router.get("/{championship_id}/card-gifts", response_model=list[CardGiftRead])
+def read_card_gifts(championship_id: int, pilot_id: int, user: CurrentUser, db: DbDep):
+    # Notifiche non ancora viste delle carte ottenute con il tasto S.
+    try:
+        gifts = list_unseen_gifts(db, user, championship_id, pilot_id)
+        return [CardGiftRead.model_validate(gift) for gift in gifts]
+    except DOMAIN_ERRORS as exc:
+        raise _http_error(exc)
+
+
+@router.post(
+    "/{championship_id}/card-gifts/seen",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def mark_card_gifts_seen(championship_id: int, data: CardGiftRequest, user: CurrentUser, db: DbDep) -> None:
+    # Segna come viste le notifiche del pilota nel campionato.
+    try:
+        mark_gifts_seen(db, user, championship_id, data.pilot_id)
     except DOMAIN_ERRORS as exc:
         raise _http_error(exc)
