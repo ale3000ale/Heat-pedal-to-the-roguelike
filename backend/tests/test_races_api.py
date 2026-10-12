@@ -56,7 +56,15 @@ def setup(make_client, session_factory, names):
     return admin, player, championship_id, pilots
 
 
+def confirm_previous_races(admin, championship_id):
+    # La gara successiva parte solo dopo la conferma della revisione delle carte: le gare
+    # con i risultati vengono confermate, le altre (409) restano come sono.
+    for race in admin.get(f"/api/championships/{championship_id}/races").json():
+        admin.post(f"/api/championships/{championship_id}/races/{race['id']}/review/confirm")
+
+
 def new_race(admin, championship_id):
+    confirm_previous_races(admin, championship_id)
     r = admin.post(f"/api/championships/{championship_id}/races")
     assert r.status_code == 201
     return r.json()["id"]
