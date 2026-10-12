@@ -36,6 +36,23 @@ def setup_world(make_client, session_factory):
     return admin, player
 
 
+def login_judge(make_client, session_factory):
+    with session_factory() as db:
+        db.add(User(username="giudice", password=hash_password(PASSWORD), role="judge"))
+        db.commit()
+    judge = make_client()
+    r = judge.post("/api/auth/login", json={"username": "giudice", "password": PASSWORD})
+    assert r.status_code == 200
+    return judge
+
+
+def register_player(make_client, username):
+    client = make_client()
+    r = client.post("/api/auth/register", json={"username": username, "password": PASSWORD})
+    assert r.status_code == 201
+    return client
+
+
 def enrolled_pilot(player, championship_id, name="Ayrton"):
     team_id = player.post("/api/teams", json={"name": f"Team {name}"}).json()["id"]
     pilot_id = player.post("/api/pilots", json={"name": name, "team_id": team_id}).json()["id"]
@@ -148,8 +165,53 @@ def test_gift_is_refused_without_a_race_in_progress(make_client, session_factory
 
 
 def test_a_player_cannot_gift_to_someone_elses_pilot(make_client, session_factory):
-    admin, _, champ, pilot, _ = scenario(make_client, session_factory)
-    assert gift(admin, champ, pilot).status_code == 404
+    _, _, champ, pilot, _ = scenario(make_client, session_factory)
+    other = register_player(make_client, "luigi")
+    assert gift(other, champ, pilot).status_code == 404
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 1}
+
+
+def test_an_admin_can_gift_to_any_enrolled_pilot(make_client, session_factory):
+    admin, _, champ, pilot, _ = scenario(make_client, session_factory, copies=1, pool_copies=2)
+    r = gift(admin, champ, pilot)
+    assert r.status_code == 201
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
+    assert sponsor_pool(session_factory, champ) == {CARD: 1}
+
+
+def test_a_judge_can_gift_to_any_enrolled_pilot(make_client, session_factory):
+    _, _, champ, pilot, _ = scenario(make_client, session_factory, copies=1, pool_copies=2)
+    judge = login_judge(make_client, session_factory)
+    r = gift(judge, champ, pilot)
+    assert r.status_code == 201
+    assert sponsor_inventory(session_factory, pilot) == {CARD: 2}
+
+
+def test_a_gift_from_a_judge_notifies_the_pilot_owner(make_client, session_factory):
+    _, player, champ, pilot, _ = scenario(make_client, session_factory, copies=1, pool_copies=2)
+    judge = login_judge(make_client, session_factory)
+    assert gift(judge, champ, pilot).status_code == 201
+    assert [g["card_name"] for g in unseen(player, champ, pilot).json()] == [CARD]
+
+
+def test_a_judge_cannot_gift_to_a_pilot_not_enrolled(make_client, session_factory):
+    _, player, champ, _, _ = scenario(make_client, session_factory)
+    free_pilot = player.post("/api/pilots", json={"name": "Senna"}).json()["id"]
+    judge = login_judge(make_client, session_factory)
+    assert gift(judge, champ, free_pilot).status_code == 403
+
+
+def test_a_judge_gets_404_for_an_unknown_pilot(make_client, session_factory):
+    _, _, champ, _, _ = scenario(make_client, session_factory)
+    judge = login_judge(make_client, session_factory)
+    assert gift(judge, champ, 99999).status_code == 404
+
+
+def test_a_judge_gift_is_refused_when_the_pool_is_empty(make_client, session_factory):
+    _, _, champ, pilot, _ = scenario(make_client, session_factory, copies=1, pool_copies=1)
+    judge = login_judge(make_client, session_factory)
+    assert gift(judge, champ, pilot).status_code == 201
+    assert gift(judge, champ, pilot).status_code == 409
 
 
 def test_a_gifted_card_can_be_played_in_the_same_race(make_client, session_factory):

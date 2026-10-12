@@ -7,16 +7,48 @@ from sqlalchemy.orm import Session
 from app.db.models import User
 from app.db.models.card_gift import CardGift
 from app.db.models.deck import Deck
+from app.db.models.pilot import Pilot
 from app.db.models.race import Race
-from app.services.card_play import _authorize, _ensure_not_in_review
+from app.services.card_play import _ensure_not_in_review, _race_in_progress
 from app.services.cards import CardEntry, card_key, dump_cards, parse_cards
-from app.services.championships import get_championship
-from app.services.pilots import get_own_pilot
+from app.services.championships import ChampionshipClosedError, get_championship
+from app.services.pilots import PilotNotFoundError, get_own_pilot
 from app.services.shop_purchase import _lock_database
+from app.services.shop_view import PilotNotEnrolledError, is_enrolled
+
+# Ruoli che possono dare il tasto S a qualsiasi pilota iscritto; gli altri solo ai propri.
+GIFT_ANY_PILOT_ROLES = ("admin", "judge")
 
 
 class SponsorPoolEmptyError(Exception):
     """La pool sponsor del campionato non ha carte da regalare."""
+
+
+def _load_gift_pilot(db: Session, user: User, pilot_id: int) -> Pilot:
+    # Admin e giudice vedono qualsiasi pilota non eliminato; il giocatore solo i propri.
+    # Errori: PilotNotFoundError.
+    if user.role not in GIFT_ANY_PILOT_ROLES:
+        return get_own_pilot(db, user, pilot_id)
+    stmt = select(Pilot).where(Pilot.id == pilot_id, Pilot.deleted_at.is_(None))
+    pilot = db.scalar(stmt)
+    if pilot is None:
+        raise PilotNotFoundError
+    return pilot
+
+
+def _authorize_gift(
+    db: Session, user: User, championship_id: int, pilot_id: int
+) -> tuple[Pilot, Race]:
+    # Come _authorize delle giocate, ma admin e giudice possono agire su qualsiasi pilota.
+    # Errori: ChampionshipNotFoundError, ChampionshipClosedError, PilotNotFoundError,
+    # PilotNotEnrolledError, NoRaceInProgressError.
+    championship = get_championship(db, championship_id)
+    if championship.is_closed:
+        raise ChampionshipClosedError
+    pilot = _load_gift_pilot(db, user, pilot_id)
+    if not is_enrolled(db, championship_id, pilot.id):
+        raise PilotNotEnrolledError
+    return pilot, _race_in_progress(db, championship_id)
 
 
 def _pick_card(pool: list[CardEntry], rng: random.Random) -> CardEntry:
@@ -57,11 +89,12 @@ def draw_gift(
     rng: random.Random | None = None,
 ) -> CardGift:
     # Tasto S: sposta una carta casuale dalla pool sponsor all'inventario del pilota e crea
-    # la notifica. Un solo commit; in caso di errore non cambia nulla.
-    # Errori: quelli di _authorize, RaceInReviewError, SponsorPoolEmptyError.
+    # la notifica per il proprietario. Admin e giudice possono usarlo su qualsiasi pilota
+    # iscritto, il giocatore solo sui propri. Un solo commit; in caso di errore non cambia nulla.
+    # Errori: quelli di _authorize_gift, RaceInReviewError, SponsorPoolEmptyError.
     try:
         _lock_database(db)
-        pilot, race = _authorize(db, user, championship_id, pilot_id)
+        pilot, race = _authorize_gift(db, user, championship_id, pilot_id)
         _ensure_not_in_review(race)
         championship = get_championship(db, championship_id)
         pool_deck = db.get(Deck, championship.sponsor_pool_deck_id) if championship.sponsor_pool_deck_id else None
