@@ -18,6 +18,8 @@
 
 	let gameTotal = $derived(pilot ? total(pilot.game_deck) : 0);
 	let full = $derived(gameTotal >= MAX_GAME_DECK);
+	// Mazzo bloccato: una gara del campionato non ha ancora la revisione confermata.
+	let locked = $derived(pilot?.deck_locked === true);
 
 	onMount(async () => {
 		try {
@@ -27,9 +29,18 @@
 		}
 	});
 
+	// Ricarica il dettaglio: serve se il backend rifiuta lo spostamento perché la gara è partita.
+	async function reload() {
+		try {
+			pilot = await api<PilotDetail>(`/pilots/${page.params.id}`);
+		} catch {
+			// Il messaggio d'errore dello spostamento resta visibile.
+		}
+	}
+
 	// Sposta una copia della carta: 'add' = inventario -> mazzo, 'remove' = mazzo -> inventario.
 	async function move(path: string, action: 'add' | 'remove') {
-		if (busy || !pilot) return;
+		if (busy || locked || !pilot) return;
 		busy = true;
 		error = null;
 		try {
@@ -39,6 +50,7 @@
 			});
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Errore sconosciuto';
+			await reload();
 		} finally {
 			busy = false;
 		}
@@ -76,6 +88,13 @@
 			</p>
 		{/if}
 
+		{#if locked}
+			<p class="rounded-lg border p-3 text-sm" role="status">
+				Il mazzo è in sola lettura: c'è una gara non ancora confermata. Potrai modificarlo dopo la
+				conferma della revisione.
+			</p>
+		{/if}
+
 		{#if error}
 			<p class="text-sm text-destructive" role="alert">{error}</p>
 		{/if}
@@ -87,7 +106,9 @@
 					<span class={full ? 'font-semibold text-destructive' : ''}>
 						{gameTotal}/{MAX_GAME_DECK} carte
 					</span>
-					· clicca una carta per riportarla nell'inventario
+					{#if !locked}
+						· clicca una carta per riportarla nell'inventario
+					{/if}
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -98,7 +119,7 @@
 						{#each pilot.game_deck as card (card.path)}
 							<CardTile
 								{card}
-								disabled={busy}
+								disabled={busy || locked}
 								title="Copie nel mazzo"
 								onclick={() => move(card.path, 'remove')}
 							/>
@@ -112,7 +133,11 @@
 			<Card.Header>
 				<Card.Title>Inventario</Card.Title>
 				<Card.Description>
-					Clicca una modifica per metterla nel mazzo. Gli sponsor restano qui.
+					{#if locked}
+						Il mazzo è bloccato: le modifiche non si possono spostare. Gli sponsor restano qui.
+					{:else}
+						Clicca una modifica per metterla nel mazzo. Gli sponsor restano qui.
+					{/if}
 				</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-3">
@@ -124,7 +149,7 @@
 							{#each pilot.inventory as card (card.path)}
 								<CardTile
 									{card}
-									disabled={busy || full}
+									disabled={busy || full || locked}
 									title="Copie in inventario"
 									onclick={() => move(card.path, 'add')}
 								/>

@@ -41,11 +41,14 @@ export interface CardEntry {
 
 // Pilota con i suoi mazzi (dettaglio) e il campionato attivo, se iscritto.
 // L'inventario sponsor è in sola lettura: le carte sponsor non vanno nel mazzo da gioco.
+// deck_locked è vero finché una gara del suo campionato non ha la revisione confermata:
+// in quel periodo il mazzo non si può modificare.
 export interface PilotDetail extends Pilot {
 	inventory: CardEntry[];
 	sponsor_inventory: CardEntry[];
 	game_deck: CardEntry[];
 	championship: ChampionshipRef | null;
+	deck_locked?: boolean;
 }
 
 // Campionato come appare nell'elenco.
