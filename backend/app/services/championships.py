@@ -12,6 +12,7 @@ from app.db.models.deck import Deck, DeckPrototype
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race, RaceResult
 from app.db.models.shop import Pack, PackPurchase
+from app.services.card_delete import remove_orphan_uploads
 from app.services.cards import STARTER_INVENTORY, dump_cards
 from app.services.gold import GoldRules, apply_rules, get_defaults, rules_of
 from app.services.names import clean_name, name_key
@@ -185,7 +186,8 @@ def enroll_pilot(db: Session, user: User, championship_id: int, pilot_id: int) -
 def delete_championship(db: Session, championship_id: int) -> None:
     # Cancella un campionato chiuso con tutto il suo storico: giocate e regali di carte,
     # risultati, gare, iscrizioni, pacchetti del negozio, storico acquisti e le copie
-    # delle pool. I piloti restano. Tutto in un'unica transazione.
+    # delle pool. I piloti restano. Tutto in un'unica transazione. Dopo la conferma
+    # cancella i file delle carte caricate che nessuna carta usa più.
     # Errori: ChampionshipNotFoundError, ChampionshipOpenError.
     championship = get_championship(db, championship_id)
     if not championship.is_closed:
@@ -216,6 +218,8 @@ def delete_championship(db: Session, championship_id: int) -> None:
         if deck is not None:
             db.delete(deck)
     db.commit()
+    # I file si cancellano solo a transazione confermata: un errore prima non li perde.
+    remove_orphan_uploads(db)
 
 @dataclass
 class StandingRow:
