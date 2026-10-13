@@ -2,7 +2,7 @@
 
 Questo file serve a chi lavora sul progetto (anche l'assistente) per ripartire senza rileggere tutto. La fonte delle regole di gioco e di prodotto è `docs/PROJECT_SPEC.md`: qui ci sono mappa del codice, comandi, convenzioni e stato del lavoro. Si aggiorna passo passo, ogni volta che qualcosa cambia.
 
-Ultimo riallineamento: 2026-10-13.
+Ultimo riallineamento: 2026-10-13 (fine della 13e).
 
 ## Regole di lavoro con l'assistente
 
@@ -20,11 +20,11 @@ Ultimo riallineamento: 2026-10-13.
 |---|---|
 | `heat.py` | Menu e comandi: `setup`, `start`, `migrate`, `test`, `check` |
 | `backend/` | FastAPI, SQLAlchemy, Alembic (SQLite) |
-| `backend/app/api/` | Router: `auth`, `teams`, `pilots`, `championships`, `races`, `pools`, `admin` e quelli del Negozio; per la fase 13 anche `race_review.py` (revisione, riepilogo, correzioni); dipendenze in `deps.py` |
-| `backend/app/config.py` | `DATABASE_URL`, cookie di sessione, `MEDIA_DIR` (`backend/media`) |
+| `backend/app/api/` | Router: `auth`, `teams`, `pilots`, `championships`, `races`, `pools`, `admin` e quelli del Negozio; per la fase 13 anche `race_review.py` (revisione, riepilogo, correzioni) e `card_admin.py` (caricamento ed eliminazione delle carte, prefisso `/api/admin/cards`); dipendenze in `deps.py` |
+| `backend/app/config.py` | `DATABASE_URL`, cookie di sessione, `MEDIA_DIR` (`backend/media`), `CARD_IMAGE_SIZE` (560x870) e `MAX_CARD_UPLOAD_BYTES` (limite del file caricato) |
 | `backend/app/db/models/` | Modelli SQLAlchemy (`deck.py`: `DeckPrototype` con `kind`, `Deck` con `version`; `championship.py`: `Championship`, `ChampionshipDefaults` (con `card_poll_seconds`), `GOLD_FIELDS`; `shop.py`: tabelle del Negozio, tra cui `PackPurchase`; fase 13: `CardPlay` (`card_play`), `CardGift` (`card_gift`) e le colonne `Race.review_started_at` e `Race.review_started_by_user_id`) |
-| `backend/app/schemas/` | Schemi Pydantic delle risposte e delle richieste (`card_poll.py` per l'intervallo di controllo; `PilotDetail` include `sponsor_inventory`) |
-| `backend/app/services/` | Regole di business: campionati, gare (`races.py`), oro (`gold.py`), pool, carte, mazzi (`pilot_deck.py`), piloti, pulizia, immagini, nomi, ruoli, sessioni, team, utenti; Negozio: `packs.py`, `pack_images.py`, `shop_draw.py`, `shop_purchase.py`, `shop_view.py`, `shop_history.py`, `shop_inventory.py`, `shop_list.py`; carte sponsor in gara: `card_play.py`, `card_play_close.py`, `card_gift.py`, `card_judge.py`, `race_review.py` |
+| `backend/app/schemas/` | Schemi Pydantic delle risposte e delle richieste (`card_poll.py` per l'intervallo di controllo; `card_admin.py` per caricamento ed eliminazione delle carte; `PilotDetail` include `sponsor_inventory`) |
+| `backend/app/services/` | Regole di business: campionati, gare (`races.py`), oro (`gold.py`), pool, carte, mazzi (`pilot_deck.py`), piloti, pulizia, immagini, nomi, ruoli, sessioni, team, utenti; Negozio: `packs.py`, `pack_images.py`, `shop_draw.py`, `shop_purchase.py`, `shop_view.py`, `shop_history.py`, `shop_inventory.py`, `shop_list.py`; carte sponsor in gara: `card_play.py`, `card_play_close.py`, `card_gift.py`, `card_judge.py`, `race_review.py`; amministrazione delle carte: `card_upload.py`, `card_delete.py` |
 | `backend/app/scripts/` | `create_admin`, `seed_prototype`, `resize_cards` |
 | `backend/alembic/versions/` | Migrazioni (elenco nella sezione 11 della specifica) |
 | `backend/media/cards/` | Immagini delle carte (vedi sotto) |
@@ -39,7 +39,7 @@ Ultimo riallineamento: 2026-10-13.
 
 - Primo avvio o nuovo PC: `python heat.py setup`, poi `python heat.py start`.
 - Dopo un `git pull` o un cambio di ramo: `python heat.py migrate` (l'avvio migra comunque da solo).
-- Test backend: `python heat.py test` (224 test alla chiusura della fase 11, 248 alla fine della 12a; il numero attuale, dopo la fase 13, non è stato aggiornato qui). Controlli frontend: `python heat.py check`.
+- Test backend: `python heat.py test` (224 test alla chiusura della fase 11, 248 alla fine della 12a; 474 passati in 60,54 secondi dopo la 13e, esito riferito dall'autore il 2026-10-13). Controlli frontend: `python heat.py check`.
 - Ridimensionare le carte, da `backend`: `python -m app.scripts.resize_cards [cartella] [--dry-run]`.
 - Il lint del frontend (`npm run lint`) esegue `prettier --check` e `eslint`: dopo ogni modifica a un file `.svelte` o `.ts` conviene lanciare `npx prettier --write` sul file (le righe troppo lunghe sono la causa più comune di errore).
 - Dopo un'unione di teste Alembic, `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa.
@@ -51,16 +51,16 @@ Le immagini stanno in `backend/media/cards/`:
 - `base/modifiche/`: pool di base delle modifiche.
 - `base/sponsor/`: pool di base degli sponsor (usata dai pacchetti per le carte sponsor).
 - `starter/`: carte dell'inventario di partenza di ogni pilota. `STARTER_INVENTORY` (in `services/cards.py`) usa i file `velocita-1.webp` … `velocita-4.webp`, 3 copie ciascuno.
-- `uploads/`: carte extra caricate in seguito, utilizzabili nella creazione delle pool.
+- `uploads/<tipo>/`: carte caricate dall'admin con `POST /api/admin/cards` (13e), file `nome_N.webp`, con una cartella per tipo (`modifiche` o `sponsor`).
 
-Le cartelle le riempie a mano l'autore del progetto. Nomi dei file: `nome_N.ext`, con N pari al numero di copie. Le carte Calore non sono ancora state fotografate: per ora si considerano parte delle modifiche. Nel frontend i percorsi delle carte si servono con il prefisso `/media/` (nella revisione della pagina della gara, `/media/cards/`).
+Le cartelle `base/` e `starter/` le riempie a mano l'autore del progetto; `uploads/` si riempie dal caricamento. Nomi dei file: `nome_N.ext`, con N pari al numero di copie. Le carte Calore non sono ancora state fotografate: per ora si considerano parte delle modifiche. Nel frontend i percorsi delle carte si servono con il prefisso `/media/` (nella revisione della pagina della gara, `/media/cards/`).
 
 Lo script `resize_cards` porta ogni immagine (png, jpg, jpeg, webp) in WebP dentro la scatola massima di 560x870 px, senza tagliare, e lascia intatti i WebP già della misura giusta. Con `--dry-run` mostra solo cosa farebbe. Non cancella gli originali: la ricarica usa soltanto i WebP.
 
 ## Pool di base e ricarica
 
 - Tipi: `modifiche` e `sponsor`. Nomi tecnici delle pool di base: `default` (modifiche) e `sponsor`, definiti in `BASE_POOL_NAMES` (`services/pools.py`). La rinomina di `default` in `modifiche` non è stata fatta, per non rompere codice e test.
-- Ricarica (`POST /api/pools/base/{kind}/reload`, solo admin): legge `backend/media/cards/base/<tipo>`, aggiunge in fondo le carte nuove e toglie quelle il cui file non esiste più (solo nella cartella `cards/base/<tipo>/`; se la cartella manca o non ha immagini non toglie nulla). Le carte presenti non si modificano, così nomi e copie corretti a mano si conservano: una carta è già presente se coincide il nome (senza distinguere le maiuscole) o il percorso. File senza `_N` finale: scartati con avviso. File non WebP senza il loro WebP: avviso. Cartella assente: avviso.
+- Ricarica (`POST /api/pools/base/{kind}/reload`, solo admin): legge `backend/media/cards/base/<tipo>`, aggiunge in fondo le carte nuove e toglie quelle il cui file non esiste più (solo nella cartella `cards/base/<tipo>/`, quindi le carte caricate non si toccano; se la cartella manca o non ha immagini non toglie nulla). Le carte presenti non si modificano, così nomi e copie corretti a mano si conservano: una carta è già presente se coincide il nome (senza distinguere le maiuscole) o il percorso. File senza `_N` finale: scartati con avviso. File non WebP senza il loro WebP: avviso. Cartella assente: avviso.
 - Anteprima (`GET /api/pools/base/{kind}/reload/preview`): stessa logica con `apply=False` in `reload_base_pool`, non scrive nulla; `preview_reload` indica per ogni carta da togliere se è nella copia di pool di un campionato attivo (`_active_championship_paths`). Il frontend la chiede prima della ricarica e apre un popup di conferma se ci sono carte da togliere.
 - Le copie di pool dei campionati già creati non cambiano con la ricarica.
 - Il database di prova non contiene la pool `sponsor` se un test non la crea: in quel caso il campionato nasce senza copia degli sponsor.
@@ -82,9 +82,22 @@ Le decisioni stanno in `PHASE_13_SPEC.md`, lo stato per sottofase in `PROJECT_ST
 - Correzioni del revisore (`services/card_judge.py`): `get_card_summary`, `cancel_play` (anche di giocate già consumate, solo se la pool ha ancora una copia uguale, altrimenti 409), `grant_bonus` e `remove_card`. Tutte passano da `_reviewed_race`.
 - Tasto S (13b e 13d): `draw_gift` in `services/card_gift.py` estrae una carta dalla pool sponsor con probabilità proporzionale alle copie e la mette nell'inventario del pilota con una notifica (`card_gift`, `seen_at` vuoto finché non vista). Il giocatore agisce solo sui propri piloti, giudice e admin su qualsiasi pilota iscritto (`_load_gift_pilot`, `_authorize_gift`). Serve una gara in corso non in revisione e almeno una copia in pool.
 - Intervallo di controllo (13c-1): `card_poll_seconds` su `championship_defaults`, da 1 a 10 secondi, predefinito 5; `GET /api/admin/card-poll` per ogni utente collegato, `PUT` solo per l'admin. Vale per tutti i campionati, anche quelli già creati. Il frontend lo legge una volta all'apertura della pagina del campionato (`lib/card-poll.svelte.ts`).
-- Frontend (13c e 13d, parziale): sezione a scomparsa per pilota con uso delle carte (`components/pilot-card-plays.svelte`), popup "Hai ottenuto una carta sponsor" (`components/card-gift-popup.svelte`), inventario del pilota in due sezioni "Modifiche" e "Sponsor", tasto S nella pagina della gara (`components/pilot-gift-button.svelte`) e campo dell'intervallo nelle impostazioni generali (`lib/card-poll-form.ts`). Da fare: Indietro (13c) e la revisione nella pagina della gara (13d).
-- Test della fase: `test_card_plays.py`, `test_card_gifts.py`, `test_card_judge.py`, `test_card_judge_reopen.py`, `test_race_review.py`, `test_race_review_reopen.py`, `test_card_poll_settings.py` e 3 test dell'inventario sponsor in `test_pilot_deck_api.py`. Le funzioni di supporto sono in `test_race_review.py`; in `test_card_judge.py` e nei file più vecchi alcune sono ancora ricopiate e la duplicazione si può ripulire. I test della pull request #11 (commit `2f12768`) riguardano scadenza della revisione, secondo giudice, bonus e annullo.
+- Frontend (13c e 13d): sezione a scomparsa per pilota con uso delle carte (`components/pilot-card-plays.svelte`), popup "Hai ottenuto una carta sponsor" (`components/card-gift-popup.svelte`), inventario del pilota in due sezioni "Modifiche" e "Sponsor", tasto S nella pagina della gara (`components/pilot-gift-button.svelte`) e campo dell'intervallo nelle impostazioni generali (`lib/card-poll-form.ts`). Secondo `PHASE_13_SPEC.md` il frontend del revisore (13d: revisione nella pagina della gara con riepilogo con immagini, correzioni e riapertura per l'admin) è stato confermato dall'autore il 2026-10-13; lo stato esatto di Indietro (13c) va letto in `PROJECT_STATUS.md`.
+- Test della fase: `test_card_plays.py`, `test_card_gifts.py`, `test_card_judge.py`, `test_card_judge_reopen.py`, `test_race_review.py`, `test_race_review_reopen.py`, `test_card_poll_settings.py`, `test_card_admin_services.py` (13e) e 3 test dell'inventario sponsor in `test_pilot_deck_api.py`. Le funzioni di supporto sono in `test_race_review.py`; in `test_card_judge.py` e nei file più vecchi alcune sono ancora ricopiate e la duplicazione si può ripulire. I test della pull request #11 (commit `2f12768`) riguardano scadenza della revisione, secondo giudice, bonus e annullo.
 - Il frontend delle carte non ha test dedicati ai componenti nuovi: la CI conferma solo type-check, lint e build.
+
+## Amministrazione delle carte (13e)
+
+Regole complete in `PHASE_13_SPEC.md` (parte B). Riassunto per ripartire:
+
+- Rotte (`api/card_admin.py`, solo admin, router registrato in `main.py` con prefisso `/api/admin/cards` prima del router `admin`): `POST /api/admin/cards?kind=&name=&copies=` carica una carta (il corpo è l'immagine già tagliata a 560x870; risposta 201 con nome, percorso, copie e tipo; 404 pool di base mancante, 409 nome già usato, 413 file troppo grande dall'intestazione `content-length`, 422 dati o immagine non validi); `DELETE /api/admin/cards?kind=&name=` elimina una carta caricata (risposta `removed_files`; 404 carta o pool mancante, 409 se non è una carta caricata).
+- Caricamento (`services/card_upload.py`, `upload_card`): formati JPEG, PNG e WebP, misure esatte `CARD_IMAGE_SIZE`, file entro `MAX_CARD_UPLOAD_BYTES`; nome senza spazi ai bordi, da 1 a 64 caratteri, senza punto iniziale e senza `/ \ : * ? " < > |`; copie da 1 a 999. Il file diventa `cards/uploads/<tipo>/<nome>_<copie>.webp` (WebP, qualità 90, senza trasparenza) e la carta entra in fondo alla pool di base. Se la scrittura nel database fallisce il file viene rimosso. Nome già presente (stessa regola di `card_key`) o file già esistente: `CardNameTakenError` (409).
+- Eliminazione (`services/card_delete.py`, `delete_uploaded_card`): toglie la carta solo dalla pool di base; si eliminano solo le carte con percorso `cards/uploads/<tipo>/` (le altre danno `CardNotDeletableError`, 409). Poi `remove_orphan_uploads` cancella i file di `cards/uploads/` che nessuna carta usa più: controlla pool di base e personalizzate, ogni mazzo (copie di pool dei campionati, inventari, mazzi da gioco) e i registri `card_play` e `card_gift`. Se un mazzo ha un formato illeggibile non cancella nulla; un file non cancellabile resta dov'è.
+- Origine "caricata": si riconosce dal percorso, non da una colonna; la 13e non ha migrazioni.
+- `delete_championship` (`services/championships.py`) cancella anche i file delle carte rimasti senza uso e le giocate e i regali di carte delle gare (commit `3a79199`, `a5bbe26`; test `020ef6e`).
+- Dipendenza aggiunta: `python-multipart` (`backend/requirements.txt`).
+- Test: `backend/tests/test_card_admin_services.py` (commit `14557ab`). Esito riferito dall'autore il 2026-10-13: 474 test del backend passati in 60,54 secondi. CI della pull request #9 verde (Migrazioni, Frontend, Backend pytest) sull'esecuzione partita alle 21:13 UTC del 2026-10-13, subito dopo il commit `f4cccd5`; l'elenco dei controlli non riporta lo SHA, che si deduce dall'orario.
+- Non ancora fatto: il frontend (13f) e la verifica che le rotte HTTP, oltre ai servizi, siano coperte da test (il commit `14557ab` aggiunge un solo file, dal nome dedicato ai servizi; il contenuto non è stato riletto qui).
 
 ## Negozio
 
@@ -111,14 +124,14 @@ Le decisioni stanno in `PHASE_13_SPEC.md`, lo stato per sottofase in `PROJECT_ST
 
 ## Contesto di lavoro (13 ottobre 2026)
 
-Le fasi da 8 a 12 sono concluse e unite a `main` (pull request da #1 a #5). La fase 13 (carte sponsor in gara e amministrazione delle carte) è nel ramo `phase-13a-card-plays`, pull request #9: completate 13a, 13b e 13c-1; in corso 13c (mancano Indietro e la verifica a mano del campo dell'intervallo e delle due sezioni dell'inventario) e 13d (fatto il tasto S nella pagina della gara, manca la revisione); da fare 13e, 13f e 13g. La pull request #11 ha unito nel ramo i test aggiuntivi sulla revisione (merge `f733886`, commit dei test `2f12768`); la CI di quel commit non è stata letta. L'esito dei test eseguiti in locale dall'autore dopo l'ultimo riallineamento non è stato registrato nei documenti.
+Le fasi da 8 a 12 sono concluse e unite a `main` (pull request da #1 a #5). La fase 13 (carte sponsor in gara e amministrazione delle carte) è nel ramo `phase-13a-card-plays`, pull request #9: completate 13a, 13b, 13c-1 e 13e (backend dell'amministrazione delle carte); il frontend del giocatore (13c) e del revisore (13d) è descritto in `PROJECT_STATUS.md` e in `PHASE_13_SPEC.md`; da fare 13f e 13g. La pull request #11 ha unito nel ramo i test aggiuntivi sulla revisione (merge `f733886`, commit dei test `2f12768`); la CI di quel commit non è stata letta. Dopo la 13e la CI della pull request #9 è verde sulla testa del ramo (commit `f4cccd5`) e l'autore ha riferito 474 test del backend passati in locale.
 
-Documenti riallineati alla fase 13: `PROJECT_SPEC.md` (commit `bc0fbfb`), `PHASE_13_SPEC.md` (commit `9405c97`) e questo file. Da riallineare: `PROJECT_STATUS.md` e `SHOP_DESIGN.md`. `DATABASE.md`, `SCRIPTS.md` e `SETUP.md` non esistono ancora in `docs/` e vanno creati; lo schema delle tabelle `card_play`, `card_gift` e delle colonne `card_poll_seconds`, `review_started_at` e `review_started_by_user_id` non è ancora descritto in un documento di schema.
+Documenti riallineati alla 13e: `PROJECT_STATUS.md` (commit `7ebfb08`), `PHASE_13_SPEC.md` (commit `b9fc17e` e `f4cccd5`), `README.md` (commit `86d0a9a`) e questo file. Da verificare: `PROJECT_SPEC.md` (ultimo riallineamento noto `bc0fbfb`, prima della 13e) e `SHOP_DESIGN.md`. `DATABASE.md`, `SCRIPTS.md` e `SETUP.md` non esistono ancora in `docs/` e vanno creati; lo schema delle tabelle `card_play`, `card_gift` e delle colonne `card_poll_seconds`, `review_started_at` e `review_started_by_user_id` non è ancora descritto in un documento di schema.
 
 Da fare, in ordine:
 
-1. Finire 13c (Indietro) e 13d (revisione nella pagina della gara), poi 13e, 13f e 13g.
-2. Riallineare `PROJECT_STATUS.md` e `SHOP_DESIGN.md` e creare `DATABASE.md`, `SCRIPTS.md` e `SETUP.md`.
+1. 13f (frontend: ritaglio con zoom, nome e quantità, nomi in arancione, tasti di esclusione nelle pool personalizzate), poi 13g.
+2. Verificare `PROJECT_SPEC.md` rispetto alla 13e e creare `DATABASE.md`, `SCRIPTS.md` e `SETUP.md`.
 3. Prima dell'unione in `main`, rileggere il diff di `PROJECT_SPEC.md` e verificare che `python heat.py test`, `python heat.py check` e la CI passino sull'ultimo commit.
 
 ## Questioni aperte
