@@ -32,7 +32,7 @@ describe('clampZoom', () => {
 });
 
 describe('initialView', () => {
-	it('centra l\'immagine più larga della carta', () => {
+	it("centra l'immagine più larga della carta", () => {
 		const view = initialView(1120, 1000);
 		expect(view.zoom).toBe(1);
 		expect(view.x).toBeCloseTo(-207.2);
@@ -49,7 +49,7 @@ describe('panView', () => {
 		expect(right.x).toBeCloseTo(CARD_WIDTH - 1120 * baseScale(1120, 1000));
 	});
 
-	it('non sposta sull\'asse già a filo', () => {
+	it("non sposta sull'asse già a filo", () => {
 		const start = initialView(1120, 1000);
 		expect(panView(start, 0, 300, 1120, 1000).y).toBeCloseTo(0);
 	});
@@ -74,7 +74,7 @@ describe('zoomView', () => {
 });
 
 describe('sourceRect', () => {
-	it('a zoom 1 copre tutta l\'altezza dell\'immagine', () => {
+	it("a zoom 1 copre tutta l'altezza dell'immagine", () => {
 		const rect = sourceRect(initialView(1120, 1000), 1120, 1000);
 		expect(rect.sy).toBeCloseTo(0);
 		expect(rect.sh).toBeCloseTo(1000);

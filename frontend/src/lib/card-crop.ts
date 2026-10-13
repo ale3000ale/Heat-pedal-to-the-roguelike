@@ -53,7 +53,13 @@ export function initialView(width: number, height: number): CropView {
 }
 
 // Sposta l'immagine di (dx, dy) pixel mantenendola dentro i limiti.
-export function panView(view: CropView, dx: number, dy: number, width: number, height: number): CropView {
+export function panView(
+	view: CropView,
+	dx: number,
+	dy: number,
+	width: number,
+	height: number
+): CropView {
 	const { w, h } = drawnSize(width, height, view.zoom);
 	return {
 		zoom: view.zoom,
