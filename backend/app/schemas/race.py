@@ -1,6 +1,11 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+# Stato di una gara: in corso (senza risultati), in revisione (revisione carte attiva),
+# da rivedere (risultati registrati ma revisione non attiva né confermata), chiusa.
+RaceStatus = Literal["in_progress", "in_review", "to_review", "closed"]
 
 
 class RaceCreate(BaseModel):
@@ -27,6 +32,8 @@ class RaceRead(BaseModel):
     number: int
     date: datetime | None
     participants: int
+    status: RaceStatus
+    is_last: bool
 
 
 class RaceResultRead(BaseModel):

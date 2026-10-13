@@ -6,11 +6,12 @@ from app.schemas.race import (
     RaceDetail,
     RaceRead,
     RaceResultRead,
+    RaceStatus,
     ResultsSet,
     StandingRead,
 )
 from app.services.championships import standings, ChampionshipClosedError, ChampionshipNotFoundError
-from app.services.race_review import settle_expired_reviews
+from app.services.race_review import is_last_race, is_review_active, settle_expired_reviews
 from app.services.races import (
     RaceAlreadyClosedError,
     RaceInProgressError,
@@ -36,12 +37,27 @@ RACE_CLOSED = HTTPException(
 )
 
 
+def _race_status(race, participants: int) -> RaceStatus:
+    # Stato della gara: senza risultati è in corso; con i risultati dipende dalla revisione
+    # delle carte (confermata = chiusa, attiva = in revisione, altrimenti da rivedere).
+    if participants == 0:
+        return "in_progress"
+    if race.review_closed_at is not None:
+        return "closed"
+    if is_review_active(race):
+        return "in_review"
+    return "to_review"
+
+
 def _read(db, race) -> RaceRead:
+    participants = count_participants(db, race.id)
     return RaceRead(
         id=race.id,
         number=race.number,
         date=race.date,
-        participants=count_participants(db, race.id),
+        participants=participants,
+        status=_race_status(race, participants),
+        is_last=is_last_race(db, race),
     )
 
 
