@@ -10,12 +10,20 @@
 	// Pannello di revisione delle carte su una gara con i risultati registrati.
 	// autoOpen: apre subito la revisione (o riprende la propria) con il timer.
 	// canOpen: mostra il pulsante per aprirla a mano (solo admin).
+	// reopen: la revisione è già confermata, il pulsante la riapre invece di aprirla.
 	let {
 		championshipId,
 		raceId,
 		autoOpen = false,
-		canOpen = false
-	}: { championshipId: number; raceId: number; autoOpen?: boolean; canOpen?: boolean } = $props();
+		canOpen = false,
+		reopen = false
+	}: {
+		championshipId: number;
+		raceId: number;
+		autoOpen?: boolean;
+		canOpen?: boolean;
+		reopen?: boolean;
+	} = $props();
 
 	// Lo store è legato a una gara: la pagina rimonta il pannello se la gara cambia.
 	// svelte-ignore state_referenced_locally
@@ -55,9 +63,23 @@
 				</Button>
 			{:else if store.confirmed}
 				<span class="text-sm font-medium text-green-600">Revisione confermata.</span>
+				{#if canOpen}
+					<Button
+						type="button"
+						variant="outline"
+						disabled={store.busy}
+						onclick={() => store.reopen()}
+					>
+						Riapri la revisione
+					</Button>
+				{/if}
 			{:else if canOpen}
-				<Button type="button" disabled={store.busy} onclick={() => store.open()}>
-					{store.review ? 'Riapri la revisione' : 'Apri la revisione'}
+				<Button
+					type="button"
+					disabled={store.busy}
+					onclick={() => (reopen ? store.reopen() : store.open())}
+				>
+					{reopen || store.review ? 'Riapri la revisione' : 'Apri la revisione'}
 				</Button>
 				{#if store.review && !store.review.in_review}
 					<span class="text-sm text-muted-foreground">Revisione chiusa o scaduta.</span>

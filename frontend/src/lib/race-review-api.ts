@@ -24,6 +24,13 @@ export function confirmReview(championshipId: number, raceId: number): Promise<R
 	});
 }
 
+/** Riapre la revisione di una gara confermata: solo admin e solo l'ultima gara (403/409 altrimenti). */
+export function reopenReview(championshipId: number, raceId: number): Promise<RaceReview> {
+	return api<RaceReview>(`${raceBase(championshipId, raceId)}/review/reopen`, {
+		method: 'POST'
+	});
+}
+
 /** Riepilogo delle carte giocate da tutti i piloti nella gara. */
 export function fetchCardPlays(championshipId: number, raceId: number): Promise<PilotPlays[]> {
 	return api<PilotPlays[]>(`${raceBase(championshipId, raceId)}/card-plays`);

@@ -6,6 +6,7 @@ import {
 	fetchCardPlays,
 	grantBonus,
 	openReview,
+	reopenReview,
 	removeCard
 } from '$lib/race-review-api';
 import { secondsLeft } from '$lib/race-review-format';
@@ -79,6 +80,14 @@ export class RaceReviewStore {
 	/** Apre la revisione (o la riprende) e carica le giocate. */
 	async open() {
 		const review = await this.run(() => openReview(this.championshipId, this.raceId));
+		if (!review) return;
+		this.apply(review);
+		await this.refreshPlays();
+	}
+
+	/** Riapre una revisione già confermata (admin, ultima gara) e carica le giocate. */
+	async reopen() {
+		const review = await this.run(() => reopenReview(this.championshipId, this.raceId));
 		if (!review) return;
 		this.apply(review);
 		await this.refreshPlays();
