@@ -18,6 +18,8 @@
 		blob?: Blob | null;
 	}
 
+	// `blob` è una prop bindable solo scritta qui e letta dal genitore: ESLint non lo vede.
+	// eslint-disable-next-line no-useless-assignment
 	let { file, blob = $bindable() }: Props = $props();
 
 	let canvas = $state<HTMLCanvasElement>();
