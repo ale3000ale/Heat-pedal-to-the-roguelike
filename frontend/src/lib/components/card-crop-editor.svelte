@@ -26,13 +26,18 @@
 	let loadError = $state<string | null>(null);
 	let dragging: { x: number; y: number } | null = null;
 
+	// Azzera il ritaglio esportato quando cambia il file.
+	function clearBlob() {
+		blob = null;
+	}
+
 	// Legge il file scelto e prepara la vista iniziale centrata.
 	$effect(() => {
 		const current = file;
 		let cancelled = false;
 		image = null;
 		view = null;
-		blob = null;
+		clearBlob();
 		loadError = null;
 		createImageBitmap(current).then(
 			async (bitmap) => {
@@ -106,7 +111,6 @@
 	{#if loadError}
 		<p class="text-sm text-destructive" role="alert">{loadError}</p>
 	{:else}
-		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_no_noninteractive_element_interactions -->
 		<canvas
 			bind:this={canvas}
 			width={CARD_WIDTH}
