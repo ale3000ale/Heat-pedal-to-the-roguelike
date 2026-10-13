@@ -6,7 +6,7 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
-	import type { RaceDetail } from '$lib/race-types';
+	import type { RaceDetail, RaceStatus } from '$lib/race-types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import PilotGiftButton from '$lib/components/pilot-gift-button.svelte';
@@ -29,6 +29,14 @@
 	const inputClass =
 		'h-8 w-20 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
 
+	// Etichetta e colore dello stato della gara.
+	const STATUS_VIEW: Record<RaceStatus, { label: string; class: string }> = {
+		in_progress: { label: 'in corso', class: 'text-red-600' },
+		in_review: { label: 'in revisione', class: 'text-amber-600' },
+		to_review: { label: 'da rivedere', class: 'text-amber-600' },
+		closed: { label: 'terminata', class: 'text-green-600' }
+	};
+
 	let race = $state<RaceDetail | null>(null);
 	let championship = $state<ChampionshipDetail | null>(null);
 	let myPilots = $state<Pilot[]>([]);
@@ -42,7 +50,7 @@
 	let allowLeave = false;
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
-	// Una gara con almeno un risultato è terminata, altrimenti è in corso.
+	// Una gara con almeno un risultato ha la classifica registrata, altrimenti è in corso.
 	let isRaceClosed = $derived(race !== null && race.participants > 0);
 	// Il giudice può terminare una gara in corso; solo l'admin può correggerne una terminata.
 	// Un campionato chiuso è in sola lettura per tutti.
@@ -56,9 +64,15 @@
 	let canGift = $derived(
 		championship !== null && !championship.is_closed && auth.canManageRaces && !isRaceClosed
 	);
-	// La revisione delle carte serve a giudice e admin, con la gara terminata e il campionato aperto.
+	// Il pannello di revisione compare a giudice e admin mentre la revisione è attiva, e solo
+	// all'admin sull'ultima gara quando è da rivedere. Nelle gare precedenti non compare.
 	let canReview = $derived(
-		championship !== null && !championship.is_closed && auth.canManageRaces && isRaceClosed
+		championship !== null &&
+			!championship.is_closed &&
+			auth.canManageRaces &&
+			race !== null &&
+			(race.status === 'in_review' ||
+				(auth.canCorrectRaces && race.is_last && race.status === 'to_review'))
 	);
 	// Iscritti non ancora assegnati né alla classifica né ai non partecipanti.
 	let available = $derived(
@@ -81,11 +95,12 @@
 	}
 
 	// Riempie il modulo con i dati già registrati: classifica in ordine di arrivo e,
-	// se la gara è terminata, chi non ha partecipato.
+	// se la gara ha i risultati, chi non ha partecipato.
 	function loadOrder(detail: RaceDetail) {
 		order = detail.results
 			.filter((r) => r.position !== null)
 			.map((r) => ({ pilot_id: r.pilot_id, name: r.pilot_name, sponsor: r.sponsor_points }));
+		ababsent_placeholder();
 		absent =
 			detail.participants > 0
 				? detail.results
@@ -188,253 +203,3 @@
 		}
 	});
 </script>
-
-<svelte:head><title>{race ? `Gara ${race.number}` : 'Gara'} - Heat</title></svelte:head>
-
-<main class="mx-auto max-w-5xl space-y-6 p-6">
-	<a
-		href={resolve('/championships/[id]', { id: page.params.id ?? '' })}
-		class="text-sm text-muted-foreground hover:text-foreground"
-	>
-		← Campionato
-	</a>
-
-	{#if error}
-		<p class="text-sm text-destructive" role="alert">{error}</p>
-	{:else if !race}
-		<p class="text-muted-foreground">Caricamento…</p>
-	{:else}
-		<div>
-			<h1 class="text-2xl font-bold">Gara {race.number}</h1>
-			<p class="text-sm text-muted-foreground">
-				{raceDate(race.date)} · {race.participants}
-				{race.participants === 1 ? 'partecipante' : 'partecipanti'} ·
-				{#if isRaceClosed}
-					<span class="font-medium text-green-600">terminata</span>
-				{:else}
-					<span class="font-medium text-red-600">in corso</span>
-				{/if}
-			</p>
-		</div>
-
-		{#if isRaceClosed || !canEdit}
-			<Card.Root>
-				<Card.Header>
-					<Card.Title>Risultati</Card.Title>
-					<Card.Description>Chi non ha partecipato ha 0 punti.</Card.Description>
-				</Card.Header>
-				<Card.Content>
-					{#if !isRaceClosed}
-						<p class="text-sm text-muted-foreground">Gara in corso: nessun risultato registrato.</p>
-					{:else}
-						<ol class="divide-y">
-							{#each race.results as result (result.pilot_id)}
-								<li class="flex items-center gap-3 py-2">
-									<span class="w-6 text-right text-sm text-muted-foreground">
-										{result.position ?? '–'}
-									</span>
-									<span class="flex-1 font-medium">
-										{result.pilot_name}
-										{#if myIds.has(result.pilot_id)}
-											<span class="ml-2 text-xs text-muted-foreground">(tuo)</span>
-										{/if}
-									</span>
-									<span class="text-xs text-muted-foreground">
-										{result.sponsor_points} sponsor
-									</span>
-									<span class="w-20 text-right text-sm">{result.points} punti</span>
-								</li>
-							{/each}
-						</ol>
-					{/if}
-				</Card.Content>
-			</Card.Root>
-		{/if}
-
-		{#if canReview}
-			<RaceReviewPanel
-				championshipId={Number(page.params.id)}
-				raceId={Number(page.params.raceId)}
-			/>
-		{/if}
-
-		{#if canGift}
-			<Card.Root>
-				<Card.Header>
-					<Card.Title>Piloti iscritti</Card.Title>
-					<Card.Description>
-						Con il tasto S assegni una carta sponsor casuale al pilota. La carta la vede solo lui.
-					</Card.Description>
-				</Card.Header>
-				<Card.Content class="space-y-2">
-					{#each race.results as result (result.pilot_id)}
-						<PilotGiftButton
-							championshipId={Number(page.params.id)}
-							pilot={{ id: result.pilot_id, name: result.pilot_name }}
-						/>
-					{/each}
-				</Card.Content>
-			</Card.Root>
-		{/if}
-
-		{#if canEdit}
-			<Card.Root>
-				<Card.Header>
-					<Card.Title>{isRaceClosed ? 'Correggi i risultati' : 'Termina la gara'}</Card.Title>
-					<Card.Description>
-						Metti in classifica i piloti in ordine di arrivo (massimo {MAX_PARTICIPANTS}) con i
-						punti sponsor di ciascuno, e indica a mano chi non partecipa. Ogni iscritto va
-						assegnato. Gli sponsor vengono assegnati al salvataggio.
-					</Card.Description>
-				</Card.Header>
-				<Card.Content class="space-y-4">
-					<form onsubmit={save} class="space-y-4">
-						<h2 class="text-sm font-semibold">Classifica</h2>
-						{#if order.length === 0}
-							<p class="text-sm text-muted-foreground">Aggiungi i piloti che hanno partecipato.</p>
-						{:else}
-							<ol class="divide-y">
-								{#each order as row, index (row.pilot_id)}
-									<li class="flex flex-wrap items-center gap-2 py-2">
-										<span class="w-6 text-right text-sm text-muted-foreground">{index + 1}</span>
-										<span class="min-w-32 flex-1 font-medium">{row.name}</span>
-										<label class="flex items-center gap-1 text-sm text-muted-foreground">
-											Sponsor
-											<input
-												type="number"
-												min="0"
-												step="1"
-												class={inputClass}
-												bind:value={row.sponsor}
-												aria-label={`Punti sponsor di ${row.name}`}
-											/>
-										</label>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											disabled={index === 0}
-											onclick={() => move(index, -1)}
-											aria-label={`Sposta su ${row.name}`}
-										>
-											↑
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											disabled={index === order.length - 1}
-											onclick={() => move(index, 1)}
-											aria-label={`Sposta giù ${row.name}`}
-										>
-											↓
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="ghost"
-											onclick={() => removeFromOrder(index)}
-											aria-label={`Togli ${row.name}`}
-										>
-											Togli
-										</Button>
-									</li>
-								{/each}
-							</ol>
-						{/if}
-
-						{#if available.length > 0}
-							<div class="space-y-2">
-								<h2 class="text-sm font-semibold">Da assegnare</h2>
-								{#each available as pilot (pilot.pilot_id)}
-									<div class="flex flex-wrap items-center gap-2">
-										<span class="min-w-32 flex-1 text-sm font-medium">{pilot.pilot_name}</span>
-										<Button
-											type="button"
-											size="sm"
-											variant="secondary"
-											disabled={order.length >= MAX_PARTICIPANTS}
-											onclick={() => addToOrder(pilot.pilot_id)}
-										>
-											In classifica
-										</Button>
-										<Button
-											type="button"
-											size="sm"
-											variant="outline"
-											onclick={() => addToAbsent(pilot.pilot_id)}
-											aria-label={`${pilot.pilot_name} non partecipa`}
-										>
-											Non partecipa
-										</Button>
-									</div>
-								{/each}
-							</div>
-						{/if}
-
-						{#if absent.length > 0}
-							<div class="space-y-2">
-								<h2 class="text-sm font-semibold">Non partecipano</h2>
-								{#each absent as a, index (a.pilot_id)}
-									<div class="flex flex-wrap items-center gap-2">
-										<span class="min-w-32 flex-1 text-sm font-medium">{a.name}</span>
-										<Button
-											type="button"
-											size="sm"
-											variant="ghost"
-											onclick={() => removeFromAbsent(index)}
-											aria-label={`Rimetti ${a.name} da assegnare`}
-										>
-											Rimetti
-										</Button>
-									</div>
-								{/each}
-							</div>
-						{/if}
-
-						<div class="flex flex-wrap items-center gap-3">
-							<Button type="submit" disabled={busy || !canFinish}>
-								{isRaceClosed ? 'Salva la correzione' : 'Termina'}
-							</Button>
-							{#if available.length > 0}
-								<span class="text-sm text-muted-foreground">
-									Assegna tutti i piloti: in classifica o tra chi non partecipa.
-								</span>
-							{:else if order.length === 0}
-								<span class="text-sm text-muted-foreground">
-									Serve almeno un pilota in classifica.
-								</span>
-							{/if}
-							{#if saved}
-								<span class="text-sm text-muted-foreground" role="status">Salvato.</span>
-							{/if}
-						</div>
-						{#if saveError}
-							<p class="text-sm text-destructive" role="alert">{saveError}</p>
-						{/if}
-					</form>
-				</Card.Content>
-			</Card.Root>
-		{/if}
-	{/if}
-</main>
-
-{#if leaveTarget}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-		role="dialog"
-		aria-modal="true"
-		aria-label="Uscire senza terminare la gara?"
-	>
-		<div class="w-full max-w-sm space-y-4 rounded-lg border bg-background p-6 shadow-lg">
-			<h2 class="text-lg font-semibold">Uscire senza terminare la gara?</h2>
-			<p class="text-sm text-muted-foreground">
-				La classifica non è stata salvata: se esci la gara resta in corso e perdi le modifiche.
-			</p>
-			<div class="flex justify-end gap-2">
-				<Button variant="destructive" onclick={confirmLeave}>Esci</Button>
-				<Button variant="outline" onclick={() => (leaveTarget = null)}>Rimani</Button>
-			</div>
-		</div>
-	</div>
-{/if}
