@@ -1,6 +1,6 @@
 # Heat — Pedal to the Roguelike
 
-Applicazione web locale per gestire campionati del gioco da tavolo Heat: utenti e ruoli, team, piloti, mazzi, pool di carte, gare, classifiche, oro e Negozio con apertura dei pacchetti.
+Applicazione web locale per gestire campionati del gioco da tavolo Heat: utenti e ruoli, team, piloti, mazzi, pool di carte, gare con carte sponsor e revisione, classifiche, oro e Negozio con apertura dei pacchetti.
 
 ## Tecnologie
 
@@ -51,7 +51,7 @@ Dopo un `git pull` o un cambio di ramo l'avvio migra comunque da solo il databas
 | `backend/` | API FastAPI, modelli, servizi, migrazioni Alembic, test, immagini in `backend/media/`. |
 | `frontend/` | Applicazione SvelteKit (`src/routes`, `src/lib`). |
 | `database/` | Cartella del database. |
-| `docs/` | Specifica, stato, note, domande aperte, progetto e schema del Negozio. |
+| `docs/` | Specifica, stato, note, domande aperte, specifica della fase 13, progetto e schema del Negozio. |
 | `tools/` | Script di supporto, tra cui `check-frontend.mjs`. |
 | `.github/` | Controlli automatici (CI) a ogni pull request. |
 | `heat.py` | Setup, avvio, migrazioni, test e controlli. |
@@ -72,6 +72,7 @@ Le immagini dei pacchetti del Negozio stanno in `backend/media/pack/`.
 - `docs/PROJECT_STATUS.md`: stato di avanzamento.
 - `docs/PROJECT_NOTES.md`: mappa del codice, comandi e convenzioni di lavoro.
 - `docs/OPEN_QUESTIONS.md`: domande ancora aperte.
+- `docs/PHASE_13_SPEC.md`: specifica della fase 13 (carte sponsor in gara e revisione).
 - `docs/SHOP_DESIGN.md` e `docs/SHOP_SCHEMA.md`: funzionamento e schema tecnico del Negozio.
 - `docs/DATABASE_ANALYSIS.md`: analisi del database.
 
