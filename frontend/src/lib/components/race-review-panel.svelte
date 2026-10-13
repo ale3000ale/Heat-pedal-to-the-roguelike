@@ -22,7 +22,6 @@
 	const store = new RaceReviewStore(championshipId, raceId);
 
 	onMount(() => {
-		// svelte-ignore state_referenced_locally
 		if (autoOpen) void store.open();
 	});
 
