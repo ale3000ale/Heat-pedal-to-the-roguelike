@@ -25,7 +25,7 @@
 			{#each pilot.plays as play (play.id)}
 				<li class="flex w-28 flex-col items-center gap-1 text-center">
 					<img
-						src={play.card_path}
+						src="/media/{play.card_path}"
 						alt={play.card_name}
 						width="96"
 						height="134"
