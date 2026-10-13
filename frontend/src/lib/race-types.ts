@@ -1,9 +1,15 @@
+// Stato di una gara: in corso, in revisione (timer attivo), da rivedere, chiusa.
+export type RaceStatus = 'in_progress' | 'in_review' | 'to_review' | 'closed';
+
 // Gara di un campionato, come appare nell'elenco. La data può non essere impostata.
+// is_last è vero solo per la gara con il numero più alto del campionato.
 export interface Race {
 	id: number;
 	number: number;
 	date: string | null;
 	participants: number;
+	status: RaceStatus;
+	is_last: boolean;
 }
 
 // Risultato di un pilota in una gara. Chi non ha partecipato ha 0 punti e 0 sponsor.

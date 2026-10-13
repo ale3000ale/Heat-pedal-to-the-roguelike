@@ -6,6 +6,7 @@ from app.db.models import User
 from app.db.models.championship import Championship, ChampionshipPilot
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
+from app.db.models.race import Race
 from app.services.cards import (
     MAX_GAME_DECK_CARDS,
     CardEntry,
@@ -31,6 +32,10 @@ class ConcurrentUpdateError(Exception):
     """I mazzi sono stati modificati da altre richieste per tutti i tentativi."""
 
 
+class RaceInProgressError(Exception):
+    """Una gara del campionato del pilota non è ancora confermata: il mazzo è in sola lettura."""
+
+
 def active_championships(db: Session, pilot_ids: list[int]) -> dict[int, tuple[int, str]]:
     # Per ogni pilota iscritto a un campionato non chiuso: {pilot_id: (id, nome)}.
     # Una sola query per tutti i piloti, qualunque sia il loro numero.
@@ -51,6 +56,25 @@ def active_championships(db: Session, pilot_ids: list[int]) -> dict[int, tuple[i
 def active_championship(db: Session, pilot: Pilot) -> tuple[int, str] | None:
     # Il campionato attivo di un solo pilota, come (id, nome), se c'è (solo informativo).
     return active_championships(db, [pilot.id]).get(pilot.id)
+
+
+def has_race_in_progress(db: Session, pilot: Pilot) -> bool:
+    # Vero se il pilota è iscritto a un campionato non chiuso che ha una gara con la
+    # revisione non ancora confermata (review_closed_at vuota). Comprende la gara in
+    # corso, quella da rivedere e quella in revisione; tra la conferma di una gara e la
+    # creazione della successiva il mazzo si può modificare. Una sola query.
+    stmt = (
+        select(Race.id)
+        .join(Championship, Championship.id == Race.championship_id)
+        .join(ChampionshipPilot, ChampionshipPilot.championship_id == Race.championship_id)
+        .where(
+            ChampionshipPilot.pilot_id == pilot.id,
+            Championship.is_closed.is_(False),
+            Race.review_closed_at.is_(None),
+        )
+        .limit(1)
+    )
+    return db.scalar(stmt) is not None
 
 
 def _take_one(cards: list[CardEntry], path: str) -> CardEntry:
@@ -80,9 +104,14 @@ def move_card(db: Session, user: User, pilot_id: int, path: str, to_game: bool) 
     # Sposta una copia dall'inventario al mazzo da gioco (to_game=True) o viceversa.
     # Il mazzo da gioco non può superare il limite. Se un'altra richiesta modifica i
     # mazzi tra la lettura e il salvataggio, si rilegge e si riprova, senza perdere
-    # le modifiche altrui.
+    # le modifiche altrui. Con una gara non confermata nel campionato del pilota il mazzo
+    # è in sola lettura e non si scrive nulla.
+    # Errori: PilotNotFoundError, RaceInProgressError, PilotCardNotFoundError,
+    # GameDeckFullError, ConcurrentUpdateError.
     for _ in range(MAX_MOVE_ATTEMPTS):
         pilot = get_own_pilot(db, user, pilot_id)
+        if has_race_in_progress(db, pilot):
+            raise RaceInProgressError
         inventory_deck = db.get(Deck, pilot.inventory_deck_id)
         game_deck = db.get(Deck, pilot.game_deck_id)
         inventory = parse_cards(inventory_deck.cards)

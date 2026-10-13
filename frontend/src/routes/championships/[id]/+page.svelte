@@ -6,11 +6,20 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
 	import { standingKey } from '$lib/standings';
+	import {
+		fetchUnseenGifts,
+		loadPollIntervalMs,
+		markGiftsSeen,
+		startGiftPolling
+	} from '$lib/card-poll.svelte';
+	import type { CardGift } from '$lib/card-play-types';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
 	import type { Race, Standing } from '$lib/race-types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
+	import PilotCardPlays from '$lib/components/pilot-card-plays.svelte';
+	import CardGiftPopup from '$lib/components/card-gift-popup.svelte';
 
 	const selectClass =
 		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
@@ -26,6 +35,8 @@
 	let busy = $state(false);
 	let selectedPilot = $state('');
 	let settingsOpen = $state(false);
+	let gifts = $state<CardGift[]>([]);
+	let giftOpen = $state(false);
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
 	// Piloti che hanno un team e non sono già iscritti a questo campionato.
@@ -33,6 +44,10 @@
 		myPilots.filter(
 			(p) => p.team_id !== null && !championship?.pilots.some((entrant) => entrant.id === p.id)
 		)
+	);
+	// I miei piloti iscritti a questo campionato: sono quelli che giocano le carte sponsor.
+	let enrolled = $derived(
+		myPilots.filter((p) => championship?.pilots.some((entrant) => entrant.id === p.id))
 	);
 	// Una gara senza classifica è in corso: finché c'è non se ne può creare un'altra.
 	let raceInProgress = $derived(races.some((race) => race.participants === 0));
@@ -66,6 +81,51 @@
 	async function afterDelete() {
 		await goto(resolve('/championships'));
 	}
+
+	// Controllo periodico: se c'è una carta ottenuta non vista apre il popup.
+	// Mentre il popup è aperto non fa nulla, così le notifiche non si accavallano.
+	async function checkGifts(championshipId: number, pilotIds: number[]) {
+		if (giftOpen) return;
+		const found = await fetchUnseenGifts(championshipId, pilotIds);
+		if (found.length > 0 && !giftOpen) {
+			gifts = found;
+			giftOpen = true;
+		}
+	}
+
+	// Alla chiusura del popup le notifiche dei miei piloti risultano viste.
+	async function onGiftsClosed() {
+		if (!championship) return;
+		try {
+			await markGiftsSeen(
+				championship.id,
+				enrolled.map((p) => p.id)
+			);
+		} catch {
+			// Se non si riesce a segnarle, riappariranno al prossimo controllo.
+		}
+		gifts = [];
+	}
+
+	// Avvia il controllo periodico quando ci sono piloti miei iscritti a un campionato attivo.
+	// L'intervallo è quello impostato dall'admin: va letto prima di avviare il controllo, e se
+	// la pagina cambia nel frattempo `cancelled` impedisce di avviarlo dopo la chiusura.
+	$effect(() => {
+		if (!championship || championship.is_closed) return;
+		const championshipId = championship.id;
+		const pilotIds = enrolled.map((p) => p.id);
+		if (pilotIds.length === 0) return;
+		let stop: (() => void) | null = null;
+		let cancelled = false;
+		void loadPollIntervalMs().then((intervalMs) => {
+			if (cancelled) return;
+			stop = startGiftPolling(() => checkGifts(championshipId, pilotIds), intervalMs);
+		});
+		return () => {
+			cancelled = true;
+			stop?.();
+		};
+	});
 
 	onMount(async () => {
 		try {
@@ -233,6 +293,20 @@
 			</Card.Content>
 		</Card.Root>
 
+		{#if raceInProgress && !championship.is_closed && enrolled.length > 0}
+			<Card.Root>
+				<Card.Header>
+					<Card.Title>Le tue carte sponsor</Card.Title>
+					<Card.Description>Gioca le carte dei tuoi piloti nella gara in corso.</Card.Description>
+				</Card.Header>
+				<Card.Content class="space-y-3">
+					{#each enrolled as p (p.id)}
+						<PilotCardPlays championshipId={championship.id} pilot={p} />
+					{/each}
+				</Card.Content>
+			</Card.Root>
+		{/if}
+
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Gare</Card.Title>
@@ -291,5 +365,7 @@
 				ondeleted={afterDelete}
 			/>
 		{/if}
+
+		<CardGiftPopup bind:open={giftOpen} {gifts} onclosed={onGiftsClosed} />
 	{/if}
 </main>

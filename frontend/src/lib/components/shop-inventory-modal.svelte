@@ -1,10 +1,13 @@
 <script lang="ts">
 	import CardTile from '$lib/components/CardTile.svelte';
+	import InventorySection from '$lib/components/inventory-section.svelte';
 	import Modal from '$lib/components/modal.svelte';
+	import { totalCopies } from '$lib/inventory-count';
 	import { fetchInventory } from '$lib/shop-api';
 	import type { ShopInventory } from '$lib/shop-types';
 
 	// Riepilogo delle carte di un pilota: si carica ogni volta che la finestra si apre.
+	// Le sezioni Modifiche e Sponsor sono a scomparsa e partono chiuse.
 	let {
 		open = $bindable(false),
 		championshipId,
@@ -35,9 +38,8 @@
 	{:else if !inventory}
 		<p class="text-muted-foreground">Caricamento…</p>
 	{:else}
-		<div class="space-y-4">
-			<section class="space-y-2">
-				<h3 class="font-semibold">Modifiche</h3>
+		<div class="space-y-3">
+			<InventorySection title="Modifiche" count={totalCopies(inventory.modifiche)}>
 				{#if inventory.modifiche.length === 0}
 					<p class="text-sm text-muted-foreground">Nessuna carta.</p>
 				{:else}
@@ -47,9 +49,8 @@
 						{/each}
 					</div>
 				{/if}
-			</section>
-			<section class="space-y-2">
-				<h3 class="font-semibold">Sponsor</h3>
+			</InventorySection>
+			<InventorySection title="Sponsor" count={totalCopies(inventory.sponsor)}>
 				{#if inventory.sponsor.length === 0}
 					<p class="text-sm text-muted-foreground">Nessuna carta.</p>
 				{:else}
@@ -59,7 +60,7 @@
 						{/each}
 					</div>
 				{/if}
-			</section>
+			</InventorySection>
 		</div>
 	{/if}
 </Modal>
