@@ -36,7 +36,7 @@ Schema letto dai modelli SQLAlchemy in `backend/app/db/models` (ramo `phase-13a-
 
 - `id`, `cards` (testo), `id_prototype` (verso `deck_prototype.id`, facoltativo), `version` (predefinito 1).
 - `version` è la colonna del blocco ottimistico: ogni modifica la incrementa e il salvataggio fallisce con `StaleDataError` se il mazzo è cambiato nel frattempo.
-- `deck.cards` e `deck_prototype.base_cards` sono testo con un array JSON del tipo `[{"path":"/images/cards/1_nome.webp","value":1}]` (formato indicato nelle istruzioni del progetto; il formato attuale delle carte nei mazzi, con nome, percorso e copie, è gestito da `backend/app/services/cards.py`, non riletto per questo documento).
+- `deck.cards` e `deck_prototype.base_cards` sono colonne di testo che contengono un array JSON di carte. Il formato indicato nelle istruzioni del progetto è `[{"path":"/images/cards/1_nome.webp","value":1}]`; il formato esatto oggi in uso non è stato riletto per questo documento.
 
 ## Campionati
 
@@ -108,12 +108,8 @@ Campi comuni di `pack_template` e `pack`: `name`, `image_path`, `currency` (`gol
 
 ## Migrazioni
 
-Secondo `PROJECT_STATUS.md`: oro per gara `c9f3a1b6d8e4`, tabelle del Negozio `a1c5e9b3d7f2`, unione delle teste `b2d6f0a4c8e1`, `card_play` `c3e7a1d5b9f2`, stato "in revisione" `d4f8b2e6a0c3`, `card_gift` `e7a3c9d1f5b2`, intervallo di controllo `f8a4d2c6e0b1`, revisore unico `a9c3e7b1d5f0`. Dopo l'unione delle teste `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa. Le migrazioni delle fasi precedenti non sono elencate qui.
-
-## Carte caricate (13e)
-
-Non c'è una colonna per l'origine "caricata": una carta è caricata se il suo percorso inizia con `cards/uploads/<tipo>/` (file in `backend/media/cards/uploads/<tipo>/`). Il commit `e26801e` della 13e non aggiunge migrazioni.
+Secondo `PROJECT_STATUS.md` (letto il 2026-10-13): oro per gara `c9f3a1b6d8e4`, tabelle del Negozio `a1c5e9b3d7f2`, unione delle teste `b2d6f0a4c8e1`, `card_play` `c3e7a1d5b9f2`, stato "in revisione" `d4f8b2e6a0c3`, `card_gift` `e7a3c9d1f5b2`, intervallo di controllo `f8a4d2c6e0b1`, revisore unico `a9c3e7b1d5f0`. Dopo l'unione delle teste `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa. Le migrazioni delle fasi precedenti non sono elencate qui. Lo stesso documento dice che non è stato letto se i commit della 13e aggiungano una migrazione.
 
 ## Non verificato
 
-Non ho letto `backend/app/db/models/__init__.py`, `backend/app/db/base.py`, le migrazioni in sé, la cartella `database/` né il database SQLite originale. Gli indici automatici delle colonne uniche non sono elencati. Il documento storico `DATABASE_ANALYSIS.md` e `SHOP_SCHEMA.md` restano nella cartella `docs/`.
+Non ho letto `backend/app/db/models/__init__.py`, `backend/app/db/base.py`, le migrazioni in sé, la cartella `database/` né il database SQLite originale. Gli indici automatici delle colonne uniche non sono elencati. Lo schema storico è in `DATABASE_ANALYSIS.md` e quello del Negozio in `SHOP_SCHEMA.md`.
