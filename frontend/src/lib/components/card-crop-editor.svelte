@@ -15,10 +15,10 @@
 	// trascinando e si ingrandisce con lo zoom. Ogni modifica produce un WebP pronto da inviare.
 	interface Props {
 		file: File;
-		blob: Blob | null;
+		blob?: Blob | null;
 	}
 
-	let { file, blob = $bindable(null) }: Props = $props();
+	let { file, blob = $bindable() }: Props = $props();
 
 	let canvas = $state<HTMLCanvasElement>();
 	let image = $state<ImageBitmap | null>(null);
