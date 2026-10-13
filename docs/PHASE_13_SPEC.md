@@ -1,7 +1,8 @@
 # Fase 13 — Carte sponsor e amministrazione delle carte
 
-> STATO: DECISIONI APPROVATE DALL'AUTORE (11-13 ottobre 2026). Regole della revisione aggiornate il 13 ottobre 2026 (revisore unico, scadenza con conferma automatica, riapertura dell'admin, rimozione carte).
+> STATO: DECISIONI APPROVATE DALL'AUTORE (11-13 ottobre 2026). Regole della revisione aggiornate il 13 ottobre 2026 (revisore unico, scadenza con conferma automatica, riapertura dell'admin, rimozione carte). Regole della 13e aggiunte il 13 ottobre 2026.
 > Quando la fase sarà conclusa, il contenuto confluisce in `PROJECT_SPEC.md` (nuova sezione 14) e questo file resta come storico.
+> Regola di lavoro: ogni regola decisa dall'autore va scritta subito in questo file, così non si perde.
 
 La fase 14 (dopo la 13) è dedicata alla sistemazione generale e ai miglioramenti di vivibilità, senza nuove regole di gioco.
 
@@ -83,20 +84,35 @@ Tutte sotto `/api/championships/{championship_id}/races/{race_id}`.
 ### Caricamento (solo admin)
 
 - Da smartphone: scatto di una foto, scelta dall'album o dai file. Da computer: scelta di un file.
-- Formati foto accettati; il backend converte tutto in WebP nella scatola 560x870 px (proporzione 5,6 x 8,7 cm).
+- Formati foto accettati: JPEG, PNG e WebP (decisione dell'autore, 13 ottobre 2026). Il backend converte tutto in WebP nella scatola 560x870 px (proporzione 5,6 x 8,7 cm). Il formato HEIC non è previsto, perché Pillow non lo apre senza un plugin.
 - Dopo la scelta del file l'interfaccia mostra come sarà tagliata l'immagine; l'admin può spostarla e fare zoom avanti e indietro per centrarla.
-- Dopo la conferma del ritaglio l'admin scrive il **nome**, la **quantità** e sceglie il **tipo** (modifiche o sponsor, obbligatorio). Il file è salvato come `nome_quantità` in `backend/media/cards/uploads/`.
-- Un nome già esistente nella pool (senza distinguere le maiuscole) viene rifiutato con un avviso.
+- **Ritaglio nel frontend** (decisione dell'autore, 13 ottobre 2026): il frontend invia al backend un'immagine già tagliata e ridimensionata a 560x870 px. Il backend la converte in WebP e non ritaglia da solo.
+  - Proposta dell'assistente, da confermare: il backend rifiuta con 422 le immagini di dimensioni diverse da 560x870 invece di ridimensionarle in silenzio.
+- Dopo la conferma del ritaglio l'admin scrive il **nome**, la **quantità** e sceglie il **tipo** (modifiche o sponsor, obbligatorio). Il nome del file è `nome_quantità` e la funzione `parse_card_filename` (in `services/cards.py`) ricava da esso nome e copie.
+- **Percorso e origine** (decisione dell'autore, 13 ottobre 2026): le carte caricate si riconoscono dal percorso e non da una colonna del database, quindi la 13e non ha migrazioni. Il percorso è `cards/uploads/<tipo>/nome_quantità.webp`, relativo a `backend/media`, con una cartella per tipo (`modifiche` o `sponsor`). La ricarica della pool di base (`reload_base_pool`) toglie solo le carte con percorso `cards/base/<tipo>/` e quindi non tocca le carte caricate.
+- Un nome già esistente nella pool di base del tipo scelto (senza distinguere le maiuscole, stessa regola di `card_key`) viene rifiutato con un errore 409 e un avviso.
 - Le carte caricate entrano nella pool di base del loro tipo e si riconoscono dal **nome in arancione**, mostrato solo nelle pagine di gestione delle pool.
+- Libreria: la conversione usa Pillow, già presente (`pillow==12.3.0`). Per ricevere il file serve `python-multipart`, che si aggiunge a `backend/requirements.txt` alla versione stabile 0.0.32 (decisione dell'autore, 13 ottobre 2026: aggiungere le librerie necessarie).
+- La dimensione massima del file va fissata in `backend/app/config.py` (valore ancora da decidere).
 
 ### Eliminazione
 
-- Solo l'admin elimina le carte caricate. L'eliminazione le toglie dalla pool di base; le copie già presenti nelle pool dei campionati e negli inventari non cambiano.
+- Solo l'admin elimina le carte caricate; le carte di base e quelle di partenza non si eliminano mai. Si riconoscono dal percorso `cards/uploads/`.
+- L'eliminazione toglie la carta dalla pool di base; le copie già presenti nelle pool dei campionati e negli inventari non cambiano.
+- **Il file immagine resta finché un campionato usa la carta** (decisione dell'autore, 13 ottobre 2026): vale per ogni campionato, attivo o chiuso. Il file viene cancellato quando nessun campionato ha più la carta nella propria copia di pool (modifiche o sponsor).
+- Quando un campionato viene cancellato (`delete_championship` in `services/championships.py`, rotta `DELETE /api/championships/{championship_id}`, solo admin e solo campionati chiusi) si controllano i file orfani: i file di `cards/uploads/` che nessuna pool e nessun campionato usa più vengono cancellati. Il controllo è una funzione di `services/card_delete.py` richiamata da `delete_championship`.
 
 ### Pool personalizzate
 
 - La gestione delle pool resta quasi invariata.
 - Nella creazione di una pool personalizzata ci sono due tasti: **escludi tutte le carte caricate** ed **escludi tutte le carte di base**.
+
+### Rotte della 13e (proposta, da allineare allo stile di `api/admin.py`)
+
+| Metodo e percorso | Chi | Effetto |
+|---|---|---|
+| `POST /api/admin/cards` | solo admin | Carica una carta (immagine, nome, quantità, tipo). |
+| `DELETE /api/admin/cards` | solo admin | Elimina una carta caricata dalla pool di base. |
 
 ## Sottofasi
 
@@ -108,11 +124,17 @@ Tutte sotto `/api/championships/{championship_id}/races/{race_id}`.
 | 13c | Frontend giocatore: sezioni a scomparsa per pilota, uso delle carte, Indietro, inventario in due sezioni, popup "Hai ottenuto una carta sponsor", controllo periodico con l'intervallo della 13c-1 e campo nelle impostazioni generali |
 | 13d | Frontend giudice e admin: elenco piloti con tasto S, revisione nella pagina della gara con immagini, correzioni |
 | — | Dopo la 13d: riallineamento di tutti i documenti (richiesta dell'autore) |
-| 13e | Backend amministrazione carte: caricamento, conversione, eliminazione, origine "caricata" |
+| 13e | Backend amministrazione carte: caricamento, conversione, eliminazione, origine "caricata" (dal percorso `cards/uploads/`), pulizia dei file orfani alla cancellazione di un campionato |
 | 13f | Frontend: ritaglio con zoom, nome e quantità, nomi in arancione, tasti di esclusione nelle pool personalizzate |
 | 13g | Documenti e test finali, unione in `main` |
 
 Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file previsti. Tutto il lavoro della fase 13 resta nel ramo `phase-13a-card-plays`, senza rami separati per le sottofasi.
+
+### File previsti per la 13e
+
+- Nuovi: `backend/app/services/card_upload.py`, `backend/app/services/card_delete.py`, `backend/app/api/card_admin.py`, `backend/app/schemas/card_admin.py`, `backend/tests/test_card_upload.py`, `backend/tests/test_card_delete.py`.
+- Da modificare: `backend/app/main.py` (registra il router), `backend/app/services/championships.py` (richiama la pulizia dei file orfani in `delete_championship`), `backend/app/config.py` (dimensione massima del file), `backend/requirements.txt` (`python-multipart==0.0.32`), poi i documenti a test verdi.
+- Nessuna migrazione e nessuna colonna nuova.
 
 ## Avanzamento della 13b
 
@@ -122,8 +144,8 @@ Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file
 - Rimozione, regole: serve la revisione attiva del revisore; 409 se il campionato non ha una pool sponsor, se la carta non è nell'inventario del pilota o se tutte le copie sono impegnate in giocate attive (il revisore deve prima annullarle); 404 per pilota inesistente o eliminato; 403 per pilota non iscritto. La copia va dall'inventario sponsor del pilota alla pool sponsor del campionato in un solo commit.
 - Rimozione, nota tecnica: `_without_one_copy` (in `services/card_gift.py`) confronta le carte per identità (`is`), quindi `remove_card` le passa lo stesso oggetto presente nella lista dell'inventario e non una copia.
 - Test: 13 test della rimozione in `backend/tests/test_card_judge.py`; i test di stato, scadenza e riapertura sono in `backend/tests/test_race_review_reopen.py`; 6 test dell'annullo di giocate già consumate dopo la riapertura (carta che torna dalla pool, 409 se la pool ha perso la carta, 409 senza revisione attiva o con un altro revisore, nuova conferma che consuma solo la giocata rimasta) in `backend/tests/test_card_judge_reopen.py` (commit `55fbcea`). La scadenza è provata portando la data di apertura a 20 minuti prima direttamente nel database, senza orologio finto. Esito verde della CI sulla pull request #9 (backend pytest, migrazioni, frontend) letto da GitHub il 13 ottobre 2026 sull'esecuzione partita subito dopo il commit `55fbcea`; lo SHA esatto dell'esecuzione non è riportato dall'elenco dei controlli.
-- Fatto: la pull request #11 (merge `f733886`, commit dei test `2f12768`) ha aggiunto test sulla scadenza della revisione e sul secondo giudice, su bonus e annullo. L'esito della CI su quel commit non è stato letto per questo documento.
+- Fatto: la pull request #11 (merge `f733886`, commit dei test `2f12768`) ha aggiunto test sulla scadenza della revisione e sul secondo giudice, su bonus e annullo. L'esito della CI su quel commit non è stato letto per questo documento. L'autore ha confermato il 13 ottobre 2026 che `f733886` è nel ramo.
 - Fatto: `PROJECT_SPEC.md` riallineata alla fase 13 (revisione, intervallo notifiche, tasto S, migrazioni) nel commit `bc0fbfb`.
 - Fatto: riallineamento di `PROJECT_STATUS.md`, `PROJECT_NOTES.md`, `SHOP_DESIGN.md` e `README.md` il 13 ottobre 2026 (commit `b495466`, `8947c43`, `c7fbe7f`, `803b8d4`, `ddbc33e`), con 447 test del backend passati in locale.
-- Fatto: frontend del revisore (13d), confermato dall'autore il 13 ottobre 2026: tasto S sull'elenco piloti, revisione nella pagina della gara con riepilogo con immagini, correzioni (annullo, bonus, rimozione) e riapertura per l'admin.
-- Prossimo passo: 13e (backend amministrazione carte), da avviare dopo l'approvazione dell'autore con l'elenco dei file previsti.
+- Fatto: frontend del revisore (13d), confermato dall'autore il 13 ottobre 2026: tasto S sull'elenco piloti, revisione nella pagina della gara con riepilogo con immagini, correzioni (annullo, bonus, rimozione) e riapertura per l'admin. L'autore ha anche verificato a mano il flusso completo e le migrazioni su una copia del database, e confermato la CI verde.
+- Prossimo passo: 13e (backend amministrazione carte), con le regole sopra. Il codice parte al prossimo turno, dopo la lettura di `delete_championship`, `api/admin.py`, `api/deps.py` e `config.py`.
