@@ -5,6 +5,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import User
+from app.db.models.card_gift import CardGift
+from app.db.models.card_play import CardPlay
 from app.db.models.championship import Championship, ChampionshipPilot, ChampionshipStanding
 from app.db.models.deck import Deck, DeckPrototype
 from app.db.models.pilot import Pilot
@@ -181,13 +183,17 @@ def enroll_pilot(db: Session, user: User, championship_id: int, pilot_id: int) -
     return pilot
 
 def delete_championship(db: Session, championship_id: int) -> None:
-    # Cancella un campionato chiuso con tutto il suo storico: risultati, gare, iscrizioni,
-    # pacchetti del negozio, storico acquisti e le copie delle pool. I piloti restano.
-    # Tutto in un'unica transazione.
+    # Cancella un campionato chiuso con tutto il suo storico: giocate e regali di carte,
+    # risultati, gare, iscrizioni, pacchetti del negozio, storico acquisti e le copie
+    # delle pool. I piloti restano. Tutto in un'unica transazione.
+    # Errori: ChampionshipNotFoundError, ChampionshipOpenError.
     championship = get_championship(db, championship_id)
     if not championship.is_closed:
         raise ChampionshipOpenError
     race_ids = select(Race.id).where(Race.championship_id == championship.id)
+    # Giocate e regali di carte puntano alla gara: vanno tolti prima delle gare.
+    db.execute(delete(CardPlay).where(CardPlay.race_id.in_(race_ids)))
+    db.execute(delete(CardGift).where(CardGift.race_id.in_(race_ids)))
     db.execute(delete(RaceResult).where(RaceResult.race_id.in_(race_ids)))
     db.execute(delete(Race).where(Race.championship_id == championship.id))
     db.execute(
