@@ -3,10 +3,13 @@
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
+	import { deleteCard } from '$lib/card-admin-api';
 	import type { CardEntry, Pool, PoolDetail, PoolKind, ReloadResult } from '$lib/types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
+	import CardUploadForm from '$lib/components/card-upload-form.svelte';
+	import PoolCardPicker from '$lib/components/pool-card-picker.svelte';
 
 	// Anteprima della ricarica: carte che verrebbero tolte, con l'uso nei campionati attivi.
 	interface ReloadPreview {
@@ -152,6 +155,37 @@
 			await loadPools();
 		} catch (e) {
 			actionError = message(e);
+		} finally {
+			busy = null;
+		}
+	}
+
+	// Dopo un caricamento o un'eliminazione ricarica l'elenco pool e le carte della base.
+	async function refreshCards() {
+		await loadPools();
+		await loadBaseCards();
+	}
+
+	// Chiamata a caricamento riuscito: aggiorna l'elenco e mostra eventuali errori.
+	async function cardUploaded() {
+		formError = null;
+		try {
+			await refreshCards();
+		} catch (e) {
+			formError = message(e);
+		}
+	}
+
+	// Elimina una carta caricata a mano dalla pool di base del tipo scelto, dopo conferma.
+	async function removeUploaded(card: CardEntry) {
+		if (!confirm(`Eliminare la carta "${card.name}"?`)) return;
+		formError = null;
+		busy = `card-${card.name}`;
+		try {
+			await deleteCard(newKind, card.name);
+			await refreshCards();
+		} catch (e) {
+			formError = message(e);
 		} finally {
 			busy = null;
 		}
@@ -303,7 +337,7 @@
 				<Card.Title>Nuova pool</Card.Title>
 				<Card.Description>
 					Scegli il tipo, poi quante copie tenere di ogni carta della pool di base (da 0 al massimo
-					disponibile).
+					disponibile). Le carte caricate a mano sono in arancione.
 				</Card.Description>
 			</Card.Header>
 			<Card.Content>
@@ -337,23 +371,14 @@
 							La pool di base è vuota: usa «Ricarica» per leggere le carte dalla cartella.
 						</p>
 					{:else}
-						<ul class="divide-y">
-							{#each baseCards as card (card.path)}
-								<li class="flex items-center gap-3 py-2">
-									<span class="flex-1">{card.name}</span>
-									<span class="text-sm text-muted-foreground">max {card.copies}</span>
-									<input
-										type="number"
-										class="h-9 w-20 rounded-md border bg-background px-2 text-sm"
-										min={0}
-										max={card.copies}
-										aria-label={`Copie di ${card.name}`}
-										value={picks[card.name] ?? 0}
-										oninput={(e) => setPick(card, e.currentTarget.valueAsNumber)}
-									/>
-								</li>
-							{/each}
-						</ul>
+						<PoolCardPicker
+							cards={baseCards}
+							kind={newKind}
+							{picks}
+							{busy}
+							onpick={setPick}
+							ondelete={removeUploaded}
+						/>
 					{/if}
 
 					{#if formError}
@@ -363,6 +388,16 @@
 						Crea pool
 					</Button>
 				</form>
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root>
+			<Card.Header>
+				<Card.Title>Carica una carta</Card.Title>
+				<Card.Description>Va nella pool di base del tipo scelto sopra.</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<CardUploadForm kind={newKind} onuploaded={cardUploaded} />
 			</Card.Content>
 		</Card.Root>
 
