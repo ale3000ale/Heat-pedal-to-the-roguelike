@@ -10,6 +10,7 @@ Schema letto dai modelli SQLAlchemy in `backend/app/db/models` (ramo `phase-13a-
 
 - `id` (chiave), `username` (unico), `password`, `role`.
 - `role` ammette solo `admin`, `judge`, `player` (vincolo `ck_user_role`), predefinito `player`.
+- `password` contiene un hash prodotto da `hash_password` in `backend/app/security.py` (libreria `pwdlib`, `PasswordHash.recommended()`).
 
 ### session
 
@@ -36,7 +37,15 @@ Schema letto dai modelli SQLAlchemy in `backend/app/db/models` (ramo `phase-13a-
 
 - `id`, `cards` (testo), `id_prototype` (verso `deck_prototype.id`, facoltativo), `version` (predefinito 1).
 - `version` è la colonna del blocco ottimistico: ogni modifica la incrementa e il salvataggio fallisce con `StaleDataError` se il mazzo è cambiato nel frattempo.
-- `deck.cards` e `deck_prototype.base_cards` sono colonne di testo che contengono un array JSON di carte. Il formato indicato nelle istruzioni del progetto è `[{"path":"/images/cards/1_nome.webp","value":1}]`; il formato esatto oggi in uso non è stato riletto per questo documento.
+
+### Formato di `cards` e `base_cards`
+
+- `deck.cards` e `deck_prototype.base_cards` sono colonne di testo che contengono un array JSON. Il formato è definito da `CardEntry` in `backend/app/services/cards.py`: `[{"name":"Velocità 1","path":"cards/starter/velocita-1.webp","copies":3}]`.
+- `name`: testo da 1 a 64 caratteri. `path`: testo da 1 a 255 caratteri, relativo a `backend/media`. `copies`: intero da 1 a 999.
+- Testo vuoto o assente equivale a nessuna carta. La lettura (`parse_cards`) rifiuta i formati errati e i nomi duplicati nello stesso mazzo (confronto senza spazi ai bordi e senza distinguere le maiuscole). La scrittura passa da `dump_cards`.
+- Il mazzo da gioco (`game_deck_id`) può avere al massimo 15 carte in totale (somma delle copie) e, per ogni carta, non più copie di quelle possedute nell'inventario (`validate_game_deck`).
+- Questo formato (`name`, `path`, `copies`) è diverso da quello indicato nelle istruzioni del progetto (`path`, `value`, percorsi come `/images/cards/1_nome.webp`). Il codice è la fonte di verità per lo stato attuale; la differenza va chiarita con il proprietario del progetto prima di cambiare uno dei due.
+- Il nome file di una carta caricata segue `nome_N`, dove N è il numero di copie (`parse_card_filename`).
 
 ## Campionati
 
