@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import PilotPlaysList from '$lib/components/pilot-plays-list.svelte';
@@ -7,12 +7,24 @@
 	import { RaceReviewStore } from '$lib/stores/race-review.svelte';
 	import { formatCountdown } from '$lib/race-review-format';
 
-	// Pannello di revisione delle carte per giudice e admin, su una gara terminata.
-	let { championshipId, raceId }: { championshipId: number; raceId: number } = $props();
+	// Pannello di revisione delle carte su una gara con i risultati registrati.
+	// autoOpen: apre subito la revisione (o riprende la propria) con il timer.
+	// canOpen: mostra il pulsante per aprirla a mano (solo admin).
+	let {
+		championshipId,
+		raceId,
+		autoOpen = false,
+		canOpen = false
+	}: { championshipId: number; raceId: number; autoOpen?: boolean; canOpen?: boolean } = $props();
 
 	// Lo store è legato a una gara: la pagina rimonta il pannello se la gara cambia.
 	// svelte-ignore state_referenced_locally
 	const store = new RaceReviewStore(championshipId, raceId);
+
+	onMount(() => {
+		// svelte-ignore state_referenced_locally
+		if (autoOpen) void store.open();
+	});
 
 	onDestroy(() => store.stopTimer());
 </script>
@@ -21,9 +33,8 @@
 	<Card.Header>
 		<Card.Title>Revisione delle carte</Card.Title>
 		<Card.Description>
-			Apri la revisione per annullare giocate, dare o togliere carte. Hai 15 minuti: poi la
-			revisione scade e può riprenderla un altro giudice. Alla conferma le carte giocate vengono
-			consumate.
+			Annulla giocate, dai o togli carte. Hai 15 minuti: poi la revisione scade e viene confermata
+			così com'è. Alla conferma le carte giocate vengono consumate.
 		</Card.Description>
 	</Card.Header>
 	<Card.Content class="space-y-4">
@@ -45,13 +56,17 @@
 				</Button>
 			{:else if store.confirmed}
 				<span class="text-sm font-medium text-green-600">Revisione confermata.</span>
-			{:else}
+			{:else if canOpen}
 				<Button type="button" disabled={store.busy} onclick={() => store.open()}>
 					{store.review ? 'Riapri la revisione' : 'Apri la revisione'}
 				</Button>
 				{#if store.review && !store.review.in_review}
 					<span class="text-sm text-muted-foreground">Revisione chiusa o scaduta.</span>
 				{/if}
+			{:else if !store.busy}
+				<span class="text-sm text-muted-foreground">
+					Revisione non attiva: solo l'admin può aprirla.
+				</span>
 			{/if}
 		</div>
 
