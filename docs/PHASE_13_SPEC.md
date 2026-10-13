@@ -84,20 +84,21 @@ Tutte sotto `/api/championships/{championship_id}/races/{race_id}`.
 ### Caricamento (solo admin)
 
 - Da smartphone: scatto di una foto, scelta dall'album o dai file. Da computer: scelta di un file.
-- Formati foto accettati: JPEG, PNG e WebP (decisione dell'autore, 13 ottobre 2026). Il backend converte tutto in WebP nella scatola 560x870 px (proporzione 5,6 x 8,7 cm). Il formato HEIC non è previsto, perché Pillow non lo apre senza un plugin.
+- Formati foto accettati: JPEG, PNG e WebP (decisione dell'autore, 13 ottobre 2026). Il backend converte tutto in WebP (qualità 90, senza trasparenza) nella scatola 560x870 px (proporzione 5,6 x 8,7 cm). Il formato HEIC non è previsto, perché Pillow non lo apre senza un plugin.
 - Dopo la scelta del file l'interfaccia mostra come sarà tagliata l'immagine; l'admin può spostarla e fare zoom avanti e indietro per centrarla.
 - **Ritaglio nel frontend** (decisione dell'autore, 13 ottobre 2026): il frontend invia al backend un'immagine già tagliata e ridimensionata a 560x870 px. Il backend la converte in WebP e non ritaglia da solo.
-  - Proposta dell'assistente, da confermare: il backend rifiuta con 422 le immagini di dimensioni diverse da 560x870 invece di ridimensionarle in silenzio.
+  - Implementato nella 13e: il backend rifiuta con 422 le immagini di dimensioni diverse da 560x870 (costante `CARD_IMAGE_SIZE` in `config.py`) invece di ridimensionarle in silenzio.
 - Dopo la conferma del ritaglio l'admin scrive il **nome**, la **quantità** e sceglie il **tipo** (modifiche o sponsor, obbligatorio). Il nome del file è `nome_quantità` e la funzione `parse_card_filename` (in `services/cards.py`) ricava da esso nome e copie.
+- **Regole su nome e quantità** (implementate in `services/card_upload.py`): il nome, senza spazi ai bordi, non è vuoto, ha al massimo 64 caratteri, non comincia con un punto e non contiene `/ \ : * ? " < > |`; le copie vanno da 1 a 999. Chi le viola riceve un 422 con un messaggio leggibile.
 - **Percorso e origine** (decisione dell'autore, 13 ottobre 2026): le carte caricate si riconoscono dal percorso e non da una colonna del database, quindi la 13e non ha migrazioni. Il percorso è `cards/uploads/<tipo>/nome_quantità.webp`, relativo a `backend/media`, con una cartella per tipo (`modifiche` o `sponsor`). La ricarica della pool di base (`reload_base_pool`) toglie solo le carte con percorso `cards/base/<tipo>/` e quindi non tocca le carte caricate.
-- Un nome già esistente nella pool di base del tipo scelto (senza distinguere le maiuscole, stessa regola di `card_key`) viene rifiutato con un errore 409 e un avviso.
-- Le carte caricate entrano nella pool di base del loro tipo e si riconoscono dal **nome in arancione**, mostrato solo nelle pagine di gestione delle pool.
-- Libreria: la conversione usa Pillow, già presente (`pillow==12.3.0`). Per ricevere il file serve `python-multipart`, che si aggiunge a `backend/requirements.txt` alla versione stabile 0.0.32 (decisione dell'autore, 13 ottobre 2026: aggiungere le librerie necessarie).
-- La dimensione massima del file va fissata in `backend/app/config.py` (valore ancora da decidere).
+- Un nome già esistente nella pool di base del tipo scelto (senza distinguere le maiuscole, stessa regola di `card_key`) viene rifiutato con un errore 409 e un avviso. Lo stesso errore vale se il file di destinazione esiste già.
+- Le carte caricate entrano in fondo alla pool di base del loro tipo e si riconoscono dal **nome in arancione**, mostrato solo nelle pagine di gestione delle pool. Se la scrittura nel database fallisce, il file appena scritto viene rimosso.
+- Libreria: la conversione usa Pillow, già presente (`pillow==12.3.0`). Per ricevere il file serve `python-multipart`, aggiunto a `backend/requirements.txt` alla versione stabile 0.0.32 (decisione dell'autore, 13 ottobre 2026: aggiungere le librerie necessarie).
+- La dimensione massima del file è `MAX_CARD_UPLOAD_BYTES` in `backend/app/config.py`: 2 MB secondo il commento della rotta (il valore numerico in `config.py` non è stato riletto per questo aggiornamento). Oltre il limite la rotta risponde 413 se l'intestazione `content-length` lo rivela subito; altrimenti il servizio rifiuta il file con 422.
 
 ### Eliminazione
 
-- Solo l'admin elimina le carte caricate; le carte di base e quelle di partenza non si eliminano mai. Si riconoscono dal percorso `cards/uploads/`.
+- Solo l'admin elimina le carte caricate; le carte di base e quelle di partenza non si eliminano mai (409). Si riconoscono dal percorso `cards/uploads/`.
 - L'eliminazione toglie la carta dalla pool di base; le copie già presenti nelle pool dei campionati e negli inventari non cambiano.
 - **Il file immagine resta finché un campionato usa la carta** (decisione dell'autore, 13 ottobre 2026): vale per ogni campionato, attivo o chiuso. Il file viene cancellato quando nessun campionato ha più la carta nella propria copia di pool (modifiche o sponsor).
 - Quando un campionato viene cancellato (`delete_championship` in `services/championships.py`, rotta `DELETE /api/championships/{championship_id}`, solo admin e solo campionati chiusi) si controllano i file orfani: i file di `cards/uploads/` che nessuna pool e nessun campionato usa più vengono cancellati. Il controllo è una funzione di `services/card_delete.py` richiamata da `delete_championship`.
@@ -107,12 +108,14 @@ Tutte sotto `/api/championships/{championship_id}/races/{race_id}`.
 - La gestione delle pool resta quasi invariata.
 - Nella creazione di una pool personalizzata ci sono due tasti: **escludi tutte le carte caricate** ed **escludi tutte le carte di base**.
 
-### Rotte della 13e (proposta, da allineare allo stile di `api/admin.py`)
+### Rotte della 13e
+
+Il router `api/card_admin.py` è registrato in `main.py` con prefisso `/api/admin/cards`, prima del router `admin`.
 
 | Metodo e percorso | Chi | Effetto |
 |---|---|---|
-| `POST /api/admin/cards` | solo admin | Carica una carta (immagine, nome, quantità, tipo). |
-| `DELETE /api/admin/cards` | solo admin | Elimina una carta caricata dalla pool di base. |
+| `POST /api/admin/cards?kind=&name=&copies=` | solo admin | Carica una carta. Il corpo della richiesta è l'immagine già tagliata a 560x870; `kind` è `modifiche` o `sponsor`, `name` da 1 a 64 caratteri, `copies` da 1 a 999. Risponde 201 con nome, percorso, copie e tipo; 404 se manca la pool di base, 409 per nome già usato, 413 per file troppo grande, 422 per immagine o dati non validi. |
+| `DELETE /api/admin/cards?kind=&name=` | solo admin | Elimina una carta caricata dalla pool di base e cancella i file rimasti senza uso. Risponde con `removed_files`; 404 se la carta non c'è, 409 se non è una carta caricata. |
 
 ## Sottofasi
 
@@ -148,4 +151,10 @@ Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file
 - Fatto: `PROJECT_SPEC.md` riallineata alla fase 13 (revisione, intervallo notifiche, tasto S, migrazioni) nel commit `bc0fbfb`.
 - Fatto: riallineamento di `PROJECT_STATUS.md`, `PROJECT_NOTES.md`, `SHOP_DESIGN.md` e `README.md` il 13 ottobre 2026 (commit `b495466`, `8947c43`, `c7fbe7f`, `803b8d4`, `ddbc33e`), con 447 test del backend passati in locale.
 - Fatto: frontend del revisore (13d), confermato dall'autore il 13 ottobre 2026: tasto S sull'elenco piloti, revisione nella pagina della gara con riepilogo con immagini, correzioni (annullo, bonus, rimozione) e riapertura per l'admin. L'autore ha anche verificato a mano il flusso completo e le migrazioni su una copia del database, e confermato la CI verde.
-- Prossimo passo: 13e (backend amministrazione carte), con le regole sopra. Il codice parte al prossimo turno, dopo la lettura di `delete_championship`, `api/admin.py`, `api/deps.py` e `config.py`.
+
+## Avanzamento della 13e
+
+- Fatto (backend, commit del 13 ottobre 2026): dipendenza `python-multipart` (`d89f75d`), limiti del caricamento in `config.py` (`ba7a587`), servizio di caricamento (`358297a`), eliminazione delle carte caricate con pulizia dei file orfani (`cb934d8`), pulizia dei file rimasti senza uso in `delete_championship` (`3a79199`), rotte admin per caricare ed eliminare (`e26801e`), test di caricamento, eliminazione e pulizia (`14557ab`).
+- Fatto: la correzione di `delete_championship`, che cancella anche giocate e regali di carte delle gare (`a5bbe26`, test `020ef6e`).
+- Verifiche rilette per questo aggiornamento: rotte e prefisso `/api/admin/cards` (`api/card_admin.py` e `main.py`), controlli su formato, misure, nome e copie (`services/card_upload.py`). Il numero di test passati e l'esito della CI della 13e non sono stati riletti: da riportare dopo l'esecuzione dell'autore.
+- Prossimo passo: 13f (frontend: ritaglio con zoom, nome e quantità, nomi in arancione, tasti di esclusione nelle pool personalizzate), dopo l'approvazione dell'autore e con l'elenco dei file previsti.
