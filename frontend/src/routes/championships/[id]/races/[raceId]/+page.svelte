@@ -64,15 +64,18 @@
 	let canGift = $derived(
 		championship !== null && !championship.is_closed && auth.canManageRaces && !isRaceClosed
 	);
-	// Il pannello di revisione compare a giudice e admin mentre la revisione è attiva, e solo
-	// all'admin sull'ultima gara quando è da rivedere. Nelle gare precedenti non compare.
+	// Il pannello di revisione compare a giudice e admin mentre la revisione è attiva. Solo
+	// all'admin compare sull'ultima gara quando è da rivedere o già terminata (per riaprirla).
+	// Nelle gare precedenti non compare.
 	let canReview = $derived(
 		championship !== null &&
 			!championship.is_closed &&
 			auth.canManageRaces &&
 			race !== null &&
 			(race.status === 'in_review' ||
-				(auth.canCorrectRaces && race.is_last && race.status === 'to_review'))
+				(auth.canCorrectRaces &&
+					race.is_last &&
+					(race.status === 'to_review' || race.status === 'closed')))
 	);
 	// Iscritti non ancora assegnati né alla classifica né ai non partecipanti.
 	let available = $derived(
@@ -270,6 +273,7 @@
 					raceId={Number(page.params.raceId)}
 					autoOpen={race.status === 'in_review'}
 					canOpen={auth.canCorrectRaces && race.is_last}
+					reopen={race.status === 'closed'}
 				/>
 			{/key}
 		{/if}
