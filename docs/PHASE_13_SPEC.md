@@ -125,4 +125,5 @@ Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file
 - Fatto: la pull request #11 (merge `f733886`, commit dei test `2f12768`) ha aggiunto test sulla scadenza della revisione e sul secondo giudice, su bonus e annullo. L'esito della CI su quel commit non è stato letto per questo documento.
 - Fatto: `PROJECT_SPEC.md` riallineata alla fase 13 (revisione, intervallo notifiche, tasto S, migrazioni) nel commit `bc0fbfb`.
 - Fatto: riallineamento di `PROJECT_STATUS.md`, `PROJECT_NOTES.md`, `SHOP_DESIGN.md` e `README.md` il 13 ottobre 2026 (commit `b495466`, `8947c43`, `c7fbe7f`, `803b8d4`, `ddbc33e`), con 447 test del backend passati in locale.
-- Da fare: frontend del revisore (13d: riepilogo con immagini, annullo, bonus, rimozione, riapertura per l'admin con il prefisso dei percorsi `/media/cards/`).
+- Fatto: frontend del revisore (13d), confermato dall'autore il 13 ottobre 2026: tasto S sull'elenco piloti, revisione nella pagina della gara con riepilogo con immagini, correzioni (annullo, bonus, rimozione) e riapertura per l'admin.
+- Prossimo passo: 13e (backend amministrazione carte), da avviare dopo l'approvazione dell'autore con l'elenco dei file previsti.
