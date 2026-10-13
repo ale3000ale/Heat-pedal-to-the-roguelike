@@ -156,5 +156,6 @@ Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file
 
 - Fatto (backend, commit del 13 ottobre 2026): dipendenza `python-multipart` (`d89f75d`), limiti del caricamento in `config.py` (`ba7a587`), servizio di caricamento (`358297a`), eliminazione delle carte caricate con pulizia dei file orfani (`cb934d8`), pulizia dei file rimasti senza uso in `delete_championship` (`3a79199`), rotte admin per caricare ed eliminare (`e26801e`), test di caricamento, eliminazione e pulizia (`14557ab`).
 - Fatto: la correzione di `delete_championship`, che cancella anche giocate e regali di carte delle gare (`a5bbe26`, test `020ef6e`).
-- Verifiche rilette per questo aggiornamento: rotte e prefisso `/api/admin/cards` (`api/card_admin.py` e `main.py`), controlli su formato, misure, nome e copie (`services/card_upload.py`). Il numero di test passati e l'esito della CI della 13e non sono stati riletti: da riportare dopo l'esecuzione dell'autore.
+- Test: 474 test del backend passati in 60,54 secondi, esito riferito dall'autore il 13 ottobre 2026 dopo la 13e. L'esito della CI della 13e non è stato riletto.
+- Verifiche rilette per questo aggiornamento: rotte e prefisso `/api/admin/cards` (`api/card_admin.py` e `main.py`), controlli su formato, misure, nome e copie (`services/card_upload.py`).
 - Prossimo passo: 13f (frontend: ritaglio con zoom, nome e quantità, nomi in arancione, tasti di esclusione nelle pool personalizzate), dopo l'approvazione dell'autore e con l'elenco dei file previsti.
