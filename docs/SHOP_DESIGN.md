@@ -1,13 +1,15 @@
-> **STATO: APPROVATO E REALIZZATO (aggiornato l'11 ottobre 2026).** Descrive il
-> funzionamento del Negozio come lo ha spiegato l'autore l'8 ottobre 2026, con le
-> risposte alle domande. Le regole sono riportate nella sezione 13 di
-> `PROJECT_SPEC.md`; lo schema tecnico è in `SHOP_SCHEMA.md`. Il backend (12a-12c) e
-> il frontend (12d, 12e) sono completati; resta la 12f (documenti finali e unione in
-> `main`). Le parti ancora da decidere sono in `OPEN_QUESTIONS.md`. Il 10 ottobre 2026
-> l'autore ha scelto, per il frontend, un solo pulsante Inventario e lo Storico come
-> pagina separata (sezioni 3 e 8). L'11 ottobre 2026 ha scelto l'apertura della busta
-> con uno strappo, il riepilogo finale con le carte raggruppate e la chiusura della
-> finestra solo dal riepilogo (sezione 6).
+> **STATO: APPROVATO, REALIZZATO E UNITO IN `main` (aggiornato il 13 ottobre 2026).**
+> Descrive il funzionamento del Negozio come lo ha spiegato l'autore l'8 ottobre 2026,
+> con le risposte alle domande. Le regole sono riportate nella sezione 13 di
+> `PROJECT_SPEC.md`; lo schema tecnico è in `SHOP_SCHEMA.md`. La fase 12 (backend
+> 12a-12c, frontend 12d e 12e, verifica 12f) è completata e unita in `main` con la pull
+> request #5. Le parti ancora da decidere sono in `OPEN_QUESTIONS.md`. Il 10 ottobre
+> 2026 l'autore ha scelto, per il frontend, un solo pulsante Inventario e lo Storico
+> come pagina separata (sezioni 3 e 8). L'11 ottobre 2026 ha scelto l'apertura della
+> busta con uno strappo, il riepilogo finale con le carte raggruppate e la chiusura
+> della finestra solo dal riepilogo (sezione 6). L'uso delle carte sponsor in gara,
+> prima rimandato, è stato avviato con la fase 13 (sezione 7); le regole sono in
+> `PHASE_13_SPEC.md`.
 
 # Negozio — progetto della fase 12
 
@@ -194,14 +196,23 @@ L'admin gestisce due tipi di template nella nuova sezione **Gestione negozio**
   limite reale è la pool: se una carta ha 4 copie e due piloti ne hanno 3 e 1,
   nella pool ne restano 0 e non se ne possono ottenere altre.
 - Le carte **sponsor** stanno in un inventario separato da quello delle
-  modifiche, ma si vedono nella stessa pagina del pilota.
+  modifiche (`sponsor_inventory` nel dettaglio del pilota), ma si vedono nella
+  stessa pagina del pilota, in due sezioni a scomparsa "Modifiche" e "Sponsor"
+  (fase 13c). Le carte sponsor non si possono spostare nel mazzo da gioco.
 - Le carte Calore non si distinguono più: sono carte modifiche come le altre.
-- **Uso delle carte sponsor (fase futura)**: sono carte a consumo. Si possono
-  usare in gara e, una volta usate, vengono cancellate; in gara se ne possono
-  anche ottenere. A fine gara l'inventario sponsor può quindi avere meno o più
-  carte, anche tutte diverse da quelle di partenza. Come gestirlo si decide in
-  una fase successiva: nella fase 12 le carte sponsor si ottengono e si vedono, ma
-  non si usano.
+- **Uso delle carte sponsor in gara (fase 13, regole in `PHASE_13_SPEC.md`)**: il
+  giocatore gioca una carta sponsor per un proprio pilota durante una gara in
+  corso; le giocate si possono annullare (fino a 5 annullamenti consecutivi).
+  L'inventario non cambia durante la gara: le copie disponibili sono quelle
+  dell'inventario meno le giocate attive. Alla prima chiusura della gara le
+  giocate attive diventano consumate: la carta esce dall'inventario del pilota e
+  torna nella pool sponsor del campionato; le giocate annullate restano in
+  inventario. Durante la gara un giudice o l'admin può dare a un pilota una carta
+  sponsor casuale dalla pool con il tasto S; il giocatore la vede in un popup, e la
+  carta è subito giocabile nella stessa gara. Dopo "termina gara" il revisore può
+  annullare giocate, dare bonus e togliere carte (sezione 6 di
+  `PHASE_13_SPEC.md`). Lo stato per sottofase è in `PROJECT_STATUS.md`: backend
+  completato, frontend ancora in corso.
 
 ## 8. Storico acquisti
 
