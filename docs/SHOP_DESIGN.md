@@ -9,7 +9,8 @@
 > busta con uno strappo, il riepilogo finale con le carte raggruppate e la chiusura
 > della finestra solo dal riepilogo (sezione 6). L'uso delle carte sponsor in gara,
 > prima rimandato, è stato avviato con la fase 13 (sezione 7); le regole sono in
-> `PHASE_13_SPEC.md`.
+> `PHASE_13_SPEC.md`. Il 13 ottobre 2026 l'autore ha confermato che il negozio resta
+> bloccato anche mentre la gara è in revisione (sezione 2).
 
 # Negozio — progetto della fase 12
 
@@ -35,7 +36,9 @@ pilota iscritto; le carte ottenute vanno nell'inventario di quel pilota.
 - **Admin**: può entrare in ogni negozio anche senza pilota, sempre in sola
   lettura. Il giudice senza pilota iscritto non ha accesso.
 - **Gara in corso**: durante una gara in corso nel campionato il negozio si
-  blocca (nessun acquisto).
+  blocca (nessun acquisto). La gara in revisione, cioè terminata ma non ancora
+  confermata, conta ancora come gara in corso, e il blocco resta (confermato
+  dall'autore il 13 ottobre 2026).
 - **Campionato chiuso**: il negozio non è più disponibile per gli utenti;
   l'admin può aprirlo ma in sola lettura.
 
