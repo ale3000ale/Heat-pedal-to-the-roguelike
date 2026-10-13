@@ -14,8 +14,10 @@ from app.services.pilot_deck import (
     ConcurrentUpdateError,
     GameDeckFullError,
     PilotCardNotFoundError,
+    RaceInProgressError,
     active_championship,
     active_championships,
+    has_race_in_progress,
     move_card,
 )
 from app.services.pilots import (
@@ -41,6 +43,10 @@ NAME_TAKEN = HTTPException(status.HTTP_409_CONFLICT, "Nome già in uso")
 IN_CHAMPIONSHIP = HTTPException(
     status.HTTP_409_CONFLICT, "Il pilota è iscritto a un campionato attivo"
 )
+DECK_LOCKED = HTTPException(
+    status.HTTP_409_CONFLICT,
+    "Con una gara in corso il mazzo non si può modificare",
+)
 
 # Massimo di piloti per pagina nell'elenco (e valore predefinito).
 MAX_PILOTS_PER_PAGE = 100
@@ -60,7 +66,9 @@ class PilotListItem(PilotRead):
 
 class PilotDeckDetail(PilotDetail):
     # Dettaglio del pilota con il campionato attivo a cui è iscritto (se c'è).
+    # deck_locked è vero con una gara non confermata: il mazzo è in sola lettura.
     championship: ChampionshipRef | None = None
+    deck_locked: bool = False
 
 
 class CardMove(BaseModel):
@@ -81,6 +89,7 @@ def _detail(db, pilot) -> PilotDeckDetail:
         sponsor_inventory=sponsor_cards(db, pilot),
         game_deck=game,
         championship=_ref(active_championship(db, pilot)),
+        deck_locked=has_race_in_progress(db, pilot),
     )
 
 
@@ -89,6 +98,8 @@ def _move(db, user, pilot_id: int, data: CardMove, to_game: bool) -> PilotDeckDe
         return _detail(db, move_card(db, user, pilot_id, data.path, to_game))
     except PilotNotFoundError:
         raise PILOT_NOT_FOUND
+    except RaceInProgressError:
+        raise DECK_LOCKED
     except PilotCardNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Carta non trovata in questo mazzo")
     except GameDeckFullError:
@@ -150,13 +161,14 @@ def detail(pilot_id: int, user: CurrentUser, db: DbDep):
 
 @router.post("/{pilot_id}/deck/add", response_model=PilotDeckDetail)
 def add_to_game_deck(pilot_id: int, data: CardMove, user: CurrentUser, db: DbDep):
-    # Sposta una copia dall'inventario al mazzo da gioco (massimo 15 carte).
+    # Sposta una copia dall'inventario al mazzo da gioco (massimo 15 carte); 409 con una
+    # gara non confermata.
     return _move(db, user, pilot_id, data, to_game=True)
 
 
 @router.post("/{pilot_id}/deck/remove", response_model=PilotDeckDetail)
 def remove_from_game_deck(pilot_id: int, data: CardMove, user: CurrentUser, db: DbDep):
-    # Riporta una copia dal mazzo da gioco all'inventario.
+    # Riporta una copia dal mazzo da gioco all'inventario; 409 con una gara non confermata.
     return _move(db, user, pilot_id, data, to_game=False)
 
 
