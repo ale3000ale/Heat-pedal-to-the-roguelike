@@ -58,7 +58,7 @@ describe('groupChampionships', () => {
 });
 
 describe('initiallyOpenGroup', () => {
-	it('apre Iscritto se c\'è almeno un pilota iscritto', () => {
+	it("apre Iscritto se c'è almeno un pilota iscritto", () => {
 		const groups = groupChampionships([championship(1)], [pilot(1, 1)]);
 		expect(initiallyOpenGroup(groups)).toBe('enrolled');
 	});

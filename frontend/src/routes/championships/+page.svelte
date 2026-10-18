@@ -3,16 +3,19 @@
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
-	import {
-		groupChampionships,
-		initiallyOpenGroup,
-		type GroupKey
-	} from '$lib/championship-groups';
+	import { groupChampionships, initiallyOpenGroup, type GroupKey } from '$lib/championship-groups';
 	import type { Championship, Pilot } from '$lib/types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 	import NewChampionshipDialog from '$lib/components/new-championship-dialog.svelte';
+
+	// Messaggio mostrato quando una sezione non contiene campionati.
+	const emptyMessages: Record<GroupKey, string> = {
+		enrolled: 'Nessun campionato a cui sei iscritto.',
+		active: 'Nessun campionato attivo.',
+		closed: 'Nessun campionato chiuso.'
+	};
 
 	let championships = $state<Championship[]>([]);
 	let pilots = $state<Pilot[]>([]);
@@ -101,13 +104,13 @@
 	{/if}
 {/snippet}
 
-{#snippet section(key: GroupKey, title: string, items: Championship[], empty: string)}
+{#snippet section(key: GroupKey, title: string, items: Championship[])}
 	<details class="rounded-lg border p-4" bind:open={openGroups[key]}>
 		<summary class="cursor-pointer text-lg font-semibold select-none">
 			{title} ({items.length})
 		</summary>
 		<div class="mt-3">
-			{@render list(items, empty)}
+			{@render list(items, emptyMessages[key])}
 		</div>
 	</details>
 {/snippet}
@@ -132,14 +135,9 @@
 	{:else if !loaded}
 		<p class="text-muted-foreground">Caricamento…</p>
 	{:else}
-		{@render section(
-			'enrolled',
-			'Iscritto',
-			groups.enrolled,
-			'Nessun campionato a cui sei iscritto.'
-		)}
-		{@render section('active', 'Attivi', groups.active, 'Nessun campionato attivo.')}
-		{@render section('closed', 'Chiusi', groups.closed, 'Nessun campionato chiuso.')}
+		{@render section('enrolled', 'Iscritto', groups.enrolled)}
+		{@render section('active', 'Attivi', groups.active)}
+		{@render section('closed', 'Chiusi', groups.closed)}
 	{/if}
 
 	{#if auth.isAdmin}
