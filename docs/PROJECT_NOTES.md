@@ -109,7 +109,7 @@ Regole in `PHASE_13_SPEC.md` (parte B, caricamento ed eliminazione). Stato:
 - Tasti di esclusione (aggiunti il 18 ottobre 2026): `lib/pool-exclusion.ts` (`excludeCardGroup`, con test) e `isBaseCard` in `lib/card-origin.ts` (percorso `cards/base/`), con i due tasti «Escludi tutte le carte caricate» ed «Escludi tutte le carte di base» sopra l'elenco di `PoolCardPicker` in `routes/admin/pools/+page.svelte`. Azzera le copie scelte del gruppo nel solo modulo, senza toccare il database.
 - Riepilogo del mazzo e sezione aperta (13c, aggiunti il 18 ottobre 2026): in fondo alla sezione per pilota di `pilot-card-plays.svelte` c'è l'intestazione «Mazzo da gioco» con la griglia di `CardTile` in sola lettura (copie nel mazzo), dati da `lib/pilot-deck-api.ts` (`fetchPilotGameDeck`, legge `game_deck` di `GET /api/pilots/{id}`) con il test `pilot-deck-api.spec.ts`; la sezione nasce già aperta quando il giocatore ha un solo pilota iscritto (proprietà `startOpen`, letta in `onMount` per il solo valore iniziale).
 - Controlli locali del 18 ottobre 2026: `npm run check` (0 errori), `npm run lint`, `npm test` (110 test passati su 110: base misurata 101) e `npm run build` riusciti; backend non toccato.
-- La 13f è completata: restano la lettura della CI sull'ultimo commit e l'unione della pull request #9 in `main` (13g).
+- La 13f è completata: CI verde sul commit `5ed659e` (esecuzione 39126355821, letta il 18 ottobre 2026) e documenti riallineati; resta l'unione della pull request #9 in `main` (13g, incarico dell'autore del 18 ottobre 2026).
 
 ## Negozio
 
