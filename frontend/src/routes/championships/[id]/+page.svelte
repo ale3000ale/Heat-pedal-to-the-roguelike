@@ -7,6 +7,7 @@
 	import { auth } from '$lib/auth.svelte';
 	import { standingKey } from '$lib/standings';
 	import { canShowEnroll, enrollablePilots } from '$lib/enroll-candidates';
+	import { deckAction } from '$lib/deck-access';
 	import {
 		fetchUnseenGifts,
 		loadPollIntervalMs,
@@ -20,6 +21,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 	import EnrollPilotDialog from '$lib/components/enroll-pilot-dialog.svelte';
+	import PilotPickerDialog from '$lib/components/pilot-picker-dialog.svelte';
 	import PilotCardPlays from '$lib/components/pilot-card-plays.svelte';
 	import CardGiftPopup from '$lib/components/card-gift-popup.svelte';
 
@@ -34,6 +36,7 @@
 	let busy = $state(false);
 	let settingsOpen = $state(false);
 	let enrollOpen = $state(false);
+	let deckOpen = $state(false);
 	let gifts = $state<CardGift[]>([]);
 	let giftOpen = $state(false);
 
@@ -47,6 +50,10 @@
 	// Il pulsante d'iscrizione c'è solo in un campionato attivo senza miei piloti iscritti.
 	let showEnroll = $derived(
 		championship !== null && canShowEnroll(championship.is_closed, enrolled.length)
+	);
+	// Cosa fa il pulsante del mazzo: nascosto, apre il pilota oppure chiede quale pilota.
+	let deckMode = $derived(
+		championship ? deckAction(championship.is_closed, enrolled.length) : 'hidden'
 	);
 	// Una gara senza classifica è in corso: finché c'è non se ne può creare un'altra.
 	let raceInProgress = $derived(races.some((race) => race.participants === 0));
@@ -151,6 +158,17 @@
 		myPilots = await api<Pilot[]>('/pilots');
 	}
 
+	// Apre la pagina del pilota, dove si vedono e si modificano mazzo e inventario.
+	function goToDeck(pilot: Pilot) {
+		void goto(resolve('/pilots/[id]', { id: String(pilot.id) }));
+	}
+
+	// Con un solo pilota iscritto va dritta alla sua pagina, altrimenti chiede quale.
+	function openDeck() {
+		if (deckMode === 'choose') deckOpen = true;
+		else if (enrolled.length > 0) goToDeck(enrolled[0]);
+	}
+
 	// Admin e giudice: crea la prossima gara. Resta in questa pagina: la gara nuova
 	// compare in lista come "in corso" e si apre da lì. Con una gara in corso il pulsante
 	// sembra spento ma si può premere: il click mostra solo l'avviso, senza chiamare l'API.
@@ -199,6 +217,9 @@
 					<Button size="sm" variant="outline" onclick={() => (enrollOpen = true)}>
 						Iscrivi un pilota
 					</Button>
+				{/if}
+				{#if deckMode !== 'hidden'}
+					<Button size="sm" variant="outline" onclick={openDeck}>Vedi mazzo</Button>
 				{/if}
 				<!-- Campionato chiuso: il negozio si apre in sola lettura, solo per l'admin -->
 				{#if !championship.is_closed || auth.isAdmin}
@@ -335,6 +356,13 @@
 			championshipName={championship.name}
 			pilots={candidates}
 			onenroll={enrollPilot}
+		/>
+
+		<PilotPickerDialog
+			bind:open={deckOpen}
+			title="Mazzo di quale pilota?"
+			pilots={enrolled}
+			onselect={goToDeck}
 		/>
 
 		<CardGiftPopup bind:open={giftOpen} {gifts} onclosed={onGiftsClosed} />
