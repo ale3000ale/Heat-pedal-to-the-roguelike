@@ -6,6 +6,7 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
 	import { standingKey } from '$lib/standings';
+	import { canShowEnroll, enrollablePilots } from '$lib/enroll-candidates';
 	import {
 		fetchUnseenGifts,
 		loadPollIntervalMs,
@@ -18,11 +19,10 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
+	import EnrollPilotDialog from '$lib/components/enroll-pilot-dialog.svelte';
 	import PilotCardPlays from '$lib/components/pilot-card-plays.svelte';
 	import CardGiftPopup from '$lib/components/card-gift-popup.svelte';
 
-	const selectClass =
-		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
 	const RACE_IN_PROGRESS_MESSAGE = "C'è una gara in corso: va terminata prima di crearne un'altra.";
 
 	let championship = $state<ChampionshipDetail | null>(null);
@@ -30,24 +30,23 @@
 	let races = $state<Race[]>([]);
 	let myPilots = $state<Pilot[]>([]);
 	let error = $state<string | null>(null);
-	let actionError = $state<string | null>(null);
 	let raceError = $state<string | null>(null);
 	let busy = $state(false);
-	let selectedPilot = $state('');
 	let settingsOpen = $state(false);
+	let enrollOpen = $state(false);
 	let gifts = $state<CardGift[]>([]);
 	let giftOpen = $state(false);
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
-	// Piloti che hanno un team e non sono già iscritti a questo campionato.
-	let candidates = $derived(
-		myPilots.filter(
-			(p) => p.team_id !== null && !championship?.pilots.some((entrant) => entrant.id === p.id)
-		)
-	);
+	// Piloti che si possono iscrivere: hanno un team e non sono in nessun campionato attivo.
+	let candidates = $derived(enrollablePilots(myPilots));
 	// I miei piloti iscritti a questo campionato: sono quelli che giocano le carte sponsor.
 	let enrolled = $derived(
 		myPilots.filter((p) => championship?.pilots.some((entrant) => entrant.id === p.id))
+	);
+	// Il pulsante d'iscrizione c'è solo in un campionato attivo senza miei piloti iscritti.
+	let showEnroll = $derived(
+		championship !== null && canShowEnroll(championship.is_closed, enrolled.length)
 	);
 	// Una gara senza classifica è in corso: finché c'è non se ne può creare un'altra.
 	let raceInProgress = $derived(races.some((race) => race.participants === 0));
@@ -140,23 +139,16 @@
 		}
 	});
 
-	async function enroll(event: SubmitEvent) {
-		event.preventDefault();
-		if (selectedPilot === '') return;
-		actionError = null;
-		busy = true;
-		try {
-			await api(`/championships/${page.params.id}/pilots`, {
-				method: 'POST',
-				body: { pilot_id: Number(selectedPilot) }
-			});
-			selectedPilot = '';
-			await reload();
-		} catch (e) {
-			actionError = e instanceof Error ? e.message : 'Errore sconosciuto';
-		} finally {
-			busy = false;
-		}
+	// Iscrive un proprio pilota (la finestra ha già chiesto la conferma) e ricarica campionato
+	// e piloti: l'iscrizione cambia sia la classifica sia il campionato attivo del pilota.
+	// Se la richiesta fallisce lancia l'errore, che la finestra mostra all'utente.
+	async function enrollPilot(pilotId: number) {
+		await api(`/championships/${page.params.id}/pilots`, {
+			method: 'POST',
+			body: { pilot_id: pilotId }
+		});
+		await reload();
+		myPilots = await api<Pilot[]>('/pilots');
 	}
 
 	// Admin e giudice: crea la prossima gara. Resta in questa pagina: la gara nuova
@@ -203,6 +195,11 @@
 				</p>
 			</div>
 			<div class="flex items-center gap-2">
+				{#if showEnroll}
+					<Button size="sm" variant="outline" onclick={() => (enrollOpen = true)}>
+						Iscrivi un pilota
+					</Button>
+				{/if}
 				<!-- Campionato chiuso: il negozio si apre in sola lettura, solo per l'admin -->
 				{#if !championship.is_closed || auth.isAdmin}
 					<a
@@ -224,43 +221,6 @@
 				{/if}
 			</div>
 		</div>
-
-		{#if !championship.is_closed}
-			<Card.Root>
-				<Card.Header>
-					<Card.Title>Iscrivi un tuo pilota</Card.Title>
-					<Card.Description>
-						Il pilota deve avere un team e non essere in un altro campionato attivo. L'iscrizione lo
-						reimposta.
-					</Card.Description>
-				</Card.Header>
-				<Card.Content>
-					{#if candidates.length === 0}
-						<p class="text-sm text-muted-foreground">Nessun tuo pilota può essere iscritto.</p>
-					{:else}
-						<form onsubmit={enroll} class="flex flex-wrap items-center gap-2">
-							<select
-								class={selectClass}
-								bind:value={selectedPilot}
-								required
-								aria-label="Pilota da iscrivere"
-							>
-								<option value="">Scegli un pilota</option>
-								{#each candidates as p (p.id)}
-									<option value={String(p.id)}>{p.name}</option>
-								{/each}
-							</select>
-							<Button type="submit" size="sm" disabled={busy || selectedPilot === ''}>
-								Iscrivi
-							</Button>
-						</form>
-					{/if}
-					{#if actionError}
-						<p class="mt-3 text-sm text-destructive" role="alert">{actionError}</p>
-					{/if}
-				</Card.Content>
-			</Card.Root>
-		{/if}
 
 		<Card.Root>
 			<Card.Header>
@@ -369,6 +329,13 @@
 				ondeleted={afterDelete}
 			/>
 		{/if}
+
+		<EnrollPilotDialog
+			bind:open={enrollOpen}
+			championshipName={championship.name}
+			pilots={candidates}
+			onenroll={enrollPilot}
+		/>
 
 		<CardGiftPopup bind:open={giftOpen} {gifts} onclosed={onGiftsClosed} />
 	{/if}
