@@ -17,6 +17,7 @@ Documento di fase da accorpare in `PROJECT_STATUS.md`, `PROJECT_SPEC.md` e `READ
 | 14 | Sistemazione generale, modifiche di vivibilità e miglioramenti | In corso nel ramo `phase-14` (pull request #13 in bozza, non unita a `main`) |
 | 14a | Frontend: pagina Campionati con tre sezioni a scomparsa "Iscritto", "Attivi" e "Chiusi" | Completata nel ramo `phase-14` (commit `bed217f` e `f63510a`; CI verde, riferita dall'autore il 2026-10-18) |
 | 14b | Frontend: iscrizione di un pilota dal dettaglio del campionato in una finestra a due passi (scelta e conferma) | Completata nel ramo `phase-14` (commit `8a575a7`; CI verde, riferita dall'autore il 2026-10-18) |
+| 14c | Frontend: tasto "Vedi mazzo" nel dettaglio del campionato, con scelta del pilota se ne hai più di uno | Completata nel ramo `phase-14` (commit `81ceed6`; CI verde, riferita dall'autore il 2026-10-18) |
 
 ## 14a — Campionati con sezioni a scomparsa
 
@@ -76,8 +77,35 @@ Limiti noti:
 
 Da verificare a mano: i due passi della finestra, l'errore del backend, il pulsante nei campionati chiusi e in quelli con un pilota iscritto.
 
+## 14c — Tasto per vedere il mazzo
+
+Regole richieste dall'autore:
+
+- Nel dettaglio del campionato c'è il pulsante "Vedi mazzo", nell'intestazione accanto a "Iscrivi un pilota" e "Negozio".
+- Il pulsante c'è solo in un campionato attivo in cui l'utente ha almeno un pilota iscritto; nei campionati chiusi non c'è.
+- Con un solo pilota iscritto il pulsante porta direttamente alla pagina `/pilots/[id]`.
+- Con più piloti iscritti si apre la finestra "Mazzo di quale pilota?" e un clic su un nome porta alla pagina di quel pilota.
+- La pagina del pilota è quella esistente (mazzo da gioco e inventario, con spostamento delle carte): non è stata modificata.
+
+File:
+
+- `frontend/src/lib/deck-access.ts`: `deckAction`, che decide se il pulsante compare e cosa fa (`hidden`, `open`, `choose`).
+- `frontend/src/lib/deck-access.spec.ts`: 4 test Vitest.
+- `frontend/src/lib/components/pilot-picker-dialog.svelte`: finestra di scelta del pilota, basata su `modal.svelte`.
+- `frontend/src/routes/championships/[id]/+page.svelte`: pulsante, finestra e navigazione.
+
+Dati: nessuna nuova chiamata; usa l'elenco dei piloti già caricato dalla pagina. Backend, database, migrazioni e CI non sono stati modificati.
+
+Commit: `81ceed6`.
+
+Verifiche: CI verde sulla pull request #13, riferita dall'autore e non letta dall'assistente. L'assistente non ha eseguito controlli in locale.
+
+Limite noto: dalla pagina del pilota il link in alto torna a "Team e piloti" e non al campionato.
+
+Da verificare a mano: pulsante con un pilota e con più piloti iscritti, assenza del pulsante nei campionati chiusi e in quelli senza piloti iscritti.
+
 ## Da riallineare nel weekend
 
-- `PROJECT_STATUS.md`: righe 14, 14a e 14b e una voce nella sezione Frontend per ciascuna (il file è troppo lungo per la lettura dell'assistente).
-- `PROJECT_SPEC.md`: sezioni dei campionati e dell'iscrizione dei piloti (non letto dall'assistente).
+- `PROJECT_STATUS.md`: righe 14, 14a, 14b e 14c e una voce nella sezione Frontend per ciascuna (il file è troppo lungo per la lettura dell'assistente).
+- `PROJECT_SPEC.md`: sezioni dei campionati, dell'iscrizione dei piloti e del mazzo (non letto dall'assistente).
 - `README.md`: da controllare se descrive la pagina Campionati (non letto dall'assistente).
