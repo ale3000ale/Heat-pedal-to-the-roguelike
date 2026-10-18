@@ -1,6 +1,6 @@
 # Heat — Pedal to the Roguelike
 
-Applicazione web locale per gestire campionati del gioco da tavolo Heat: utenti e ruoli, team, piloti, mazzi, pool di carte, gare, classifiche, oro e Negozio con apertura dei pacchetti.
+Applicazione web locale per gestire campionati del gioco da tavolo Heat: utenti e ruoli, team, piloti, mazzi, pool di carte, gare con carte sponsor e revisione, classifiche, oro e Negozio con apertura dei pacchetti.
 
 ## Tecnologie
 
@@ -51,14 +51,14 @@ Dopo un `git pull` o un cambio di ramo l'avvio migra comunque da solo il databas
 | `backend/` | API FastAPI, modelli, servizi, migrazioni Alembic, test, immagini in `backend/media/`. |
 | `frontend/` | Applicazione SvelteKit (`src/routes`, `src/lib`). |
 | `database/` | Cartella del database. |
-| `docs/` | Specifica, stato, note, domande aperte, progetto e schema del Negozio. |
+| `docs/` | Specifica, stato, note, domande aperte, specifica della fase 13, progetto e schema del Negozio. |
 | `tools/` | Script di supporto, tra cui `check-frontend.mjs`. |
 | `.github/` | Controlli automatici (CI) a ogni pull request. |
 | `heat.py` | Setup, avvio, migrazioni, test e controlli. |
 
 ## Immagini delle carte
 
-Le immagini stanno in `backend/media/cards/` (`base/modifiche`, `base/sponsor`, `starter`, `uploads`) e vanno riempite a mano. I nomi seguono `nome_N.ext`, con N pari al numero di copie. Per portarle al formato usato dall'applicazione (WebP, scatola massima 560x870 px), da `backend`:
+Le immagini stanno in `backend/media/cards/` (`base/modifiche`, `base/sponsor`, `starter`, `uploads`). Le cartelle `base` e `starter` vanno riempite a mano; `uploads` si riempie con il caricamento dell'admin (`POST /api/admin/cards`, immagine già tagliata a 560x870 px, al massimo 2 MB) e le carte caricate si eliminano con `DELETE /api/admin/cards`. L'interfaccia di caricamento con ritaglio e zoom è nella pagina admin delle pool (13f): le carte caricate si riconoscono dal nome in arancione e si eliminano dall'elenco. I nomi seguono `nome_N.ext`, con N pari al numero di copie. Per portarle al formato usato dall'applicazione (WebP, scatola massima 560x870 px), da `backend`:
 
 ```
 python -m app.scripts.resize_cards [cartella] [--dry-run]
@@ -72,6 +72,7 @@ Le immagini dei pacchetti del Negozio stanno in `backend/media/pack/`.
 - `docs/PROJECT_STATUS.md`: stato di avanzamento.
 - `docs/PROJECT_NOTES.md`: mappa del codice, comandi e convenzioni di lavoro.
 - `docs/OPEN_QUESTIONS.md`: domande ancora aperte.
+- `docs/PHASE_13_SPEC.md`: specifica della fase 13 (carte sponsor in gara, revisione e amministrazione delle carte).
 - `docs/SHOP_DESIGN.md` e `docs/SHOP_SCHEMA.md`: funzionamento e schema tecnico del Negozio.
 - `docs/DATABASE_ANALYSIS.md`: analisi del database.
 

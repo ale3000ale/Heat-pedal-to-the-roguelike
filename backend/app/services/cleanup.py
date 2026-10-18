@@ -5,6 +5,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import User
+from app.db.models.card_play import CardPlay
 from app.db.models.championship import ChampionshipPilot
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
@@ -72,9 +73,11 @@ def list_hidden_teams(db: Session) -> list[tuple[Team, str, int, bool]]:
 
 def _purge_pilot(db: Session, pilot: Pilot) -> None:
     # Eliminazione definitiva, senza commit. Rifiutata se il pilota è in un campionato attivo;
-    # nei campionati chiusi cancella iscrizioni e risultati del pilota.
+    # nei campionati chiusi cancella iscrizioni, risultati e giocate di carte del pilota.
+    # Le giocate (card_play) hanno una chiave esterna verso il pilota: vanno rimosse prima.
     if pilots_in_active_championship(db, [pilot.id]):
         raise PilotInActiveChampionshipError
+    db.execute(delete(CardPlay).where(CardPlay.pilot_id == pilot.id))
     db.execute(delete(RaceResult).where(RaceResult.pilot_id == pilot.id))
     db.execute(delete(ChampionshipPilot).where(ChampionshipPilot.pilot_id == pilot.id))
     deck_ids = [d for d in (pilot.inventory_deck_id, pilot.game_deck_id) if d is not None]

@@ -55,6 +55,13 @@ def finish_race(admin, championship_id, race_id, pilot_id):
     assert r.status_code == 200
 
 
+def confirm_review(admin, championship_id, race_id):
+    # La gara chiusa libera il campionato solo dopo la conferma della revisione.
+    base = f"/api/championships/{championship_id}/races/{race_id}/review"
+    assert admin.post(base).status_code == 200
+    assert admin.post(f"{base}/confirm").status_code == 200
+
+
 def test_cannot_create_a_race_while_another_is_in_progress(make_client, session_factory):
     admin, _ = setup_world(make_client, session_factory)
     championship_id = new_championship(admin, "Estate")
@@ -65,12 +72,24 @@ def test_cannot_create_a_race_while_another_is_in_progress(make_client, session_
     assert [race["number"] for race in races] == [1]
 
 
+def test_cannot_create_a_race_until_the_review_is_confirmed(make_client, session_factory):
+    admin, player = setup_world(make_client, session_factory)
+    championship_id = new_championship(admin, "Estate")
+    pilot_id = enrolled_pilot(player, championship_id, "Ayrton")
+    first = admin.post(f"/api/championships/{championship_id}/races").json()
+    finish_race(admin, championship_id, first["id"], pilot_id)
+    assert admin.post(f"/api/championships/{championship_id}/races").status_code == 409
+    assert admin.post(f"/api/championships/{championship_id}/races/{first['id']}/review").status_code == 200
+    assert admin.post(f"/api/championships/{championship_id}/races").status_code == 409
+
+
 def test_can_create_a_race_after_the_previous_one_is_finished(make_client, session_factory):
     admin, player = setup_world(make_client, session_factory)
     championship_id = new_championship(admin, "Estate")
     pilot_id = enrolled_pilot(player, championship_id, "Ayrton")
     first = admin.post(f"/api/championships/{championship_id}/races").json()
     finish_race(admin, championship_id, first["id"], pilot_id)
+    confirm_review(admin, championship_id, first["id"])
     second = admin.post(f"/api/championships/{championship_id}/races")
     assert second.status_code == 201
     assert second.json()["number"] == 2

@@ -43,6 +43,8 @@ class PilotRead(BaseModel):
 
 
 class PilotDetail(PilotRead):
-    # Dettaglio del pilota, con inventario e mazzo da gioco.
+    # Dettaglio del pilota, con inventario delle modifiche, inventario sponsor (sola
+    # lettura: le carte sponsor non vanno nel mazzo da gioco) e mazzo da gioco.
     inventory: list[CardRead]
+    sponsor_inventory: list[CardRead] = []
     game_deck: list[CardRead]

@@ -6,9 +6,11 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
-	import type { RaceDetail } from '$lib/race-types';
+	import type { RaceDetail, RaceStatus } from '$lib/race-types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
+	import PilotGiftButton from '$lib/components/pilot-gift-button.svelte';
+	import RaceReviewPanel from '$lib/components/race-review-panel.svelte';
 
 	// Una riga della classifica: un pilota in ordine di arrivo con i suoi punti sponsor.
 	interface Row {
@@ -27,6 +29,14 @@
 	const inputClass =
 		'h-8 w-20 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
 
+	// Etichetta e colore dello stato della gara.
+	const STATUS_VIEW: Record<RaceStatus, { label: string; class: string }> = {
+		in_progress: { label: 'in corso', class: 'text-red-600' },
+		in_review: { label: 'in revisione', class: 'text-amber-600' },
+		to_review: { label: 'da rivedere', class: 'text-amber-600' },
+		closed: { label: 'terminata', class: 'text-green-600' }
+	};
+
 	let race = $state<RaceDetail | null>(null);
 	let championship = $state<ChampionshipDetail | null>(null);
 	let myPilots = $state<Pilot[]>([]);
@@ -40,7 +50,7 @@
 	let allowLeave = false;
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
-	// Una gara con almeno un risultato è terminata, altrimenti è in corso.
+	// Una gara con almeno un risultato ha la classifica registrata, altrimenti è in corso.
 	let isRaceClosed = $derived(race !== null && race.participants > 0);
 	// Il giudice può terminare una gara in corso; solo l'admin può correggerne una terminata.
 	// Un campionato chiuso è in sola lettura per tutti.
@@ -49,6 +59,23 @@
 			!championship.is_closed &&
 			auth.canManageRaces &&
 			(!isRaceClosed || auth.canCorrectRaces)
+	);
+	// Il tasto S compare solo a giudice e admin, con la gara in corso e il campionato aperto.
+	let canGift = $derived(
+		championship !== null && !championship.is_closed && auth.canManageRaces && !isRaceClosed
+	);
+	// Il pannello di revisione compare a giudice e admin mentre la revisione è attiva. Solo
+	// all'admin compare sull'ultima gara quando è da rivedere o già terminata (per riaprirla).
+	// Nelle gare precedenti non compare.
+	let canReview = $derived(
+		championship !== null &&
+			!championship.is_closed &&
+			auth.canManageRaces &&
+			race !== null &&
+			(race.status === 'in_review' ||
+				(auth.canCorrectRaces &&
+					race.is_last &&
+					(race.status === 'to_review' || race.status === 'closed')))
 	);
 	// Iscritti non ancora assegnati né alla classifica né ai non partecipanti.
 	let available = $derived(
@@ -71,7 +98,7 @@
 	}
 
 	// Riempie il modulo con i dati già registrati: classifica in ordine di arrivo e,
-	// se la gara è terminata, chi non ha partecipato.
+	// se la gara ha i risultati, chi non ha partecipato.
 	function loadOrder(detail: RaceDetail) {
 		order = detail.results
 			.filter((r) => r.position !== null)
@@ -199,11 +226,9 @@
 			<p class="text-sm text-muted-foreground">
 				{raceDate(race.date)} · {race.participants}
 				{race.participants === 1 ? 'partecipante' : 'partecipanti'} ·
-				{#if isRaceClosed}
-					<span class="font-medium text-green-600">terminata</span>
-				{:else}
-					<span class="font-medium text-red-600">in corso</span>
-				{/if}
+				<span class={`font-medium ${STATUS_VIEW[race.status].class}`}>
+					{STATUS_VIEW[race.status].label}
+				</span>
 			</p>
 		</div>
 
@@ -237,6 +262,37 @@
 							{/each}
 						</ol>
 					{/if}
+				</Card.Content>
+			</Card.Root>
+		{/if}
+
+		{#if canReview}
+			{#key race.status}
+				<RaceReviewPanel
+					championshipId={Number(page.params.id)}
+					raceId={Number(page.params.raceId)}
+					autoOpen={race.status === 'in_review'}
+					canOpen={auth.canCorrectRaces && race.is_last}
+					reopen={race.status === 'closed'}
+				/>
+			{/key}
+		{/if}
+
+		{#if canGift}
+			<Card.Root>
+				<Card.Header>
+					<Card.Title>Piloti iscritti</Card.Title>
+					<Card.Description>
+						Con il tasto S assegni una carta sponsor casuale al pilota. La carta la vede solo lui.
+					</Card.Description>
+				</Card.Header>
+				<Card.Content class="space-y-2">
+					{#each race.results as result (result.pilot_id)}
+						<PilotGiftButton
+							championshipId={Number(page.params.id)}
+							pilot={{ id: result.pilot_id, name: result.pilot_name }}
+						/>
+					{/each}
 				</Card.Content>
 			</Card.Root>
 		{/if}

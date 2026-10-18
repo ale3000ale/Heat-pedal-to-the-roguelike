@@ -6,10 +6,12 @@ from app.schemas.race import (
     RaceDetail,
     RaceRead,
     RaceResultRead,
+    RaceStatus,
     ResultsSet,
     StandingRead,
 )
 from app.services.championships import standings, ChampionshipClosedError, ChampionshipNotFoundError
+from app.services.race_review import is_last_race, is_review_active, settle_expired_reviews
 from app.services.races import (
     RaceAlreadyClosedError,
     RaceInProgressError,
@@ -35,12 +37,27 @@ RACE_CLOSED = HTTPException(
 )
 
 
+def _race_status(race, participants: int) -> RaceStatus:
+    # Stato della gara: senza risultati è in corso; con i risultati dipende dalla revisione
+    # delle carte (confermata = chiusa, attiva = in revisione, altrimenti da rivedere).
+    if participants == 0:
+        return "in_progress"
+    if race.review_closed_at is not None:
+        return "closed"
+    if is_review_active(race):
+        return "in_review"
+    return "to_review"
+
+
 def _read(db, race) -> RaceRead:
+    participants = count_participants(db, race.id)
     return RaceRead(
         id=race.id,
         number=race.number,
         date=race.date,
-        participants=count_participants(db, race.id),
+        participants=participants,
+        status=_race_status(race, participants),
+        is_last=is_last_race(db, race),
     )
 
 
@@ -73,7 +90,9 @@ def list_all(championship_id: int, user: CurrentUser, db: DbDep):
 )
 def create(championship_id: int, judge: JudgeUser, db: DbDep, data: RaceCreate | None = None):
     # Crea la gara successiva (giudice o admin), solo se non ce n'è una in corso.
+    # Prima conferma così com'è le revisioni scadute, che altrimenti la terrebbero aperta.
     try:
+        settle_expired_reviews(db, championship_id)
         return _read(db, create_race(db, championship_id, data.date if data else None))
     except ChampionshipNotFoundError:
         raise CHAMPIONSHIP_NOT_FOUND
@@ -99,7 +118,8 @@ def put_results(
     championship_id: int, race_id: int, data: ResultsSet, judge: JudgeUser, db: DbDep
 ):
     # Termina la gara registrando classifica, sponsor e assenti (giudice o admin).
-    # Se la gara ha già i risultati, solo l'admin può correggerli.
+    # Alla prima registrazione chi preme Termina diventa il revisore e la revisione delle
+    # carte parte subito. Se la gara ha già i risultati, solo l'admin può correggerli.
     entries = [(entry.pilot_id, entry.sponsor_points) for entry in data.results]
     try:
         set_results(
@@ -109,6 +129,7 @@ def put_results(
             entries,
             can_correct=judge.role == "admin",
             absent=data.absent,
+            reviewer_id=judge.id,
         )
         return _detail(db, championship_id, race_id)
     except ChampionshipNotFoundError:

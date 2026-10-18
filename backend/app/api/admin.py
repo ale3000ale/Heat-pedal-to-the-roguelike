@@ -2,8 +2,9 @@ from dataclasses import asdict
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import AdminUser, DbDep
+from app.api.deps import AdminUser, CurrentUser, DbDep
 from app.schemas.admin import DeletedPilotRead, DeletedTeamRead, PurgeRead
+from app.schemas.card_poll import CardPollSettings
 from app.schemas.gold import GoldRulesData
 from app.schemas.roles import RoleSet, UserRoleRead
 from app.services.cleanup import (
@@ -16,7 +17,13 @@ from app.services.cleanup import (
     purge_pilot,
     purge_team,
 )
-from app.services.gold import get_defaults, rules_of, set_defaults
+from app.services.gold import (
+    get_card_poll_seconds,
+    get_defaults,
+    rules_of,
+    set_card_poll_seconds,
+    set_defaults,
+)
 from app.services.pilots import PilotInActiveChampionshipError
 from app.services.roles import AdminRoleLockedError, UserNotFoundError, list_users, set_role
 
@@ -55,6 +62,20 @@ def change_championship_defaults(data: GoldRulesData, admin: AdminUser, db: DbDe
     # Cambia le impostazioni generali (solo admin): valgono per i campionati creati dopo,
     # quelli esistenti non cambiano.
     return GoldRulesData.from_rules(rules_of(set_defaults(db, data.to_rules())))
+
+
+@router.get("/card-poll", response_model=CardPollSettings)
+def card_poll(user: CurrentUser, db: DbDep):
+    # Intervallo di controllo delle notifiche delle carte: lo legge ogni utente collegato,
+    # perché il frontend del giocatore deve conoscerlo.
+    return CardPollSettings(seconds=get_card_poll_seconds(db))
+
+
+@router.put("/card-poll", response_model=CardPollSettings)
+def change_card_poll(data: CardPollSettings, admin: AdminUser, db: DbDep):
+    # Cambia l'intervallo di controllo (solo admin, da 1 a 10 secondi); vale subito per
+    # tutti, senza copie nei campionati.
+    return CardPollSettings(seconds=set_card_poll_seconds(db, data.seconds))
 
 
 @router.get("/deleted/pilots", response_model=list[DeletedPilotRead])

@@ -7,6 +7,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import GoldRulesForm from '$lib/components/gold-rules-form.svelte';
+	import CardPollForm from '$lib/components/card-poll-form.svelte';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 
 	let championships = $state<Championship[]>([]);
@@ -121,13 +122,14 @@
 			<summary class="cursor-pointer rounded-lg px-4 py-3 text-lg font-semibold">
 				Impostazioni generali dei campionati
 			</summary>
-			<div class="px-4 pb-4">
+			<div class="space-y-4 px-4 pb-4">
 				<GoldRulesForm
 					url="/admin/championship-defaults"
 					title="Oro per gara"
 					description="Copiato in ogni nuovo campionato. Cambiarlo non modifica i campionati già creati."
 					editable
 				/>
+				<CardPollForm />
 			</div>
 		</details>
 

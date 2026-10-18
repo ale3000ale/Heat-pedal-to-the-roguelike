@@ -11,6 +11,11 @@ MAX_GOLD_BASE = 10000
 MAX_GOLD_MODIFIER = 1000
 DEFAULTS_ROW_ID = 1
 
+# Intervallo di controllo delle notifiche delle carte sponsor, in secondi.
+MIN_CARD_POLL_SECONDS = 1
+MAX_CARD_POLL_SECONDS = 10
+DEFAULT_CARD_POLL_SECONDS = 5
+
 
 @dataclass(frozen=True)
 class GoldRules:
@@ -55,6 +60,28 @@ def set_defaults(db: Session, rules: GoldRules) -> ChampionshipDefaults:
     db.commit()
     db.refresh(defaults)
     return defaults
+
+
+def get_card_poll_seconds(db: Session) -> int:
+    # Secondi tra due controlli delle notifiche delle carte; vale per tutti subito.
+    value = get_defaults(db).card_poll_seconds
+    return value if value is not None else DEFAULT_CARD_POLL_SECONDS
+
+
+def set_card_poll_seconds(db: Session, seconds: int) -> int:
+    # Cambia l'intervallo di controllo.
+    # Parametri: seconds, intero tra MIN_CARD_POLL_SECONDS e MAX_CARD_POLL_SECONDS.
+    # Ritorno: il valore salvato.
+    # Errori: ValueError se il valore è fuori dai limiti (nessuna scrittura).
+    if not MIN_CARD_POLL_SECONDS <= seconds <= MAX_CARD_POLL_SECONDS:
+        raise ValueError(
+            f"L'intervallo deve essere tra {MIN_CARD_POLL_SECONDS} e {MAX_CARD_POLL_SECONDS} secondi"
+        )
+    defaults = get_defaults(db)
+    defaults.card_poll_seconds = seconds
+    db.commit()
+    db.refresh(defaults)
+    return defaults.card_poll_seconds
 
 
 def race_gold(rules: GoldRules, position: int | None) -> int:
