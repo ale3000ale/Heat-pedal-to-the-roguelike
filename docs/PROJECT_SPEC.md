@@ -327,7 +327,7 @@ Backend (12a-12c) completato e approvato; frontend del giocatore (12d) e dell'ad
 
 ## 14. Carte sponsor in gara (fase 13)
 
-La fase 13 ha sottofasi 13a-13g; il piano completo e le decisioni approvate sono in `PHASE_13_SPEC.md`. Questa sezione fissa le regole del backend (13a, 13b, 13c-1) e l'interfaccia realizzata finora (13c, 13d parziale).
+La fase 13 ha sottofasi 13a-13g; il piano completo e le decisioni approvate sono in `PHASE_13_SPEC.md`, che resta come storico. Questa sezione fissa le regole approvate. La fase è stata unita in `main` con la pull request #9 il 18 ottobre 2026.
 
 ### Chi gioca e quando
 
@@ -388,6 +388,14 @@ La fase 13 ha sottofasi 13a-13g; il piano completo e le decisioni approvate sono
 - Il giocatore controlla le nuove notifiche a intervalli: valore `card_poll_seconds` delle impostazioni generali (1-10 secondi, predefinito 5), letto con `GET /api/admin/card-poll` e modificato dall'admin con `PUT`. Se la lettura fallisce o il valore non è valido il frontend usa 5 secondi.
 - Il controllo parte solo con campionato attivo e almeno un proprio pilota iscritto, e non fa nulla mentre il popup è aperto.
 
+### Amministrazione delle carte (13e, 13f)
+
+- Il solo admin carica le carte: foto da smartphone o file da computer, JPEG, PNG e WebP. Il ritaglio avviene nel frontend: il backend riceve l'immagine già tagliata a 560x870 px, la converte in WebP (qualità 90) e rifiuta con 422 le immagini di dimensioni diverse (`CARD_IMAGE_SIZE` in `config.py`).
+- Nome da 1 a 64 caratteri, senza spazi ai bordi, che non comincia con un punto e senza `/ \ : * ? " < > |`; copie da 1 a 999. Nome già usato nella pool di base del tipo (senza distinguere le maiuscole) o file di destinazione già esistente: 409. Dimensione massima `MAX_CARD_UPLOAD_BYTES` in `backend/app/config.py`: 413 se l'intestazione `content-length` lo rivela subito, altrimenti 422.
+- Le carte caricate si riconoscono dal percorso `cards/uploads/<tipo>/nome_quantità.webp` (relativo a `backend/media`) e non da colonne del database: la 13e non ha migrazioni. La ricarica della pool di base toglie solo le carte con percorso `cards/base/<tipo>/` e non tocca le caricate. Nelle pagine di gestione delle pool i nomi delle carte caricate sono in arancione.
+- Eliminazione: solo l'admin, solo carte caricate (409 per le altre). La carta esce dalla pool di base; le copie già presenti nelle pool dei campionati e negli inventari non cambiano. Il file immagine resta finché un campionato, attivo o chiuso, usa la carta, e viene cancellato quando nessun campionato la usa più; la pulizia dei file orfani avviene anche all'eliminazione di un campionato.
+- Nella creazione di una pool personalizzata due tasti escludono in un colpo solo le copie scelte: «Escludi tutte le carte caricate» ed «Escludi tutte le carte di base». Ogni tasto azzera solo le scelte del proprio gruppo nel modulo di creazione, senza toccare il database; le carte di partenza non si toccano.
+
 ### Stato
 
-Backend delle sottofasi 13a, 13b e 13c-1 scritto. Frontend: realizzati la sezione per pilota con uso e annulla ultima, il popup della notifica, il controllo periodico, il campo dell'intervallo nelle impostazioni generali, l'inventario in due sezioni e il tasto S nella pagina della gara. Da fare: tasto Indietro (13c) e revisione nella pagina della gara (13d). Il ripristino di una carta da parte dell'admin dopo la chiusura non è previsto: la riapertura della revisione e l'annullo di giocate consumate lo sostituiscono.
+Fase 13 completata e unita in `main` (pull request #9, 18 ottobre 2026). Backend delle sottofasi 13a, 13b, 13c-1 e 13e; frontend della 13c (uso e annulla ultima, sezione del pilota aperta quando è l'unico iscritto, riepilogo con immagini del mazzo da gioco), della 13d (revisione nella pagina della gara), del popup della notifica con controllo periodico, del campo dell'intervallo nelle impostazioni generali, dell'inventario in due sezioni, del tasto S nella pagina della gara e della 13f (caricamento con ritaglio e zoom, elenco con nomi in arancione, eliminazione, tasti di esclusione nelle pool personalizzate). CI verde sui commit della fase e su `main` dopo l'unione. Il ripristino di una carta da parte dell'admin dopo la chiusura non è previsto: la riapertura della revisione e l'annullo di giocate consumate lo sostituiscono.

@@ -210,5 +210,5 @@ Questioni rinviate:
 
 1. Fase 13 conclusa: pull request #9 unita in `main` il 2026-10-18 (merge `cdea876`). Con l'autore: definire la fase 14 (sistemazione generale, modifiche di vivibilità e miglioramenti, compreso il menu dell'intestazione che a 375 px sfora, trovato il 2026-10-18).
 2. Unione del ramo `phase-12f-docs` (solo documenti) in `main`, a cura dell'autore.
-3. Riallineamento dei documenti ancora indietro: rileggere `PROJECT_SPEC.md` dopo `bc0fbfb` per il refuso "varà", la sezione 14 e il riallineamento alla 13e e alla 13f; rileggere `SETUP.md` e `SCRIPTS.md` rispetto a `heat.py`; decidere con l'autore il destino di `setup.py`, `setup.bat`, `setup.sh` e `scripts/`.
+3. Riallineamento dei documenti ancora indietro: rileggere `SETUP.md` e `SCRIPTS.md` rispetto a `heat.py`; decidere con l'autore il destino di `setup.py`, `setup.bat`, `setup.sh` e `scripts/`. Il riallineamento della sezione 14 di `PROJECT_SPEC.md` alla 13e e alla 13f è stato fatto in questa seduta (commit su `main`); resta da rileggere il refuso "varà" dopo `bc0fbfb` se presente.
 4. Dopo l'unione in `main`: eliminare i rami di sottofase creati per errore (a cura dell'autore).
