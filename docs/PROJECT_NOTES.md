@@ -136,14 +136,14 @@ Regole in `PHASE_13_SPEC.md` (parte B, caricamento ed eliminazione). Stato:
 
 ## Contesto di lavoro (18 ottobre 2026)
 
-Le fasi da 8 a 12 sono concluse e unite a `main` (pull request da #1 a #5). La fase 13 (carte sponsor in gara e amministrazione delle carte) è nel ramo `phase-13a-card-plays`, pull request #9: sono completate tutte le sottofasi fino alla 13f (l'ultima, con i tasti di esclusione delle pool personalizzate e il riepilogo del mazzo nella sezione per pilota, chiusa il 18 ottobre 2026). Resta la 13g: leggere la CI dell'ultimo commit e unire in `main` (incarico dato dall'autore il 18 ottobre 2026). La pull request #11 ha unito nel ramo i test aggiuntivi sulla revisione (merge `f733886`, commit dei test `2f12768`); la CI di quel commit non è stata letta. Dopo la 13e l'autore ha riferito 474 test del backend passati in locale; il 18 ottobre 2026 l'assistente ha eseguito in locale i controlli frontend (check, lint, 110 test, build) per la chiusura della 13f.
+Le fasi da 8 a 12 sono concluse e unite a `main` (pull request da #1 a #5). Anche la fase 13 (carte sponsor in gara e amministrazione delle carte) è conclusa: la pull request #9 è stata unita in `main` il 18 ottobre 2026 (merge `cdea876`, testa precedente `68dd4d7`), con la 13f chiusa lo stesso giorno (tasti di esclusione delle pool personalizzate e riepilogo del mazzo nella sezione per pilota, commit `5ed659e`, CI verde). La fase 14 (sistemazione generale e miglioramenti) è da definire con l'autore. La pull request #11 aveva unito nel ramo i test aggiuntivi sulla revisione (merge `f733886`, commit dei test `2f12768`); la CI di quel commit non è stata letta. Dopo la 13e l'autore ha riferito 474 test del backend passati in locale; il 18 ottobre 2026 l'assistente ha eseguito in locale i controlli frontend (check, lint, 110 test, build) per la chiusura della 13f.
 
 Documenti: `PHASE_13_SPEC.md` è aggiornata alla 13f (sezione «Avanzamento della 13f»); `PROJECT_STATUS.md`, `PROJECT_NOTES.md` e `README.md` riallineati alla 13f il 18 ottobre 2026; `PROJECT_SPEC.md` ha l'ultimo riallineamento noto nel commit `bc0fbfb`. `DATABASE.md` esiste in `docs/` dal 13 ottobre 2026 e descrive `card_play`, `card_gift`, le colonne della revisione e `card_poll_seconds`; `SETUP.md` e `SCRIPTS.md`, creati lo stesso giorno, descrivono installazione e comandi. La 13e e la 13f non aggiungono migrazioni: verificato il 18 ottobre 2026 nello storico di `backend/alembic/versions`, il cui ultimo commit è `57b4637` del 2026-10-12, prima della 13e.
 
 Da fare, in ordine:
 
-1. Leggere la CI dell'ultimo commit, poi uscire dalla bozza e unire la pull request #9 in `main` (incarico dell'autore del 18 ottobre 2026); dopo l'unione verificare lo SHA di `main`.
-2. Prima dell'unione in `main`, rileggere il diff di `PROJECT_SPEC.md` e verificare che `python heat.py test`, `python heat.py check` e la CI passino sull'ultimo commit.
+1. Con l'autore: definire la fase 14 (sistemazione generale, modifiche di vivibilità e miglioramenti; compreso il menu dell'intestazione che a 375 px sfora, trovato il 2026-10-18).
+2. Unione del ramo `phase-12f-docs` (solo documenti) in `main`, a cura dell'autore.
 
 ## Questioni aperte
 
