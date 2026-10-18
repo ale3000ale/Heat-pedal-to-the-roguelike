@@ -67,7 +67,7 @@
 
 <svelte:head><title>{pilot ? pilot.name : 'Pilota'} - Heat</title></svelte:head>
 
-<main class="mx-auto max-w-5xl space-y-6 p-6">
+<main class="mx-auto max-w-6xl space-y-6 p-6">
 	<button
 		type="button"
 		class="text-sm text-muted-foreground hover:text-foreground"
@@ -163,7 +163,7 @@
 							{#if pilot.inventory.length === 0}
 								<p class="text-sm text-muted-foreground">Nessuna carta.</p>
 							{:else}
-								<div class="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+								<div class="grid grid-cols-4 gap-2 sm:grid-cols-6">
 									{#each pilot.inventory as card (card.path)}
 										<CardTile
 											{card}
@@ -180,7 +180,7 @@
 							{#if pilot.sponsor_inventory.length === 0}
 								<p class="text-sm text-muted-foreground">Nessuna carta.</p>
 							{:else}
-								<div class="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+								<div class="grid grid-cols-4 gap-2 sm:grid-cols-6">
 									{#each pilot.sponsor_inventory as card (card.path)}
 										<CardTile {card} compact title="Copie in inventario" />
 									{/each}
