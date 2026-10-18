@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import type { PilotDetail } from '$lib/types';
@@ -28,6 +29,13 @@
 			error = e instanceof Error ? e.message : 'Errore sconosciuto';
 		}
 	});
+
+	// Torna alla pagina da cui si è arrivati (il campionato, l'elenco dei piloti...).
+	// Se la pagina è stata aperta direttamente, senza una pagina precedente, va a Team e piloti.
+	function goBack() {
+		if (history.length > 1) history.back();
+		else void goto(resolve('/team'));
+	}
 
 	// Ricarica il dettaglio: serve se il backend rifiuta lo spostamento perché la gara è partita.
 	async function reload() {
@@ -60,9 +68,13 @@
 <svelte:head><title>{pilot ? pilot.name : 'Pilota'} - Heat</title></svelte:head>
 
 <main class="mx-auto max-w-5xl space-y-6 p-6">
-	<a href={resolve('/team')} class="text-sm text-muted-foreground hover:text-foreground">
-		← Team e piloti
-	</a>
+	<button
+		type="button"
+		class="text-sm text-muted-foreground hover:text-foreground"
+		onclick={goBack}
+	>
+		← Indietro
+	</button>
 
 	{#if !pilot}
 		{#if error}
@@ -99,76 +111,85 @@
 			<p class="text-sm text-destructive" role="alert">{error}</p>
 		{/if}
 
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Mazzo da gioco</Card.Title>
-				<Card.Description>
-					<span class={full ? 'font-semibold text-destructive' : ''}>
-						{gameTotal}/{MAX_GAME_DECK} carte
-					</span>
-					{#if !locked}
-						· clicca una carta per riportarla nell'inventario
-					{/if}
-				</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				{#if pilot.game_deck.length === 0}
-					<p class="text-sm text-muted-foreground">Il mazzo da gioco è vuoto.</p>
-				{:else}
-					<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-						{#each pilot.game_deck as card (card.path)}
-							<CardTile
-								{card}
-								disabled={busy || locked}
-								title="Copie nel mazzo"
-								onclick={() => move(card.path, 'remove')}
-							/>
-						{/each}
-					</div>
-				{/if}
-			</Card.Content>
-		</Card.Root>
+		<!-- Da lg in su: inventario a sinistra, mazzo fisso a destra; sotto lg il mazzo sta sopra. -->
+		<div class="grid gap-4 lg:grid-cols-3 lg:items-start">
+			<div class="lg:sticky lg:top-4 lg:order-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+				<Card.Root>
+					<Card.Header>
+						<Card.Title>Mazzo da gioco</Card.Title>
+						<Card.Description>
+							<span class={full ? 'font-semibold text-destructive' : ''}>
+								{gameTotal}/{MAX_GAME_DECK} carte
+							</span>
+							{#if !locked}
+								· clicca una carta per riportarla nell'inventario
+							{/if}
+						</Card.Description>
+					</Card.Header>
+					<Card.Content>
+						{#if pilot.game_deck.length === 0}
+							<p class="text-sm text-muted-foreground">Il mazzo da gioco è vuoto.</p>
+						{:else}
+							<div class="grid grid-cols-4 gap-2">
+								{#each pilot.game_deck as card (card.path)}
+									<CardTile
+										{card}
+										compact
+										disabled={busy || locked}
+										title="Copie nel mazzo"
+										onclick={() => move(card.path, 'remove')}
+									/>
+								{/each}
+							</div>
+						{/if}
+					</Card.Content>
+				</Card.Root>
+			</div>
 
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Inventario</Card.Title>
-				<Card.Description>
-					{#if locked}
-						Il mazzo è bloccato: le modifiche non si possono spostare. Gli sponsor restano qui.
-					{:else}
-						Clicca una modifica per metterla nel mazzo. Gli sponsor restano qui.
-					{/if}
-				</Card.Description>
-			</Card.Header>
-			<Card.Content class="space-y-3">
-				<InventorySection title="Modifiche" count={total(pilot.inventory)}>
-					{#if pilot.inventory.length === 0}
-						<p class="text-sm text-muted-foreground">Nessuna carta.</p>
-					{:else}
-						<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-							{#each pilot.inventory as card (card.path)}
-								<CardTile
-									{card}
-									disabled={busy || full || locked}
-									title="Copie in inventario"
-									onclick={() => move(card.path, 'add')}
-								/>
-							{/each}
-						</div>
-					{/if}
-				</InventorySection>
-				<InventorySection title="Sponsor" count={total(pilot.sponsor_inventory)}>
-					{#if pilot.sponsor_inventory.length === 0}
-						<p class="text-sm text-muted-foreground">Nessuna carta.</p>
-					{:else}
-						<div class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-							{#each pilot.sponsor_inventory as card (card.path)}
-								<CardTile {card} title="Copie in inventario" />
-							{/each}
-						</div>
-					{/if}
-				</InventorySection>
-			</Card.Content>
-		</Card.Root>
+			<div class="lg:order-1 lg:col-span-2">
+				<Card.Root>
+					<Card.Header>
+						<Card.Title>Inventario</Card.Title>
+						<Card.Description>
+							{#if locked}
+								Il mazzo è bloccato: le modifiche non si possono spostare. Gli sponsor restano qui.
+							{:else}
+								Clicca una modifica per metterla nel mazzo. Gli sponsor restano qui.
+							{/if}
+						</Card.Description>
+					</Card.Header>
+					<Card.Content class="space-y-3">
+						<InventorySection title="Modifiche" count={total(pilot.inventory)}>
+							{#if pilot.inventory.length === 0}
+								<p class="text-sm text-muted-foreground">Nessuna carta.</p>
+							{:else}
+								<div class="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+									{#each pilot.inventory as card (card.path)}
+										<CardTile
+											{card}
+											compact
+											disabled={busy || full || locked}
+											title="Copie in inventario"
+											onclick={() => move(card.path, 'add')}
+										/>
+									{/each}
+								</div>
+							{/if}
+						</InventorySection>
+						<InventorySection title="Sponsor" count={total(pilot.sponsor_inventory)}>
+							{#if pilot.sponsor_inventory.length === 0}
+								<p class="text-sm text-muted-foreground">Nessuna carta.</p>
+							{:else}
+								<div class="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8">
+									{#each pilot.sponsor_inventory as card (card.path)}
+										<CardTile {card} compact title="Copie in inventario" />
+									{/each}
+								</div>
+							{/if}
+						</InventorySection>
+					</Card.Content>
+				</Card.Root>
+			</div>
+		</div>
 	{/if}
 </main>
