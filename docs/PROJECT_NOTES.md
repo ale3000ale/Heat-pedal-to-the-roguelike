@@ -97,8 +97,16 @@ Regole complete in `PHASE_13_SPEC.md` (parte B). Riassunto per ripartire, riport
 - Eliminazione (`services/card_delete.py`): solo le carte con percorso `cards/uploads/`; le carte di base e di partenza non si eliminano mai (409). Il file immagine resta finché un campionato usa la carta in una copia di pool; i file orfani si cancellano anche quando si cancella un campionato (`delete_championship`).
 - Origine "caricata": si riconosce dal percorso, non da una colonna; la 13e non ha migrazioni. Dipendenza aggiunta: `python-multipart==0.0.32` in `backend/requirements.txt`.
 - Commit del backend (dal 13 ottobre 2026): `d89f75d` (dipendenza), `ba7a587` (limiti), `358297a` (caricamento), `cb934d8` (eliminazione), `3a79199` (pulizia in `delete_championship`), `e26801e` (rotte), `14557ab` (test), `a5bbe26` e `020ef6e` (`delete_championship` cancella anche giocate e regali di carte delle gare, con test).
-- Test: 474 test del backend passati in 60,54 secondi, esito riferito dall'autore. L'esito della CI della 13e non è stato riletto.
-- Da fare: frontend (13f).
+- Test: 474 test del backend passati in 60,54 secondi, esito riferito dall'autore. L'esito della CI della 13e non è stato riletto; la CI della testa del ramo (che comprende la 13e) è verde, letta il 18 ottobre 2026.
+- Stato del frontend della 13f: vedi la sezione successiva (18 ottobre 2026).
+
+## Frontend della 13f (18 ottobre 2026)
+
+Regole in `PHASE_13_SPEC.md` (parte B, caricamento ed eliminazione). Stato:
+
+- Fatto: logica pura con test (`lib/card-crop.ts` con `card-crop.spec.ts`, `lib/card-admin-api.ts` con `card-admin-api.spec.ts`, commit `9261af2`), componenti `card-crop-editor.svelte` (ritaglio 560x870 con zoom e spostamento), `card-upload-form.svelte` (nome, copie, file) e `pool-card-picker.svelte` (elenco con nomi in arancione per le carte caricate a mano e tasto «Elimina»), integrati nella pagina `routes/admin/pools/+page.svelte` (commit `e5cf313`; correzioni di lint `254b015`, `062629f`, `1391a70`, `8dbd7c2`).
+- Esiti: l'autore ha riferito il 18 ottobre 2026 che test e CI sono passati tutti; la CI è stata letta il 18 ottobre 2026, verde sul commit `9f3b517` (esecuzione 38480483060: Backend pytest, Migrazioni e Frontend con successo).
+- Da fare: i due tasti di esclusione nella creazione delle pool personalizzate («escludi tutte le carte caricate» ed «escludi tutte le carte di base»); verificato il 18 ottobre 2026, non esistono nel codice.
 
 ## Negozio
 
@@ -123,18 +131,17 @@ Regole complete in `PHASE_13_SPEC.md` (parte B). Riassunto per ripartire, riport
 - Il lavoro avanza su un ramo per fase, non per sottofase (ora `phase-13a-card-plays`, con la pull request #9 in bozza); prima di unire a `main` devono passare `python heat.py test` e `python heat.py check` (la CI li esegue a ogni pull request).
 - I documenti si aggiornano al momento, non a fine fase.
 
-## Contesto di lavoro (13 ottobre 2026)
+## Contesto di lavoro (18 ottobre 2026)
 
-Le fasi da 8 a 12 sono concluse e unite a `main` (pull request da #1 a #5). La fase 13 (carte sponsor in gara e amministrazione delle carte) è nel ramo `phase-13a-card-plays`, pull request #9. Secondo `PHASE_13_SPEC.md` sono completate 13a, 13b, 13c-1, 13d (confermata dall'autore) e il backend della 13e; restano da verificare in `PROJECT_STATUS.md` Indietro e la verifica a mano della 13c; da fare 13f e 13g. La pull request #11 ha unito nel ramo i test aggiuntivi sulla revisione (merge `f733886`, commit dei test `2f12768`); la CI di quel commit non è stata letta. Dopo la 13e l'autore ha riferito 474 test del backend passati in locale; la CI della 13e non è stata riletta.
+Le fasi da 8 a 12 sono concluse e unite a `main` (pull request da #1 a #5). La fase 13 (carte sponsor in gara e amministrazione delle carte) è nel ramo `phase-13a-card-plays`, pull request #9. Secondo `PHASE_13_SPEC.md` sono completate 13a, 13b, 13c-1, 13d (confermata dall'autore), il backend della 13e e gran parte della 13f (ritaglio, caricamento, elenco in arancione, eliminazione); il pulsante Indietro della 13c esiste come «Annulla ultima» e la revisione della 13d è stata confermata; restano da verificare a mano il campo dell'intervallo e le due sezioni dell'inventario della 13c, e da fare i tasti di esclusione della 13f e la 13g. La pull request #11 ha unito nel ramo i test aggiuntivi sulla revisione (merge `f733886`, commit dei test `2f12768`); la CI di quel commit non è stata letta. Dopo la 13e l'autore ha riferito 474 test del backend passati in locale; la CI della testa del ramo è stata letta il 18 ottobre 2026: verde sul commit `9f3b517` (esecuzione 38480483060: Backend pytest, Migrazioni e Frontend con successo).
 
-Documenti: `PHASE_13_SPEC.md` è aggiornata alla 13e; `PROJECT_SPEC.md` ha l'ultimo riallineamento noto nel commit `bc0fbfb`, prima della 13e; `PROJECT_STATUS.md`, `SHOP_DESIGN.md` e `README.md` risultano riallineati il 2026-10-13 prima della 13e (commit elencati in `PHASE_13_SPEC.md`) e vanno riletti per la 13e. `DATABASE.md`, `SCRIPTS.md` e `SETUP.md` non esistono ancora in `docs/` e vanno creati; lo schema delle tabelle `card_play`, `card_gift` e delle colonne `card_poll_seconds`, `review_started_at` e `review_started_by_user_id` non è ancora descritto in un documento di schema.
+Documenti: `PHASE_13_SPEC.md` è aggiornata alla 13f (sezione «Avanzamento della 13f»); `PROJECT_STATUS.md`, `PROJECT_NOTES.md` e `README.md` riallineati alla 13f il 18 ottobre 2026; `PROJECT_SPEC.md` ha l'ultimo riallineamento noto nel commit `bc0fbfb`. `DATABASE.md` esiste in `docs/` dal 13 ottobre 2026 e descrive `card_play`, `card_gift`, le colonne della revisione e `card_poll_seconds`; `SETUP.md` e `SCRIPTS.md`, creati lo stesso giorno, descrivono installazione e comandi. La 13e e la 13f non aggiungono migrazioni: verificato il 18 ottobre 2026 nello storico di `backend/alembic/versions`, il cui ultimo commit è `57b4637` del 2026-10-12, prima della 13e.
 
 Da fare, in ordine:
 
-1. Leggere `PROJECT_STATUS.md`, `PROJECT_SPEC.md` e `README.md` e riallinearli alla 13e.
-2. 13f (frontend: ritaglio con zoom, nome e quantità, nomi in arancione, tasti di esclusione nelle pool personalizzate), dopo l'approvazione dell'autore; poi 13g.
-3. Creare `DATABASE.md`, `SCRIPTS.md` e `SETUP.md`.
-4. Prima dell'unione in `main`, rileggere il diff di `PROJECT_SPEC.md` e verificare che `python heat.py test`, `python heat.py check` e la CI passino sull'ultimo commit.
+1. Completare la 13f: tasti di esclusione delle carte caricate e di base nella creazione delle pool personalizzate (non esistono nel codice, verificato il 18 ottobre 2026), dopo l'approvazione dell'autore e con l'elenco dei file previsti.
+2. 13g: documenti e test finali, uscita dalla bozza e unione della pull request #9 in `main`, a cura dell'autore.
+3. Prima dell'unione in `main`, rileggere il diff di `PROJECT_SPEC.md` e verificare che `python heat.py test`, `python heat.py check` e la CI passino sull'ultimo commit.
 
 ## Questioni aperte
 

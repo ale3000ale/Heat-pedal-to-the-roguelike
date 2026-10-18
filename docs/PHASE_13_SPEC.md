@@ -1,6 +1,6 @@
 # Fase 13 — Carte sponsor e amministrazione delle carte
 
-> STATO: DECISIONI APPROVATE DALL'AUTORE (11-13 ottobre 2026). Regole della revisione aggiornate il 13 ottobre 2026 (revisore unico, scadenza con conferma automatica, riapertura dell'admin, rimozione carte). Regole della 13e aggiunte il 13 ottobre 2026.
+> STATO: DECISIONI APPROVATE DALL'AUTORE (11-13 ottobre 2026). Regole della revisione aggiornate il 13 ottobre 2026 (revisore unico, scadenza con conferma automatica, riapertura dell'admin, rimozione carte). Regole della 13e aggiunte il 13 ottobre 2026. Avanzamento della 13f aggiunto il 18 ottobre 2026.
 > Quando la fase sarà conclusa, il contenuto confluisce in `PROJECT_SPEC.md` (nuova sezione 14) e questo file resta come storico.
 > Regola di lavoro: ogni regola decisa dall'autore va scritta subito in questo file, così non si perde.
 
@@ -159,3 +159,11 @@ Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file
 - Test: 474 test del backend passati in 60,54 secondi, esito riferito dall'autore il 13 ottobre 2026 dopo la 13e. L'esito della CI della 13e non è stato riletto.
 - Verifiche rilette per questo aggiornamento: rotte e prefisso `/api/admin/cards` (`api/card_admin.py` e `main.py`), controlli su formato, misure, nome e copie (`services/card_upload.py`).
 - Prossimo passo: 13f (frontend: ritaglio con zoom, nome e quantità, nomi in arancione, tasti di esclusione nelle pool personalizzate), dopo l'approvazione dell'autore e con l'elenco dei file previsti.
+
+## Avanzamento della 13f
+
+- Fatto (frontend, commit del 14 ottobre 2026): logica pura con test (`lib/card-crop.ts` e `card-crop.spec.ts`, `lib/card-admin-api.ts` e `card-admin-api.spec.ts`, `9261af2`), componenti di caricamento (`e5cf313`: `card-crop-editor.svelte`, `card-upload-form.svelte`, `pool-card-picker.svelte`) con elenco delle carte della pool di base, nomi in arancione per le carte caricate a mano e tasto «Elimina», e integrazione nella pagina admin delle pool (`routes/admin/pools/+page.svelte`, «Nuova pool» e «Carica una carta»).
+- Correzioni: `254b015` (formattazione Prettier), `062629f`, `1391a70` e `8dbd7c2` (errori ESLint in `card-crop-editor.svelte`).
+- Esiti: l'autore ha riferito il 14 ottobre 2026 che lint e funzionalità erano a posto e il 18 ottobre 2026 che test e CI sono passati tutti. La CI è stata letta il 18 ottobre 2026: verde sul commit `9f3b517` (testa del ramo, [esecuzione 38480483060](https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/38480483060) partita alle 22:50:49 UTC del 2026-10-13: Backend pytest, Migrazioni e Frontend con successo). I comandi locali e la prova a mano del caricamento e dell'eliminazione non sono stati descritti uno per uno.
+- Da fare: i due tasti di esclusione nella creazione delle pool personalizzate («escludi tutte le carte caricate» ed «escludi tutte le carte di base»). Verificato il 18 ottobre 2026: non esistono nel codice; la pagina usa l'elenco per singola carta di `pool-card-picker.svelte` (copie da 0 al massimo disponibile) senza tasti di esclusione in blocco.
+- Prossimo passo: completare i tasti di esclusione (dopo l'approvazione dell'autore e con l'elenco dei file previsti), poi la 13g (documenti e test finali, unione in `main`).
