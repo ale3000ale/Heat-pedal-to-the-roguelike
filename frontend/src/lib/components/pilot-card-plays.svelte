@@ -1,24 +1,32 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { fetchCardPlayState, playCard, undoCard } from '$lib/card-play-api';
+	import { fetchPilotGameDeck } from '$lib/pilot-deck-api';
 	import type { AvailableCard, CardPlay, CardPlayState } from '$lib/card-play-types';
 	import type { CardEntry } from '$lib/types';
 	import CardTile from '$lib/components/CardTile.svelte';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 
-	// Sezione a scomparsa di un pilota: carte sponsor giocabili e annulla.
-	// Il tasto S non è qui: giudice e admin lo trovano nella pagina della gara.
+	// Sezione a scomparsa di un pilota: carte sponsor giocabili, annulla e riepilogo con
+	// immagini del mazzo da gioco in uso. Il tasto S non è qui: giudice e admin lo
+	// trovano nella pagina della gara.
 	let {
 		championshipId,
-		pilot
+		pilot,
+		startOpen = false
 	}: {
 		championshipId: number;
 		pilot: { id: number; name: string };
+		// Con un solo pilota iscritto la sua sezione nasce già aperta (specifica della 13c).
+		startOpen?: boolean;
 	} = $props();
 
 	let open = $state(false);
 	// Non chiamare questa variabile `state`: nasconderebbe la rune $state.
 	let cardState = $state<CardPlayState | null>(null);
+	// Mazzo da gioco in uso del pilota, per il riepilogo con immagini.
+	let gameDeck = $state<CardEntry[]>([]);
 	let error = $state<string | null>(null);
 	let busy = $state(false);
 	let confirmOpen = $state(false);
@@ -50,8 +58,18 @@
 	async function load() {
 		await run(async () => {
 			cardState = await fetchCardPlayState(championshipId, pilot.id);
+			gameDeck = await fetchPilotGameDeck(pilot.id);
 		});
 	}
+
+	// Se la sezione nasce aperta (un solo pilota iscritto) i dati si caricano subito.
+	// `startOpen` si legge nel closure di onMount: vale solo come valore iniziale.
+	onMount(() => {
+		if (startOpen) {
+			open = true;
+			void load();
+		}
+	});
 
 	function toggle() {
 		open = !open;
@@ -137,6 +155,21 @@
 								<li>{play.card_name}</li>
 							{/each}
 						</ol>
+					{/if}
+				</div>
+
+				<div>
+					<h4 class="mb-1 text-sm font-medium">Mazzo da gioco</h4>
+					{#if gameDeck.length === 0}
+						<p class="text-sm text-muted-foreground">Nessuna carta nel mazzo da gioco.</p>
+					{:else}
+						<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+							{#each gameDeck as card (card.path)}
+								<li>
+									<CardTile {card} title="Copie nel mazzo" />
+								</li>
+							{/each}
+						</ul>
 					{/if}
 				</div>
 			{/if}

@@ -301,7 +301,11 @@
 				</Card.Header>
 				<Card.Content class="space-y-3">
 					{#each enrolled as p (p.id)}
-						<PilotCardPlays championshipId={championship.id} pilot={p} />
+						<PilotCardPlays
+							championshipId={championship.id}
+							pilot={p}
+							startOpen={enrolled.length === 1}
+						/>
 					{/each}
 				</Card.Content>
 			</Card.Root>

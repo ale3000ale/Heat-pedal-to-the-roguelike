@@ -4,6 +4,7 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
 	import { deleteCard } from '$lib/card-admin-api';
+	import { excludeCardGroup, type CardGroup } from '$lib/pool-exclusion';
 	import type { CardEntry, Pool, PoolDetail, PoolKind, ReloadResult } from '$lib/types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
@@ -199,6 +200,12 @@
 		picks = { ...picks, [card.name]: copies };
 	}
 
+	// Azzera in un colpo solo le copie scelte di tutte le carte caricate a mano o di
+	// tutte quelle di base, nel solo modulo «Nuova pool» (nessun effetto sul database).
+	function exclude(group: CardGroup) {
+		picks = excludeCardGroup(baseCards, picks, group);
+	}
+
 	async function create(event: SubmitEvent) {
 		event.preventDefault();
 		formError = null;
@@ -371,6 +378,14 @@
 							La pool di base è vuota: usa «Ricarica» per leggere le carte dalla cartella.
 						</p>
 					{:else}
+						<div class="flex flex-wrap gap-2">
+							<Button type="button" size="sm" variant="outline" onclick={() => exclude('caricate')}>
+								Escludi tutte le carte caricate
+							</Button>
+							<Button type="button" size="sm" variant="outline" onclick={() => exclude('base')}>
+								Escludi tutte le carte di base
+							</Button>
+						</div>
 						<PoolCardPicker
 							cards={baseCards}
 							kind={newKind}

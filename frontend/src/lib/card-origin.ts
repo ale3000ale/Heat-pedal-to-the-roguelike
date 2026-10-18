@@ -4,6 +4,10 @@ import type { CardEntry, PoolKind } from '$lib/types';
 // usato dal backend (services/card_delete.py): solo queste carte si possono eliminare.
 const UPLOADS_ROOT = 'cards/uploads/';
 
+// Prefisso del percorso relativo delle carte di base, quelle che la ricarica legge dalla
+// cartella (services/pools.py, reload_base_pool).
+const BASE_ROOT = 'cards/base/';
+
 // Prefisso delle carte caricate di un tipo di pool.
 // Parametri: kind, tipo di pool. Ritorna: il prefisso, per esempio 'cards/uploads/sponsor/'.
 export function uploadsPrefix(kind: PoolKind): string {
@@ -16,4 +20,11 @@ export function uploadsPrefix(kind: PoolKind): string {
 export function isUploadedCard(card: Pick<CardEntry, 'path'>, kind?: PoolKind): boolean {
 	const prefix = kind ? uploadsPrefix(kind) : UPLOADS_ROOT;
 	return card.path.startsWith(prefix);
+}
+
+// Dice se una carta viene dalla cartella di base del suo tipo (ricarica della pool di base).
+// Parametri: card, la carta (basta il percorso). Ritorna: true per le carte di base,
+// false per le caricate a mano e per gli altri percorsi (per esempio le carte di partenza).
+export function isBaseCard(card: Pick<CardEntry, 'path'>): boolean {
+	return card.path.startsWith(BASE_ROOT);
 }
