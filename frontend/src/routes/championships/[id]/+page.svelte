@@ -40,7 +40,7 @@
 	let deckOpen = $state(false);
 	let gifts = $state<CardGift[]>([]);
 	let giftOpen = $state(false);
-	// Aumenta a ogni carta ricevuta: fa rileggere le carte giocabili senza ricaricare la pagina.
+	// Aumenta a ogni controllo periodico: fa rileggere in silenzio le carte giocabili.
 	let giftTick = $state(0);
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
@@ -95,16 +95,17 @@
 		await goto(resolve('/championships'));
 	}
 
-	// Controllo periodico: se c'è una carta ottenuta non vista apre il popup e fa rileggere
-	// le carte giocabili. Mentre il popup è aperto non fa nulla, così le notifiche non si
-	// accavallano.
+	// Controllo periodico. Prima fa rileggere le carte giocabili (una carta ricevuta o annullata
+	// compare entro l'intervallo, senza ricaricare la pagina), poi, se c'è una carta ottenuta
+	// non vista, apre il popup. Mentre il popup è aperto non cerca altre notifiche, così non
+	// si accavallano.
 	async function checkGifts(championshipId: number, pilotIds: number[]) {
+		giftTick += 1;
 		if (giftOpen) return;
 		const found = await fetchUnseenGifts(championshipId, pilotIds);
 		if (found.length > 0 && !giftOpen) {
 			gifts = found;
 			giftOpen = true;
-			giftTick += 1;
 		}
 	}
 

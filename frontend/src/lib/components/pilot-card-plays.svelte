@@ -20,7 +20,8 @@
 		pilot: { id: number; name: string };
 		// Con un solo pilota iscritto la sua sezione nasce già aperta (specifica della 13c).
 		startOpen?: boolean;
-		// La pagina lo cambia quando arriva una carta nuova: la sezione aperta si rilegge da sola.
+		// La pagina lo cambia a ogni controllo periodico: la sezione aperta rilegge in silenzio
+		// le carte giocabili (una carta ricevuta o annullata compare senza ricaricare).
 		refreshKey?: number;
 	} = $props();
 
@@ -33,6 +34,9 @@
 	let pending = $state<AvailableCard | null>(null);
 	// Ultimo valore di `refreshKey` già gestito: serve a riconoscere un cambiamento vero.
 	let lastRefreshKey = 0;
+	// Cresce a ogni azione dell'utente: una rilettura partita prima non deve sovrascrivere il
+	// risultato di un'azione arrivata dopo.
+	let stateVersion = 0;
 
 	let activePlays = $derived(
 		cardState ? cardState.plays.filter((p: CardPlay) => p.status === 'giocata') : []
@@ -46,6 +50,7 @@
 
 	// Esegue un'azione sul backend e mostra il messaggio d'errore sotto i pulsanti.
 	async function run(action: () => Promise<void>) {
+		stateVersion += 1;
 		error = null;
 		busy = true;
 		try {
@@ -63,6 +68,19 @@
 		});
 	}
 
+	// Rilettura silenziosa: non mette i pulsanti in "occupato", ignora gli errori (si riprova al
+	// controllo successivo) e non fa niente se l'utente sta agendo o ha agito nel frattempo.
+	async function refresh() {
+		if (busy) return;
+		const version = stateVersion;
+		try {
+			const fresh = await fetchCardPlayState(championshipId, pilot.id);
+			if (version === stateVersion && !busy) cardState = fresh;
+		} catch {
+			// Errore di rete o di sessione: la sezione mantiene lo stato che ha.
+		}
+	}
+
 	// Se la sezione nasce aperta (un solo pilota iscritto) i dati si caricano subito.
 	// `startOpen` e `refreshKey` si leggono nel closure di onMount: valgono solo come valori iniziali.
 	onMount(() => {
@@ -73,13 +91,13 @@
 		}
 	});
 
-	// Quando `refreshKey` cambia e la sezione è aperta, rilegge le carte giocabili (una carta
-	// appena ricevuta compare senza ricaricare la pagina). Se è chiusa si legge all'apertura.
+	// Quando `refreshKey` cambia e la sezione è aperta, rilegge in silenzio le carte giocabili.
+	// Se è chiusa si legge all'apertura.
 	$effect(() => {
 		const key = refreshKey;
 		if (key === lastRefreshKey) return;
 		lastRefreshKey = key;
-		if (open) untrack(() => void load());
+		if (open) untrack(() => void refresh());
 	});
 
 	function toggle() {
@@ -92,12 +110,15 @@
 		confirmOpen = true;
 	}
 
+	// Gioca la carta scelta. Se il backend la rifiuta (per esempio è stata annullata) la lista
+	// si rilegge subito, così la carta non resta lì da premere.
 	async function playPending() {
 		const card = pending;
 		if (!card) return;
 		await run(async () => {
 			cardState = await playCard(championshipId, pilot.id, card.name);
 		});
+		if (error) await refresh();
 	}
 
 	async function undo() {
