@@ -59,7 +59,7 @@
 		type="button"
 		{onclick}
 		{disabled}
-		class="block overflow-hidden rounded-lg border bg-card text-left transition enabled:hover:ring-2 enabled:hover:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+		class="block w-full overflow-hidden rounded-lg border bg-card text-left transition enabled:hover:ring-2 enabled:hover:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
 	>
 		{@render content()}
 	</button>
