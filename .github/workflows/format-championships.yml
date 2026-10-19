@@ -1,0 +1,77 @@
+name: Formatta campionati dopo merge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/format-championships.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: format-championships-main
+  cancel-in-progress: false
+
+jobs:
+  format:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Installa dal lockfile
+        working-directory: frontend
+        run: npm ci
+      - name: Formatta soltanto i due file segnalati
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            src/lib/championship-groups.spec.ts
+            src/routes/championships/+page.svelte
+          )
+          ./node_modules/.bin/prettier --write "${files[@]}"
+          ./node_modules/.bin/prettier --check "${files[@]}"
+      - name: Pubblica solo la formattazione su main
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            frontend/src/lib/championship-groups.spec.ts
+            frontend/src/routes/championships/+page.svelte
+          )
+          git add -- "${files[@]}"
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica di formattazione necessaria."
+            exit 0
+          fi
+          git fetch origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "main è cambiato: nessun push eseguito."
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Formatta campionati con Prettier del lockfile"
+          git push origin HEAD:refs/heads/main
+      - name: Controllo dei tipi
+        working-directory: frontend
+        run: npm run check
+      - name: Lint e formattazione completi
+        working-directory: frontend
+        run: npm run lint
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
