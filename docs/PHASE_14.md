@@ -1,6 +1,6 @@
 # Fase 14 — Sistemazione generale e miglioramenti
 
-Ultimo aggiornamento: 2026-10-18
+Ultimo aggiornamento: 2026-10-19
 
 Documento di fase da accorpare in `PROJECT_STATUS.md`, `PROJECT_SPEC.md` e `README.md`.
 
@@ -18,6 +18,7 @@ Documento di fase da accorpare in `PROJECT_STATUS.md`, `PROJECT_SPEC.md` e `READ
 | 14a | Frontend: pagina Campionati con tre sezioni a scomparsa "Iscritto", "Attivi" e "Chiusi" | Completata nel ramo `phase-14` (commit `bed217f` e `f63510a`; CI verde, riferita dall'autore il 2026-10-18) |
 | 14b | Frontend: iscrizione di un pilota dal dettaglio del campionato in una finestra a due passi (scelta e conferma) | Completata nel ramo `phase-14` (commit `8a575a7`; CI verde, riferita dall'autore il 2026-10-18) |
 | 14c | Frontend: tasto "Vedi mazzo" nel dettaglio del campionato, con scelta del pilota se ne hai più di uno | Completata nel ramo `phase-14` (commit `81ceed6`; CI verde, riferita dall'autore il 2026-10-18) |
+| 14d | Frontend: pagina del pilota con freccia "Indietro", mazzo fisso a destra, inventario a sinistra e carte compatte | Completata nel ramo `phase-14` (commit `548967d`, `d756715` e `178acb5`; aspetto approvato dall'autore il 2026-10-19; esito della CI non ancora riferito) |
 
 ## 14a — Campionati con sezioni a scomparsa
 
@@ -85,7 +86,7 @@ Regole richieste dall'autore:
 - Il pulsante c'è solo in un campionato attivo in cui l'utente ha almeno un pilota iscritto; nei campionati chiusi non c'è.
 - Con un solo pilota iscritto il pulsante porta direttamente alla pagina `/pilots/[id]`.
 - Con più piloti iscritti si apre la finestra "Mazzo di quale pilota?" e un clic su un nome porta alla pagina di quel pilota.
-- La pagina del pilota è quella esistente (mazzo da gioco e inventario, con spostamento delle carte): non è stata modificata.
+- La pagina del pilota è quella esistente (mazzo da gioco e inventario, con spostamento delle carte); la sua grafica è cambiata nella 14d.
 
 File:
 
@@ -100,12 +101,48 @@ Commit: `81ceed6`.
 
 Verifiche: CI verde sulla pull request #13, riferita dall'autore e non letta dall'assistente. L'assistente non ha eseguito controlli in locale.
 
-Limite noto: dalla pagina del pilota il link in alto torna a "Team e piloti" e non al campionato.
+Limite noto: la freccia in alto della pagina del pilota ora torna alla pagina precedente (vedi 14d).
 
 Da verificare a mano: pulsante con un pilota e con più piloti iscritti, assenza del pulsante nei campionati chiusi e in quelli senza piloti iscritti.
 
+## 14d — Pagina del pilota
+
+Regole richieste dall'autore:
+
+- La freccia in alto riporta alla pagina precedente (per esempio il campionato da cui si è aperto il mazzo), non sempre all'elenco dei piloti.
+- Da `lg` in su l'inventario sta a sinistra e scorre con la pagina; il mazzo da gioco sta a destra e resta fisso, con scorrimento interno se è più alto dello schermo.
+- Le carte sono più piccole di prima (circa metà); l'inventario ha 6 colonne da `sm` in su; il mazzo ha 4 colonne.
+- Il mazzo è leggermente più grande: la colonna del mazzo vale 3/8 della larghezza (inventario 5/8).
+- Sotto `lg` (telefono e tablet) il mazzo sta sopra e l'inventario sotto, senza blocchi fissi.
+
+File:
+
+- `frontend/src/routes/pilots/[id]/+page.svelte`: layout a due colonne (`lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]`), contenitore `max-w-6xl`, freccia "← Indietro" con `goBack`.
+- `frontend/src/lib/components/CardTile.svelte`: nuova proprietà opzionale `compact` (nome in piccolo sotto l'immagine e copie come badge sull'immagine); senza `compact` l'aspetto non cambia.
+
+Scelta tecnica: la freccia usa `history.back()` e, se non c'è una pagina precedente, va a Team e piloti. Il parametro `?from=` non è stato usato perché la regola di lint `svelte/no-navigation-without-resolve` vieta di aggiungere una query a `resolve()`. L'etichetta è sempre "Indietro".
+
+Misure stimate a 1152 px di pagina: carte del mazzo circa 84 px, carte dell'inventario circa 95 px.
+
+Dati: nessuna nuova chiamata. Backend, database, migrazioni e CI non sono stati modificati.
+
+Commit: `548967d` (layout, carte compatte, freccia), `d756715` (pagina più larga, inventario a 6 colonne) e `178acb5` (colonna del mazzo 3/8).
+
+Verifiche: aspetto approvato dall'autore il 2026-10-19. L'esito della CI non è ancora stato riferito. L'assistente non ha eseguito controlli in locale.
+
+Limiti noti:
+
+- Il menu in alto resta largo `max-w-5xl`, quindi in questa pagina il contenuto è più largo del menu.
+- Le misure in pixel sono calcoli teorici.
+
+Da verificare a mano: freccia dal campionato e dall'elenco piloti, mazzo fisso con inventario lungo, mazzo pieno (15 carte), blocco del mazzo durante una gara.
+
+## Aperto
+
+- Revisione dell'interfaccia su telefono: l'autore segnala che "molte cose non funzionano"; serve l'elenco delle pagine e dei sintomi prima di intervenire.
+
 ## Da riallineare nel weekend
 
-- `PROJECT_STATUS.md`: righe 14, 14a, 14b e 14c e una voce nella sezione Frontend per ciascuna (il file è troppo lungo per la lettura dell'assistente).
-- `PROJECT_SPEC.md`: sezioni dei campionati, dell'iscrizione dei piloti e del mazzo (non letto dall'assistente).
+- `PROJECT_STATUS.md`: righe 14, 14a, 14b, 14c e 14d e una voce nella sezione Frontend per ciascuna (il file è troppo lungo per la lettura dell'assistente).
+- `PROJECT_SPEC.md`: sezioni dei campionati, dell'iscrizione dei piloti, del mazzo e della pagina del pilota (non letto dall'assistente).
 - `README.md`: da controllare se descrive la pagina Campionati (non letto dall'assistente).
