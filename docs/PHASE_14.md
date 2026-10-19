@@ -19,6 +19,10 @@ Documento di fase da accorpare in `PROJECT_STATUS.md`, `PROJECT_SPEC.md` e `READ
 | 14b | Frontend: iscrizione di un pilota dal dettaglio del campionato in una finestra a due passi (scelta e conferma) | Completata nel ramo `phase-14` (commit `8a575a7`; CI verde, riferita dall'autore il 2026-10-18) |
 | 14c | Frontend: tasto "Vedi mazzo" nel dettaglio del campionato, con scelta del pilota se ne hai più di uno | Completata nel ramo `phase-14` (commit `81ceed6`; CI verde, riferita dall'autore il 2026-10-18) |
 | 14d | Frontend: pagina del pilota con freccia "Indietro", mazzo fisso a destra, inventario a sinistra e carte compatte | Completata nel ramo `phase-14` (commit `548967d`, `d756715` e `178acb5`; aspetto approvato dall'autore il 2026-10-19; esito della CI non ancora riferito) |
+| 14e | Frontend: sezione "Le tue carte sponsor" nel dettaglio del campionato, per giocare e annullare le carte nella gara in corso | Nel ramo `phase-14` (commit precedenti a `b58a3fe`, non elencati qui; esito della CI non ancora riferito) |
+| 14f | Frontend: tasto "S" accanto ai piloti, per assegnare una carta sponsor casuale (solo giudice e admin) e banner "Hai ottenuto una carta sponsor" per il giocatore | Nel ramo `phase-14` (commit precedenti a `b58a3fe`, non elencati qui; esito della CI non ancora riferito) |
+| 14g | Backend e frontend: annullo del tasto S entro 60 secondi, banner più stretto, messaggio sotto la riga del pilota | Nel ramo `phase-14` (commit `b58a3fe` backend e `3676025` frontend; CI non ancora riferita) |
+| 14h | Frontend: la lista delle carte giocabili si rilegge a ogni controllo periodico | Nel ramo `phase-14` (commit `8bce344`; CI non ancora riferita) |
 
 ## 14a — Campionati con sezioni a scomparsa
 
@@ -137,12 +141,120 @@ Limiti noti:
 
 Da verificare a mano: freccia dal campionato e dall'elenco piloti, mazzo fisso con inventario lungo, mazzo pieno (15 carte), blocco del mazzo durante una gara.
 
+## 14e — Carte sponsor in gara
+
+Regole:
+
+- Nel dettaglio del campionato compare la card "Le tue carte sponsor" solo se il campionato è attivo, c'è una gara in corso (una gara senza classifica) e l'utente ha almeno un pilota iscritto.
+- Ogni pilota iscritto ha una sezione a scomparsa; con un solo pilota la sezione nasce aperta.
+- La sezione mostra le carte sponsor giocabili (con le copie ancora disponibili), il tasto "Annulla ultima" con il numero di annullamenti rimasti (massimo 5 consecutivi) e l'elenco delle carte giocate nella gara.
+- Giocare una carta chiede conferma. Con la gara in revisione non si possono più giocare né annullare carte.
+- Gli errori del backend compaiono sotto i pulsanti.
+
+File:
+
+- `frontend/src/lib/components/pilot-card-plays.svelte`: la sezione di un pilota.
+- `frontend/src/lib/card-play-api.ts`: servizio API (stato delle giocate, gioca, annulla).
+- `frontend/src/lib/card-play-types.ts`: tipi `CardPlayState`, `AvailableCard`, `CardPlay`, `CardGift`, `CardPollSetting`.
+- `frontend/src/routes/championships/[id]/+page.svelte`: la card e il collegamento con le altre parti.
+
+Dati: `GET /api/championships/{id}/card-plays?pilot_id=`, `POST /api/championships/{id}/card-plays` e `POST /api/championships/{id}/card-plays/undo`.
+
+Verifiche: l'assistente non ha eseguito controlli in locale; l'esito della CI non è ancora stato riferito.
+
+Da verificare a mano: giocare e annullare una carta, il limite di 5 annullamenti, il blocco in revisione, la sezione aperta con un solo pilota.
+
+## 14f — Tasto S e banner della carta ottenuta
+
+Regole:
+
+- Giudice e admin vedono il tasto "S" accanto a ogni pilota della classifica, solo in un campionato attivo con una gara in corso. Il tasto chiede conferma e assegna una carta sponsor casuale al pilota.
+- Chi preme S non vede quale carta è uscita: il banner "Hai ottenuto una carta sponsor" lo vede solo il giocatore del pilota.
+- Il banner si chiude solo con la X (il clic fuori e il tasto Esc non fanno nulla) e ha lo sfondo sfocato; alla chiusura le notifiche risultano viste.
+- Il giocatore riceve la notifica con un controllo periodico, attivo solo se ha piloti iscritti a un campionato attivo. L'intervallo è impostato dall'admin da 1 a 10 secondi (predefinito 5).
+- Gli errori (per esempio la pool sponsor vuota) compaiono sotto il tasto.
+
+File:
+
+- `frontend/src/lib/components/pilot-gift-button.svelte`: tasto S e messaggio.
+- `frontend/src/lib/components/card-gift-popup.svelte`: banner della carta ottenuta.
+- `frontend/src/lib/components/modal.svelte`: opzioni `closeOnOutside`, `blur`, `wide`, `narrow`.
+- `frontend/src/lib/card-poll.svelte.ts`: lettura dell'intervallo e controllo periodico.
+- `frontend/src/lib/card-play-api.ts`: `giveRandomCard`, `fetchUnseenGifts`, `markGiftsSeen`, `fetchCardPoll`, `saveCardPoll`.
+
+Dati: `POST /api/championships/{id}/card-gifts`, `GET /api/championships/{id}/card-gifts?pilot_id=`, `POST /api/championships/{id}/card-gifts/seen`, `GET` e `PUT /api/admin/card-poll`.
+
+Verifiche: l'assistente non ha eseguito controlli in locale; l'esito della CI non è ancora stato riferito.
+
+Limite noto: i test del backend esistenti mostrano che la rotta del tasto S accetta anche un giocatore sul proprio pilota; l'interfaccia lo nasconde. Una restrizione a admin e giudici nel backend non è stata decisa.
+
+Da verificare a mano: tasto S per admin, giudice e giocatore, banner con più carte, chiusura solo con la X, errore a pool vuota.
+
+## 14g — Annullo del tasto S e banner più stretto
+
+Regole richieste dall'autore:
+
+- Dopo l'assegnazione, per 60 secondi, chi ha premuto S vede il tasto "Annulla (N s)". L'annullo è visibile solo nella sessione di chi ha premuto S (scelta A).
+- Il messaggio "Carta assegnata a …" va sotto la riga del pilota, a tutta larghezza, nel campionato e nella pagina della gara.
+- Il banner è una finestra stretta (`max-w-xs`); la carta è larga 192 px (+25% rispetto a circa 152 px) e il nome va a capo senza troncarsi.
+- Se l'annullo riesce, la carta torna dall'inventario del pilota alla pool sponsor e la notifica sparisce.
+
+Backend:
+
+- Nuova rotta `POST /api/championships/{id}/card-gifts/{gift_id}/undo` (risposta 204), con la funzione `undo_gift` in `services/card_gift.py`.
+- Regole: solo admin o giudice (403 per gli altri); solo entro 60 secondi, altrimenti 409; non se la carta è già stata giocata (409); solo nella gara in corso; 404 se l'assegnazione non esiste.
+- Test: `backend/tests/test_card_gift_undo.py`, 10 test.
+
+Frontend:
+
+- `frontend/src/lib/gift-undo.ts`: `UNDO_SECONDS` e `secondsLeft`; `frontend/src/lib/gift-undo.spec.ts`: 3 test Vitest.
+- `frontend/src/lib/card-play-api.ts`: `undoGift`.
+- `frontend/src/lib/components/pilot-gift-button.svelte`: contatore, tasto Annulla e messaggio sotto la riga.
+- `frontend/src/lib/components/modal.svelte`: opzione `narrow`.
+- `frontend/src/lib/components/card-gift-popup.svelte`: banner stretto.
+
+Commit: `b58a3fe` (backend) e `3676025` (frontend). Il database e le migrazioni non sono stati modificati.
+
+Verifiche: l'assistente non ha eseguito pytest, Prettier, lint, type-check né test; l'esito della CI non è ancora stato riferito.
+
+Limiti noti:
+
+- Il vincolo "solo chi ha premuto S" è garantito dall'interfaccia, non dal backend, che non salva l'autore dell'assegnazione. Un altro admin o giudice che conosca l'id potrebbe annullare entro i 60 secondi.
+- Il contatore dei 60 secondi vive nella pagina: ricaricandola il tasto Annulla sparisce, anche se il backend accetterebbe ancora l'annullo.
+
+Da verificare a mano: annullo entro 60 secondi, tasto che sparisce dopo 60 secondi, annullo dopo che la carta è stata giocata (409), messaggio sotto la riga su telefono.
+
+## 14h — Lista delle carte che si aggiorna da sola
+
+Problema: se una assegnazione veniva annullata, la carta restava nella lista del giocatore e si poteva premere, con errore. La lista si rileggeva solo all'apertura della sezione e quando arrivava una carta nuova.
+
+Soluzione:
+
+- A ogni controllo periodico la pagina del campionato aumenta `giftTick`, anche con il banner aperto, e le sezioni aperte rileggono le carte giocabili. Un annullo o una carta nuova compaiono entro l'intervallo impostato dall'admin (1–10 secondi, predefinito 5).
+- La rilettura `refresh()` in `pilot-card-plays.svelte` è silenziosa: non mette i pulsanti in "occupato", ignora gli errori di rete (riprova al controllo successivo), non parte mentre l'utente sta agendo e scarta la risposta se nel frattempo è successa un'azione (contatore `stateVersion`).
+- Se il backend rifiuta una carta appena annullata, la lista si rilegge subito.
+
+File modificati: `frontend/src/lib/components/pilot-card-plays.svelte` e `frontend/src/routes/championships/[id]/+page.svelte`. Backend, database e migrazioni non sono stati modificati.
+
+Commit: `8bce344`.
+
+Verifiche: l'assistente non ha eseguito controlli in locale; l'esito della CI non è ancora stato riferito.
+
+Limiti noti:
+
+- Non è un aggiornamento istantaneo: al massimo l'intervallo di controllo.
+- C'è una richiesta in più (`GET card-plays`) per ogni sezione aperta a ogni controllo, solo con una gara in corso e piloti iscritti.
+
+Da verificare a mano: annullo di un'assegnazione con la sezione del giocatore aperta, assenza di sfarfallio dei pulsanti durante il controllo, giocare una carta mentre arriva un controllo.
+
 ## Aperto
 
 - Revisione dell'interfaccia su telefono: l'autore segnala che "molte cose non funzionano"; serve l'elenco delle pagine e dei sintomi prima di intervenire.
+- Aggiornamento più reattivo senza richieste continue: l'autore sta valutando gli Server-Sent Events (SSE). Nessuna decisione presa. Prima di un eventuale piano vanno controllati il tipo di login (cookie o token), la versione di FastAPI nel `uv.lock` e il numero di worker del server. Alternativa più leggera: fermare il controllo con la scheda nascosta e usare un contatore di versione o un ETag.
+- Decisione sul tasto S nel backend: restringerlo ad admin e giudici o lasciare anche i giocatori sul proprio pilota.
 
-## Da riallineare nel weekend
+## Da riallineare dopo la CI verde
 
-- `PROJECT_STATUS.md`: righe 14, 14a, 14b, 14c e 14d e una voce nella sezione Frontend per ciascuna (il file è troppo lungo per la lettura dell'assistente).
-- `PROJECT_SPEC.md`: sezioni dei campionati, dell'iscrizione dei piloti, del mazzo e della pagina del pilota (non letto dall'assistente).
-- `README.md`: da controllare se descrive la pagina Campionati (non letto dall'assistente).
+- `PROJECT_STATUS.md`: righe 14, 14a–14h e una voce nella sezione Frontend (e per 14g anche nel Backend) per ciascuna; il file è troppo lungo per essere riscritto dal connettore e va aggiornato a parte.
+- `PROJECT_SPEC.md`: sezioni dei campionati, dell'iscrizione dei piloti, del mazzo, della pagina del pilota, delle carte sponsor in gara, del tasto S e della rotta di annullo (non letto dall'assistente).
+- `README.md`, `SETUP.md`, `DATABASE.md`, `SCRIPTS.md`: da controllare; la rotta nuova non cambia lo schema del database, quindi `DATABASE.md` resta invariato salvo verifica (non letti dall'assistente).
