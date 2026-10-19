@@ -14,6 +14,7 @@ from app.schemas.card_judge import (
     PilotPlaysRead,
 )
 from app.schemas.race_review import RaceReviewRead
+from app.schemas.review_inventory import ReviewCardRead, ReviewInventoryRead, ReviewPilotRead
 from app.services.card_judge import (
     CardNotRemovableError,
     CardPlayNotActiveError,
@@ -46,6 +47,7 @@ from app.services.race_review import (
     settle_expired_reviews,
 )
 from app.services.races import RaceNotFoundError, get_race
+from app.services.review_inventory import get_review_inventory
 from app.services.shop_view import PilotNotEnrolledError
 
 router = APIRouter(tags=["race-review"])
@@ -181,6 +183,43 @@ def reopen_card_review(championship_id: int, race_id: int, judge: JudgeUser, db:
     try:
         race = reopen_review(db, championship_id, race_id, judge, judge.role == "admin")
         return _read(db, race)
+    except DOMAIN_ERRORS as exc:
+        raise _http_error(exc)
+
+
+@router.get(
+    "/{championship_id}/races/{race_id}/review/inventory",
+    response_model=ReviewInventoryRead,
+)
+def read_review_inventory(championship_id: int, race_id: int, judge: JudgeUser, db: DbDep):
+    # Inventario sponsor di ogni pilota per la revisione: copie rimaste su copie totali
+    # (partenza + bonus del tasto S) e massimo della pool per carta. Giudice o admin, in
+    # sola lettura: non richiede di essere il revisore.
+    try:
+        race, pilots = get_review_inventory(db, championship_id, race_id)
+        return ReviewInventoryRead(
+            race_id=race.id,
+            pilots=[
+                ReviewPilotRead(
+                    pilot_id=pilot.id,
+                    pilot_name=pilot.name,
+                    cards=[
+                        ReviewCardRead(
+                            card_name=card.name,
+                            card_path=card.path,
+                            total=card.total,
+                            remaining=card.remaining,
+                            gifted=card.gifted,
+                            start=card.start,
+                            pool_now=card.pool_now,
+                            pool_max=card.pool_max,
+                        )
+                        for card in cards
+                    ],
+                )
+                for pilot, cards in pilots
+            ],
+        )
     except DOMAIN_ERRORS as exc:
         raise _http_error(exc)
 
