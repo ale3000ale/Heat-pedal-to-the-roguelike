@@ -21,6 +21,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 	import EnrollPilotDialog from '$lib/components/enroll-pilot-dialog.svelte';
+	import PilotGiftButton from '$lib/components/pilot-gift-button.svelte';
 	import PilotPickerDialog from '$lib/components/pilot-picker-dialog.svelte';
 	import PilotCardPlays from '$lib/components/pilot-card-plays.svelte';
 	import CardGiftPopup from '$lib/components/card-gift-popup.svelte';
@@ -57,6 +58,10 @@
 	);
 	// Una gara senza classifica è in corso: finché c'è non se ne può creare un'altra.
 	let raceInProgress = $derived(races.some((race) => race.participants === 0));
+	// Il tasto S accanto ai piloti compare solo a giudice e admin, con una gara in corso.
+	let canGift = $derived(
+		championship !== null && !championship.is_closed && auth.canManageRaces && raceInProgress
+	);
 	// Gare dalla più recente: per data decrescente, a parità (o senza data) per numero.
 	let sortedRaces = $derived(
 		[...races].sort((a, b) => {
@@ -254,7 +259,7 @@
 				{:else}
 					<ol class="divide-y">
 						{#each standings as row, index (standingKey(row, index))}
-							<li class="flex items-center gap-3 py-2">
+							<li class="flex flex-wrap items-center gap-3 py-2">
 								<span class="w-6 text-right text-sm text-muted-foreground">{row.rank}</span>
 								<span class="flex-1 font-medium">
 									{row.pilot_name}
@@ -267,6 +272,13 @@
 									{row.races_played === 1 ? 'gara' : 'gare'}
 								</span>
 								<span class="w-20 text-right text-sm">{row.points} punti</span>
+								{#if canGift && row.pilot_id !== null}
+									<PilotGiftButton
+										championshipId={championship.id}
+										pilot={{ id: row.pilot_id, name: row.pilot_name }}
+										showName={false}
+									/>
+								{/if}
 							</li>
 						{/each}
 					</ol>

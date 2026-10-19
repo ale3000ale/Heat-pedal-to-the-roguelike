@@ -3,15 +3,17 @@
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 
-	// Tasto S di un pilota nella pagina della gara: giudice e admin assegnano una carta
-	// sponsor casuale. La carta ottenuta non viene mostrata a chi la assegna: il popup
-	// lo vede solo il giocatore.
+	// Tasto S di un pilota: giudice e admin assegnano una carta sponsor casuale. La carta
+	// ottenuta non viene mostrata a chi la assegna: il popup lo vede solo il giocatore.
+	// Con `showName` falso il nome non compare: serve dove la riga ha già il nome del pilota.
 	let {
 		championshipId,
-		pilot
+		pilot,
+		showName = true
 	}: {
 		championshipId: number;
 		pilot: { id: number; name: string };
+		showName?: boolean;
 	} = $props();
 
 	let confirmOpen = $state(false);
@@ -37,7 +39,9 @@
 </script>
 
 <div class="flex flex-wrap items-center gap-2">
-	<span class="min-w-32 flex-1 text-sm font-medium">{pilot.name}</span>
+	{#if showName}
+		<span class="min-w-32 flex-1 text-sm font-medium">{pilot.name}</span>
+	{/if}
 	<Button
 		type="button"
 		size="sm"
