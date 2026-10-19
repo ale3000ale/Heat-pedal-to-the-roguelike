@@ -1,27 +1,24 @@
-> **STATO: AGGIORNATO IL 12 OTTOBRE 2026 (inizio fase 13).**
+> **STATO: AGGIORNATO IL 20 OTTOBRE 2026 (inizio fase 15).**
 >
-> Domande aperte dopo la chiusura della fase 12. Le decisioni già prese sono in
+> Domande aperte dopo la chiusura della fase 14. Le decisioni già prese sono in
 > `PROJECT_SPEC.md`; il funzionamento del Negozio è in `SHOP_DESIGN.md` e la sua
 > traduzione tecnica in `SHOP_SCHEMA.md`; le decisioni della fase 13 sono in
-> `PHASE_13_SPEC.md`.
+> `PHASE_13_SPEC.md`; quelle della fase 15 in `PHASE_15.md`.
 
 # Domande aperte — Heat
 
-## Fase 13 (carte sponsor e amministrazione delle carte)
+## Fase 15 (SSE in tempo reale e sistemazione)
 
-Nessuna domanda di progettazione aperta: le decisioni sono in `PHASE_13_SPEC.md` e le
-sottofasi 13a-13g attendono l'approvazione dell'autore, una alla volta.
-
-## Fase 14 (sistemazione generale)
-
-Dopo la 13: sistemazione del tutto e modifiche di vivibilità o miglioramenti. L'elenco
-si definisce con l'autore a fine fase 13.
+Decisioni dell'autore del 20 ottobre 2026 in `PHASE_15.md`. Restano da definire prima del codice:
+schema di `event_log` e conservazione degli eventi, destinatari di ciascun evento, intervallo di
+lettura delle connessioni SSE. L'elenco della sistemazione (15b) si definisce dopo la 15a.
 
 ## Rinviato
 
-- **Uso online**: un solo server con pochi worker, perché SQLite accetta una sola
-  scrittura alla volta. Con un altro database servirà un blocco sulla riga del pilota
-  (`SELECT ... FOR UPDATE`). Si affronta dopo la fase 14.
+- **Rimozione del polling**: il controllo periodico delle notifiche (`card_poll_seconds`) resta come
+  ripiego dell'SSE; si valuta la rimozione tra qualche versione.
+- **Database diverso da SQLite**: con un altro database servirà un blocco sulla riga del pilota
+  (`SELECT ... FOR UPDATE`). L'uso online con pochi worker è anticipato dalla fase 15 (vedi `PHASE_15.md`).
 - **Strappo della busta e riepilogo del negozio**: l'effetto è stato verificato a mano
   dall'autore; il componente grafico non ha test automatici. Se in futuro non
   convince, si ritocca solo il CSS e il markup di `pack-reveal.svelte`.
