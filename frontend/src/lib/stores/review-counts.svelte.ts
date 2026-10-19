@@ -27,7 +27,10 @@ export class ReviewCountsStore {
 	private timer: ReturnType<typeof setInterval> | null = null;
 	private disposed = false;
 
-	constructor(private championshipId: number, private raceId: number) {}
+	constructor(
+		private championshipId: number,
+		private raceId: number
+	) {}
 
 	get active(): boolean {
 		return this.review?.in_review === true && this.remaining > 0;
@@ -43,9 +46,13 @@ export class ReviewCountsStore {
 
 	private persist(): void {
 		try {
-			sessionStorage.setItem(this.progressKey, JSON.stringify({
-				counts: toReviewCounts(this.pilots), checked: this.checked
-			}));
+			sessionStorage.setItem(
+				this.progressKey,
+				JSON.stringify({
+					counts: toReviewCounts(this.pilots),
+					checked: this.checked
+				})
+			);
 		} catch {
 			this.notice = 'Memoria del browser non disponibile: usa Prossimo per salvare sul server.';
 		}
@@ -59,7 +66,9 @@ export class ReviewCountsStore {
 			const pilots = mergeReviewDraft(this.pilots, saved.counts);
 			const checked = Array.isArray(saved.checked) ? saved.checked : [];
 			this.pilots = pilots;
-			this.checked = checked.filter((id: unknown) => typeof id === 'number' && pilots.some((p) => p.pilot_id === id));
+			this.checked = checked.filter(
+				(id: unknown) => typeof id === 'number' && pilots.some((p) => p.pilot_id === id)
+			);
 		} catch {
 			this.notice = 'Progresso locale non valido: riprendi dalla bozza del server.';
 		}
@@ -114,11 +123,15 @@ export class ReviewCountsStore {
 	/** Rilegge lo stato una volta, anche per elaborare la scadenza sul server. */
 	async refreshStatus(): Promise<boolean> {
 		return this.run(async () => {
-			const review = await api<RaceReview>(`/championships/${this.championshipId}/races/${this.raceId}/review`);
+			const review = await api<RaceReview>(
+				`/championships/${this.championshipId}/races/${this.raceId}/review`
+			);
 			if (this.disposed) return;
 			this.review = review;
 			this.startTimer();
-			this.notice = review.review_closed_at ? 'Revisione conclusa dal server.' : 'Revisione non attiva: nessuna modifica locale è stata confermata.';
+			this.notice = review.review_closed_at
+				? 'Revisione conclusa dal server.'
+				: 'Revisione non attiva: nessuna modifica locale è stata confermata.';
 		});
 	}
 
@@ -149,7 +162,9 @@ export class ReviewCountsStore {
 	/** Corregge una carta e revoca la spunta del pilota modificato. */
 	adjust(pilotId: number, cardName: string, delta: -1 | 1): void {
 		if (!this.active || this.busy) return;
-		const card = this.pilots.find((p) => p.pilot_id === pilotId)?.cards.find((c) => c.card_name === cardName);
+		const card = this.pilots
+			.find((p) => p.pilot_id === pilotId)
+			?.cards.find((c) => c.card_name === cardName);
 		if (!card) return;
 		card.remaining = adjustRemaining(card.remaining, card.total, delta);
 		this.checked = this.checked.filter((id) => id !== pilotId);
@@ -163,7 +178,8 @@ export class ReviewCountsStore {
 			await saveReviewDraft(this.championshipId, this.raceId, toReviewCounts(this.pilots));
 			if (this.disposed) return;
 			const pilot = this.pilots[this.index];
-			if (complete && pilot && !this.checked.includes(pilot.pilot_id)) this.checked.push(pilot.pilot_id);
+			if (complete && pilot && !this.checked.includes(pilot.pilot_id))
+				this.checked.push(pilot.pilot_id);
 			this.index = target;
 			this.persist();
 		});
@@ -173,7 +189,11 @@ export class ReviewCountsStore {
 	async confirm(): Promise<boolean> {
 		if (!this.active || !this.allReviewed) return false;
 		return this.run(async () => {
-			const review = await confirmReviewCounts(this.championshipId, this.raceId, toReviewCounts(this.pilots));
+			const review = await confirmReviewCounts(
+				this.championshipId,
+				this.raceId,
+				toReviewCounts(this.pilots)
+			);
 			if (this.disposed) return;
 			this.review = review;
 			this.stopTimer();
