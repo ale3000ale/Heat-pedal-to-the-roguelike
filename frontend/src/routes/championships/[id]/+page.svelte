@@ -8,6 +8,7 @@
 	import { standingKey } from '$lib/standings';
 	import { canShowEnroll, enrollablePilots } from '$lib/enroll-candidates';
 	import { deckAction } from '$lib/deck-access';
+	import { raceStatusView } from '$lib/race-status';
 	import {
 		fetchUnseenGifts,
 		loadPollIntervalMs,
@@ -26,7 +27,8 @@
 	import PilotCardPlays from '$lib/components/pilot-card-plays.svelte';
 	import CardGiftPopup from '$lib/components/card-gift-popup.svelte';
 
-	const RACE_IN_PROGRESS_MESSAGE = "C'è una gara in corso: va terminata prima di crearne un'altra.";
+	const RACE_UNFINISHED_MESSAGE =
+		"C'è una gara non conclusa (in corso o in revisione): va conclusa prima di crearne un'altra.";
 
 	let championship = $state<ChampionshipDetail | null>(null);
 	let standings = $state<Standing[]>([]);
@@ -58,8 +60,11 @@
 	let deckMode = $derived(
 		championship ? deckAction(championship.is_closed, enrolled.length) : 'hidden'
 	);
-	// Una gara senza classifica è in corso: finché c'è non se ne può creare un'altra.
+	// Una gara senza classifica è in corso: carte sponsor e tasto S valgono solo finché c'è.
 	let raceInProgress = $derived(races.some((race) => race.participants === 0));
+	// Una gara non è conclusa finché è in corso o in revisione: finché c'è non se ne può
+	// creare un'altra (lo stesso controllo del backend).
+	let raceUnfinished = $derived(races.some((race) => race.status !== 'closed'));
 	// Il tasto S accanto ai piloti compare solo a giudice e admin, con una gara in corso.
 	let canGift = $derived(
 		championship !== null && !championship.is_closed && auth.canManageRaces && raceInProgress
@@ -180,11 +185,11 @@
 	}
 
 	// Admin e giudice: crea la prossima gara. Resta in questa pagina: la gara nuova
-	// compare in lista come "in corso" e si apre da lì. Con una gara in corso il pulsante
+	// compare in lista come "in corso" e si apre da lì. Con una gara non conclusa il pulsante
 	// sembra spento ma si può premere: il click mostra solo l'avviso, senza chiamare l'API.
 	async function createRace() {
-		if (raceInProgress) {
-			raceError = RACE_IN_PROGRESS_MESSAGE;
+		if (raceUnfinished) {
+			raceError = RACE_UNFINISHED_MESSAGE;
 			return;
 		}
 		raceError = null;
@@ -322,8 +327,8 @@
 							size="sm"
 							onclick={createRace}
 							disabled={busy}
-							aria-disabled={raceInProgress}
-							class={raceInProgress ? 'opacity-50' : ''}
+							aria-disabled={raceUnfinished}
+							class={raceUnfinished ? 'opacity-50' : ''}
 						>
 							Nuova gara
 						</Button>
@@ -347,11 +352,9 @@
 								>
 									<span class="flex-1 font-medium">Gara {race.number}</span>
 									<span class="text-sm text-muted-foreground">{raceDate(race.date)}</span>
-									{#if race.participants === 0}
-										<span class="text-sm font-medium text-red-600">in corso</span>
-									{:else}
-										<span class="text-sm font-medium text-green-600">terminata</span>
-									{/if}
+									<span class={`text-sm font-medium ${raceStatusView(race.status).class}`}>
+										{raceStatusView(race.status).label}
+									</span>
 								</a>
 							</li>
 						{/each}
