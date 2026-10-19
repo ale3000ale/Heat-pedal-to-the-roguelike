@@ -3,30 +3,49 @@
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
-	import type { Championship } from '$lib/types';
+	import { groupChampionships, initiallyOpenGroup, type GroupKey } from '$lib/championship-groups';
+	import type { Championship, Pilot } from '$lib/types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 	import NewChampionshipDialog from '$lib/components/new-championship-dialog.svelte';
 
+	// Messaggio mostrato quando una sezione non contiene campionati.
+	const emptyMessages: Record<GroupKey, string> = {
+		enrolled: 'Nessun campionato a cui sei iscritto.',
+		active: 'Nessun campionato attivo.',
+		closed: 'Nessun campionato chiuso.'
+	};
+
 	let championships = $state<Championship[]>([]);
+	let pilots = $state<Pilot[]>([]);
 	let loaded = $state(false);
 	let error = $state<string | null>(null);
 	let selectedId = $state<number | null>(null);
 	let settingsOpen = $state(false);
 	let newOpen = $state(false);
+	let openGroups = $state<Record<GroupKey, boolean>>({
+		enrolled: false,
+		active: false,
+		closed: false
+	});
 
-	let active = $derived(championships.filter((c) => !c.is_closed));
-	let closed = $derived(championships.filter((c) => c.is_closed));
+	let groups = $derived(groupChampionships(championships, pilots));
 	let selected = $derived(championships.find((c) => c.id === selectedId) ?? null);
 
+	// Carica campionati e piloti dell'utente loggato: servono entrambi per la sezione Iscritto.
 	async function loadChampionships() {
-		championships = await api<Championship[]>('/championships');
+		[championships, pilots] = await Promise.all([
+			api<Championship[]>('/championships'),
+			api<Pilot[]>('/pilots')
+		]);
 	}
 
 	onMount(async () => {
 		try {
 			await loadChampionships();
+			// Una sola sezione aperta all'arrivo; dopo, l'utente apre e chiude come preferisce.
+			openGroups[initiallyOpenGroup(groups)] = true;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Errore sconosciuto';
 		} finally {
@@ -85,6 +104,17 @@
 	{/if}
 {/snippet}
 
+{#snippet section(key: GroupKey, title: string, items: Championship[])}
+	<details class="rounded-lg border p-4" bind:open={openGroups[key]}>
+		<summary class="cursor-pointer text-lg font-semibold select-none">
+			{title} ({items.length})
+		</summary>
+		<div class="mt-3">
+			{@render list(items, emptyMessages[key])}
+		</div>
+	</details>
+{/snippet}
+
 <main class="mx-auto max-w-5xl space-y-6 p-6">
 	<div class="flex items-center justify-between gap-3">
 		<h1 class="text-2xl font-bold">Campionati</h1>
@@ -105,15 +135,9 @@
 	{:else if !loaded}
 		<p class="text-muted-foreground">Caricamento…</p>
 	{:else}
-		<section class="space-y-3">
-			<h2 class="text-lg font-semibold">Attivi</h2>
-			{@render list(active, 'Nessun campionato attivo.')}
-		</section>
-
-		<section class="space-y-3">
-			<h2 class="text-lg font-semibold">Chiusi</h2>
-			{@render list(closed, 'Nessun campionato chiuso.')}
-		</section>
+		{@render section('enrolled', 'Iscritto', groups.enrolled)}
+		{@render section('active', 'Attivi', groups.active)}
+		{@render section('closed', 'Chiusi', groups.closed)}
 	{/if}
 
 	{#if auth.isAdmin}

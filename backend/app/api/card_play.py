@@ -10,10 +10,15 @@ from app.schemas.card_play import (
     CardUndoRequest,
 )
 from app.services.card_gift import (
+    GiftNotFoundError,
+    GiftNotUndoableError,
+    GiftUndoExpiredError,
+    GiftUndoForbiddenError,
     SponsorPoolEmptyError,
     draw_gift,
     list_unseen_gifts,
     mark_gifts_seen,
+    undo_gift,
 )
 from app.services.card_play import (
     CardNotAvailableError,
@@ -66,6 +71,22 @@ def _http_error(exc: Exception) -> HTTPException:
         return HTTPException(status.HTTP_409_CONFLICT, "Limite di annullamenti consecutivi raggiunto")
     if isinstance(exc, SponsorPoolEmptyError):
         return HTTPException(status.HTTP_409_CONFLICT, "La pool sponsor è vuota")
+    if isinstance(exc, GiftNotFoundError):
+        return HTTPException(status.HTTP_404_NOT_FOUND, "Assegnazione non trovata")
+    if isinstance(exc, GiftUndoForbiddenError):
+        return HTTPException(
+            status.HTTP_403_FORBIDDEN, "Solo admin e giudice possono annullare un'assegnazione"
+        )
+    if isinstance(exc, GiftUndoExpiredError):
+        return HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Sono passati più di 60 secondi: l'assegnazione non si può più annullare",
+        )
+    if isinstance(exc, GiftNotUndoableError):
+        return HTTPException(
+            status.HTTP_409_CONFLICT,
+            "La carta è già stata giocata o la gara è cambiata: l'assegnazione non si può annullare",
+        )
     raise exc
 
 
@@ -80,6 +101,10 @@ DOMAIN_ERRORS = (
     NothingToUndoError,
     UndoLimitError,
     SponsorPoolEmptyError,
+    GiftNotFoundError,
+    GiftUndoForbiddenError,
+    GiftUndoExpiredError,
+    GiftNotUndoableError,
 )
 
 
@@ -125,6 +150,21 @@ def create_card_gift(championship_id: int, data: CardGiftRequest, user: CurrentU
     # pool è vuota, se non c'è una gara in corso o se la gara è in revisione.
     try:
         return CardGiftRead.model_validate(draw_gift(db, user, championship_id, data.pilot_id))
+    except DOMAIN_ERRORS as exc:
+        raise _http_error(exc)
+
+
+@router.post(
+    "/{championship_id}/card-gifts/{gift_id}/undo",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def undo_card_gift(championship_id: int, gift_id: int, user: CurrentUser, db: DbDep) -> None:
+    # Annulla un'assegnazione del tasto S entro 60 secondi (solo admin e giudice): la carta
+    # torna dall'inventario del pilota alla pool sponsor. 403 agli altri ruoli, 404 se
+    # l'assegnazione non esiste in questo campionato, 409 oltre i 60 secondi, se la carta è
+    # già stata giocata o se la gara non è più quella in corso.
+    try:
+        undo_gift(db, user, championship_id, gift_id)
     except DOMAIN_ERRORS as exc:
         raise _http_error(exc)
 

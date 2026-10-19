@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,7 +9,12 @@ from app.db.models.card_gift import CardGift
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race
-from app.services.card_play import _ensure_not_in_review, _race_in_progress
+from app.services.card_play import (
+    _available,
+    _ensure_not_in_review,
+    _plays,
+    _race_in_progress,
+)
 from app.services.cards import CardEntry, card_key, dump_cards, parse_cards
 from app.services.championships import ChampionshipClosedError, get_championship
 from app.services.pilots import PilotNotFoundError, get_own_pilot
@@ -19,9 +24,28 @@ from app.services.shop_view import PilotNotEnrolledError, is_enrolled
 # Ruoli che possono dare il tasto S a qualsiasi pilota iscritto; gli altri solo ai propri.
 GIFT_ANY_PILOT_ROLES = ("admin", "judge")
 
+# Tempo massimo, dall'assegnazione, per annullare una carta data con il tasto S.
+UNDO_WINDOW = timedelta(seconds=60)
+
 
 class SponsorPoolEmptyError(Exception):
     """La pool sponsor del campionato non ha carte da regalare."""
+
+
+class GiftNotFoundError(Exception):
+    """L'assegnazione non esiste in questo campionato."""
+
+
+class GiftUndoForbiddenError(Exception):
+    """Solo admin e giudice possono annullare un'assegnazione."""
+
+
+class GiftUndoExpiredError(Exception):
+    """Sono passati più di 60 secondi dall'assegnazione."""
+
+
+class GiftNotUndoableError(Exception):
+    """La carta è già stata giocata o la gara non è più quella dell'assegnazione."""
 
 
 def _load_gift_pilot(db: Session, user: User, pilot_id: int) -> Pilot:
@@ -112,6 +136,71 @@ def draw_gift(
         db.rollback()
         raise
     return gift
+
+
+def _find_gift(db: Session, championship_id: int, gift_id: int) -> CardGift:
+    # L'assegnazione deve appartenere a una gara di questo campionato.
+    # Errori: GiftNotFoundError.
+    stmt = (
+        select(CardGift)
+        .join(Race, Race.id == CardGift.race_id)
+        .where(CardGift.id == gift_id, Race.championship_id == championship_id)
+    )
+    gift = db.scalar(stmt)
+    if gift is None:
+        raise GiftNotFoundError
+    return gift
+
+
+def _ensure_within_undo_window(gift: CardGift) -> None:
+    # created_at è in UTC senza fuso, come le altre date del database.
+    # Errori: GiftUndoExpiredError.
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    if now - gift.created_at > UNDO_WINDOW:
+        raise GiftUndoExpiredError
+
+
+def undo_gift(db: Session, user: User, championship_id: int, gift_id: int) -> None:
+    # Annulla un'assegnazione del tasto S entro 60 secondi: sposta una copia della carta
+    # dall'inventario sponsor del pilota alla pool sponsor del campionato e cancella la
+    # notifica. Solo admin e giudice; la carta non deve essere già stata giocata e la gara
+    # deve essere ancora quella in corso. Un solo commit; in caso di errore non cambia nulla.
+    # Errori: GiftUndoForbiddenError, ChampionshipNotFoundError, ChampionshipClosedError,
+    # GiftNotFoundError, NoRaceInProgressError, RaceInReviewError, GiftUndoExpiredError,
+    # GiftNotUndoableError.
+    try:
+        _lock_database(db)
+        if user.role not in GIFT_ANY_PILOT_ROLES:
+            raise GiftUndoForbiddenError
+        championship = get_championship(db, championship_id)
+        if championship.is_closed:
+            raise ChampionshipClosedError
+        gift = _find_gift(db, championship_id, gift_id)
+        race = _race_in_progress(db, championship_id)
+        if race.id != gift.race_id:
+            raise GiftNotUndoableError
+        _ensure_not_in_review(race)
+        _ensure_within_undo_window(gift)
+        pilot = db.get(Pilot, gift.pilot_id)
+        inventory_deck = db.get(Deck, pilot.sponsor_inventory_deck_id)
+        inventory = parse_cards(inventory_deck.cards)
+        key = card_key(gift.card_name)
+        state = _available(inventory, _plays(db, race.id, pilot.id))
+        free = next((card for card in state if card_key(card.name) == key), None)
+        if free is None or free.copies_available < 1:
+            raise GiftNotUndoableError
+        entry = next(card for card in inventory if card_key(card.name) == key)
+        pool_id = championship.sponsor_pool_deck_id
+        pool_deck = db.get(Deck, pool_id) if pool_id else None
+        if pool_deck is None:
+            raise GiftNotUndoableError
+        inventory_deck.cards = dump_cards(_without_one_copy(inventory, entry))
+        pool_deck.cards = dump_cards(_with_one_more_copy(parse_cards(pool_deck.cards), entry))
+        db.delete(gift)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 def _unseen(db: Session, championship_id: int, pilot_id: int) -> list[CardGift]:

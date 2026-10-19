@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, CheckConstraint, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, DateTime, ForeignKey, Integer, Text, UniqueConstraint
 from app.db.base import Base
-from sqlalchemy.sql import func
+
 
 class Race(Base):
     __tablename__ = "race"
@@ -9,23 +9,20 @@ class Race(Base):
     championship_id = Column(Integer, ForeignKey("championship.id"), nullable=False)
     number = Column(Integer, nullable=False)
     date = Column(DateTime, nullable=True)
-    # Valorizzata quando il giudice o l'admin apre la revisione delle carte, che segue la
-    # conferma dei risultati. Vuota = revisione non aperta (o scaduta e riaperta da zero).
+    # Apertura e titolare della revisione; le date sono memorizzate in UTC.
     review_started_at = Column(DateTime, nullable=True)
-    # Utente (giudice o admin) che ha aperto la revisione: è l'unico che può vederla e agire.
-    # Vuota quando la revisione non è aperta.
     review_started_by_user_id = Column(
         Integer,
         ForeignKey("user.id", name="fk_race_review_started_by_user_id"),
         nullable=True,
     )
-    # Valorizzata quando la revisione è confermata: le carte giocate sono state consumate
-    # e la gara è chiusa del tutto. Vuota con risultati presenti = revisione da fare.
+    # Conferma definitiva della revisione; nulla finché non viene chiusa.
     review_closed_at = Column(DateTime, nullable=True)
+    # Testo JSON della bozza; validazione e utilizzo arrivano nel servizio dedicato.
+    review_draft = Column(Text, nullable=True)
 
-    __table_args__ = (
-        UniqueConstraint("championship_id", "number"),
-    )
+    __table_args__ = (UniqueConstraint("championship_id", "number"),)
+
 
 class RaceResult(Base):
     __tablename__ = "race_result"

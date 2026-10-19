@@ -6,6 +6,9 @@
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
 	import { standingKey } from '$lib/standings';
+	import { canShowEnroll, enrollablePilots } from '$lib/enroll-candidates';
+	import { deckAction } from '$lib/deck-access';
+	import { raceStatusView } from '$lib/race-status';
 	import {
 		fetchUnseenGifts,
 		loadPollIntervalMs,
@@ -18,39 +21,54 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
+	import EnrollPilotDialog from '$lib/components/enroll-pilot-dialog.svelte';
+	import PilotGiftButton from '$lib/components/pilot-gift-button.svelte';
+	import PilotPickerDialog from '$lib/components/pilot-picker-dialog.svelte';
 	import PilotCardPlays from '$lib/components/pilot-card-plays.svelte';
 	import CardGiftPopup from '$lib/components/card-gift-popup.svelte';
 
-	const selectClass =
-		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
-	const RACE_IN_PROGRESS_MESSAGE = "C'è una gara in corso: va terminata prima di crearne un'altra.";
+	const RACE_UNFINISHED_MESSAGE =
+		"C'è una gara non conclusa (in corso o in revisione): va conclusa prima di crearne un'altra.";
 
 	let championship = $state<ChampionshipDetail | null>(null);
 	let standings = $state<Standing[]>([]);
 	let races = $state<Race[]>([]);
 	let myPilots = $state<Pilot[]>([]);
 	let error = $state<string | null>(null);
-	let actionError = $state<string | null>(null);
 	let raceError = $state<string | null>(null);
 	let busy = $state(false);
-	let selectedPilot = $state('');
 	let settingsOpen = $state(false);
+	let enrollOpen = $state(false);
+	let deckOpen = $state(false);
 	let gifts = $state<CardGift[]>([]);
 	let giftOpen = $state(false);
+	// Aumenta a ogni controllo periodico: fa rileggere in silenzio le carte giocabili.
+	let giftTick = $state(0);
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
-	// Piloti che hanno un team e non sono già iscritti a questo campionato.
-	let candidates = $derived(
-		myPilots.filter(
-			(p) => p.team_id !== null && !championship?.pilots.some((entrant) => entrant.id === p.id)
-		)
-	);
+	// Piloti che si possono iscrivere: hanno un team e non sono in nessun campionato attivo.
+	let candidates = $derived(enrollablePilots(myPilots));
 	// I miei piloti iscritti a questo campionato: sono quelli che giocano le carte sponsor.
 	let enrolled = $derived(
 		myPilots.filter((p) => championship?.pilots.some((entrant) => entrant.id === p.id))
 	);
-	// Una gara senza classifica è in corso: finché c'è non se ne può creare un'altra.
+	// Il pulsante d'iscrizione c'è solo in un campionato attivo senza miei piloti iscritti.
+	let showEnroll = $derived(
+		championship !== null && canShowEnroll(championship.is_closed, enrolled.length)
+	);
+	// Cosa fa il pulsante del mazzo: nascosto, apre il pilota oppure chiede quale pilota.
+	let deckMode = $derived(
+		championship ? deckAction(championship.is_closed, enrolled.length) : 'hidden'
+	);
+	// Una gara senza classifica è in corso: carte sponsor e tasto S valgono solo finché c'è.
 	let raceInProgress = $derived(races.some((race) => race.participants === 0));
+	// Una gara non è conclusa finché è in corso o in revisione: finché c'è non se ne può
+	// creare un'altra (lo stesso controllo del backend).
+	let raceUnfinished = $derived(races.some((race) => race.status !== 'closed'));
+	// Il tasto S accanto ai piloti compare solo a giudice e admin, con una gara in corso.
+	let canGift = $derived(
+		championship !== null && !championship.is_closed && auth.canManageRaces && raceInProgress
+	);
 	// Gare dalla più recente: per data decrescente, a parità (o senza data) per numero.
 	let sortedRaces = $derived(
 		[...races].sort((a, b) => {
@@ -82,9 +100,12 @@
 		await goto(resolve('/championships'));
 	}
 
-	// Controllo periodico: se c'è una carta ottenuta non vista apre il popup.
-	// Mentre il popup è aperto non fa nulla, così le notifiche non si accavallano.
+	// Controllo periodico. Prima fa rileggere le carte giocabili (una carta ricevuta o annullata
+	// compare entro l'intervallo, senza ricaricare la pagina), poi, se c'è una carta ottenuta
+	// non vista, apre il popup. Mentre il popup è aperto non cerca altre notifiche, così non
+	// si accavallano.
 	async function checkGifts(championshipId: number, pilotIds: number[]) {
+		giftTick += 1;
 		if (giftOpen) return;
 		const found = await fetchUnseenGifts(championshipId, pilotIds);
 		if (found.length > 0 && !giftOpen) {
@@ -140,31 +161,35 @@
 		}
 	});
 
-	async function enroll(event: SubmitEvent) {
-		event.preventDefault();
-		if (selectedPilot === '') return;
-		actionError = null;
-		busy = true;
-		try {
-			await api(`/championships/${page.params.id}/pilots`, {
-				method: 'POST',
-				body: { pilot_id: Number(selectedPilot) }
-			});
-			selectedPilot = '';
-			await reload();
-		} catch (e) {
-			actionError = e instanceof Error ? e.message : 'Errore sconosciuto';
-		} finally {
-			busy = false;
-		}
+	// Iscrive un proprio pilota (la finestra ha già chiesto la conferma) e ricarica campionato
+	// e piloti: l'iscrizione cambia sia la classifica sia il campionato attivo del pilota.
+	// Se la richiesta fallisce lancia l'errore, che la finestra mostra all'utente.
+	async function enrollPilot(pilotId: number) {
+		await api(`/championships/${page.params.id}/pilots`, {
+			method: 'POST',
+			body: { pilot_id: pilotId }
+		});
+		await reload();
+		myPilots = await api<Pilot[]>('/pilots');
+	}
+
+	// Apre la pagina del pilota, dove si vedono e si modificano mazzo e inventario.
+	function goToDeck(pilot: Pilot) {
+		void goto(resolve('/pilots/[id]', { id: String(pilot.id) }));
+	}
+
+	// Con un solo pilota iscritto va dritta alla sua pagina, altrimenti chiede quale.
+	function openDeck() {
+		if (deckMode === 'choose') deckOpen = true;
+		else if (enrolled.length > 0) goToDeck(enrolled[0]);
 	}
 
 	// Admin e giudice: crea la prossima gara. Resta in questa pagina: la gara nuova
-	// compare in lista come "in corso" e si apre da lì. Con una gara in corso il pulsante
+	// compare in lista come "in corso" e si apre da lì. Con una gara non conclusa il pulsante
 	// sembra spento ma si può premere: il click mostra solo l'avviso, senza chiamare l'API.
 	async function createRace() {
-		if (raceInProgress) {
-			raceError = RACE_IN_PROGRESS_MESSAGE;
+		if (raceUnfinished) {
+			raceError = RACE_UNFINISHED_MESSAGE;
 			return;
 		}
 		raceError = null;
@@ -203,6 +228,14 @@
 				</p>
 			</div>
 			<div class="flex items-center gap-2">
+				{#if showEnroll}
+					<Button size="sm" variant="outline" onclick={() => (enrollOpen = true)}>
+						Iscrivi un pilota
+					</Button>
+				{/if}
+				{#if deckMode !== 'hidden'}
+					<Button size="sm" variant="outline" onclick={openDeck}>Vedi mazzo</Button>
+				{/if}
 				<!-- Campionato chiuso: il negozio si apre in sola lettura, solo per l'admin -->
 				{#if !championship.is_closed || auth.isAdmin}
 					<a
@@ -225,43 +258,6 @@
 			</div>
 		</div>
 
-		{#if !championship.is_closed}
-			<Card.Root>
-				<Card.Header>
-					<Card.Title>Iscrivi un tuo pilota</Card.Title>
-					<Card.Description>
-						Il pilota deve avere un team e non essere in un altro campionato attivo. L'iscrizione lo
-						reimposta.
-					</Card.Description>
-				</Card.Header>
-				<Card.Content>
-					{#if candidates.length === 0}
-						<p class="text-sm text-muted-foreground">Nessun tuo pilota può essere iscritto.</p>
-					{:else}
-						<form onsubmit={enroll} class="flex flex-wrap items-center gap-2">
-							<select
-								class={selectClass}
-								bind:value={selectedPilot}
-								required
-								aria-label="Pilota da iscrivere"
-							>
-								<option value="">Scegli un pilota</option>
-								{#each candidates as p (p.id)}
-									<option value={String(p.id)}>{p.name}</option>
-								{/each}
-							</select>
-							<Button type="submit" size="sm" disabled={busy || selectedPilot === ''}>
-								Iscrivi
-							</Button>
-						</form>
-					{/if}
-					{#if actionError}
-						<p class="mt-3 text-sm text-destructive" role="alert">{actionError}</p>
-					{/if}
-				</Card.Content>
-			</Card.Root>
-		{/if}
-
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Classifica</Card.Title>
@@ -273,7 +269,7 @@
 				{:else}
 					<ol class="divide-y">
 						{#each standings as row, index (standingKey(row, index))}
-							<li class="flex items-center gap-3 py-2">
+							<li class="flex flex-wrap items-center gap-3 py-2">
 								<span class="w-6 text-right text-sm text-muted-foreground">{row.rank}</span>
 								<span class="flex-1 font-medium">
 									{row.pilot_name}
@@ -286,6 +282,13 @@
 									{row.races_played === 1 ? 'gara' : 'gare'}
 								</span>
 								<span class="w-20 text-right text-sm">{row.points} punti</span>
+								{#if canGift && row.pilot_id !== null}
+									<PilotGiftButton
+										championshipId={championship.id}
+										pilot={{ id: row.pilot_id, name: row.pilot_name }}
+										showName={false}
+									/>
+								{/if}
 							</li>
 						{/each}
 					</ol>
@@ -305,6 +308,7 @@
 							championshipId={championship.id}
 							pilot={p}
 							startOpen={enrolled.length === 1}
+							refreshKey={giftTick}
 						/>
 					{/each}
 				</Card.Content>
@@ -323,8 +327,8 @@
 							size="sm"
 							onclick={createRace}
 							disabled={busy}
-							aria-disabled={raceInProgress}
-							class={raceInProgress ? 'opacity-50' : ''}
+							aria-disabled={raceUnfinished}
+							class={raceUnfinished ? 'opacity-50' : ''}
 						>
 							Nuova gara
 						</Button>
@@ -348,11 +352,9 @@
 								>
 									<span class="flex-1 font-medium">Gara {race.number}</span>
 									<span class="text-sm text-muted-foreground">{raceDate(race.date)}</span>
-									{#if race.participants === 0}
-										<span class="text-sm font-medium text-red-600">in corso</span>
-									{:else}
-										<span class="text-sm font-medium text-green-600">terminata</span>
-									{/if}
+									<span class={`text-sm font-medium ${raceStatusView(race.status).class}`}>
+										{raceStatusView(race.status).label}
+									</span>
 								</a>
 							</li>
 						{/each}
@@ -369,6 +371,20 @@
 				ondeleted={afterDelete}
 			/>
 		{/if}
+
+		<EnrollPilotDialog
+			bind:open={enrollOpen}
+			championshipName={championship.name}
+			pilots={candidates}
+			onenroll={enrollPilot}
+		/>
+
+		<PilotPickerDialog
+			bind:open={deckOpen}
+			title="Mazzo di quale pilota?"
+			pilots={enrolled}
+			onselect={goToDeck}
+		/>
 
 		<CardGiftPopup bind:open={giftOpen} {gifts} onclosed={onGiftsClosed} />
 	{/if}

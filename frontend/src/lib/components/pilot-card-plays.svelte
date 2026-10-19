@@ -1,36 +1,42 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { fetchCardPlayState, playCard, undoCard } from '$lib/card-play-api';
-	import { fetchPilotGameDeck } from '$lib/pilot-deck-api';
 	import type { AvailableCard, CardPlay, CardPlayState } from '$lib/card-play-types';
 	import type { CardEntry } from '$lib/types';
 	import CardTile from '$lib/components/CardTile.svelte';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 
-	// Sezione a scomparsa di un pilota: carte sponsor giocabili, annulla e riepilogo con
-	// immagini del mazzo da gioco in uso. Il tasto S non è qui: giudice e admin lo
-	// trovano nella pagina della gara.
+	// Sezione a scomparsa di un pilota: carte sponsor giocabili, annulla e giocate della gara.
+	// Il mazzo da gioco si vede nella pagina del pilota. Il tasto S non è qui: giudice e admin
+	// lo trovano nella pagina della gara.
 	let {
 		championshipId,
 		pilot,
-		startOpen = false
+		startOpen = false,
+		refreshKey = 0
 	}: {
 		championshipId: number;
 		pilot: { id: number; name: string };
 		// Con un solo pilota iscritto la sua sezione nasce già aperta (specifica della 13c).
 		startOpen?: boolean;
+		// La pagina lo cambia a ogni controllo periodico: la sezione aperta rilegge in silenzio
+		// le carte giocabili (una carta ricevuta o annullata compare senza ricaricare).
+		refreshKey?: number;
 	} = $props();
 
 	let open = $state(false);
 	// Non chiamare questa variabile `state`: nasconderebbe la rune $state.
 	let cardState = $state<CardPlayState | null>(null);
-	// Mazzo da gioco in uso del pilota, per il riepilogo con immagini.
-	let gameDeck = $state<CardEntry[]>([]);
 	let error = $state<string | null>(null);
 	let busy = $state(false);
 	let confirmOpen = $state(false);
 	let pending = $state<AvailableCard | null>(null);
+	// Ultimo valore di `refreshKey` già gestito: serve a riconoscere un cambiamento vero.
+	let lastRefreshKey = 0;
+	// Cresce a ogni azione dell'utente: una rilettura partita prima non deve sovrascrivere il
+	// risultato di un'azione arrivata dopo.
+	let stateVersion = 0;
 
 	let activePlays = $derived(
 		cardState ? cardState.plays.filter((p: CardPlay) => p.status === 'giocata') : []
@@ -44,6 +50,7 @@
 
 	// Esegue un'azione sul backend e mostra il messaggio d'errore sotto i pulsanti.
 	async function run(action: () => Promise<void>) {
+		stateVersion += 1;
 		error = null;
 		busy = true;
 		try {
@@ -58,17 +65,39 @@
 	async function load() {
 		await run(async () => {
 			cardState = await fetchCardPlayState(championshipId, pilot.id);
-			gameDeck = await fetchPilotGameDeck(pilot.id);
 		});
 	}
 
+	// Rilettura silenziosa: non mette i pulsanti in "occupato", ignora gli errori (si riprova al
+	// controllo successivo) e non fa niente se l'utente sta agendo o ha agito nel frattempo.
+	async function refresh() {
+		if (busy) return;
+		const version = stateVersion;
+		try {
+			const fresh = await fetchCardPlayState(championshipId, pilot.id);
+			if (version === stateVersion && !busy) cardState = fresh;
+		} catch {
+			// Errore di rete o di sessione: la sezione mantiene lo stato che ha.
+		}
+	}
+
 	// Se la sezione nasce aperta (un solo pilota iscritto) i dati si caricano subito.
-	// `startOpen` si legge nel closure di onMount: vale solo come valore iniziale.
+	// `startOpen` e `refreshKey` si leggono nel closure di onMount: valgono solo come valori iniziali.
 	onMount(() => {
+		lastRefreshKey = refreshKey;
 		if (startOpen) {
 			open = true;
 			void load();
 		}
+	});
+
+	// Quando `refreshKey` cambia e la sezione è aperta, rilegge in silenzio le carte giocabili.
+	// Se è chiusa si legge all'apertura.
+	$effect(() => {
+		const key = refreshKey;
+		if (key === lastRefreshKey) return;
+		lastRefreshKey = key;
+		if (open) untrack(() => void refresh());
 	});
 
 	function toggle() {
@@ -81,12 +110,15 @@
 		confirmOpen = true;
 	}
 
+	// Gioca la carta scelta. Se il backend la rifiuta (per esempio è stata annullata) la lista
+	// si rilegge subito, così la carta non resta lì da premere.
 	async function playPending() {
 		const card = pending;
 		if (!card) return;
 		await run(async () => {
 			cardState = await playCard(championshipId, pilot.id, card.name);
 		});
+		if (error) await refresh();
 	}
 
 	async function undo() {
@@ -131,11 +163,12 @@
 				{#if cardState.available.length === 0}
 					<p class="text-sm text-muted-foreground">Nessuna carta sponsor nell'inventario.</p>
 				{:else}
-					<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+					<ul class="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-7">
 						{#each cardState.available as card (card.name)}
-							<li>
+							<li class="min-w-0">
 								<CardTile
 									card={toEntry(card)}
+									compact
 									title="Copie ancora giocabili"
 									disabled={locked || card.copies_available < 1}
 									onclick={() => askPlay(card)}
@@ -155,21 +188,6 @@
 								<li>{play.card_name}</li>
 							{/each}
 						</ol>
-					{/if}
-				</div>
-
-				<div>
-					<h4 class="mb-1 text-sm font-medium">Mazzo da gioco</h4>
-					{#if gameDeck.length === 0}
-						<p class="text-sm text-muted-foreground">Nessuna carta nel mazzo da gioco.</p>
-					{:else}
-						<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-							{#each gameDeck as card (card.path)}
-								<li>
-									<CardTile {card} title="Copie nel mazzo" />
-								</li>
-							{/each}
-						</ul>
 					{/if}
 				</div>
 			{/if}

@@ -5,8 +5,9 @@
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
+	import { raceStatusView } from '$lib/race-status';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
-	import type { RaceDetail, RaceStatus } from '$lib/race-types';
+	import type { RaceDetail } from '$lib/race-types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import PilotGiftButton from '$lib/components/pilot-gift-button.svelte';
@@ -28,14 +29,6 @@
 	const MAX_PARTICIPANTS = 12;
 	const inputClass =
 		'h-8 w-20 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
-
-	// Etichetta e colore dello stato della gara.
-	const STATUS_VIEW: Record<RaceStatus, { label: string; class: string }> = {
-		in_progress: { label: 'in corso', class: 'text-red-600' },
-		in_review: { label: 'in revisione', class: 'text-amber-600' },
-		to_review: { label: 'da rivedere', class: 'text-amber-600' },
-		closed: { label: 'terminata', class: 'text-green-600' }
-	};
 
 	let race = $state<RaceDetail | null>(null);
 	let championship = $state<ChampionshipDetail | null>(null);
@@ -226,8 +219,8 @@
 			<p class="text-sm text-muted-foreground">
 				{raceDate(race.date)} · {race.participants}
 				{race.participants === 1 ? 'partecipante' : 'partecipanti'} ·
-				<span class={`font-medium ${STATUS_VIEW[race.status].class}`}>
-					{STATUS_VIEW[race.status].label}
+				<span class={`font-medium ${raceStatusView(race.status).class}`}>
+					{raceStatusView(race.status).label}
 				</span>
 			</p>
 		</div>
