@@ -1,71 +1,82 @@
 # Fase 15 - SSE in tempo reale e sistemazione
 
-Data: 2026-10-20. Ramo: `phase-15-sse-sistemazione` (da `main`, commit `2cded6d`).
-Stato: **piano concordato con l'autore, nessun codice scritto**. Questo documento raccoglie
-le decisioni e ciò che non è stato riallineato in `PROJECT_SPEC.md` e `PROJECT_STATUS.md`
-(troppo grandi per essere riscritti in blocco).
+Aggiornamento: 2026-10-20. Ramo esclusivo: phase-15-sse-sistemazione.
+Base iniziale main: 2cded6d. PR provvisoria 14, in bozza; nessun merge senza richiesta.
 
-## 1. Sottofasi
+## Decisioni approvate
 
-| Sotto-fase | Contenuto | Stato |
-|---|---|---|
-| 15a | Backend e frontend in tempo reale con SSE | Da avviare (serve approvazione dei file e dello schema) |
-| 15b | Sistemazione generale (elenco in sezione 4) | Da definire con l'autore dopo la 15a |
+- Applicazione predisposta anche per uso online a bassa affluenza e piu' worker.
+- Eventi per carte ottenute/annullate, giocate, stato gara/revisione, risultati e classifica.
+- Polling e card_poll_seconds mantenuti come fallback; rimozione rinviata.
+- Timer backend per revisioni scadute, oltre alla conferma alla prima richiesta.
+- Scelta della rete affidata alla verifica tecnica: api.ts e vite.config.ts usano
+  gia' /api same-origin con proxy verso FastAPI. Non sono chiamate cross-origin.
+- Documenti grandi PROJECT_SPEC.md e PROJECT_STATUS.md lasciati intatti;
+  questo documento e le note PHASE_15 raccolgono le integrazioni.
 
-## 2. Decisioni dell'autore (2026-10-20)
+## Avanzamento
 
-1. **Uso online**: l'applicazione deve poter funzionare online in ogni momento. L'affluenza sarà bassa e
-   sarà usata solo dall'autore e dai suoi amici. Un bus di eventi solo in memoria non basta.
-2. **Eventi**: tutti quelli proposti: carta ottenuta (tasto S), stato della gara (in corso, in revisione,
-   confermata), carte giocate e annullate, risultati e classifica.
-3. **Polling**: resta come ripiego se l'SSE non è disponibile; `card_poll_seconds` e il suo campo nelle
-   impostazioni generali restano. La rimozione è rinviata a qualche versione successiva.
-4. **Scadenza della revisione**: aggiungere un timer in background nel backend, oltre alla conferma
-   alla prima richiesta (`settle_expired_reviews`), che resta come rete di sicurezza.
-5. **Rete**: chiamate dirette del frontend al backend; la scelta va verificata sul codice
-   (client API del frontend) prima di scrivere.
-6. **Rami**: si lavora solo su `phase-15-sse-sistemazione`. Dopo il primo push si apre una pull request
-   provvisoria per far partire la CI; non si unisce senza richiesta esplicita.
+- 15a-1: contratto Pydantic, modello event_log, migrazione d5e9a3b7c1f6,
+  servizio transazionale e test pubblicati. CI verde su 54079f7 (run 39341481995).
+- Correzione del test Alembic storico: CI verde su 47df2a5, vedi PHASE_15_CI_FIX.md.
+- 15a-2: endpoint e servizio SSE introdotti in questo blocco; test scritti ma non
+  eseguiti localmente. Nuova CI da leggere dopo il push; nessun successo presunto.
+- 15a-3: pubblicazione degli eventi nelle azioni e timer ancora da implementare.
+- 15a-4: client frontend e fallback ancora da implementare.
+- 15b: sistemazione generale da definire con l'autore dopo SSE.
 
-## 3. Piano tecnico proposto per la 15a (da approvare)
+## Registro ed endpoint
 
-Proposta dell'assistente, non ancora approvata nel dettaglio:
+Dettagli SQL: PHASE_15_DATABASE.md. Dettagli servizio: PHASE_15_SERVICE.md.
+La conservazione pianificata e' di 24 ore. Il servizio di pulizia esiste ma non
+viene ancora eseguito automaticamente. Il registro e' condiviso tra worker.
+GET /api/events/stream usa cookie, Last-Event-ID, letture ogni secondo,
+keep-alive ogni 15 secondi e retry SSE di 3 secondi. Nessuna nuova dipendenza.
+Ogni lettura chiude la sessione SQL prima di attese o invio; SQL nel thread pool.
+La sessione autenticata viene ricontrollata a ogni lettura: revoca/scadenza
+produce auth.expired e chiusura. Il client dovra' chiudere EventSource su tale evento.
+Il primo accesso emette resync; un cursore anteriore ai dati disponibili o oltre
+la sequenza corrente richiede resync. Il client dovra' ricaricare lo stato REST.
+La sequenza AUTOINCREMENT permette di rilevare anche un registro svuotato.
+Un resync puo' essere conservativo se gli id mancanti appartengono ad altri utenti.
+I privati sono visibili solo al destinatario; gli eventi pubblici agli iscritti
+con pilota non eliminato e ad admin/giudici. Mai dettagli privati nei payload pubblici.
 
-- Tabella `event_log` nel database (id crescente, tipo, campionato, pilota o utente destinatario, dati JSON,
-  data), scritta nella stessa transazione dell'azione che genera l'evento. Ogni connessione SSE legge
-  gli eventi con id maggiore dell'ultimo inviato; `Last-Event-ID` gestisce la riconnessione.
-  Così funziona anche con più worker. Richiede una **migrazione Alembic** e un **backup del database prima**.
-- `services/event_log.py` (scrittura, lettura, pulizia degli eventi vecchi), `api/events.py`
-  (`GET /api/events/stream`, autenticato con il cookie di sessione, con keep-alive), `schemas/events.py`.
-- Timer in background avviato dal `lifespan` di `main.py`, che conferma le revisioni scadute; con più
-  worker deve essere sicuro se eseguito due volte (operazione idempotente).
-- Punti che pubblicano eventi: `card_gift`, `card_play`, `card_play_close`, `card_judge`, `race_review`, `races`.
-- Frontend: `lib/event-stream.svelte.ts` (EventSource con riconnessione e ripiego sul polling),
-  `lib/event-types.ts`, test; `card-poll.svelte.ts` resta come ripiego.
-- Test: backend (eventi, riconnessione, autorizzazioni, timer) e frontend; CI sulla pull request provvisoria.
-- Limite SQLite: una sola scrittura alla volta; le letture periodiche delle connessioni SSE vanno misurate.
+## File del blocco endpoint
 
-Domande ancora aperte prima di scrivere codice:
-- Schema esatto di `event_log` e durata di conservazione degli eventi.
-- Chi riceve quali eventi (per pilota, per campionato, solo admin e giudici per la revisione).
-- Intervallo di lettura della tabella per ogni connessione.
+Nuovi: backend/app/api/events.py, backend/app/services/event_stream.py,
+backend/tests/test_events_stream.py. Modificati: backend/app/main.py e questo file.
+Test: parsing cursore, frame JSON, replay, revoca, registro svuotato, cursore futuro,
+autenticazione HTTP e header. Lo stream HTTP dei test e' finito tramite sostituzione:
+non e' una prova end-to-end di una connessione lunga o del proxy.
+Nessuna prova browser, di buffering proxy o di carico ancora eseguita.
+SSE non e' ancora collegato alle azioni o al frontend: non dichiariamo l'app real-time.
 
-## 4. Da riallineare (non fatto in questa sessione)
+## Database reale e verifiche
 
-Voci raccolte dalla lettura dei documenti; non verificate sul codice se non indicato.
+Nessuna migrazione applicata ai dati del gioco e nessun backup effettuato.
+Prima della migrazione reale: backup verificato e prova su copia obbligatori.
+La CI usa un database nuovo del runner e non sostituisce la verifica sui dati reali.
+La catena dei 19 file storici e' stata letta: testa precedente a2e6c0d4f8b3;
+merge storico b2d6f0a4c8e1 dei rami negozio e oro. Vedi PHASE_15_DATABASE.md.
 
-- `PROJECT_STATUS.md`: la riga 14 dice ancora "Da definire a fine fase 13" mentre la fase 14 è unita
-  in `main` (PR #13, 2026-10-19); manca la riga 15; l'intestazione riporta "Ultimo aggiornamento: 2026-10-18";
-  la descrizione della 13e non riporta nomi di file, rotte e limiti (il testo stesso dice di prenderli dal codice).
-- `PROJECT_SPEC.md`: resta da rileggere dopo il commit `bc0fbfb` (refuso nella sezione 14, indicato in PR #6).
-- `PHASE_14_POST_MERGE.md`: indica `main` a `aae6c33`; oggi `main` è a `2cded6d`, quindi il dato è storico.
-  L'esito del workflow `format-championships.yml` su `main` non è stato letto.
-- `SHOP_DESIGN.md`, `PROJECT_NOTES.md`, `SETUP.md`, `SCRIPTS.md`, `DATABASE.md`, `README.md`: non riletti in questa sessione.
-  `SETUP.md` e `SCRIPTS.md` (PR #12) dichiarano nessun backup prima delle migrazioni e nessun reset sicuro:
-  rilevante per la migrazione di `event_log`.
-- Uso online (rinviato in `OPEN_QUESTIONS.md` a dopo la 14): ora anticipato dalla fase 15; vedi sezione 2.
+## Sistemazioni e riallineamenti pendenti
 
-## 5. Regole di lavoro
+- PROJECT_STATUS.md: riga 14 ancora da definire, manca 15, data vecchia e descrizione
+  13e incompleta; integrazioni correnti raccolte qui, senza riscrivere il file.
+- PROJECT_SPEC.md: rilettura dopo bc0fbfb e verifica del refuso storico da completare.
+- PHASE_14_POST_MERGE.md: aae6c33 e' un riferimento storico; esito dell'automazione
+  format-championships.yml non verificato in questa fase.
+- DATABASE.md letto: schema storico; delta SSE in PHASE_15_DATABASE.md.
+- README.md, SETUP.md, SCRIPTS.md, SHOP_DESIGN.md e PROJECT_NOTES.md da rileggere
+  prima di ulteriori riallineamenti. Backup/setup sicuro ancora da verificare nel codice.
+- config.py ha cookie secure disattivato e URL SQLite fisso: configurazione online
+  da sistemare prima della consegna online. Non modificata in questi blocchi.
+- Differenza storica del formato Deck.cards nelle istruzioni e nel codice segnalata
+  da DATABASE.md: nessun cambio al formato o ai percorsi in questa fase.
 
-Ogni modifica, a fine lavoro e a test verdi, richiede il riallineamento di tutti i documenti, come da istruzioni del progetto.
-Il riallineamento completo di `PROJECT_SPEC.md` e `PROJECT_STATUS.md` è un lavoro a parte, da fare a pezzi.
+## Metodo
+
+Sottofasi approvate una alla volta, conferma puntuale prima dei push.
+Dopo CI verde riallineare i documenti piccoli interessati e raccogliere qui i delta
+non applicati ai documenti grandi. Nessun test locale o risultato viene inventato.

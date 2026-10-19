@@ -20,6 +20,7 @@ from app.api.card_play import router as card_play_router
 from app.api.card_admin import router as card_admin_router
 from app.api.race_review import router as race_review_router
 from app.api.review_counts import router as review_counts_router
+from app.api.events import router as events_router
 from app.services.cleanup import purge_old_deleted
 
 from app.config import MEDIA_DIR
@@ -51,6 +52,7 @@ app.include_router(shop_me_router, prefix="/api/me")
 app.include_router(card_admin_router, prefix="/api/admin/cards")
 app.include_router(admin_router, prefix="/api/admin")
 app.include_router(shop_router, prefix="/api/shop")
+app.include_router(events_router, prefix="/api/events")
 
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
