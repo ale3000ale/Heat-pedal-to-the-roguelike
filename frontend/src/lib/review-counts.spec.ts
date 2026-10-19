@@ -17,16 +17,34 @@ describe('conteggi della revisione', () => {
 		expect(() => adjustRemaining(3, 2, 1)).toThrow(RangeError);
 	});
 	it('conserva i dettagli delle incongruenze', async () => {
-		const issue = { card_name: 'Alettone', reason: '8 su 7', pool_now: 5, pool_after: 8, pool_max: 7 };
-		const mocked = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({
-			detail: { message: 'Correggi', incongruities: [issue] }
-		}), { status: 409 }));
+		const issue = {
+			card_name: 'Alettone',
+			reason: '8 su 7',
+			pool_now: 5,
+			pool_after: 8,
+			pool_max: 7
+		};
+		const mocked = vi.fn<typeof fetch>().mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					detail: { message: 'Correggi', incongruities: [issue] }
+				}),
+				{ status: 409 }
+			)
+		);
 		const request = confirmReviewCounts(1, 2, { pilots: [] }, mocked);
 		await expect(request).rejects.toBeInstanceOf(ReviewConflictError);
 		await expect(request).rejects.toMatchObject({ incongruities: [issue] });
 	});
 	it('non converte un errore di permesso in incongruenze', async () => {
-		const mocked = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ detail: 'Permesso negato' }), { status: 403 }));
-		await expect(confirmReviewCounts(1, 2, { pilots: [] }, mocked)).rejects.toMatchObject({ status: 403, message: 'Permesso negato' });
+		const mocked = vi
+			.fn<typeof fetch>()
+			.mockResolvedValue(
+				new Response(JSON.stringify({ detail: 'Permesso negato' }), { status: 403 })
+			);
+		await expect(confirmReviewCounts(1, 2, { pilots: [] }, mocked)).rejects.toMatchObject({
+			status: 403,
+			message: 'Permesso negato'
+		});
 	});
 });

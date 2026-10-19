@@ -8,4 +8,10 @@ ReviewConflictError conserva l'elenco validato restituito dal backend. Altri err
 
 Sei test Vitest predisposti per limiti +/−, correzione, conteggi incoerenti, conservazione delle incongruenze e permessi. Non eseguiti dall'assistente; lint, type-check e build non eseguiti.
 
+## Segnalazione CI e correzione della formattazione
+
+Il 2026-10-19 l'autore ha riportato npm run lint fallito su Prettier, con tre file: review-counts-api.ts, review-counts.spec.ts e review-counts.ts. ESLint non è stato raggiunto perché lo script usa prettier --check . && eslint . La configurazione letta è frontend/prettier.config.js: tab, apici singoli, nessuna virgola finale, larghezza 100.
+
+La correzione proposta modifica soltanto la formattazione dei tre file. È stata preparata manualmente: Prettier, ESLint, test, type-check e build non sono stati eseguiti dall'assistente. Serve un nuovo esito CI; non è dichiarato superato.
+
 Il pannello attuale e il suo store non sono ancora modificati: nessun cambiamento visibile nell'interfaccia in questo commit. Prossimo passo: collegamento del nuovo store e dei componenti pilota/popup, navigazione, spunte e recupero della bozza. Nessuna modifica al database o alle migrazioni.

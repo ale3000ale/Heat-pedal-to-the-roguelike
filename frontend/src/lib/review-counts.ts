@@ -9,7 +9,13 @@ import type { ReviewCounts, ReviewInventoryPilot } from './review-counts-types';
  * @throws RangeError Se i conteggi non sono interi non negativi o sono incoerenti.
  */
 export function adjustRemaining(current: number, total: number, delta: -1 | 1): number {
-	if (!Number.isInteger(total) || total < 0 || !Number.isInteger(current) || current < 0 || current > total) {
+	if (
+		!Number.isInteger(total) ||
+		total < 0 ||
+		!Number.isInteger(current) ||
+		current < 0 ||
+		current > total
+	) {
 		throw new RangeError('Conteggi della carta non validi');
 	}
 	return Math.min(total, Math.max(0, current + delta));
