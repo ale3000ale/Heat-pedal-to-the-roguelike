@@ -40,6 +40,8 @@
 	let deckOpen = $state(false);
 	let gifts = $state<CardGift[]>([]);
 	let giftOpen = $state(false);
+	// Aumenta a ogni carta ricevuta: fa rileggere le carte giocabili senza ricaricare la pagina.
+	let giftTick = $state(0);
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
 	// Piloti che si possono iscrivere: hanno un team e non sono in nessun campionato attivo.
@@ -93,14 +95,16 @@
 		await goto(resolve('/championships'));
 	}
 
-	// Controllo periodico: se c'è una carta ottenuta non vista apre il popup.
-	// Mentre il popup è aperto non fa nulla, così le notifiche non si accavallano.
+	// Controllo periodico: se c'è una carta ottenuta non vista apre il popup e fa rileggere
+	// le carte giocabili. Mentre il popup è aperto non fa nulla, così le notifiche non si
+	// accavallano.
 	async function checkGifts(championshipId: number, pilotIds: number[]) {
 		if (giftOpen) return;
 		const found = await fetchUnseenGifts(championshipId, pilotIds);
 		if (found.length > 0 && !giftOpen) {
 			gifts = found;
 			giftOpen = true;
+			giftTick += 1;
 		}
 	}
 
@@ -298,6 +302,7 @@
 							championshipId={championship.id}
 							pilot={p}
 							startOpen={enrolled.length === 1}
+							refreshKey={giftTick}
 						/>
 					{/each}
 				</Card.Content>

@@ -61,6 +61,16 @@ export function giveRandomCard(
 	});
 }
 
+// Giudice o admin: annulla un'assegnazione del tasto S entro 60 secondi (risposta 204, senza
+// corpo). La carta torna nella pool sponsor. Lancia `ApiError` se il tempo è scaduto (409) o
+// se la carta è già stata giocata (409).
+export function undoGift(championshipId: number, giftId: number, doFetch?: Fetch): Promise<void> {
+	return api<void>(`/championships/${championshipId}/card-gifts/${giftId}/undo`, {
+		method: 'POST',
+		fetch: doFetch
+	});
+}
+
 // Giocatore: notifiche di carta ottenuta non ancora viste dal pilota.
 export function fetchUnseenGifts(
 	championshipId: number,

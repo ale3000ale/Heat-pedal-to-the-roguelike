@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { fetchCardPlayState, playCard, undoCard } from '$lib/card-play-api';
 	import type { AvailableCard, CardPlay, CardPlayState } from '$lib/card-play-types';
 	import type { CardEntry } from '$lib/types';
@@ -13,12 +13,15 @@
 	let {
 		championshipId,
 		pilot,
-		startOpen = false
+		startOpen = false,
+		refreshKey = 0
 	}: {
 		championshipId: number;
 		pilot: { id: number; name: string };
 		// Con un solo pilota iscritto la sua sezione nasce già aperta (specifica della 13c).
 		startOpen?: boolean;
+		// La pagina lo cambia quando arriva una carta nuova: la sezione aperta si rilegge da sola.
+		refreshKey?: number;
 	} = $props();
 
 	let open = $state(false);
@@ -28,6 +31,8 @@
 	let busy = $state(false);
 	let confirmOpen = $state(false);
 	let pending = $state<AvailableCard | null>(null);
+	// Ultimo valore di `refreshKey` già gestito: serve a riconoscere un cambiamento vero.
+	let lastRefreshKey = 0;
 
 	let activePlays = $derived(
 		cardState ? cardState.plays.filter((p: CardPlay) => p.status === 'giocata') : []
@@ -59,12 +64,22 @@
 	}
 
 	// Se la sezione nasce aperta (un solo pilota iscritto) i dati si caricano subito.
-	// `startOpen` si legge nel closure di onMount: vale solo come valore iniziale.
+	// `startOpen` e `refreshKey` si leggono nel closure di onMount: valgono solo come valori iniziali.
 	onMount(() => {
+		lastRefreshKey = refreshKey;
 		if (startOpen) {
 			open = true;
 			void load();
 		}
+	});
+
+	// Quando `refreshKey` cambia e la sezione è aperta, rilegge le carte giocabili (una carta
+	// appena ricevuta compare senza ricaricare la pagina). Se è chiusa si legge all'apertura.
+	$effect(() => {
+		const key = refreshKey;
+		if (key === lastRefreshKey) return;
+		lastRefreshKey = key;
+		if (open) untrack(() => void load());
 	});
 
 	function toggle() {

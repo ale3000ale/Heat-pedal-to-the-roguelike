@@ -27,16 +27,16 @@
 	});
 </script>
 
-<Modal bind:open title="Hai ottenuto una carta sponsor" closeOnOutside={false} blur>
-	<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+<Modal bind:open title="Hai ottenuto una carta sponsor" closeOnOutside={false} blur narrow>
+	<ul class="flex flex-wrap justify-center gap-3">
 		{#each gifts as gift (gift.id)}
-			<li class="overflow-hidden rounded-lg border bg-card">
+			<li class="w-48 overflow-hidden rounded-lg border bg-card">
 				<img
 					src="/media/{gift.card_path}"
 					alt={gift.card_name}
 					class="aspect-[2/3] w-full object-cover"
 				/>
-				<p class="truncate px-2 py-1.5 text-sm font-medium">{gift.card_name}</p>
+				<p class="px-2 py-1.5 text-center text-sm font-medium">{gift.card_name}</p>
 			</li>
 		{/each}
 	</ul>
