@@ -1,0 +1,81 @@
+name: Formatta UI revisione
+
+on:
+  push:
+    branches: [phase-14]
+    paths:
+      - .github/workflows/format-review-ui.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: format-review-ui-phase-14
+  cancel-in-progress: false
+
+jobs:
+  format:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-14
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Installa dal lockfile
+        working-directory: frontend
+        run: npm ci
+      - name: Formatta soltanto i quattro file segnalati
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            src/lib/components/race-review-panel.svelte
+            src/lib/components/review-incongruence-dialog.svelte
+            src/lib/components/review-pilot-inventory.svelte
+            src/lib/review-draft.spec.ts
+          )
+          ./node_modules/.bin/prettier --write "${files[@]}"
+          ./node_modules/.bin/prettier --check "${files[@]}"
+      - name: Pubblica solo la formattazione su phase-14
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            frontend/src/lib/components/race-review-panel.svelte
+            frontend/src/lib/components/review-incongruence-dialog.svelte
+            frontend/src/lib/components/review-pilot-inventory.svelte
+            frontend/src/lib/review-draft.spec.ts
+          )
+          git add -- "${files[@]}"
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica di formattazione necessaria."
+            exit 0
+          fi
+          git fetch origin phase-14
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/phase-14)" ]; then
+            echo "Il ramo è cambiato durante la formattazione: nessun push eseguito."
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Formatta UI revisione con Prettier del lockfile"
+          git push origin HEAD:refs/heads/phase-14
+      - name: Controllo dei tipi
+        working-directory: frontend
+        run: npm run check
+      - name: Lint e formattazione completi
+        working-directory: frontend
+        run: npm run lint
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
