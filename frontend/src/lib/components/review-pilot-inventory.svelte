@@ -34,16 +34,16 @@
 						variant="outline"
 						disabled={disabled || card.remaining === 0}
 						onclick={() => onadjust(card.card_name, -1)}
-						aria-label={`Togli una copia di ${card.card_name}`}
-					>−</Button>
+						aria-label={`Togli una copia di ${card.card_name}`}>−</Button
+					>
 					<Button
 						type="button"
 						size="sm"
 						variant="outline"
 						disabled={disabled || card.remaining >= card.total}
 						onclick={() => onadjust(card.card_name, 1)}
-						aria-label={`Ripristina una copia di ${card.card_name}`}
-					>+</Button>
+						aria-label={`Ripristina una copia di ${card.card_name}`}>+</Button
+					>
 				</div>
 			</li>
 		{/each}

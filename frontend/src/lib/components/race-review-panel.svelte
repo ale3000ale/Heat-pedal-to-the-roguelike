@@ -80,7 +80,8 @@
 										type="button"
 										variant="outline"
 										disabled={store.busy || index === 0}
-										onclick={() => store.navigate(index - 1)}>Indietro</Button>
+										onclick={() => store.navigate(index - 1)}>Indietro</Button
+									>
 									<Button
 										type="button"
 										disabled={store.busy}
@@ -99,16 +100,18 @@
 				<Button
 					type="button"
 					disabled={store.busy || !store.allReviewed}
-					onclick={() => transition(() => store.confirm())}>Conferma revisione</Button>
+					onclick={() => transition(() => store.confirm())}>Conferma revisione</Button
+				>
 				<Button
 					type="button"
 					variant="outline"
 					disabled={store.busy}
-					onclick={() => transition(() => store.abandon())}>Salva e rinuncia</Button>
+					onclick={() => transition(() => store.abandon())}>Salva e rinuncia</Button
+				>
 			</div>
 			<p class="text-sm text-muted-foreground">
-				{store.checked.length}/{store.pilots.length} piloti controllati. La conferma richiede tutte
-				le spunte.
+				{store.checked.length}/{store.pilots.length} piloti controllati. La conferma richiede tutte le
+				spunte.
 			</p>
 		{:else if store.review?.review_closed_at}
 			<p class="text-sm text-green-600">Revisione conclusa.</p>
@@ -116,7 +119,8 @@
 				<Button
 					type="button"
 					disabled={store.busy}
-					onclick={() => transition(() => store.start(true))}>Riapri la revisione</Button>
+					onclick={() => transition(() => store.start(true))}>Riapri la revisione</Button
+				>
 			{/if}
 		{:else if canOpen}
 			<Button
@@ -138,7 +142,8 @@
 				type="button"
 				variant="outline"
 				disabled={store.busy}
-				onclick={() => transition(() => store.refreshStatus())}>Aggiorna stato</Button>
+				onclick={() => transition(() => store.refreshStatus())}>Aggiorna stato</Button
+			>
 		{/if}
 	</Card.Content>
 </Card.Root>

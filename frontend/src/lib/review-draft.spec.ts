@@ -40,8 +40,8 @@ describe('recupero bozza revisione', () => {
 		).toThrow(RangeError);
 	});
 	it('rifiuta riferimenti a piloti assenti', () => {
-		expect(() =>
-			mergeReviewDraft(pilots(), { pilots: [{ pilot_id: 9, cards: [] }] })
-		).toThrow(RangeError);
+		expect(() => mergeReviewDraft(pilots(), { pilots: [{ pilot_id: 9, cards: [] }] })).toThrow(
+			RangeError
+		);
 	});
 });

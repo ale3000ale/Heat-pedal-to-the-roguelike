@@ -2,10 +2,8 @@
 	import Modal from '$lib/components/modal.svelte';
 	import type { ReviewIncongruity } from '$lib/review-counts-types';
 
-	let {
-		open = $bindable(false),
-		issues
-	}: { open?: boolean; issues: ReviewIncongruity[] } = $props();
+	let { open = $bindable(false), issues }: { open?: boolean; issues: ReviewIncongruity[] } =
+		$props();
 </script>
 
 <Modal bind:open title="Incongruenze nelle carte">
