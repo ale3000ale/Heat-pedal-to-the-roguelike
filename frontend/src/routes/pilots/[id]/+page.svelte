@@ -112,7 +112,7 @@
 		{/if}
 
 		<!-- Da lg in su: inventario a sinistra, mazzo fisso a destra; sotto lg il mazzo sta sopra. -->
-		<div class="grid gap-4 lg:grid-cols-3 lg:items-start">
+		<div class="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)] lg:items-start">
 			<div class="lg:sticky lg:top-4 lg:order-2 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
 				<Card.Root>
 					<Card.Header>
@@ -146,7 +146,7 @@
 				</Card.Root>
 			</div>
 
-			<div class="lg:order-1 lg:col-span-2">
+			<div class="lg:order-1">
 				<Card.Root>
 					<Card.Header>
 						<Card.Title>Inventario</Card.Title>
