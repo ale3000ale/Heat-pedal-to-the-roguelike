@@ -13,7 +13,7 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
 - Polling e card_poll_seconds mantenuti come fallback; rimozione rinviata.
 - Timer backend per scadenza revisioni oltre alla conferma alla prima richiesta.
 - Rete scelta dopo lettura di api.ts e vite.config.ts: /api same-origin tramite proxy
-  verso FastAPI, non chiamate cross-origin. Buffering reale ancora da verificare.
+  versoFastAPI, non chiamate cross-origin. Buffering reale ancora da verificare.
 - PROJECT_SPEC.md e PROJECT_STATUS.md lasciati intatti per richiesta dell'autore;
   integrazioni raccolte qui e nelle note PHASE_15.
 
@@ -43,7 +43,13 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
   13:28:32 CEST, frontend alle 13:26:59, migrazioni alle 13:26:38 del 2026-10-20.
   Le integrazioni backend previste per 15a-3 sono collegate e verificate in CI;
   questo esito non certifica il funzionamento end-to-end del frontend SSE.
-- 15a-4: client SSE frontend e collegamento del fallback ancora da implementare.
+- Riallineamento 4430d40 verificato: run 39421574917 tutto verde,
+  backend concluso alle 14:22:43 CEST, frontend 14:21:51, migrazioni 14:21:21.
+- 15a-4a approvata: client condiviso, validazione, test e lifecycle nel layout.
+  Implementazione nel blocco corrente; test locali non eseguiti, CI da leggere.
+  Pagine e polling non collegati agli eventi: nessun real-time UI dichiarato.
+- 15a-4b: sottoscrizioni delle pagine, resync REST e fallback da implementare
+  dopo verifica del client e approvazione del blocco successivo.
 - 15b: sistemazione generale da definire dopo SSE con l'autore.
 
 ## Timer e lifecycle
@@ -72,9 +78,11 @@ Gli eventi sono accodati prima del commit dell'azione; rollback rimuove entrambi
 GET /api/events/stream: cookie, Last-Event-ID, letture ogni secondo, keep-alive ogni
 15 secondi, retry SSE 3 secondi. Sessioni SQL brevi nel thread pool, chiuse prima
 di invio/attesa. Sessione HTTP ricontrollata a ogni lettura; auth.expired chiude
-lo stream e il futuro client dovra' chiudere EventSource.
+lo stream. Il client del blocco 15a-4a chiude EventSource e svuota l'utente locale;
+la verifica CI di questa integrazione e' ancora pendente.
 Primo accesso o cursore non recuperabile inviano resync: il client ricarichera'
-lo stato REST. Rilevato anche un registro svuotato con sqlite_sequence.
+lo stato REST nel blocco schermate 15a-4b. Rilevato anche un registro svuotato
+con sqlite_sequence.
 I privati sono visibili solo al destinatario; i pubblici agli iscritti con pilota
 non eliminato e ad admin/giudici. Mai carte private, conteggi o bozze nei pubblici.
 La conservazione e' 24 ore, con eliminazione periodica e non esatta al secondo.
@@ -102,6 +110,7 @@ notifiche CardGift. Correzioni ed eventi condividono commit e rollback.
 - PHASE_15_CARD_PLAY_EVENTS.md: giocate e annullamenti sponsor, CI verificata.
 - PHASE_15_GIFT_EVENTS.md: assegnazioni tasto S e annullamenti, CI verificata.
 - PHASE_15_JUDGE_EVENTS.md: correzioni del revisore, CI verde su 8e1f440.
+- PHASE_15_FRONTEND_CLIENT.md: client condiviso, test preparati e CI da verificare.
 - PHASE_15_CONCURRENCY.md: test reali a due processi, non prove di carico o multi-host.
 - PHASE_15_CI_FIX.md: asserzione Alembic storica, superata in CI su 47df2a5.
 - PHASE_15_STATE_EVENTS_FIX.md: ID ORM dopo rollback, superata in CI su 53709a0.
@@ -137,11 +146,9 @@ Nessuna nuova dipendenza di questi blocchi. Test locali non eseguiti.
 Sottofasi approvate una alla volta; conferma puntuale prima dei push.
 Dopo i check riallineare i documenti piccoli interessati e raccogliere qui i delta
 non applicati ai documenti grandi. Nessuna esecuzione o riuscita presunta.
-Il blocco revisore parte dalla CI verde di c6898da (run 39411533470).
-Riletti servizio card_judge, registro eventi, route e test di riapertura.
-Il codice del blocco e' pubblicato in 8e1f440e13dfc4bd36c7839ec49b411dd72e68fe.
-Ricontrollati i tre job del run 39414943186: tutti completati con successo.
-Non sono stati eseguiti comandi locali o letti conteggi numerici dai log pytest.
-Questo riallineamento modifica soltanto PHASE_15.md e PHASE_15_JUDGE_EVENTS.md;
-la CI di un successivo commit documentale richiede una verifica separata.
-Prima del frontend presentare analisi e file previsti per l'approvazione.
+La 15a-4a parte da 4430d409a84b541c8f8bd096a0d7589935166460, PR 14 in bozza.
+Riletti layout e autenticazione, pagine campionato/gara, polling, store revisione,
+protocollo backend, package.json e vite.config.ts. Scaffold e lockfile conservati.
+Nessun comando locale eseguito: formatter, lint, check, test e build del nuovo
+codice restano da verificare tramite CI dopo il push. Poi riallineare le note.
+Il collegamento alle schermate richiede l'approvazione separata della 15a-4b.

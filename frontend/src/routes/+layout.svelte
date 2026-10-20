@@ -1,11 +1,12 @@
 <script lang="ts">
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { auth } from '$lib/auth.svelte';
+	import { eventClient } from '$lib/events/event-client';
 	import { Button } from '$lib/components/ui/button';
 
 	let { children } = $props();
@@ -21,6 +22,15 @@
 	// All'apertura dell'app chiede al backend se c'è già una sessione valida.
 	onMount(() => {
 		auth.init();
+	});
+
+	// Una connessione per il layout autenticato; cleanup su cambio utente o smontaggio.
+	$effect(() => {
+		const userId = auth.ready ? auth.user?.id : undefined;
+		if (userId === undefined) return;
+		return untrack(() => eventClient.connect(userId, () => {
+			if (auth.user?.id === userId) auth.user = null;
+		}));
 	});
 
 	// Chi non è loggato e apre una pagina protetta va al login.
@@ -40,6 +50,7 @@
 	}
 
 	async function logout() {
+		eventClient.disconnect();
 		try {
 			await auth.logout();
 		} catch {
