@@ -18,6 +18,7 @@ from app.api.shop import router as shop_router
 from app.api.shop_play import router as shop_play_router
 from app.api.shop_me import router as shop_me_router
 from app.api.card_play import router as card_play_router
+from app.api.card_gift_seen import router as card_gift_seen_router
 from app.api.card_admin import router as card_admin_router
 from app.api.race_review import router as race_review_router
 from app.api.review_counts import router as review_counts_router
@@ -66,6 +67,7 @@ app.include_router(review_counts_router, prefix="/api/championships")
 app.include_router(packs_router, prefix="/api/championships")
 app.include_router(shop_play_router, prefix="/api/championships")
 app.include_router(card_play_router, prefix="/api/championships")
+app.include_router(card_gift_seen_router, prefix="/api/championships")
 app.include_router(shop_me_router, prefix="/api/me")
 app.include_router(card_admin_router, prefix="/api/admin/cards")
 app.include_router(admin_router, prefix="/api/admin")
