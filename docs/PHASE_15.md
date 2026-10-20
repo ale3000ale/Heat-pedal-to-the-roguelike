@@ -86,9 +86,20 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
   verificata in CI 39476606868: backend pytest alle 20:41:18 CEST,
   migrazioni alle 20:39:33, frontend check/lint/test/build alle 20:39:58.
   Endpoint /seen-selected disponibile nel backend; /seen storico invariato.
-  Il frontend non usa ancora l'operazione selettiva.
-- 15a-4b, commit 2: collegamento delle schermate ancora da implementare;
-  prerequisiti backend verificati, scelte su risultati e fallback gia' approvate.
+  Le pagine non usano ancora l'operazione selettiva.
+- Riallineamento 9ea0cb0 verificato: CI 39479071828 tutta verde,
+  migrazioni alle 20:57:15 CEST, frontend 20:57:25, backend 20:59:14.
+- Servizio frontend notifiche in 493a3fb: prima CI 39491830284 con backend
+  e migrazioni success, frontend failure su Prettier del solo file di test.
+- Formatter aggiornato in ae161cc; il bot pubblica de29e7000aa5ad9bc6c313817178622b9844f903
+  alle 23:04:11 CEST. Diff letto: solo gift-notifications-api.spec.ts, formattazione.
+- CI ordinaria 39497343267 sulla testa de29e70 tutta verde: migrazioni alle
+  23:05:19 CEST, frontend check/lint/test/build alle 23:05:42, backend alle 23:06:47.
+  Servizio di lettura completa e conferma selettiva verificato, ma non ancora
+  importato dalle schermate. Nessuna verifica browser del collegamento implicita.
+- 15a-4b, commit 2: servizio preparatorio disponibile; collegamento delle schermate
+  e merge dei risultati ancora da implementare. Scelte su risultati e fallback
+  gia' approvate, nessun nuovo polling di sicurezza con stream open.
 - 15b: sistemazione generale da definire dopo SSE con l'autore.
 
 ## Timer e lifecycle
@@ -152,9 +163,13 @@ puo' confermare; la query limita anche il campionato. ID annullati, assenti,
 gia' visti o fuori ambito sono ignorati, con 204 senza dettagli. Conferme ripetute
 non riscrivono seen_at. Nessuna modifica a carte, saldi o eventi SSE.
 /seen storico resta compatibile e marca tutte le notifiche del pilota.
-Il futuro frontend deve inviare solo gli ID mostrati, raggruppati per pilota
-in batch di massimo 100; annullamenti remoti non devono confermare nuove
-notifiche mai mostrate. Il backend non prova da solo la visibilita' nel browser.
+Il servizio frontend gift-notifications-api.ts conserva l'associazione pilota/regalo,
+legge snapshot completi senza nascondere errori e conferma solo la lista ricevuta,
+in batch da massimo 100 per pilota. Valida gli ID come interi positivi sicuri per
+JavaScript; non dichiara atomicita' tra batch. Verificato in CI, ma non ancora
+usato dalle pagine o dal popup. Il futuro collegamento deve passare solo gli ID
+mostrati: annullamenti remoti non devono confermare nuove notifiche mai mostrate.
+Il backend e il servizio non provano da soli la visibilita' nel browser.
 
 ## Note dei blocchi e correzioni
 
@@ -173,6 +188,8 @@ notifiche mai mostrate. Il backend non prova da solo la visibilita' nel browser.
   e precauzioni operative prima dell'applicazione sui dati reali.
 - PHASE_15_GIFT_SEEN_SELECTED.md: API selettiva, contratto, CI verde su cda06a9,
   frontend pendente e richiesta di avviso per i test manuali finali.
+- PHASE_15_FRONTEND_GIFT_SERVICE.md: servizio notifiche, limiti dei batch e degli ID,
+  errore Prettier su 493a3fb, correzione e CI verde sulla testa de29e70.
 - PHASE_15_CONCURRENCY.md: test reali a due processi, non prove di carico o multi-host.
 - PHASE_15_CI_FIX.md: asserzione Alembic storica, superata in CI su 47df2a5.
 - PHASE_15_STATE_EVENTS_FIX.md: ID ORM dopo rollback, superata in CI su 53709a0.
@@ -189,6 +206,7 @@ Nessun reset/cancellazione autorizzato in questi blocchi.
 La CI usa database nuovi o sintetici: non sostituisce le verifiche sui dati reali.
 Catena letta: testa precedente a2e6c0d4f8b3, registro d5e9a3b7c1f6, nuova testa
 d6f0a4b8c2e7; merge storico b2d6f0a4c8e1. Il blocco API non aggiunge migrazioni.
+Il servizio frontend e la sua correzione di formattazione non aggiungono migrazioni.
 Il downgrade della nuova migrazione conserva righe ma perde la garanzia e la
 storia di non riuso. Non usarlo con client che richiedono ID stabili; non portare
 conferme pendenti attraverso ripristini di backup o ricreazioni del database.
@@ -220,9 +238,11 @@ Sottofasi approvate una alla volta; conferma puntuale prima dei push.
 Dopo i check riallineare i documenti piccoli interessati e raccogliere qui i delta
 non applicati ai documenti grandi. Nessuna esecuzione o riuscita presunta.
 Scaffold e lockfile conservati. Questo riallineamento modifica soltanto
-PHASE_15_GIFT_SEEN_SELECTED.md, PHASE_15_GIFT_ID_MIGRATION.md, DATABASE.md e PHASE_15.md.
-Esiti CI letti per cda06a9: 39476606868 tutto verde; nessun conteggio test inventato.
+PHASE_15_FRONTEND_GIFT_SERVICE.md e PHASE_15.md, senza nuove modifiche al codice.
+Esiti CI letti per de29e70: 39497343267 tutto verde; nessun conteggio test inventato.
+Letti anche il commit del bot e il diff del solo file di test formattato.
 Il nuovo commit documentale richiede una verifica CI separata.
-Nessun codice, workflow o dato reale modificato e nessun avvio del commit 2.
-Dopo il riallineamento preparare il collegamento delle schermate con i prerequisiti
-backend ora disponibili; avviso e checklist manuale solo alla fine dei controlli.
+PROJECT_SPEC.md e PROJECT_STATUS.md restano intatti secondo la decisione della fase.
+Nessun workflow o dato reale modificato, nessun merge e nessuna prova manuale nuova.
+Dopo il riallineamento proseguire il collegamento delle schermate con il servizio
+ora verificato; avviso e checklist manuale solo alla fine dei relativi controlli.
