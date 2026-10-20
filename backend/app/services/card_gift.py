@@ -17,6 +17,7 @@ from app.services.card_play import (
 )
 from app.services.cards import CardEntry, card_key, dump_cards, parse_cards
 from app.services.championships import ChampionshipClosedError, get_championship
+from app.services.gift_events import record_gift_action
 from app.services.pilots import PilotNotFoundError, get_own_pilot
 from app.services.shop_purchase import _lock_database
 from app.services.shop_view import PilotNotEnrolledError, is_enrolled
@@ -112,10 +113,10 @@ def draw_gift(
     pilot_id: int,
     rng: random.Random | None = None,
 ) -> CardGift:
-    # Tasto S: sposta una carta casuale dalla pool sponsor all'inventario del pilota e crea
-    # la notifica per il proprietario. Admin e giudice possono usarlo su qualsiasi pilota
-    # iscritto, il giocatore solo sui propri. Un solo commit; in caso di errore non cambia nulla.
-    # Errori: quelli di _authorize_gift, RaceInReviewError, SponsorPoolEmptyError.
+    # Tasto S: pool, inventario, notifica persistente ed eventi nello stesso commit.
+    # Admin/giudice agiscono su ogni iscritto, il giocatore sui propri piloti.
+    # Errori: quelli di _authorize_gift, RaceInReviewError, SponsorPoolEmptyError,
+    # validazione/scrittura eventi; rollback completo su qualsiasi errore.
     try:
         _lock_database(db)
         pilot, race = _authorize_gift(db, user, championship_id, pilot_id)
@@ -131,6 +132,7 @@ def draw_gift(
         db.add(gift)
         db.flush()
         db.refresh(gift)
+        record_gift_action(db, race, pilot, gift, "card.gifted")
         db.commit()
     except Exception:
         db.rollback()
@@ -161,13 +163,11 @@ def _ensure_within_undo_window(gift: CardGift) -> None:
 
 
 def undo_gift(db: Session, user: User, championship_id: int, gift_id: int) -> None:
-    # Annulla un'assegnazione del tasto S entro 60 secondi: sposta una copia della carta
-    # dall'inventario sponsor del pilota alla pool sponsor del campionato e cancella la
-    # notifica. Solo admin e giudice; la carta non deve essere già stata giocata e la gara
-    # deve essere ancora quella in corso. Un solo commit; in caso di errore non cambia nulla.
+    # Annullo entro 60 secondi per admin/giudice, stessa gara, carta non impegnata.
+    # Ripristino pool/inventario, eliminazione notifica ed eventi sono atomici.
     # Errori: GiftUndoForbiddenError, ChampionshipNotFoundError, ChampionshipClosedError,
     # GiftNotFoundError, NoRaceInProgressError, RaceInReviewError, GiftUndoExpiredError,
-    # GiftNotUndoableError.
+    # GiftNotUndoableError e scrittura eventi; rollback completo.
     try:
         _lock_database(db)
         if user.role not in GIFT_ANY_PILOT_ROLES:
@@ -196,6 +196,7 @@ def undo_gift(db: Session, user: User, championship_id: int, gift_id: int) -> No
             raise GiftNotUndoableError
         inventory_deck.cards = dump_cards(_without_one_copy(inventory, entry))
         pool_deck.cards = dump_cards(_with_one_more_copy(parse_cards(pool_deck.cards), entry))
+        record_gift_action(db, race, pilot, gift, "card.gift_undone")
         db.delete(gift)
         db.commit()
     except Exception:
