@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -22,16 +23,33 @@ from app.api.race_review import router as race_review_router
 from app.api.review_counts import router as review_counts_router
 from app.api.events import router as events_router
 from app.services.cleanup import purge_old_deleted
+from app.services.review_timer import review_timer
 
 from app.config import MEDIA_DIR
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    with SessionLocal() as db:
+    """Esegue manutenzione iniziale e gestisce un timer per worker.
+
+    Parametro: applicazione FastAPI. Il timer usa sessioni brevi e coordina le
+    scritture tramite SQLite. All'uscita, anche per errore nel corpo, segnala
+    stop e attende il task: non abbandona il giro SQL in corso.
+    Errori di startup o del task propagano; non esegue migrazioni automatiche.
+    """
+    factory = SessionLocal
+    with factory() as db:
         purge_expired(db)
         purge_old_deleted(db)
-    yield
+    stop = asyncio.Event()
+    task = asyncio.create_task(review_timer(factory, stop), name="heat-review-timer")
+    app.state.review_timer_stop = stop
+    app.state.review_timer_task = task
+    try:
+        yield
+    finally:
+        stop.set()
+        await task
 
 
 app = FastAPI(title="Heat", lifespan=lifespan)
