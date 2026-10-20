@@ -12,13 +12,17 @@ class FakeClient {
 	subscribe(listener: Listener<StreamEvent>, filter: EventFilter = {}) {
 		this.filter = filter;
 		this.events.add(listener);
-		return () => { this.events.delete(listener); };
+		return () => {
+			this.events.delete(listener);
+		};
 	}
 
 	subscribeStatus(listener: Listener<ConnectionStatus>) {
 		this.statuses.add(listener);
 		void listener(this.status);
-		return () => { this.statuses.delete(listener); };
+		return () => {
+			this.statuses.delete(listener);
+		};
 	}
 
 	setStatus(status: ConnectionStatus) {
@@ -77,8 +81,13 @@ describe('coordinatore SSE e fallback', () => {
 		const { client, load, live } = setup();
 		await live.refresh();
 		const initial = load.mock.calls.length;
-		client.emit({ type: 'standings.changed', id: '1', championshipId: 1,
-			pilotId: null, payload: {} });
+		client.emit({
+			type: 'standings.changed',
+			id: '1',
+			championshipId: 1,
+			pilotId: null,
+			payload: {}
+		});
 		expect(load).toHaveBeenCalledTimes(initial);
 		client.emit({ type: 'resync', id: '2', reason: 'initial' });
 		await Promise.resolve();

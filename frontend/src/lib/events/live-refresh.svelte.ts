@@ -20,8 +20,11 @@ export interface LiveRefreshOptions<T> extends RefreshOptions<T> {
  * onUnauthorized gestisce il 401 nel chiamante, dopo stop di timer e sottoscrizioni.
  */
 export function startLiveRefresh<T>(options: LiveRefreshOptions<T>) {
-	if (!Number.isSafeInteger(options.intervalMs) || options.intervalMs < 1 ||
-		options.intervalMs > 2147483647) {
+	if (
+		!Number.isSafeInteger(options.intervalMs) ||
+		options.intervalMs < 1 ||
+		options.intervalMs > 2147483647
+	) {
 		throw new RangeError('Intervallo non valido');
 	}
 	const client = options.client ?? eventClient;

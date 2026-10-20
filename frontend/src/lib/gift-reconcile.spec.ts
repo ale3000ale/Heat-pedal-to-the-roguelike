@@ -3,8 +3,13 @@ import type { CardGift } from './card-play-types';
 import { reconcileGifts } from './gift-reconcile';
 
 function gift(id: number): CardGift {
-	return { id, race_id: 1, card_name: `Carta ${id}`, card_path: `cards/${id}.webp`,
-		created_at: '2026-10-20T12:00:00' };
+	return {
+		id,
+		race_id: 1,
+		card_name: `Carta ${id}`,
+		card_path: `cards/${id}.webp`,
+		created_at: '2026-10-20T12:00:00'
+	};
 }
 
 describe('riconciliazione regali', () => {
@@ -13,7 +18,8 @@ describe('riconciliazione regali', () => {
 		const second = gift(2);
 		const third = gift(3);
 		expect(reconcileGifts([first, second], [second, third])).toEqual({
-			visible: [second], pending: [third]
+			visible: [second],
+			pending: [third]
 		});
 	});
 
