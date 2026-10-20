@@ -29,9 +29,14 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
   Due processi spawn con connessioni indipendenti sullo stesso file SQLite sintetico:
   scadenza contro scadenza e scadenza contro conferma manuale. Una sola chiusura,
   un solo consumo/restituzione e una sola coppia di eventi.
-- In questo blocco il timer viene collegato al lifespan. Test lifecycle scritti ma
-  non eseguiti localmente: esito della nuova CI da verificare dopo il push.
-- 15a-3 resta incompleta: eventi giocate/annullamenti/tasto S ancora da collegare.
+- Timer collegato al lifespan; test lifecycle passati in CI su 22d4aa4
+  (run 39408719258), come registrato in PHASE_15_CARD_PLAY_EVENTS.md.
+- Giocata e annullamento sponsor collegati; CI verde su e61aa83
+  (run 39409688398). Dettagli in PHASE_15_CARD_PLAY_EVENTS.md.
+- Tasto S e annullamento assegnazione collegati in 660a279; CI verde
+  (run 39410540606): backend pytest, migrazioni e frontend check/lint/test/build.
+  Test del blocco: privacy, rifiuti senza eventi, ripristino saldi e rollback.
+- 15a-3 resta incompleta: correzioni del revisore ancora da collegare.
 - 15a-4: client SSE frontend e collegamento del fallback ancora da implementare.
 - 15b: sistemazione generale da definire dopo SSE con l'autore.
 
@@ -47,9 +52,10 @@ All'uscita, anche per errore nel corpo del lifespan, stop cooperativo e attesa d
 task. Non viene interrotta a meta' una transazione; l'attesa dipende dal giro SQL.
 Gli errori di giro sono loggati e ritentati. Nessuna migrazione automatica.
 
-File del blocco: backend/app/main.py, backend/tests/test_review_timer_lifespan.py,
-questo documento. Test: avvio/arresto normale e con errore nel corpo, startup
-fallito senza task e timer reale su dati temporanei con prima scadenza osservata.
+File del blocco lifecycle: backend/app/main.py,
+backend/tests/test_review_timer_lifespan.py, questo documento.
+Test: avvio/arresto normale e con errore nel corpo, startup fallito senza task
+ e timer reale su dati temporanei con prima scadenza osservata.
 La prova lifecycle non e' una verifica di deployment o di traffico HTTP reale.
 
 ## Registro ed endpoint
@@ -67,12 +73,25 @@ I privati sono visibili solo al destinatario; i pubblici agli iscritti con pilot
 non eliminato e ad admin/giudici. Mai carte private, conteggi o bozze nei pubblici.
 La conservazione e' 24 ore, con eliminazione periodica e non esatta al secondo.
 
+## Eventi carte e notifiche persistenti
+
+card.played e card.play_undone sono privati al proprietario, con race_id/play_id.
+card.gifted e card.gift_undone sono privati al proprietario, con race_id/gift_id.
+Ogni azione accoda anche cards.changed pubblico con soli race_id/pilot_id.
+Nessun nome, immagine o conteggio delle carte nei payload di questi eventi.
+Il client dovra' rileggere le API autorizzate; il replay di card.gifted non deve
+mostrare direttamente una carta gia' annullata o una notifica gia' vista.
+CardGift.seen_at rimane il riferimento delle notifiche non viste, anche nel
+fallback polling. Eventi, inventario, pool e notifica sono nella stessa transazione.
+
 ## Note dei blocchi e correzioni
 
 - PHASE_15_IMPLEMENTATION.md, PHASE_15_DATABASE.md, PHASE_15_SERVICE.md.
 - PHASE_15_REVIEW_EVENTS.md, PHASE_15_LEGACY_EVENTS.md, PHASE_15_STATE_EVENTS.md,
   PHASE_15_RACE_EVENTS.md: transazioni ed eventi delle azioni implementate.
-- PHASE_15_TIMER.md: modulo timer iniziale; ora collegato al lifecycle in questo blocco.
+- PHASE_15_TIMER.md: modulo timer iniziale, ora collegato al lifecycle.
+- PHASE_15_CARD_PLAY_EVENTS.md: giocate e annullamenti sponsor, CI verificata.
+- PHASE_15_GIFT_EVENTS.md: assegnazioni tasto S e annullamenti, CI verificata.
 - PHASE_15_CONCURRENCY.md: test reali a due processi, non prove di carico o multi-host.
 - PHASE_15_CI_FIX.md: asserzione Alembic storica, superata in CI su 47df2a5.
 - PHASE_15_STATE_EVENTS_FIX.md: ID ORM dopo rollback, superata in CI su 53709a0.
@@ -94,15 +113,21 @@ Nessuna nuova dipendenza di questi blocchi. Test locali non eseguiti.
 - PROJECT_SPEC.md: rilettura dopo bc0fbfb e refuso storico da verificare.
 - PHASE_14_POST_MERGE.md: aae6c33 e' storico; automazione format-championships non
   verificata in questa fase.
-- DATABASE.md letto: delta SSE in PHASE_15_DATABASE.md. Prima di ulteriori
-  aggiornamenti rileggere README.md, SETUP.md, SCRIPTS.md, SHOP_DESIGN.md,
-  PROJECT_NOTES.md. Backup/setup sicuro da verificare nel codice.
+- README.md, SETUP.md, SCRIPTS.md e DATABASE.md riletti per questo riallineamento.
+  Nessun comando, dipendenza o schema aggiunto dai blocchi eventi carte.
+  Delta SSE del database in PHASE_15_DATABASE.md. Prima di ulteriori
+  aggiornamenti rileggere SHOP_DESIGN.md e PROJECT_NOTES.md.
+  Backup/setup sicuro ancora da verificare nel codice.
 - config.py: cookie secure disattivato e URL SQLite fisso; da sistemare per online.
 - Differenza del formato Deck.cards tra istruzioni e codice segnalata da DATABASE.md:
   nessuna modifica al formato delle carte o ai percorsi in questa fase.
 
-## Metodo
+## Metodo e verifica del riallineamento
 
 Sottofasi approvate una alla volta; conferma puntuale prima dei push.
 Dopo i check riallineare i documenti piccoli interessati e raccogliere qui i delta
 non applicati ai documenti grandi. Nessuna esecuzione o riuscita presunta.
+Riallineamento documentale del 2026-10-20 basato sui tre check completati con
+successo del run 39410540606, conclusi entro le 12:50:23 CEST su 660a279.
+Non sono stati eseguiti comandi locali. La CI di un eventuale successivo commit
+solo documentale non e' coperta dall'esito di questo run.

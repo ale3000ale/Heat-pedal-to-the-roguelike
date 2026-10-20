@@ -25,9 +25,13 @@ Endpoint e codici HTTP riletti da api/card_play.py prima di scrivere i test.
 
 ## Verifiche e limiti
 
-Nuovi test non eseguiti localmente: esito CI da verificare dopo il push.
+Test non eseguiti localmente. CI verde su e61aa83 (run 39409688398):
+backend pytest, migrazioni e frontend check/lint/test/build.
+La suite backend e' passata anche su 660a279 (run 39410540606), insieme
+ai check migrazioni e frontend, dopo l'aggiunta degli eventi tasto S.
 Nessuna nuova migrazione, dipendenza, modifica al DB reale o alle immagini.
 Nessun backup reale eseguito. Non riavviare sui dati reali senza backup e prova
 su copia della migrazione event_log, come indicato in PHASE_15.md.
-Tasto S, annullo assegnazione e correzioni del revisore restano da collegare.
-Client SSE frontend e fallback ancora da implementare. Documenti grandi intatti.
+Tasto S e annullo assegnazione collegati: vedi PHASE_15_GIFT_EVENTS.md.
+Correzioni del revisore, client SSE frontend e fallback ancora da implementare.
+Documenti grandi intatti secondo la decisione registrata in PHASE_15.md.
