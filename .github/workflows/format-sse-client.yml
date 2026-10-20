@@ -32,13 +32,15 @@ jobs:
       - name: Installa dal lockfile senza aggiornarlo
         working-directory: frontend
         run: npm ci
-      - name: Formatta soltanto il test segnalato del servizio notifiche
+      - name: Formatta soltanto controller e popup regali
         working-directory: frontend
         shell: bash
         run: |
           set -euo pipefail
           files=(
-            src/lib/gift-notifications-api.spec.ts
+            src/lib/gift-popup-controller.ts
+            src/lib/gift-popup-controller.spec.ts
+            src/lib/components/card-gift-popup.svelte
           )
           ./node_modules/.bin/prettier --write "${files[@]}"
           ./node_modules/.bin/prettier --check "${files[@]}"
@@ -59,7 +61,9 @@ jobs:
         run: |
           set -euo pipefail
           files=(
-            frontend/src/lib/gift-notifications-api.spec.ts
+            frontend/src/lib/gift-popup-controller.ts
+            frontend/src/lib/gift-popup-controller.spec.ts
+            frontend/src/lib/components/card-gift-popup.svelte
           )
           git diff --exit-code -- frontend/package.json frontend/package-lock.json frontend/prettier.config.js
           git add -- "${files[@]}"
@@ -75,5 +79,5 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m "style: formatta test notifiche con Prettier del lockfile"
+          git commit -m "style: formatta controller e popup regali con Prettier del lockfile"
           git push origin HEAD:refs/heads/phase-15-sse-sistemazione

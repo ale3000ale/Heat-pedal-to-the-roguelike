@@ -2,8 +2,6 @@
 	import type { CardGift } from '$lib/card-play-types';
 	import Modal from '$lib/components/modal.svelte';
 
-	// Popup "Hai ottenuto una carta sponsor". Si chiude solo con la X; alla chiusura
-	// chiama `onclosed`, che segna le notifiche come viste.
 	let {
 		open = $bindable(false),
 		gifts,
@@ -11,23 +9,45 @@
 	}: {
 		open?: boolean;
 		gifts: CardGift[];
-		onclosed: () => void | Promise<void>;
+		onclosed: (shown: CardGift[]) => void | Promise<void>;
 	} = $props();
 
-	let wasOpen = false;
+	let renderedGifts: CardGift[] = [];
 
-	// Rileva il passaggio da aperto a chiuso, qualunque sia il modo in cui è avvenuto.
+	// Gli effetti Svelte vengono eseguiti dopo l'aggiornamento del DOM. Il click deve
+	// usare l'ultima lista resa, non nuove notifiche assegnate prima del prossimo render.
 	$effect(() => {
-		if (open) {
-			wasOpen = true;
-		} else if (wasOpen) {
-			wasOpen = false;
-			void onclosed();
-		}
+		if (open) renderedGifts = [...gifts];
 	});
+
+	function getOpen(): boolean {
+		return open;
+	}
+
+	/**
+	 * Riceve soltanto le variazioni originate dal Modal, non quelle del genitore.
+	 * @param next Nuovo stato del Modal; con closeOnOutside=false si chiude con la X.
+	 * @returns Nessun valore. Il chiamante gestisce gli errori della callback asincrona.
+	 * Una chiusura remota o di lifecycle del genitore non richiama onclosed.
+	 */
+	function setOpen(next: boolean): void {
+		if (open && !next) {
+			const shown = [...renderedGifts];
+			open = false;
+			void onclosed(shown);
+		} else {
+			open = next;
+		}
+	}
 </script>
 
-<Modal bind:open title="Hai ottenuto una carta sponsor" closeOnOutside={false} blur narrow>
+<Modal
+	bind:open={getOpen, setOpen}
+	title="Hai ottenuto una carta sponsor"
+	closeOnOutside={false}
+	blur
+	narrow
+>
 	<ul class="flex flex-wrap justify-center gap-3">
 		{#each gifts as gift (gift.id)}
 			<li class="w-48 overflow-hidden rounded-lg border bg-card">
