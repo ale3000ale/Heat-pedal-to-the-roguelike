@@ -11,7 +11,8 @@ export const DOMAIN_EVENTS = [
 ] as const;
 
 export type DomainEventType = (typeof DOMAIN_EVENTS)[number];
-export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+export type JsonValue =
+	null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export type StreamEvent =
 	| {
 			type: DomainEventType;
@@ -27,6 +28,7 @@ export type StreamEvent =
 	  }
 	| { type: 'auth.expired' };
 
-export type ConnectionStatus = 'stopped' | 'connecting' | 'open' | 'retrying' | 'unsupported' | 'expired';
+export type ConnectionStatus =
+	'stopped' | 'connecting' | 'open' | 'retrying' | 'unsupported' | 'expired';
 export type EventFilter = { championshipId?: number; raceId?: number };
 export type Listener<T> = (value: T) => void | Promise<void>;

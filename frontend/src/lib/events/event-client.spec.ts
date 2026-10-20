@@ -3,7 +3,9 @@ import { EventClient, type EventSourceLike } from './event-client';
 
 class FakeSource extends EventTarget implements EventSourceLike {
 	readyState = 0;
-	close = vi.fn(() => { this.readyState = 2; });
+	close = vi.fn(() => {
+		this.readyState = 2;
+	});
 	send(type: string, data = '{}', id = '') {
 		this.dispatchEvent(new MessageEvent(type, { data, lastEventId: id }));
 	}
@@ -69,8 +71,12 @@ describe('client SSE condiviso', () => {
 		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
 		const { client, sources } = setup();
 		client.connect(1, vi.fn());
-		client.subscribe(() => { throw new Error('sync'); });
-		client.subscribe(async () => { throw new Error('async'); });
+		client.subscribe(() => {
+			throw new Error('sync');
+		});
+		client.subscribe(async () => {
+			throw new Error('async');
+		});
 		const received = vi.fn();
 		client.subscribe(received);
 		sources[0].send('cards.changed', '{', '1');
@@ -102,7 +108,9 @@ describe('client SSE condiviso', () => {
 	it('auth.expired chiude prima del callback e non riconnette', () => {
 		vi.useFakeTimers();
 		const { client, sources, factory } = setup();
-		const expired = vi.fn(() => { expect(sources[0].close).toHaveBeenCalledOnce(); });
+		const expired = vi.fn(() => {
+			expect(sources[0].close).toHaveBeenCalledOnce();
+		});
 		const status = vi.fn();
 		client.subscribeStatus(status);
 		client.connect(1, expired);

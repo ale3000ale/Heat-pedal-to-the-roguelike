@@ -45,14 +45,18 @@ export class EventClient {
 	subscribe(listener: Listener<StreamEvent>, filter: EventFilter = {}): () => void {
 		const entry = { listener, filter: { ...filter } };
 		this.events.add(entry);
-		return () => { this.events.delete(entry); };
+		return () => {
+			this.events.delete(entry);
+		};
 	}
 
 	/** Stato del trasporto, non conferma che una rilettura REST sia completata. */
 	subscribeStatus(listener: Listener<ConnectionStatus>): () => void {
 		this.statuses.add(listener);
 		deliver(listener, this.status);
-		return () => { this.statuses.delete(listener); };
+		return () => {
+			this.statuses.delete(listener);
+		};
 	}
 
 	private setStatus(status: ConnectionStatus): void {
@@ -67,9 +71,18 @@ export class EventClient {
 			if (generation !== this.generation) return;
 			if (!this.events.has(entry)) continue;
 			if ('championshipId' in event) {
-				if (entry.filter.championshipId !== undefined && entry.filter.championshipId !== event.championshipId) continue;
+				if (
+					entry.filter.championshipId !== undefined &&
+					entry.filter.championshipId !== event.championshipId
+				)
+					continue;
 				const raceId = event.payload.race_id;
-				if (entry.filter.raceId !== undefined && typeof raceId === 'number' && entry.filter.raceId !== raceId) continue;
+				if (
+					entry.filter.raceId !== undefined &&
+					typeof raceId === 'number' &&
+					entry.filter.raceId !== raceId
+				)
+					continue;
 			}
 			deliver(entry.listener, event);
 		}
@@ -108,8 +121,16 @@ export class EventClient {
 		const open = () => {
 			if (generation !== this.generation) return;
 			let source: EventSourceLike | null;
-			try { source = this.factory(STREAM_URL); } catch { schedule(); return; }
-			if (!source) { this.setStatus('unsupported'); return; }
+			try {
+				source = this.factory(STREAM_URL);
+			} catch {
+				schedule();
+				return;
+			}
+			if (!source) {
+				this.setStatus('unsupported');
+				return;
+			}
 			this.source = source;
 			const listeners: [string, (event: Event) => void][] = [];
 			const listen = (type: string, handler: (event: Event) => void) => {
@@ -160,7 +181,9 @@ export class EventClient {
 		};
 		this.setStatus('connecting');
 		open();
-		return () => { if (generation === this.generation) this.disconnect(); };
+		return () => {
+			if (generation === this.generation) this.disconnect();
+		};
 	}
 }
 

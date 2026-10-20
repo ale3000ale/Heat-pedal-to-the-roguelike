@@ -28,9 +28,11 @@
 	$effect(() => {
 		const userId = auth.ready ? auth.user?.id : undefined;
 		if (userId === undefined) return;
-		return untrack(() => eventClient.connect(userId, () => {
-			if (auth.user?.id === userId) auth.user = null;
-		}));
+		return untrack(() =>
+			eventClient.connect(userId, () => {
+				if (auth.user?.id === userId) auth.user = null;
+			})
+		);
 	});
 
 	// Chi non è loggato e apre una pagina protetta va al login.

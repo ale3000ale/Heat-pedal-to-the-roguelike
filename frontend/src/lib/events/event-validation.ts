@@ -17,8 +17,7 @@ function json(value: unknown): value is JsonValue {
 
 /** Valida un cursore SQLite int64 senza convertirlo in un Number impreciso. */
 function cursor(value: string): boolean {
-	return /^(0|[1-9]\d{0,18})$/.test(value) &&
-		(value.length < 19 || value <= '9223372036854775807');
+	return /^(0|[1-9]\d{0,18})$/.test(value) && (value.length < 19 || value <= '9223372036854775807');
 }
 
 /**
