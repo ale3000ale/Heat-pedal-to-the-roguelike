@@ -13,7 +13,7 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
 - Polling e card_poll_seconds mantenuti come fallback; rimozione rinviata.
 - Timer backend per scadenza revisioni oltre alla conferma alla prima richiesta.
 - Rete scelta dopo lettura di api.ts e vite.config.ts: /api same-origin tramite proxy
-  versoFastAPI, non chiamate cross-origin. Buffering reale ancora da verificare.
+  verso FastAPI, non chiamate cross-origin. Buffering reale ancora da verificare.
 - PROJECT_SPEC.md e PROJECT_STATUS.md lasciati intatti per richiesta dell'autore;
   integrazioni raccolte qui e nelle note PHASE_15.
 
@@ -45,11 +45,19 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
   questo esito non certifica il funzionamento end-to-end del frontend SSE.
 - Riallineamento 4430d40 verificato: run 39421574917 tutto verde,
   backend concluso alle 14:22:43 CEST, frontend 14:21:51, migrazioni 14:21:21.
-- 15a-4a approvata: client condiviso, validazione, test e lifecycle nel layout.
-  Implementazione nel blocco corrente; test locali non eseguiti, CI da leggere.
-  Pagine e polling non collegati agli eventi: nessun real-time UI dichiarato.
+- 15a-4a: client condiviso, validazione, test e lifecycle nel layout pubblicati
+  in cb5d649; primo lint fallito per formattazione nel run 39424794586.
+- Workflow mirato aggiunto in bf1ab11; il bot ha formattato esclusivamente i
+  sei file segnalati in 33f01f0447706cbfe78a7468b4e0c7cb13696deb.
+- CI sulla testa 33f01f0 verificata: run 39425660561 tutto verde.
+  Frontend check/lint/test/build concluso alle 15:03:35 CEST, backend pytest
+  alle 15:04:41, migrazioni su DB di test alle 15:03:02 del 2026-10-20.
+  Client condiviso verificato in CI; pagine e polling non ancora sottoscritti.
+- Riscontro manuale dell'autore alle 15:23 CEST: "ok per ora va tutto".
+  Esito positivo delle prove svolte, senza elenco dei casi, log o ambiente.
+  Non equivale a copertura completa della checklist o della sincronizzazione UI.
 - 15a-4b: sottoscrizioni delle pagine, resync REST e fallback da implementare
-  dopo verifica del client e approvazione del blocco successivo.
+  dopo analisi e approvazione separata del blocco successivo.
 - 15b: sistemazione generale da definire dopo SSE con l'autore.
 
 ## Timer e lifecycle
@@ -78,8 +86,8 @@ Gli eventi sono accodati prima del commit dell'azione; rollback rimuove entrambi
 GET /api/events/stream: cookie, Last-Event-ID, letture ogni secondo, keep-alive ogni
 15 secondi, retry SSE 3 secondi. Sessioni SQL brevi nel thread pool, chiuse prima
 di invio/attesa. Sessione HTTP ricontrollata a ogni lettura; auth.expired chiude
-lo stream. Il client del blocco 15a-4a chiude EventSource e svuota l'utente locale;
-la verifica CI di questa integrazione e' ancora pendente.
+lo stream. Il client 15a-4a chiude EventSource e svuota l'utente locale;
+il blocco ha superato la CI sulla testa formattata 33f01f0.
 Primo accesso o cursore non recuperabile inviano resync: il client ricarichera'
 lo stato REST nel blocco schermate 15a-4b. Rilevato anche un registro svuotato
 con sqlite_sequence.
@@ -110,21 +118,26 @@ notifiche CardGift. Correzioni ed eventi condividono commit e rollback.
 - PHASE_15_CARD_PLAY_EVENTS.md: giocate e annullamenti sponsor, CI verificata.
 - PHASE_15_GIFT_EVENTS.md: assegnazioni tasto S e annullamenti, CI verificata.
 - PHASE_15_JUDGE_EVENTS.md: correzioni del revisore, CI verde su 8e1f440.
-- PHASE_15_FRONTEND_CLIENT.md: client condiviso, test preparati e CI da verificare.
+- PHASE_15_FRONTEND_CLIENT.md: client condiviso, CI verde e riscontro manuale limitato.
+- PHASE_15_FRONTEND_FORMATTING.md: errore Prettier, procedura e commit risolutivo.
 - PHASE_15_CONCURRENCY.md: test reali a due processi, non prove di carico o multi-host.
 - PHASE_15_CI_FIX.md: asserzione Alembic storica, superata in CI su 47df2a5.
 - PHASE_15_STATE_EVENTS_FIX.md: ID ORM dopo rollback, superata in CI su 53709a0.
 
 ## Database reale e limiti
 
-Nessuna migrazione applicata ai dati del gioco e nessun backup reale effettuato.
-Prima di usare questo ramo sui dati reali occorrono backup verificato e prova su
-copia della migrazione, prima dell'avvio del backend. Nessun reset/cancellazione.
+Nessuna migrazione applicata dall'assistente ai dati del gioco e nessun backup
+reale effettuato dall'assistente. L'ambiente delle prove dell'autore non e'
+stato dettagliato e non viene presunto. Prima di usare il ramo sui dati reali
+occorrono backup verificato e prova su copia della migrazione, prima dell'avvio
+del backend. Nessun reset/cancellazione autorizzato in questi blocchi.
 La CI usa database nuovi o sintetici: non sostituisce le verifiche sui dati reali.
 Catena storica letta: testa precedente a2e6c0d4f8b3; merge storico b2d6f0a4c8e1.
-Nessuna prova browser, connessione SSE lunga attraverso il proxy, carico o
-filesystem di rete ancora eseguita. Non dichiariamo l'app completamente real-time.
-Nessuna nuova dipendenza di questi blocchi. Test locali non eseguiti.
+Nessuna prova browser eseguita dall'assistente. Il riscontro positivo dell'autore
+non dettaglia durata delle connessioni attraverso il proxy, carico, deployment
+online o filesystem di rete: queste verifiche non sono dichiarate superate.
+Non dichiariamo l'app completamente real-time. Nessuna nuova dipendenza.
+Nessun comando o test eseguito localmente dall'assistente.
 
 ## Sistemazioni e riallineamenti pendenti
 
@@ -141,7 +154,7 @@ Nessuna nuova dipendenza di questi blocchi. Test locali non eseguiti.
 - Differenza del formato Deck.cards tra istruzioni e codice segnalata da DATABASE.md:
   nessuna modifica al formato delle carte o ai percorsi in questa fase.
 
-## Metodo e verifica del blocco
+## Metodo e verifica del riallineamento
 
 Sottofasi approvate una alla volta; conferma puntuale prima dei push.
 Dopo i check riallineare i documenti piccoli interessati e raccogliere qui i delta
@@ -149,6 +162,7 @@ non applicati ai documenti grandi. Nessuna esecuzione o riuscita presunta.
 La 15a-4a parte da 4430d409a84b541c8f8bd096a0d7589935166460, PR 14 in bozza.
 Riletti layout e autenticazione, pagine campionato/gara, polling, store revisione,
 protocollo backend, package.json e vite.config.ts. Scaffold e lockfile conservati.
-Nessun comando locale eseguito: formatter, lint, check, test e build del nuovo
-codice restano da verificare tramite CI dopo il push. Poi riallineare le note.
-Il collegamento alle schermate richiede l'approvazione separata della 15a-4b.
+Questo riallineamento riguarda solo i tre documenti del client e della fase.
+Ricontrollati gli esiti della CI 39425660561; nessun conteggio test inventato.
+Il nuovo commit documentale richiede una verifica CI separata.
+Il collegamento alle schermate richiede analisi e approvazione della 15a-4b.

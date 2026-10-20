@@ -5,7 +5,7 @@ Base 4430d40 con CI verde run 39421574917. Nessun merge autorizzato.
 
 ## Perimetro
 
-Otto file: cinque moduli/test in frontend/src/lib/events, layout radice,
+Otto file iniziali: cinque moduli/test in frontend/src/lib/events, layout radice,
 questa nota e PHASE_15.md. Nessuna dipendenza o migrazione aggiunta.
 Pagine campionato/gara, revisione, popup e polling non modificati.
 Il client e' collegato al layout, ma le schermate non sono ancora sottoscritte.
@@ -30,14 +30,37 @@ Il client e' collegato al layout, ma le schermate non sono ancora sottoscritte.
   svuotato dal layout e redirect preesistente al login. Non invia logout.
 - Errori sincroni/asincroni dei sottoscrittori loggati e isolati.
 
-## Verifiche e limiti
+## Verifiche effettive
 
-Riletti layout, autenticazione, protocollo backend, configurazione e test.
-Test scritti con EventSource simulato: lifecycle, filtri, disiscrizione,
+Implementazione cb5d649, seguita dalla correzione di formattazione descritta in
+PHASE_15_FRONTEND_FORMATTING.md. Commit formattato e verificato:
+33f01f0447706cbfe78a7468b4e0c7cb13696deb, autore github-actions[bot].
+La modifica del bot riguarda esattamente i sei file segnalati da Prettier.
+
+CI ordinaria della PR 14 sulla testa formattata: run 39425660561.
+https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39425660561
+
+| Job | Esito | Conclusione CEST del 2026-10-20 |
+|---|---|---|
+| Frontend (check, lint, test, build) | success | 15:03:35 |
+| Backend (pytest) | success | 15:04:41 |
+| Migrazioni (database di test) | success | 15:03:02 |
+
+Test del client con EventSource simulato: lifecycle, filtri, disiscrizione,
 errori dei listener, retry/cleanup, scadenza e messaggi invalidi.
-Test, formatter, lint, check e build non eseguiti localmente.
-CI del nuovo blocco da verificare dopo push; il verde della base non basta.
-Nessuna prova browser, proxy di lunga durata o backend online eseguita.
+Sono stati verificati gli esiti dei job, non i conteggi numerici dei log.
+Nessun npm, formatter, lint, check, test o build eseguito localmente dall'assistente.
+Il verde qui registrato non certifica un successivo commit documentale.
+
+## Riscontro manuale e limiti
+
+Il 2026-10-20 alle 15:23 CEST l'autore ha riferito: "ok per ora va tutto".
+Registrato come riscontro positivo delle prove svolte finora. Non sono stati
+specificati casi eseguiti, browser, ruoli, log, commit locale o database usato.
+Non viene quindi dichiarata superata l'intera checklist proposta, ne' una
+prova di carico, di durata attraverso il proxy o di deployment online.
+Nessuna prova browser eseguita direttamente dall'assistente.
+
 Gli errori HTTP iniziali di EventSource sono opachi al client: non vengono
 interpretati come auth.expired. Il fallback REST e la gestione del relativo
 401 saranno collegati nel blocco schermate; il polling esistente resta attivo.
@@ -47,7 +70,8 @@ Non e' ancora una consegna end-to-end real-time.
 
 ## Passo successivo
 
-Verificare CI e riallineare queste note. Poi approvare 15a-4b: riletture REST
+Presentare analisi e file previsti della 15a-4b per approvazione: riletture REST
 coalescenti, fallback senza sovrapposizioni, protezione form/bozze locali,
 riconciliazione dei regali annullati con popup aperto e gestione 401 REST.
+Questo riallineamento non avvia l'implementazione del blocco successivo.
 Nessuna modifica a database reale, immagini o documenti grandi protetti.
