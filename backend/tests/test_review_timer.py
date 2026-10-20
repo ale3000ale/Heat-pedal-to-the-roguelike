@@ -32,13 +32,17 @@ def test_sweep_keeps_live_review_and_purges_old_events(make_client, session_fact
     _, _, championship_id, _, race_id = closed_scenario(make_client, session_factory)
     now = datetime.now(timezone.utc)
     with session_factory() as db:
-        db.add(EventLog(type="race.started", championship_id=championship_id, payload="{}",
-                        created_at=(now - timedelta(hours=25)).replace(tzinfo=None)))
+        recent_ids = list(db.scalars(select(EventLog.id)))
+        expired = EventLog(type="race.started", championship_id=championship_id, payload="{}",
+                           created_at=(now - timedelta(hours=25)).replace(tzinfo=None))
+        db.add(expired)
         db.commit()
+        expired_id = expired.id
     assert run_review_sweep(session_factory, now, cleanup=True) == 0
     with session_factory() as db:
         assert db.get(Race, race_id).review_closed_at is None
-        assert db.scalar(select(EventLog)) is None
+        assert db.get(EventLog, expired_id) is None
+        assert list(db.scalars(select(EventLog.id).order_by(EventLog.id))) == sorted(recent_ids)
 
 
 def test_timer_stop_after_one_sweep(monkeypatch):
