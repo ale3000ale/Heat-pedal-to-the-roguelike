@@ -1,118 +1,55 @@
-# Fase 15a-4b - Servizio frontend delle notifiche, preparazione commit 2
+# Fase 15a-4b - Servizio frontend delle notifiche
 
-Data: 2026-10-20. Solo ramo phase-15-sse-sistemazione, PR 14 in bozza.
-Base: 9ea0cb0, CI 39479071828 interamente verde. Backend selettivo cda06a9.
-Servizio verificato sulla testa formattata de29e70, CI 39497343267 tutta verde.
-Questo sottoinsieme prepara il collegamento; nessuna schermata ancora modificata.
+Aggiornamento: 2026-10-21. Ramo phase-15-sse-sistemazione, PR 14 in bozza.
+Servizio ora usato dalla pagina campionato tramite championship-live.ts:
+implementazione df7edf5, testa formattata dc97fcf, CI 39502927035 tutta verde.
+Vedi PHASE_15_CHAMPIONSHIP_LIVE.md per il collegamento, non ancora prova browser.
 
-## File e motivazione
+## Contratto del servizio
 
-- frontend/src/lib/gift-notifications-api.ts: servizio dedicato.
-- frontend/src/lib/gift-notifications-api.spec.ts: test con fetch simulato.
-- Questa nota: perimetro, limiti e verifiche effettive.
+File gift-notifications-api.ts e .spec.ts. CardGift non contiene pilot_id:
+PilotGiftNotification {pilotId, gift} conserva il pilota della REST senza
+modificare DTO/backend. fetchGiftNotifications deduplica piloti e legge uno
+snapshot completo: errore anche su un solo pilota, incluso 401, rifiuta tutto.
+Mai [] fittizi per cancellare notifiche valide.
 
-Il DTO CardGift non contiene pilot_id. Il servizio conserva l'associazione con
-il pilota della richiesta REST tramite PilotGiftNotification {pilotId, gift},
-senza cambiare backend, DTO, database o formato delle carte.
-fetchGiftNotifications legge tutti i piloti indicati, deduplicandoli. Se una
-lettura fallisce, rifiuta l'intero snapshot, propagando anche il 401: nessuna
-lista vuota fittizia deve cancellare popup o regali validi durante la riconciliazione.
+acknowledgeGiftNotifications riceve lo snapshot gia' mostrato, raggruppa per
+pilota, deduplica e invia batch sequenziali di massimo 100 a /seen-selected.
+Non usa /seen legacy, non rilegge la coda e non modifica UI/input. Lista vuota:
+nessuna richiesta. Tutti gli ID validati prima dell'invio, solo interi positivi
+sicuri JavaScript: backend int64 non implica che number li rappresenti tutti.
+Nessun bigint o nuovo formato JSON introdotto.
 
-acknowledgeGiftNotifications riceve soltanto lo snapshot gia' mostrato che il
-chiamante deve conservare. Raggruppa gli ID per pilota e li deduplica, poi invia
-batch sequenziali da massimo 100 a /card-gifts/seen-selected. Non usa /seen
-legacy, non rilegge la coda e non modifica lo snapshot o la UI. Con lista vuota
-non invia richieste. Tutti gli ID sono validati prima della prima richiesta.
+Primo batch fallito interrompe i successivi, ma quelli gia' riusciti possono
+restare persistiti. Nessuna atomicita' tra richieste o retry automatico. Ripetere
+lo stesso snapshot e' compatibile con l'idempotenza backend. HTTP gia' partite
+non cancellate. Il chiamante resta responsabile di selezionare gli ID resi.
 
-Il contratto backend ammette int64 SQLite, ma il client TypeScript usa number:
-si accettano solo interi positivi rappresentabili esattamente da JavaScript.
-Si rifiutano ID non sicuri invece di rischiare la conferma di un ID arrotondato.
-Non viene introdotta una conversione bigint o una modifica del contratto JSON.
+## Cronologia verificata
 
-Un errore interrompe i batch successivi, ma quelli gia' riusciti possono essere
-persistiti. Non si dichiara atomicita' tra richieste: un tentativo successivo con
-lo stesso snapshot e' compatibile con l'idempotenza del backend. Non si avviano
-retry automatici. Le richieste di lettura gia' partite non vengono cancellate.
+Base 9ea0cb0/CI 39479071828; backend cda06a9. Implementazione
+493a3fbde86573ae7373a081e2195972dc7d486d: CI 39491830284 del 2026-10-20,
+migrazioni success 22:25:51 CEST, frontend failure 22:25:56, backend success
+22:27:25. Log autore 22:43: Prettier sul solo gift-notifications-api.spec.ts;
+ESLint non parte dopo prettier --check fallito, test/build del tentativo non
+certificati. Correzione workflow ae161cc, bot de29e7000aa5ad9bc6c313817178622b9844f903
+alle 23:04:11: diff letto, sola formattazione del test. CI 39497343267 tutta verde:
+migrazioni 23:05:19, frontend check/lint/test/build 23:05:42, backend 23:06:47 CEST.
 
-## Verifiche e limiti
+Suite: associazione pilota/DTO, deduplica, completezza, errori e 401, vuoti,
+validazione preventiva, endpoint/cookie/corpo, batch 100/100/1 e errore parziale.
+Nessun conteggio numerico dei test o log completi dichiarato. Nessun comando locale.
 
-Test inclusi nella suite frontend passata in CI: associazione pilota/DTO,
-deduplicazione, snapshot completo, propagazione errori e 401, lista vuota,
-validazione preventiva degli ID, corpo/endpoint/cookie, batch 100/100/1 e
-interruzione dopo errore parziale. Non vengono dichiarati conteggi dei test.
-Nessun npm, lint, type-check, test o build eseguito localmente dall'assistente.
+## Uso corrente e limiti
 
-Nessuna modifica a dipendenze, lockfile, immagini, dati o migrazioni.
-Il primo blocco del servizio non modificava workflow. La correzione descritta
-sotto ha aggiornato soltanto il workflow formatter esistente e questa nota;
-il successivo commit del bot modifica il solo file di test segnalato.
-card-poll.svelte.ts e le pagine restano invariati: il nuovo servizio non e'
-ancora importato dalle schermate. Il vecchio wrapper continua quindi ad avere
-il comportamento precedente fino al collegamento, non dichiarato risolto qui.
+Il blocco iniziale non modificava le pagine; ora championship-live.ts le collega
+al servizio e al controller. La pagina campionato non usa piu' il vecchio wrapper
+che nasconde errori, anche se le funzioni legacy restano nei loro file.
+Il formatter e' ora mirato ai tre file del collegamento campionato, non a quelli
+della correzione storica del servizio. Nessuna modifica a dipendenze, lockfile,
+immagini, migrazioni o dati. Pagina gara e merge non distruttivo ancora pendenti.
 
-## Primo tentativo e correzione di formattazione
-
-Commit implementativo: 493a3fbde86573ae7373a081e2195972dc7d486d.
-CI ordinaria della PR 14: run 39491830284.
-https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39491830284
-
-| Job | Esito | Conclusione CEST del 2026-10-20 |
-|---|---|---|
-| Migrazioni (database di test) | success | 22:25:51 |
-| Frontend (check, lint, test, build) | failure | 22:25:56 |
-| Backend (pytest) | success | 22:27:25 |
-
-Esiti dei job letti tramite GitHub. Il log fornito dall'autore alle 22:43 CEST
-segnala Prettier su src/lib/gift-notifications-api.spec.ts. npm run lint usa
-prettier --check . && eslint .: ESLint non parte dopo il fallimento Prettier.
-Non si dichiarano superati test e build del job fallito ne' conteggi numerici.
-
-La correzione ae161cc7c94129ff8e146fafb2c8bc25d4b583e4 aggiorna il workflow
-.github/workflows/format-sse-client.yml: entrambi gli elenchi, per Prettier e
-git add, includono soltanto gift-notifications-api.spec.ts. Il workflow usa
-npm ci e Prettier dal lockfile, senza cambiarne la configurazione. Dopo --write
-e --check esegue lint completo, check, test e build sulla copia formattata.
-Solo se tutti riescono pubblica il singolo file sul ramo fase 15. Se il ramo
-cambia durante i controlli, si ferma senza force push. Trigger e perimetro del
-repository restano invariati; main e phase-14 non sono coinvolti.
-
-## Testa formattata e CI verde verificata
-
-Commit pubblicato da github-actions[bot]:
-de29e7000aa5ad9bc6c313817178622b9844f903, alle 23:04:11 CEST del 2026-10-20.
-Messaggio: style: formatta test notifiche con Prettier del lockfile.
-Letti dettagli e diff: modifica esclusivamente gift-notifications-api.spec.ts,
-con riadattamenti delle righe, senza cambiamenti alla logica dei test.
-Il servizio gift-notifications-api.ts resta invariato.
-
-CI ordinaria verificata sulla nuova testa della PR 14: run 39497343267.
-https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39497343267
-
-| Job | Esito | Conclusione CEST del 2026-10-20 |
-|---|---|---|
-| Migrazioni (database di test) | success | 23:05:19 |
-| Frontend (check, lint, test, build) | success | 23:05:42 |
-| Backend (pytest) | success | 23:06:47 |
-
-Errore Prettier risolto e tutti i job della nuova testa completati con successo.
-Verificati commit bot, diff ed esiti dei job ordinari; non log completi del job
-formatter o conteggi numerici. Non si e' presunto che il push del bot avviasse
-altri workflow: sono stati letti i check effettivamente presenti.
-Questo risultato non certifica le schermate non ancora collegate, il rendering
-dei popup, il database reale o una prova browser. Nessuna nuova prova manuale
-richiesta e nessun comando locale eseguito dall'assistente.
-
-## Seguito e riallineamento
-
-Questo riallineamento modifica soltanto questa nota e PHASE_15.md, registrando
-la disponibilita' del servizio verificato e i limiti ancora presenti.
-Il nuovo commit documentale richiede una verifica CI separata. PROJECT_SPEC.md
-e PROJECT_STATUS.md restano protetti. Database, comandi di setup e requisiti
-non cambiano; nessuna nuova modifica a codice, workflow o dati in questo push.
-
-Passo successivo: usare il servizio nel lifecycle delle pagine, riconciliare i
-regali anche con popup aperto e separare la chiusura volontaria dall'annullo
-remoto, che non deve invocare una conferma automatica. Completare il merge dei
-risultati non modificati e il fallback solo senza stream open.
-Avviso e checklist dei test manuali finali soltanto dopo il collegamento e la
-relativa CI verde, come richiesto dall'autore. Nessun merge autorizzato.
+Test del servizio e dell'integrazione non certificano DOM/browser. Avviso manuale
+finale dopo collegamento restante e relativa CI verde, come richiesto dall'autore.
+PROJECT_SPEC.md e PROJECT_STATUS.md protetti. Questo push riallinea solo documenti,
+richiede una CI separata e non autorizza merge o modifiche al database del gioco.
