@@ -32,18 +32,15 @@ jobs:
       - name: Installa dal lockfile senza aggiornarlo
         working-directory: frontend
         run: npm ci
-      - name: Formatta soltanto i sei file segnalati
+      - name: Formatta soltanto i tre file segnalati del coordinatore live
         working-directory: frontend
         shell: bash
         run: |
           set -euo pipefail
           files=(
-            src/lib/events/event-client.spec.ts
-            src/lib/events/event-client.ts
-            src/lib/events/event-types.ts
-            src/lib/events/event-validation.spec.ts
-            src/lib/events/event-validation.ts
-            src/routes/+layout.svelte
+            src/lib/events/live-refresh.spec.ts
+            src/lib/events/live-refresh.svelte.ts
+            src/lib/gift-reconcile.spec.ts
           )
           ./node_modules/.bin/prettier --write "${files[@]}"
           ./node_modules/.bin/prettier --check "${files[@]}"
@@ -64,12 +61,9 @@ jobs:
         run: |
           set -euo pipefail
           files=(
-            frontend/src/lib/events/event-client.spec.ts
-            frontend/src/lib/events/event-client.ts
-            frontend/src/lib/events/event-types.ts
-            frontend/src/lib/events/event-validation.spec.ts
-            frontend/src/lib/events/event-validation.ts
-            frontend/src/routes/+layout.svelte
+            frontend/src/lib/events/live-refresh.spec.ts
+            frontend/src/lib/events/live-refresh.svelte.ts
+            frontend/src/lib/gift-reconcile.spec.ts
           )
           git diff --exit-code -- frontend/package.json frontend/package-lock.json frontend/prettier.config.js
           git add -- "${files[@]}"
@@ -85,5 +79,5 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m "style: formatta client SSE con Prettier del lockfile"
+          git commit -m "style: formatta coordinatore live SSE con Prettier del lockfile"
           git push origin HEAD:refs/heads/phase-15-sse-sistemazione

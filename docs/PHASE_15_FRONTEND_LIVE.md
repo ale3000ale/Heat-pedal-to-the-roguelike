@@ -13,7 +13,7 @@ Nessun merge autorizzato. Questo blocco non collega ancora le schermate.
   con stream aperto. Resta il limite del proxy che mantiene open ma trattiene dati.
 - L'utente ha approvato il commit 1 separato dal collegamento delle schermate.
 
-## File preparati
+## File pubblicati nel commit 33b87b8
 
 - events/refresh-coalescer.ts e .spec.ts: una sola lettura in corso, invalidazioni
   accorpate in un flag, scarto del risultato superato e nessuna applicazione dopo
@@ -43,15 +43,43 @@ arrivati durante il popup. Nessuna promessa di exactly-once per i popup.
 Il collegamento e la chiusura automatica del popup richiedono una gestione esplicita
 che non chiami /seen quando il popup si svuota per annullamento remoto.
 
-## Verifiche e prossimo passo
+## Verifiche effettive e errore di formattazione
 
-Riletti contratto degli eventi e CardGift; verificata la testa della PR.
-Sei file di codice/test nuovi e questa nota. Nessuna pagina o API modificata.
-Nessuna dipendenza, migrazione, immagine o database reale toccato.
+Commit implementativo: 33b87b8b51bc318f02d36938341d3461279dc683.
+CI run 39454933814: backend pytest success, migrazioni success, frontend failure.
+Il log fornito dall'autore alle 18:22 CEST del 2026-10-20 identifica Prettier:
+
+- src/lib/events/live-refresh.spec.ts
+- src/lib/events/live-refresh.svelte.ts
+- src/lib/gift-reconcile.spec.ts
+
+npm run lint si ferma su prettier --check; ESLint non e' ancora eseguito in quel
+passaggio. Non si dichiarano superati test e build del job fallito.
+Il precedente job formatter elencava soltanto i sei file del client iniziale;
+non copriva questi tre nuovi file.
+
+## Correzione preparata
+
+Riuso di .github/workflows/format-sse-client.yml, con elenco esclusivo dei tre
+file sopra sia per prettier --write/--check sia per git add. Nessuna modifica
+alla configurazione, ai plugin, a package.json o al lockfile. Node 22 e npm ci
+restano quelli gia' usati dal job. Nessuna modifica logica ai moduli SSE.
+
+Il job esegue lint completo, check, test e build sulla copia formattata prima
+di pubblicare il commit bot. Se un controllo fallisce non pubblica; se il ramo
+cambia nel frattempo si ferma senza force push. Trigger limitato al ramo fase 15
+e alle modifiche del workflow stesso; main e phase-14 non sono coinvolti.
+La CI ordinaria del commit che attiva il job puo' ancora fallire sui file non
+formattati. Verificare il risultato del job format e l'eventuale nuova testa,
+senza presumere che il push bot attivi una nuova CI ordinaria.
+
 Nessun npm, formatter, lint, check, test o build eseguito localmente.
-I test sono preparati ma il nuovo blocco non e' ancora verificato in CI.
-Prima del commit 2 leggere lint/check/test/build e risolvere eventuali errori.
-Dopo la CI riallineare questa nota e PHASE_15.md con gli esiti reali, conservando
-PROJECT_SPEC.md e PROJECT_STATUS.md secondo la decisione della fase.
-Il job formatter esistente elenca solo i sei file del precedente client SSE:
-non formatta automaticamente questi nuovi file, e non viene dichiarato eseguito.
+Il nuovo tentativo di formattazione non e' ancora eseguito ne' dichiarato riuscito.
+Nessuna pagina, API, dipendenza, migrazione, immagine o database reale modificato.
+
+## Prossimo passo
+
+Dopo approvazione e push, leggere l'esito del job e risolvere eventuali errori
+prima del commit 2. Solo dopo controlli riusciti riallineare questa nota e
+PHASE_15.md con i risultati reali, conservando PROJECT_SPEC.md e PROJECT_STATUS.md
+secondo la decisione della fase. Nessun merge autorizzato.
