@@ -94,9 +94,7 @@ describe('acknowledgeGiftNotifications', () => {
 		await acknowledgeGiftNotifications(3, displayed, f);
 		const bodies = requestBodies(f);
 		expect(bodies.map((body) => body.gift_ids.length)).toEqual([100, 100, 1]);
-		expect(bodies.flatMap((body) => body.gift_ids)).toEqual(
-			displayed.map(({ gift }) => gift.id)
-		);
+		expect(bodies.flatMap((body) => body.gift_ids)).toEqual(displayed.map(({ gift }) => gift.id));
 	});
 
 	it('non chiama nessun endpoint con uno snapshot vuoto', async () => {
@@ -112,9 +110,9 @@ describe('acknowledgeGiftNotifications', () => {
 				acknowledgeGiftNotifications(3, [notification(10), notification(id, 2)], f)
 			).rejects.toBeInstanceOf(RangeError);
 		}
-		await expect(
-			acknowledgeGiftNotifications(3, [notification(10, 0)], f)
-		).rejects.toBeInstanceOf(RangeError);
+		await expect(acknowledgeGiftNotifications(3, [notification(10, 0)], f)).rejects.toBeInstanceOf(
+			RangeError
+		);
 		await expect(acknowledgeGiftNotifications(0, [], f)).rejects.toBeInstanceOf(RangeError);
 		expect(f).not.toHaveBeenCalled();
 	});
