@@ -5,8 +5,9 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import EventLog, Race, User
+from app.schemas.events import EventCreate
 from app.services.event_log import append_event as real_append_event
-from app.services.race_review import cancel_review, start_review
+from app.services.race_review import abandon_review, cancel_review, start_review
 from tests.test_race_review import (
     closed_scenario, confirm_review, leave_review, open_review, scenario,
 )
@@ -55,11 +56,11 @@ def test_pre_results_start_and_cancel_are_idempotent(make_client, session_factor
 
 
 def test_state_change_rolls_back_when_event_fails(make_client, session_factory, monkeypatch):
-    admin, _, champ, _, race = closed_scenario(make_client, session_factory)
+    _, _, champ, _, race = closed_scenario(make_client, session_factory)
     before = len(review_events(session_factory))
 
     def fail_after_flush(db, row, action):
-        real_append_event(db, __import__("app.schemas.events", fromlist=["EventCreate"]).EventCreate(
+        real_append_event(db, EventCreate(
             type="race.review_changed", championship_id=champ,
             payload={"race_id": row.id, "action": action},
         ))
@@ -67,13 +68,14 @@ def test_state_change_rolls_back_when_event_fails(make_client, session_factory, 
         raise RuntimeError("event failure")
 
     monkeypatch.setattr("app.services.race_review.record_review_changed", fail_after_flush)
-    from app.services.race_review import abandon_review
     with session_factory() as db:
         owner = db.get(User, db.get(Race, race).review_started_by_user_id)
+        # Il rollback scade gli attributi ORM: conserviamo il valore prima.
+        owner_id = owner.id
         with pytest.raises(RuntimeError, match="event failure"):
             abandon_review(db, champ, race, owner)
     assert len(review_events(session_factory)) == before
     with session_factory() as db:
         row = db.get(Race, race)
         assert row.review_started_at is not None
-        assert row.review_started_by_user_id == owner.id
+        assert row.review_started_by_user_id == owner_id
