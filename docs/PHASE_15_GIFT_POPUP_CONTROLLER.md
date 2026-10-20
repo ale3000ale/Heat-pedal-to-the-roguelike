@@ -3,6 +3,7 @@
 Data: 2026-10-20. Ramo esclusivo phase-15-sse-sistemazione, PR 14 in bozza.
 Base documentale 991c218 verificata: CI 39498576979 tutta verde.
 Servizio notifiche de29e70 verificato nella CI 39497343267.
+Controller e popup pubblicati in 936f27b e verificati in CI 39500026385.
 
 ## Perimetro del blocco
 
@@ -36,26 +37,52 @@ continua a chiamare /seen generale. Questo blocco non dichiara risolta quella
 conferma e non collega ancora il controller o il coordinatore SSE alle pagine.
 La pagina gara e il merge delle modifiche locali ai risultati restano pendenti.
 
-## Verifiche previste e stato reale
+## Verifiche effettive e limiti
 
-Test preparati: nuovi arrivi in coda, annullo remoto senza conferma, click prima
-del rendering della nuova notifica, lettura precedente all'ack, errore senza
-retry automatico, doppi click e dispose durante una conferma in corso.
-Sono test del controller con callback simulate, non test DOM del componente:
-la distinzione del function binding e il rendering richiedono ancora verifica.
+Commit implementativo: 936f27b5fee628dba81974dfe864428ed61bf6a9.
+CI ordinaria della PR 14: run 39500026385, tutti i job completati con successo.
+https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39500026385
+Formatter: run 39500018271, job format success.
+https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39500018271
+
+| Controllo | Esito | Conclusione CEST del 2026-10-20 |
+|---|---|---|
+| Migrazioni (database di test) | success | 23:24:20 |
+| Frontend (check, lint, test, build) | success | 23:24:31 |
+| Formatter e verifiche frontend | success | 23:24:49 |
+| Backend (pytest) | success | 23:25:57 |
+
+Letti anche i dettagli della testa del ramo: ancora 936f27b dopo il successo del
+formatter, nessun nuovo commit del bot presente al controllo. Non si attribuisce
+quindi la CI a una testa formattata diversa o a un commit automatico presunto.
+Non sono stati letti log completi del formatter o conteggi numerici dei test.
+
+La suite del controller include nuovi arrivi in coda, annullo remoto senza
+conferma, click con ID resi precedenti alla nuova notifica, lettura precedente
+all'ack, errore senza retry automatico, doppi click e dispose durante una conferma.
+Questi test sono passati con la suite frontend, ma usano callback simulate:
+non sono test DOM del componente. Il rendering e il comportamento del function
+binding nel browser restano da verificare; type-check e build non li certificano.
 Nessun npm, formatter, lint, check, test o build locale eseguito dall'assistente.
-Nessun successo di questi nuovi file dichiarato prima dei risultati della CI.
+Nessuna nuova prova browser richiesta all'autore in questo passaggio.
 
-Il workflow esistente formatta soltanto i tre file frontend del blocco usando
-Prettier dal lockfile. Lint completo, check, test e build devono riuscire prima
-del commit automatico; se il ramo cambia si ferma senza force push. Leggere il
-commit effettivo del bot e i check della nuova testa, senza presumere trigger.
-La prima CI ordinaria potrebbe precedere il commit di formattazione: distinguere
-sempre gli SHA e non estendere il verde della base a questo blocco.
+Il workflow resta limitato ai tre file frontend del blocco, con Prettier dal
+lockfile e lint completo, check, test e build prima di un eventuale commit.
+Se il ramo cambia si ferma senza force push. Nessuna modifica a dipendenze,
+lockfile, API, migrazioni, immagini o dati nel blocco del controller.
 
-Nessuna nuova dipendenza, modifica ai lockfile, API, migrazioni, immagini o dati.
-PROJECT_SPEC.md e PROJECT_STATUS.md restano protetti. Dopo la CI riuscita
-riallineare le note interessate e PHASE_15.md, poi completare il collegamento
-della pagina del campionato e, separatamente, della gara. Test manuali finali
-solo dopo il collegamento e la relativa CI verde, con avviso esplicito all'autore.
-Nessun merge o intervento sul database reale autorizzato da questo blocco.
+## Riallineamento e seguito
+
+Questo riallineamento aggiorna soltanto questa nota e PHASE_15.md; il nuovo
+commit documentale richiede una verifica CI separata. PROJECT_SPEC.md e
+PROJECT_STATUS.md restano protetti. Nessun codice, workflow o dato modificato
+in questo push e nessun merge autorizzato.
+
+Passo successivo: collegare realmente la pagina del campionato a servizio,
+controller e coordinatore SSE; sostituire l'handler /seen generale con la
+conferma dei soli ID resi, mantenendo polling solo senza stream open e snapshot
+completi senza errori trasformati in []. Poi completare la pagina gara e il
+merge dei campi risultati non modificati. Non occorrono altri prerequisiti
+backend per questi collegamenti gia' pianificati.
+Test manuali finali solo dopo il collegamento e la relativa CI verde, con avviso
+esplicito all'autore. Nessun intervento sul database reale autorizzato dal verde.

@@ -17,7 +17,7 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
   preservando ordine, assenti e punti sponsor modificati ma non salvati.
 - Timer backend per scadenza revisioni oltre alla conferma alla prima richiesta.
 - Rete scelta dopo lettura di api.ts e vite.config.ts: /api same-origin tramite proxy
-  verso FastAPI, non chiamate cross-origin. Buffering reale ancora da verificare.
+  versoFastAPI, non chiamate cross-origin. Buffering reale ancora da verificare.
 - PROJECT_SPEC.md e PROJECT_STATUS.md lasciati intatti per richiesta dell'autore;
   integrazioni raccolte qui e nelle note PHASE_15.
 - Prerequisito selettivo approvato: ID CardGift non riutilizzabili con nuova
@@ -97,9 +97,18 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
   23:05:19 CEST, frontend check/lint/test/build alle 23:05:42, backend alle 23:06:47.
   Servizio di lettura completa e conferma selettiva verificato, ma non ancora
   importato dalle schermate. Nessuna verifica browser del collegamento implicita.
-- 15a-4b, commit 2: servizio preparatorio disponibile; collegamento delle schermate
-  e merge dei risultati ancora da implementare. Scelte su risultati e fallback
-  gia' approvate, nessun nuovo polling di sicurezza con stream open.
+- Riallineamento 991c218 verificato: CI 39498576979 tutta verde, migrazioni alle
+  23:13:41 CEST, frontend alle 23:14:21, backend alle 23:15:20.
+- Controller e popup in 936f27b5fee628dba81974dfe864428ed61bf6a9: CI ordinaria
+  39500026385 tutta verde, migrazioni alle 23:24:20 CEST, frontend check/lint/test/build
+  alle 23:24:31, backend alle 23:25:57. Formatter 39500018271 success alle 23:24:49.
+  Testa riletta ancora 936f27b: nessun nuovo commit bot presente al controllo.
+  Test controller con callback simulate passati; non sono test DOM o browser.
+- 15a-4b, commit 2: servizio e controller preparatori disponibili e verificati;
+  collegamento delle schermate e merge dei risultati ancora da implementare.
+  Il popup distingue le chiusure, ma la pagina campionato usa ancora /seen generale.
+  Scelte su risultati e fallback gia' approvate, nessun nuovo polling di sicurezza
+  con stream open e nessun ulteriore prerequisito backend per i collegamenti previsti.
 - 15b: sistemazione generale da definire dopo SSE con l'autore.
 
 ## Timer e lifecycle
@@ -170,6 +179,10 @@ JavaScript; non dichiara atomicita' tra batch. Verificato in CI, ma non ancora
 usato dalle pagine o dal popup. Il futuro collegamento deve passare solo gli ID
 mostrati: annullamenti remoti non devono confermare nuove notifiche mai mostrate.
 Il backend e il servizio non provano da soli la visibilita' nel browser.
+Il controller gift-popup-controller.ts gestisce coda, annulli senza conferma,
+chiusura volontaria e dispose; il popup passa l'ultima lista registrata dopo il
+render attraverso il function binding del Modal. Entrambi verificati dai controlli
+CI del blocco, ma senza test DOM e senza collegamento del controller alle pagine.
 
 ## Note dei blocchi e correzioni
 
@@ -190,6 +203,8 @@ Il backend e il servizio non provano da soli la visibilita' nel browser.
   frontend pendente e richiesta di avviso per i test manuali finali.
 - PHASE_15_FRONTEND_GIFT_SERVICE.md: servizio notifiche, limiti dei batch e degli ID,
   errore Prettier su 493a3fb, correzione e CI verde sulla testa de29e70.
+- PHASE_15_GIFT_POPUP_CONTROLLER.md: controller, chiusura volontaria, CI e formatter
+  verdi su 936f27b; limiti DOM/browser e conferma generale della pagina ancora presenti.
 - PHASE_15_CONCURRENCY.md: test reali a due processi, non prove di carico o multi-host.
 - PHASE_15_CI_FIX.md: asserzione Alembic storica, superata in CI su 47df2a5.
 - PHASE_15_STATE_EVENTS_FIX.md: ID ORM dopo rollback, superata in CI su 53709a0.
@@ -207,6 +222,7 @@ La CI usa database nuovi o sintetici: non sostituisce le verifiche sui dati real
 Catena letta: testa precedente a2e6c0d4f8b3, registro d5e9a3b7c1f6, nuova testa
 d6f0a4b8c2e7; merge storico b2d6f0a4c8e1. Il blocco API non aggiunge migrazioni.
 Il servizio frontend e la sua correzione di formattazione non aggiungono migrazioni.
+Il controller e la modifica al popup non aggiungono migrazioni o dipendenze.
 Il downgrade della nuova migrazione conserva righe ma perde la garanzia e la
 storia di non riuso. Non usarlo con client che richiedono ID stabili; non portare
 conferme pendenti attraverso ripristini di backup o ricreazioni del database.
@@ -238,11 +254,13 @@ Sottofasi approvate una alla volta; conferma puntuale prima dei push.
 Dopo i check riallineare i documenti piccoli interessati e raccogliere qui i delta
 non applicati ai documenti grandi. Nessuna esecuzione o riuscita presunta.
 Scaffold e lockfile conservati. Questo riallineamento modifica soltanto
-PHASE_15_FRONTEND_GIFT_SERVICE.md e PHASE_15.md, senza nuove modifiche al codice.
-Esiti CI letti per de29e70: 39497343267 tutto verde; nessun conteggio test inventato.
-Letti anche il commit del bot e il diff del solo file di test formattato.
-Il nuovo commit documentale richiede una verifica CI separata.
-PROJECT_SPEC.md e PROJECT_STATUS.md restano intatti secondo la decisione della fase.
+PHASE_15_GIFT_POPUP_CONTROLLER.md e PHASE_15.md, senza nuove modifiche al codice.
+Esiti CI letti per 936f27b: 39500026385 tutto verde e formatter 39500018271 success.
+Letta la testa del ramo, ancora 936f27b; nessun nuovo commit bot presente al controllo.
+Nessun conteggio test o successo DOM/browser inventato. Il nuovo commit documentale
+richiede una verifica CI separata. PROJECT_SPEC.md e PROJECT_STATUS.md restano intatti.
 Nessun workflow o dato reale modificato, nessun merge e nessuna prova manuale nuova.
-Dopo il riallineamento proseguire il collegamento delle schermate con il servizio
-ora verificato; avviso e checklist manuale solo alla fine dei relativi controlli.
+Dopo il riallineamento collegare la pagina del campionato al servizio e al controller
+ora verificati, sostituendo /seen generale. Poi completare la pagina gara con merge
+non distruttivo dei campi risultati. Avviso e checklist manuale solo alla fine dei
+relativi controlli; non introdurre altri blocchi preparatori backend non necessari.
