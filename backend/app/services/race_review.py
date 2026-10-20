@@ -9,6 +9,7 @@ from app.services.card_play_close import consume_plays
 from app.services.cards import CardError
 from app.services.championships import ChampionshipClosedError, get_championship
 from app.services.races import RaceNotFoundError, count_participants, get_race
+from app.services.review_events import record_review_closed
 from app.services.shop_purchase import _lock_database
 
 REVIEW_MINUTES = 15
@@ -126,7 +127,7 @@ def abandon_review(db: Session, championship_id: int, race_id: int, user: User) 
 
 
 def confirm_review(db: Session, championship_id: int, race_id: int, user: User, is_admin: bool) -> Race:
-    """Conferma legacy senza conteggi; consuma le giocate con un unico commit."""
+    """Conferma legacy: carte, chiusura ed eventi nello stesso commit."""
     try:
         _lock_database(db)
         championship = get_championship(db, championship_id)
@@ -138,6 +139,7 @@ def confirm_review(db: Session, championship_id: int, race_id: int, user: User, 
             raise ReviewNotActiveError
         consume_plays(db, race.id, championship.sponsor_pool_deck_id)
         race.review_closed_at = datetime.now(timezone.utc)
+        record_review_closed(db, race, "confirmed")
         db.commit()
         db.refresh(race)
     except Exception:
@@ -147,12 +149,12 @@ def confirm_review(db: Session, championship_id: int, race_id: int, user: User, 
 
 
 def settle_expired_reviews(db: Session, championship_id: int, now: datetime | None = None) -> int:
-    """Chiude le revisioni scadute e restituisce quante sono state chiuse.
+    """Chiude revisioni scadute con eventi atomici e ricontrollo sotto lock.
 
     Con bozza applica solo le carte coerenti; senza bozza usa la chiusura
     legacy. Ogni gara ha una transazione distinta. CardError lascia la gara
     intatta e aperta; gli altri errori fanno rollback e vengono propagati.
-    La scadenza è elaborata quando il servizio viene chiamato, non da un job.
+    Può essere richiamato da una richiesta o dal futuro timer.
     """
     get_championship(db, championship_id)
     stmt = select(Race).where(
@@ -168,8 +170,14 @@ def settle_expired_reviews(db: Session, championship_id: int, now: datetime | No
         try:
             _lock_database(db)
             championship = get_championship(db, championship_id)
-            race = db.get(Race, race_id)
-            if race.review_closed_at is not None or is_review_active(race, now):
+            race = db.get(Race, race_id, populate_existing=True)
+            # Un altro worker può avere annullato/confermato la revisione dopo
+            # la ricerca. Rileggiamo i prerequisiti prima di muovere le carte.
+            if (championship.is_closed or race is None
+                    or race.review_started_at is None
+                    or race.review_closed_at is not None
+                    or is_review_active(race, now)
+                    or count_participants(db, race.id) == 0):
                 db.rollback()
                 continue
             if race.review_draft:
@@ -179,6 +187,7 @@ def settle_expired_reviews(db: Session, championship_id: int, now: datetime | No
             else:
                 consume_plays(db, race.id, championship.sponsor_pool_deck_id)
             race.review_closed_at = now or datetime.now(timezone.utc)
+            record_review_closed(db, race, "expired")
             db.commit()
             settled += 1
         except CardError:
