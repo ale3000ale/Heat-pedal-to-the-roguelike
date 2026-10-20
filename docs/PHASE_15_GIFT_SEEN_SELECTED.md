@@ -31,27 +31,48 @@ L'endpoint precedente /card-gifts/seen e il frontend restano invariati.
 L'API verifica autorizzazione e ambito, non puo' dimostrare che il browser abbia
 realmente mostrato la notifica: la lista corretta e' responsabilita' del client.
 
-## File e verifiche
+## File implementati
 
-Nuovi schemas/card_gift_seen.py, services/card_gift_seen.py e api/card_gift_seen.py.
+Schemas/card_gift_seen.py, services/card_gift_seen.py e api/card_gift_seen.py.
 main.py aggiunge soltanto import e include_router, senza cambiare il lifespan.
-Nuovi test_card_gift_seen_selected.py: sottoinsieme/new gift dopo lettura,
+Test_card_gift_seen_selected.py: sottoinsieme/new gift dopo lettura,
 idempotenza, annullo seguito da nuovo regalo, ambito pilota/campionato,
 permessi, input strict/batch, rollback dopo flush e compatibilita' legacy.
 Il caso regalo nuovo dopo lettura e' una sequenza API deterministica, non una
 prova concorrente a piu' processi; non vengono dichiarate prove di carico.
 
-Nessun test o comando locale eseguito. Test preparati, CI nuova da leggere
-dopo push; la CI verde della base non certifica queste modifiche.
-Nessuna nuova migrazione, dipendenza, modifica a immagini o database reale.
-Il DB operativo deve gia' includere d6f0a4b8c2e7: backup verificato e prova su
-copia prima di applicarla, nessuna applicazione locale da parte dell'assistente.
+## Verifiche effettive
 
-## Prossimo passo
+Commit implementativo: cda06a91799049022358df5cbb4129c91b83b7b2.
+CI della PR 14 verificata: run 39476606868, tutti i job completati con successo.
+https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39476606868
 
-Leggere la CI e correggere eventuali errori, poi riallineare documenti di fase
-e DATABASE.md con disponibilita' effettiva e risultati. PROJECT_SPEC.md e
-PROJECT_STATUS.md restano protetti secondo la decisione della fase.
-Solo dopo collegare il frontend: inviare gli ID davvero mostrati, non tutti
-i regali non visti; annullamenti remoti non devono invocare conferme automatiche.
-Il commit 2 frontend non viene avviato da questo blocco.
+| Job | Esito | Conclusione CEST del 2026-10-20 |
+|---|---|---|
+| Backend (pytest) | success | 20:41:18 |
+| Migrazioni (database di test) | success | 20:39:33 |
+| Frontend (check, lint, test, build) | success | 20:39:58 |
+
+La suite backend include i nuovi test. Verificati gli esiti dei job, non i log
+completi o i conteggi numerici dei test. Nessun comando o test locale eseguito
+dall'assistente. Nessuna nuova migrazione, dipendenza o modifica a immagini o
+database reale nel blocco API. Il DB operativo deve gia' includere d6f0a4b8c2e7:
+backup verificato e prova su copia prima di applicarla. Il verde della CI non
+certifica i dati locali e non equivale ad autorizzare migrazioni sul gioco.
+Il successivo commit documentale richiede una verifica CI separata.
+
+## Prossimo passo e test manuali
+
+API selettiva pubblicata e verificata in CI, ma non ancora usata dal frontend.
+Collegare le schermate nel blocco successivo: inviare gli ID davvero mostrati,
+non tutti i regali non visti; annullamenti remoti non devono invocare conferme
+automatiche. Mantenere le scelte approvate su merge dei campi risultati non
+modificati e polling soltanto senza stream open.
+Questo riallineamento documentale non avvia il commit 2 frontend.
+
+Richiesta dell'autore alle 20:37 CEST: avvisare esplicitamente quando sara' il
+momento dei test manuali finali. L'avviso e la checklist mirata saranno forniti
+dopo il collegamento delle schermate e la relativa CI verde. Nessuna nuova
+prova manuale richiesta ora; il riscontro delle 15:23 non viene esteso a questa API.
+PROJECT_SPEC.md e PROJECT_STATUS.md restano protetti secondo la decisione della
+fase. Nessun merge autorizzato.

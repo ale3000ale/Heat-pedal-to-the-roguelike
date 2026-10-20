@@ -20,9 +20,12 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
   verso FastAPI, non chiamate cross-origin. Buffering reale ancora da verificare.
 - PROJECT_SPEC.md e PROJECT_STATUS.md lasciati intatti per richiesta dell'autore;
   integrazioni raccolte qui e nelle note PHASE_15.
-- Prerequisito selettivo approvato: prima ID CardGift non riutilizzabili con nuova
-  migrazione, poi API che conferma soltanto le notifiche effettivamente mostrate.
+- Prerequisito selettivo approvato: ID CardGift non riutilizzabili con nuova
+  migrazione e API che conferma soltanto gli ID delle notifiche richieste.
   L'applicazione sui dati reali non e' autorizzata da un push o dal verde della CI.
+- Richiesta dell'autore alle 20:37 CEST: avvisare esplicitamente per i test manuali
+  finali, con checklist, dopo collegamento delle schermate e relativa CI verde.
+  Nessuna nuova prova manuale richiesta durante questo riallineamento.
 
 ## Avanzamento verificato
 
@@ -78,9 +81,14 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
   migrazione d6f0a4b8c2e7 successiva a d5e9a3b7c1f6. CI 39467182291 tutta verde:
   migrazioni alle 19:34:17 CEST, frontend 19:34:44, backend 19:36:14.
   Verificati su DB sintetici conservazione delle righe/schema e non riuso degli ID.
-- API selettiva ancora da implementare; /seen attuale resta compatibile e invariato.
-- 15a-4b, commit 2: collegamento delle schermate ancora da implementare dopo
-  l'API selettiva; scelte su risultati e fallback gia' approvate.
+- Riallineamento 21136eb verificato: CI 39468896207 tutta verde.
+- API selettiva pubblicata in cda06a91799049022358df5cbb4129c91b83b7b2 e
+  verificata in CI 39476606868: backend pytest alle 20:41:18 CEST,
+  migrazioni alle 20:39:33, frontend check/lint/test/build alle 20:39:58.
+  Endpoint /seen-selected disponibile nel backend; /seen storico invariato.
+  Il frontend non usa ancora l'operazione selettiva.
+- 15a-4b, commit 2: collegamento delle schermate ancora da implementare;
+  prerequisiti backend verificati, scelte su risultati e fallback gia' approvate.
 - 15b: sistemazione generale da definire dopo SSE con l'autore.
 
 ## Timer e lifecycle
@@ -94,6 +102,7 @@ La pulizia degli eventi oltre 24 ore parte al primo giro e poi ogni ora.
 All'uscita, anche per errore nel corpo del lifespan, stop cooperativo e attesa del
 task. Non viene interrotta a meta' una transazione; l'attesa dipende dal giro SQL.
 Gli errori di giro sono loggati e ritentati. Nessuna migrazione automatica nel lifespan.
+L'API selettiva aggiunge soltanto registrazione del router: lifecycle invariato.
 
 File del blocco lifecycle: backend/app/main.py,
 backend/tests/test_review_timer_lifespan.py, questo documento.
@@ -133,12 +142,19 @@ Il revisore riusa card.play_undone e cards.changed per annullare una giocata.
 Bonus e rimozione emettono soltanto cards.changed: non sono regali e non creano
 notifiche CardGift. Correzioni ed eventi condividono commit e rollback.
 Il nuovo helper riconcilia regali visibili e nuovi in attesa, senza marcare /seen.
-L'endpoint /seen attuale marca tutte le notifiche del pilota: l'ack selettivo
-non e' ancora implementato. La chiusura automatica del popup per annullamento
-remoto non dovra' marcare come viste notifiche nuove mai mostrate.
 La migrazione d6f0a4b8c2e7 abilita ID CardGift non riutilizzabili, prerequisito
 per non confondere una conferma tardiva con un nuovo regalo dopo un annullo.
-Questa garanzia non sostituisce le autorizzazioni della futura API selettiva.
+Questa garanzia non sostituisce le autorizzazioni dell'API selettiva.
+
+POST /api/championships/{id}/card-gifts/seen-selected accetta pilot_id e gift_ids,
+lista da 1 a 100 ID interi positivi entro int64. Solo il proprietario del pilota
+puo' confermare; la query limita anche il campionato. ID annullati, assenti,
+gia' visti o fuori ambito sono ignorati, con 204 senza dettagli. Conferme ripetute
+non riscrivono seen_at. Nessuna modifica a carte, saldi o eventi SSE.
+/seen storico resta compatibile e marca tutte le notifiche del pilota.
+Il futuro frontend deve inviare solo gli ID mostrati, raggruppati per pilota
+in batch di massimo 100; annullamenti remoti non devono confermare nuove
+notifiche mai mostrate. Il backend non prova da solo la visibilita' nel browser.
 
 ## Note dei blocchi e correzioni
 
@@ -155,6 +171,8 @@ Questa garanzia non sostituisce le autorizzazioni della futura API selettiva.
   correzione Prettier; CI verde su fb4f128, schermate non ancora collegate.
 - PHASE_15_GIFT_ID_MIGRATION.md: ID stabili, ricreazione batch, CI verde su aa1a4c7
   e precauzioni operative prima dell'applicazione sui dati reali.
+- PHASE_15_GIFT_SEEN_SELECTED.md: API selettiva, contratto, CI verde su cda06a9,
+  frontend pendente e richiesta di avviso per i test manuali finali.
 - PHASE_15_CONCURRENCY.md: test reali a due processi, non prove di carico o multi-host.
 - PHASE_15_CI_FIX.md: asserzione Alembic storica, superata in CI su 47df2a5.
 - PHASE_15_STATE_EVENTS_FIX.md: ID ORM dopo rollback, superata in CI su 53709a0.
@@ -170,14 +188,14 @@ setup applicano migrazioni: non avviarli prima di queste precauzioni.
 Nessun reset/cancellazione autorizzato in questi blocchi.
 La CI usa database nuovi o sintetici: non sostituisce le verifiche sui dati reali.
 Catena letta: testa precedente a2e6c0d4f8b3, registro d5e9a3b7c1f6, nuova testa
-d6f0a4b8c2e7; merge storico b2d6f0a4c8e1.
+d6f0a4b8c2e7; merge storico b2d6f0a4c8e1. Il blocco API non aggiunge migrazioni.
 Il downgrade della nuova migrazione conserva righe ma perde la garanzia e la
 storia di non riuso. Non usarlo con client che richiedono ID stabili; non portare
 conferme pendenti attraverso ripristini di backup o ricreazioni del database.
 Nessuna prova browser eseguita dall'assistente. Il riscontro positivo dell'autore
 non dettaglia durata delle connessioni attraverso il proxy, carico, deployment
 online o filesystem di rete: queste verifiche non sono dichiarate superate.
-Il riscontro delle 15:23 non viene esteso agli strumenti introdotti dopo.
+Il riscontro delle 15:23 non viene esteso agli strumenti introdotti dopo o all'API.
 Non dichiariamo l'app completamente real-time. Nessuna nuova dipendenza.
 Nessun comando o test eseguito localmente dall'assistente.
 
@@ -187,8 +205,8 @@ Nessun comando o test eseguito localmente dall'assistente.
 - PROJECT_SPEC.md: rilettura dopo bc0fbfb e refuso storico da verificare.
 - PHASE_14_POST_MERGE.md: aae6c33 e' storico; automazione format-championships non
   verificata in questa fase.
-- DATABASE.md riallineato per il delta degli ID CardGift e con rimando al registro
-  SSE. Non e' una nuova ispezione del file SQLite reale.
+- DATABASE.md riallineato per ID CardGift e conferma selettiva, con rimando al
+  registro SSE. Non e' una nuova ispezione del file SQLite reale.
 - README.md, SETUP.md e SCRIPTS.md riletti nei blocchi precedenti; comandi invariati.
   Prima di ulteriori aggiornamenti rileggere SHOP_DESIGN.md e PROJECT_NOTES.md.
   Backup/setup sicuro ancora da verificare nel codice.
@@ -202,8 +220,9 @@ Sottofasi approvate una alla volta; conferma puntuale prima dei push.
 Dopo i check riallineare i documenti piccoli interessati e raccogliere qui i delta
 non applicati ai documenti grandi. Nessuna esecuzione o riuscita presunta.
 Scaffold e lockfile conservati. Questo riallineamento modifica soltanto
-PHASE_15_GIFT_ID_MIGRATION.md, DATABASE.md e PHASE_15.md.
-Esiti CI letti per aa1a4c7: 39467182291 tutto verde; nessun conteggio test inventato.
+PHASE_15_GIFT_SEEN_SELECTED.md, PHASE_15_GIFT_ID_MIGRATION.md, DATABASE.md e PHASE_15.md.
+Esiti CI letti per cda06a9: 39476606868 tutto verde; nessun conteggio test inventato.
 Il nuovo commit documentale richiede una verifica CI separata.
 Nessun codice, workflow o dato reale modificato e nessun avvio del commit 2.
-Dopo il riallineamento preparare l'API selettiva nel prerequisito gia' approvato.
+Dopo il riallineamento preparare il collegamento delle schermate con i prerequisiti
+backend ora disponibili; avviso e checklist manuale solo alla fine dei controlli.

@@ -23,12 +23,15 @@ Quattro file implementativi del blocco:
   preservazione dati/schema, foreign_key_check, cancellazione ID massimo e intera
   tabella, upgrade ripetuto, downgrade/upgrade e annullo reale attraverso le API
   sul database della fixture creato dai modelli.
-- Questa nota, ora riallineata insieme a PHASE_15.md e DATABASE.md.
+- Questa nota, riallineata insieme a PHASE_15.md e DATABASE.md.
 
 Nessuna nuova colonna, dipendenza, modifica a Deck.cards o immagini.
-Endpoint /seen attuale invariato; endpoint selettivo e frontend non ancora modificati.
-AUTOINCREMENT impedisce il riuso futuro nel database migrato, non autentica le
-richieste: proprietario, campionato e lista selettiva saranno verificati dall'API.
+Il blocco ID lasciava invariati /seen e il frontend. Successivamente l'API
+selettiva e' stata pubblicata in cda06a9 e verificata in CI 39476606868:
+vedi PHASE_15_GIFT_SEEN_SELECTED.md. Il frontend non la usa ancora.
+AUTOINCREMENT impedisce il riuso futuro nel database migrato, non autentica
+le richieste: proprietario e ambito campionato/pilota sono verificati dal
+servizio dell'API selettiva. /seen storico resta compatibile e invariato.
 
 ## Precauzioni operative
 
@@ -68,8 +71,8 @@ dall'assistente. Il successivo commit documentale richiede una CI separata.
 
 ## Passo successivo
 
-Prerequisito ID verificato in CI. Preparare l'endpoint selettivo con schema,
-servizio, route e test dei permessi, delle conferme ripetute, dei regali nuovi
-arrivati dopo la lettura e delle notifiche annullate. L'operazione attuale deve
-restare compatibile. Nessun endpoint selettivo dichiarato gia' disponibile.
-Il commit 2 frontend resta separato; nessun merge autorizzato.
+Prerequisito ID e API selettiva verificati in CI nei rispettivi commit.
+Il commit 2 frontend resta separato: collegare l'invio dei soli ID mostrati,
+proteggere le modifiche locali e attivare polling soltanto senza stream open.
+Non richiedere test manuali finali prima del collegamento e della relativa CI
+verde; avvisare esplicitamente l'autore a quel punto. Nessun merge autorizzato.
