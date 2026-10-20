@@ -9,7 +9,7 @@ from app.services.card_play_close import consume_plays
 from app.services.cards import CardError
 from app.services.championships import ChampionshipClosedError, get_championship
 from app.services.races import RaceNotFoundError, count_participants, get_race
-from app.services.review_events import record_review_closed
+from app.services.review_events import record_review_changed, record_review_closed
 from app.services.shop_purchase import _lock_database
 
 REVIEW_MINUTES = 15
@@ -90,7 +90,7 @@ def _clear_review(race: Race) -> None:
 
 
 def begin_review(db: Session, championship_id: int, race_id: int, user: User) -> Race:
-    """Apre o riprende la revisione dell'utente; rollback in caso di conflitto."""
+    """Apre o riprende la revisione; l'evento nasce solo se lo stato cambia."""
     try:
         _lock_database(db)
         race = _closed_race(db, championship_id, race_id)
@@ -100,6 +100,7 @@ def begin_review(db: Session, championship_id: int, race_id: int, user: User) ->
         else:
             race.review_started_at = datetime.now(timezone.utc)
             race.review_started_by_user_id = user.id
+            record_review_changed(db, race, "opened")
         db.commit()
         db.refresh(race)
     except Exception:
@@ -109,7 +110,7 @@ def begin_review(db: Session, championship_id: int, race_id: int, user: User) ->
 
 
 def abandon_review(db: Session, championship_id: int, race_id: int, user: User) -> Race:
-    """Rinuncia senza cambiare le carte; restituisce la gara o un errore di stato/titolare."""
+    """Rinuncia senza cambiare le carte; stato ed evento nello stesso commit."""
     try:
         _lock_database(db)
         race = _closed_race(db, championship_id, race_id)
@@ -118,6 +119,7 @@ def abandon_review(db: Session, championship_id: int, race_id: int, user: User) 
         if race.review_started_by_user_id != user.id:
             raise ReviewHeldByOtherError
         _clear_review(race)
+        record_review_changed(db, race, "abandoned")
         db.commit()
         db.refresh(race)
     except Exception:
@@ -199,7 +201,7 @@ def settle_expired_reviews(db: Session, championship_id: int, now: datetime | No
 
 
 def reopen_review(db: Session, championship_id: int, race_id: int, user: User, is_admin: bool) -> Race:
-    """Riapre l'ultima gara confermata per l'admin; restituisce la gara o errore di stato."""
+    """Riapre l'ultima gara confermata per l'admin; stato ed evento atomici."""
     try:
         _lock_database(db)
         if not is_admin:
@@ -217,6 +219,7 @@ def reopen_review(db: Session, championship_id: int, race_id: int, user: User, i
         race.review_closed_at = None
         race.review_started_at = datetime.now(timezone.utc)
         race.review_started_by_user_id = user.id
+        record_review_changed(db, race, "reopened")
         db.commit()
         db.refresh(race)
     except Exception:
@@ -226,12 +229,13 @@ def reopen_review(db: Session, championship_id: int, race_id: int, user: User, i
 
 
 def start_review(db: Session, championship_id: int, race_id: int) -> Race:
-    """Blocca le giocate nella gara senza risultati; restituisce la gara senza riavviare il timer."""
+    """Blocca le giocate nella gara senza risultati; evento solo se cambia stato."""
     try:
         _lock_database(db)
         race = _open_race(db, championship_id, race_id)
         if race.review_started_at is None:
             race.review_started_at = datetime.now(timezone.utc)
+            record_review_changed(db, race, "started")
         db.commit()
         db.refresh(race)
     except Exception:
@@ -241,11 +245,14 @@ def start_review(db: Session, championship_id: int, race_id: int) -> Race:
 
 
 def cancel_review(db: Session, championship_id: int, race_id: int) -> Race:
-    """Riporta in corso la gara senza risultati; giocate invariate, rollback su errore."""
+    """Riporta in corso la gara senza risultati; evento solo se era bloccata."""
     try:
         _lock_database(db)
         race = _open_race(db, championship_id, race_id)
+        was_started = race.review_started_at is not None
         race.review_started_at = None
+        if was_started:
+            record_review_changed(db, race, "cancelled")
         db.commit()
         db.refresh(race)
     except Exception:
