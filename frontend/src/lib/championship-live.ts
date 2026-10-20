@@ -98,9 +98,7 @@ export function startChampionshipLive(options: ChampionshipLiveOptions) {
 		intervalMs: options.intervalMs,
 		filter: { championshipId: options.championshipId },
 		client: options.client,
-		load:
-			options.load ??
-			(() => fetchChampionshipSnapshot(options.championshipId, options.fetch)),
+		load: options.load ?? (() => fetchChampionshipSnapshot(options.championshipId, options.fetch)),
 		apply: (snapshot) => {
 			options.onSnapshot(snapshot);
 			popup.update(snapshot.gifts);

@@ -17,13 +17,17 @@ class FakeClient {
 	subscribe(listener: Listener<StreamEvent>, filter: EventFilter = {}) {
 		this.filter = filter;
 		this.events.add(listener);
-		return () => { this.events.delete(listener); };
+		return () => {
+			this.events.delete(listener);
+		};
 	}
 
 	subscribeStatus(listener: Listener<ConnectionStatus>) {
 		this.statuses.add(listener);
 		void listener(this.status);
-		return () => { this.statuses.delete(listener); };
+		return () => {
+			this.statuses.delete(listener);
+		};
 	}
 
 	setStatus(status: ConnectionStatus) {
@@ -36,7 +40,10 @@ function notification(id: number): PilotGiftNotification {
 	return {
 		pilotId: 1,
 		gift: {
-			id, race_id: 7, card_name: 'Sponsor', card_path: 'cards/sponsor.webp',
+			id,
+			race_id: 7,
+			card_name: 'Sponsor',
+			card_path: 'cards/sponsor.webp',
 			created_at: '2026-10-20T21:00:00'
 		}
 	};
@@ -45,10 +52,15 @@ function notification(id: number): PilotGiftNotification {
 function snapshot(gifts: PilotGiftNotification[] = []): ChampionshipSnapshot {
 	return {
 		championship: {
-			id: 3, name: 'Heat', date: '2026-10-20', is_closed: false, pilots_count: 1,
+			id: 3,
+			name: 'Heat',
+			date: '2026-10-20',
+			is_closed: false,
+			pilots_count: 1,
 			pilots: [{ id: 1, name: 'Pilota', team_id: null, point: 0 }]
 		},
-		standings: [], races: [],
+		standings: [],
+		races: [],
 		myPilots: [
 			{ id: 1, name: 'Pilota', team_id: null, gold: 0, sponsor: 0, point: 0 },
 			{ id: 2, name: 'Non iscritto', team_id: null, gold: 0, sponsor: 0, point: 0 }
@@ -68,13 +80,29 @@ function setup() {
 	const onUnauthorized = vi.fn();
 	const f = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
 	const live = startChampionshipLive({
-		championshipId: 3, intervalMs: 1000, client, load, fetch: f,
-		onSnapshot, onGifts, onError, onUnauthorized
+		championshipId: 3,
+		intervalMs: 1000,
+		client,
+		load,
+		fetch: f,
+		onSnapshot,
+		onGifts,
+		onError,
+		onUnauthorized
 	});
 	stops.push(live.dispose);
 	return {
-		client, load, onSnapshot, onGifts, onError, onUnauthorized, f, live,
-		setSnapshot: (value: ChampionshipSnapshot) => { current = value; }
+		client,
+		load,
+		onSnapshot,
+		onGifts,
+		onError,
+		onUnauthorized,
+		f,
+		live,
+		setSnapshot: (value: ChampionshipSnapshot) => {
+			current = value;
+		}
 	};
 }
 
@@ -88,16 +116,22 @@ describe('collegamento campionato', () => {
 		const value = snapshot();
 		const f = vi.fn<typeof fetch>().mockImplementation(async (input) => {
 			const url = String(input);
-			const body = url.endsWith('/pilots') ? value.myPilots
-				: url.includes('/card-gifts?') ? [notification(10).gift]
-				: url.endsWith('/standings') ? value.standings
-				: url.endsWith('/races') ? value.races : value.championship;
+			const body = url.endsWith('/pilots')
+				? value.myPilots
+				: url.includes('/card-gifts?')
+					? [notification(10).gift]
+					: url.endsWith('/standings')
+						? value.standings
+						: url.endsWith('/races')
+							? value.races
+							: value.championship;
 			return new Response(JSON.stringify(body), { status: 200 });
 		});
 		const read = await fetchChampionshipSnapshot(3, f);
 		expect(read.gifts).toEqual([notification(10)]);
-		expect(f.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('card-gifts')))
-			.toEqual(['/api/championships/3/card-gifts?pilot_id=1']);
+		expect(
+			f.mock.calls.map(([url]) => String(url)).filter((url) => url.includes('card-gifts'))
+		).toEqual(['/api/championships/3/card-gifts?pilot_id=1']);
 		value.championship.is_closed = true;
 		f.mockClear();
 		expect((await fetchChampionshipSnapshot(3, f)).gifts).toEqual([]);
@@ -166,7 +200,11 @@ describe('collegamento campionato', () => {
 		const { live, load, onSnapshot, onGifts, f } = setup();
 		await live.refresh();
 		let finish!: (value: ChampionshipSnapshot) => void;
-		load.mockReturnValueOnce(new Promise<ChampionshipSnapshot>((resolve) => { finish = resolve; }));
+		load.mockReturnValueOnce(
+			new Promise<ChampionshipSnapshot>((resolve) => {
+				finish = resolve;
+			})
+		);
 		const pending = live.refresh();
 		const count = onSnapshot.mock.calls.length;
 		const giftsCount = onGifts.mock.calls.length;

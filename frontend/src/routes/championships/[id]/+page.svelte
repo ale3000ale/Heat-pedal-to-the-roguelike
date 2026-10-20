@@ -146,7 +146,9 @@
 					if (championship) liveError = message;
 					else error = message;
 				},
-				onUnauthorized: () => { auth.user = null; }
+				onUnauthorized: () => {
+					auth.user = null;
+				}
 			});
 			currentLive = active;
 		});
