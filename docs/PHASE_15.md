@@ -36,7 +36,11 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
 - Tasto S e annullamento assegnazione collegati in 660a279; CI verde
   (run 39410540606): backend pytest, migrazioni e frontend check/lint/test/build.
   Test del blocco: privacy, rifiuti senza eventi, ripristino saldi e rollback.
-- 15a-3 resta incompleta: correzioni del revisore ancora da collegare.
+- Riallineamento documentale c6898da verificato: CI verde run 39411533470,
+  backend pytest concluso alle 12:59:00 CEST; migrazioni e frontend superati.
+- Correzioni del revisore collegate nel blocco corrente: annullo attivo/consumato,
+  bonus e rimozione. Nuovi test non eseguiti localmente; CI da verificare.
+  15a-3 non dichiarata completata prima di questa verifica.
 - 15a-4: client SSE frontend e collegamento del fallback ancora da implementare.
 - 15b: sistemazione generale da definire dopo SSE con l'autore.
 
@@ -83,6 +87,9 @@ Il client dovra' rileggere le API autorizzate; il replay di card.gifted non deve
 mostrare direttamente una carta gia' annullata o una notifica gia' vista.
 CardGift.seen_at rimane il riferimento delle notifiche non viste, anche nel
 fallback polling. Eventi, inventario, pool e notifica sono nella stessa transazione.
+Il revisore riusa card.play_undone e cards.changed per annullare una giocata.
+Bonus e rimozione emettono soltanto cards.changed: non sono regali e non creano
+notifiche CardGift. Correzioni ed eventi condividono commit e rollback.
 
 ## Note dei blocchi e correzioni
 
@@ -92,6 +99,7 @@ fallback polling. Eventi, inventario, pool e notifica sono nella stessa transazi
 - PHASE_15_TIMER.md: modulo timer iniziale, ora collegato al lifecycle.
 - PHASE_15_CARD_PLAY_EVENTS.md: giocate e annullamenti sponsor, CI verificata.
 - PHASE_15_GIFT_EVENTS.md: assegnazioni tasto S e annullamenti, CI verificata.
+- PHASE_15_JUDGE_EVENTS.md: correzioni del revisore, test aggiunti e CI da leggere.
 - PHASE_15_CONCURRENCY.md: test reali a due processi, non prove di carico o multi-host.
 - PHASE_15_CI_FIX.md: asserzione Alembic storica, superata in CI su 47df2a5.
 - PHASE_15_STATE_EVENTS_FIX.md: ID ORM dopo rollback, superata in CI su 53709a0.
@@ -113,7 +121,7 @@ Nessuna nuova dipendenza di questi blocchi. Test locali non eseguiti.
 - PROJECT_SPEC.md: rilettura dopo bc0fbfb e refuso storico da verificare.
 - PHASE_14_POST_MERGE.md: aae6c33 e' storico; automazione format-championships non
   verificata in questa fase.
-- README.md, SETUP.md, SCRIPTS.md e DATABASE.md riletti per questo riallineamento.
+- README.md, SETUP.md, SCRIPTS.md e DATABASE.md riletti per il riallineamento c6898da.
   Nessun comando, dipendenza o schema aggiunto dai blocchi eventi carte.
   Delta SSE del database in PHASE_15_DATABASE.md. Prima di ulteriori
   aggiornamenti rileggere SHOP_DESIGN.md e PROJECT_NOTES.md.
@@ -122,12 +130,12 @@ Nessuna nuova dipendenza di questi blocchi. Test locali non eseguiti.
 - Differenza del formato Deck.cards tra istruzioni e codice segnalata da DATABASE.md:
   nessuna modifica al formato delle carte o ai percorsi in questa fase.
 
-## Metodo e verifica del riallineamento
+## Metodo e verifica del blocco
 
 Sottofasi approvate una alla volta; conferma puntuale prima dei push.
 Dopo i check riallineare i documenti piccoli interessati e raccogliere qui i delta
 non applicati ai documenti grandi. Nessuna esecuzione o riuscita presunta.
-Riallineamento documentale del 2026-10-20 basato sui tre check completati con
-successo del run 39410540606, conclusi entro le 12:50:23 CEST su 660a279.
-Non sono stati eseguiti comandi locali. La CI di un eventuale successivo commit
-solo documentale non e' coperta dall'esito di questo run.
+Il blocco revisore parte dalla CI verde di c6898da (run 39411533470).
+Riletti servizio card_judge, registro eventi, route e test di riapertura.
+Nuovi test preparati, nessun comando locale eseguito. Esito CI del nuovo codice
+ da verificare dopo il push, poi riallineare queste note prima del frontend.
