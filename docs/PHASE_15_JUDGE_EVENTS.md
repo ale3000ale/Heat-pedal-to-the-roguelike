@@ -26,15 +26,29 @@ Gli eventi richiedono riletture delle API autorizzate, non mostrano carte.
 
 Riletti card_judge.py, event_log.py, api/race_review.py, api/card_play.py e
 la riapertura nei test; verificata la testa della PR prima della preparazione.
-Test locali non eseguiti. Test aggiunti ma CI di questo blocco ancora da leggere
- dopo il push: il verde della base non certifica il nuovo codice.
-Nessuna nuova migrazione o dipendenza. Nessuna modifica al database reale o
-alle immagini, nessun backup reale, nessuna prova browser o deployment.
-Dopo CI verde riallineare le note con l'esito effettivo.
+Commit implementativo: 8e1f440e13dfc4bd36c7839ec49b411dd72e68fe.
+CI della PR 14 verificata e ricontrollata: run 39414943186.
+https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39414943186
+
+| Job | Esito | Conclusione CEST del 2026-10-20 |
+|---|---|---|
+| Backend (pytest) | success | 13:28:32 |
+| Frontend (check, lint, test, build) | success | 13:26:59 |
+| Migrazioni (database di test) | success | 13:26:38 |
+
+Tutti i job sono completati. Sono stati letti gli esiti, non i conteggi dei test
+nei log pytest; non viene dichiarato un numero di test eseguiti.
+Test locali non eseguiti. Nessuna nuova migrazione o dipendenza.
+Nessuna modifica al database reale o alle immagini, nessun backup reale,
+nessuna prova browser o deployment. La CI non verifica una connessione SSE
+end-to-end attraverso il proxy e non certifica l'uso sui dati del gioco.
+Il successivo commit di solo riallineamento documentale richiedera' una
+verifica CI separata; il verde qui registrato riguarda il codice 8e1f440.
 
 ## Prossimo passo
 
-Verificare la CI del blocco e correggere eventuali errori prima del frontend.
-Client SSE, gestione reconnect/resync/auth.expired e fallback polling restano
- da implementare in una sottofase separata con approvazione.
+Le correzioni del revisore sono collegate e verificate in CI.
+Dopo il riallineamento delle note, presentare l'analisi e i file previsti del
+client frontend SSE per approvazione. Reconnect, resync, auth.expired e fallback
+polling restano da implementare nella sottofase 15a-4.
 PROJECT_SPEC.md e PROJECT_STATUS.md intatti secondo la decisione in PHASE_15.md.

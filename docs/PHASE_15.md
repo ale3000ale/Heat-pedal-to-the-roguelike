@@ -38,9 +38,11 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
   Test del blocco: privacy, rifiuti senza eventi, ripristino saldi e rollback.
 - Riallineamento documentale c6898da verificato: CI verde run 39411533470,
   backend pytest concluso alle 12:59:00 CEST; migrazioni e frontend superati.
-- Correzioni del revisore collegate nel blocco corrente: annullo attivo/consumato,
-  bonus e rimozione. Nuovi test non eseguiti localmente; CI da verificare.
-  15a-3 non dichiarata completata prima di questa verifica.
+- Correzioni del revisore collegate in 8e1f440: annullo attivo/consumato,
+  bonus e rimozione. CI verde run 39414943186: backend pytest concluso alle
+  13:28:32 CEST, frontend alle 13:26:59, migrazioni alle 13:26:38 del 2026-10-20.
+  Le integrazioni backend previste per 15a-3 sono collegate e verificate in CI;
+  questo esito non certifica il funzionamento end-to-end del frontend SSE.
 - 15a-4: client SSE frontend e collegamento del fallback ancora da implementare.
 - 15b: sistemazione generale da definire dopo SSE con l'autore.
 
@@ -99,7 +101,7 @@ notifiche CardGift. Correzioni ed eventi condividono commit e rollback.
 - PHASE_15_TIMER.md: modulo timer iniziale, ora collegato al lifecycle.
 - PHASE_15_CARD_PLAY_EVENTS.md: giocate e annullamenti sponsor, CI verificata.
 - PHASE_15_GIFT_EVENTS.md: assegnazioni tasto S e annullamenti, CI verificata.
-- PHASE_15_JUDGE_EVENTS.md: correzioni del revisore, test aggiunti e CI da leggere.
+- PHASE_15_JUDGE_EVENTS.md: correzioni del revisore, CI verde su 8e1f440.
 - PHASE_15_CONCURRENCY.md: test reali a due processi, non prove di carico o multi-host.
 - PHASE_15_CI_FIX.md: asserzione Alembic storica, superata in CI su 47df2a5.
 - PHASE_15_STATE_EVENTS_FIX.md: ID ORM dopo rollback, superata in CI su 53709a0.
@@ -137,5 +139,9 @@ Dopo i check riallineare i documenti piccoli interessati e raccogliere qui i del
 non applicati ai documenti grandi. Nessuna esecuzione o riuscita presunta.
 Il blocco revisore parte dalla CI verde di c6898da (run 39411533470).
 Riletti servizio card_judge, registro eventi, route e test di riapertura.
-Nuovi test preparati, nessun comando locale eseguito. Esito CI del nuovo codice
- da verificare dopo il push, poi riallineare queste note prima del frontend.
+Il codice del blocco e' pubblicato in 8e1f440e13dfc4bd36c7839ec49b411dd72e68fe.
+Ricontrollati i tre job del run 39414943186: tutti completati con successo.
+Non sono stati eseguiti comandi locali o letti conteggi numerici dai log pytest.
+Questo riallineamento modifica soltanto PHASE_15.md e PHASE_15_JUDGE_EVENTS.md;
+la CI di un successivo commit documentale richiede una verifica separata.
+Prima del frontend presentare analisi e file previsti per l'approvazione.
