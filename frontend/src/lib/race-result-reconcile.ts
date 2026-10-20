@@ -74,8 +74,7 @@ export function reconcileResults(base: ResultForm, local: ResultForm, remote: Re
 	const assignmentKept = !sameAssignment(base, local) || lostDirty;
 	const source = assignmentKept ? local : remote;
 	const localRows = new Map(local.order.map((row) => [row.pilot_id, row]));
-	let conflict =
-		assignmentKept && !sameAssignment(base, remote) && !sameAssignment(local, remote);
+	let conflict = assignmentKept && !sameAssignment(base, remote) && !sameAssignment(local, remote);
 	const form: ResultForm = {
 		order: source.order.map((row) => {
 			const own = localRows.get(row.pilot_id);
