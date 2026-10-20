@@ -11,6 +11,10 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
 - Tutti gli eventi proposti: carte ottenute/annullate, giocate, stato gara/revisione,
   risultati e classifica. Non estende automaticamente SSE a ogni CRUD dell'app.
 - Polling e card_poll_seconds mantenuti come fallback; rimozione rinviata.
+- Scelta 15a-4b: polling soltanto quando lo stream non e' open, senza controlli
+  periodici di sicurezza con stream aperto. Resta il limite del buffering del proxy.
+- Scelta 15a-4b: aggiornare i soli campi risultati non modificati localmente,
+  preservando ordine, assenti e punti sponsor modificati ma non salvati.
 - Timer backend per scadenza revisioni oltre alla conferma alla prima richiesta.
 - Rete scelta dopo lettura di api.ts e vite.config.ts: /api same-origin tramite proxy
   verso FastAPI, non chiamate cross-origin. Buffering reale ancora da verificare.
@@ -56,8 +60,17 @@ Le indicazioni storiche "timer non attivo" nelle note precedenti descrivono quei
 - Riscontro manuale dell'autore alle 15:23 CEST: "ok per ora va tutto".
   Esito positivo delle prove svolte, senza elenco dei casi, log o ambiente.
   Non equivale a copertura completa della checklist o della sincronizzazione UI.
-- 15a-4b: sottoscrizioni delle pagine, resync REST e fallback da implementare
-  dopo analisi e approvazione separata del blocco successivo.
+- Riallineamento 2960c05 verificato: CI verde run 39430586035,
+  backend concluso alle 15:29:56 CEST; frontend e migrazioni superati.
+- 15a-4b, commit 1: strumenti condivisi in 33b87b8, primo lint fallito per
+  formattazione nel run 39454933814. Job formatter mirato aggiornato in 96f98ef.
+- Testa formattata fb4f128786d74bdcece526f28a8f158fb13374eb: il bot modifica
+  esattamente i tre file segnalati; CI ordinaria 39457551822 tutta verde.
+  Frontend check/lint/test/build concluso alle 18:31:14 CEST, backend pytest
+  alle 18:32:17, migrazioni alle 18:30:41 del 2026-10-20.
+  Coalescer, coordinatore SSE/fallback e riconciliazione regali verificati in CI.
+- 15a-4b, commit 2: collegamento delle schermate ancora da implementare.
+  Presentare perimetro definitivo e test per approvazione prima di scrivere codice.
 - 15b: sistemazione generale da definire dopo SSE con l'autore.
 
 ## Timer e lifecycle
@@ -88,9 +101,10 @@ GET /api/events/stream: cookie, Last-Event-ID, letture ogni secondo, keep-alive 
 di invio/attesa. Sessione HTTP ricontrollata a ogni lettura; auth.expired chiude
 lo stream. Il client 15a-4a chiude EventSource e svuota l'utente locale;
 il blocco ha superato la CI sulla testa formattata 33f01f0.
-Primo accesso o cursore non recuperabile inviano resync: il client ricarichera'
-lo stato REST nel blocco schermate 15a-4b. Rilevato anche un registro svuotato
-con sqlite_sequence.
+Primo accesso o cursore non recuperabile inviano resync. Il coordinatore condiviso
+15a-4b commit 1 richiede una rilettura REST e gestisce fallback e 401, ma deve
+ancora essere usato dalle schermate nel commit 2. Rilevato anche un registro
+svuotato con sqlite_sequence.
 I privati sono visibili solo al destinatario; i pubblici agli iscritti con pilota
 non eliminato e ad admin/giudici. Mai carte private, conteggi o bozze nei pubblici.
 La conservazione e' 24 ore, con eliminazione periodica e non esatta al secondo.
@@ -108,6 +122,10 @@ fallback polling. Eventi, inventario, pool e notifica sono nella stessa transazi
 Il revisore riusa card.play_undone e cards.changed per annullare una giocata.
 Bonus e rimozione emettono soltanto cards.changed: non sono regali e non creano
 notifiche CardGift. Correzioni ed eventi condividono commit e rollback.
+Il nuovo helper riconcilia regali visibili e nuovi in attesa, senza marcare /seen.
+L'endpoint /seen attuale marca tutte le notifiche del pilota: l'ack selettivo
+non e' risolto in questo blocco. La chiusura automatica del popup per annullamento
+remoto non dovra' marcare come viste notifiche nuove mai mostrate.
 
 ## Note dei blocchi e correzioni
 
@@ -120,6 +138,8 @@ notifiche CardGift. Correzioni ed eventi condividono commit e rollback.
 - PHASE_15_JUDGE_EVENTS.md: correzioni del revisore, CI verde su 8e1f440.
 - PHASE_15_FRONTEND_CLIENT.md: client condiviso, CI verde e riscontro manuale limitato.
 - PHASE_15_FRONTEND_FORMATTING.md: errore Prettier, procedura e commit risolutivo.
+- PHASE_15_FRONTEND_LIVE.md: strumenti del commit 1, scelte approvate, limiti e
+  correzione Prettier; CI verde su fb4f128, schermate non ancora collegate.
 - PHASE_15_CONCURRENCY.md: test reali a due processi, non prove di carico o multi-host.
 - PHASE_15_CI_FIX.md: asserzione Alembic storica, superata in CI su 47df2a5.
 - PHASE_15_STATE_EVENTS_FIX.md: ID ORM dopo rollback, superata in CI su 53709a0.
@@ -136,6 +156,7 @@ Catena storica letta: testa precedente a2e6c0d4f8b3; merge storico b2d6f0a4c8e1.
 Nessuna prova browser eseguita dall'assistente. Il riscontro positivo dell'autore
 non dettaglia durata delle connessioni attraverso il proxy, carico, deployment
 online o filesystem di rete: queste verifiche non sono dichiarate superate.
+Il riscontro delle 15:23 non viene esteso agli strumenti introdotti dopo.
 Non dichiariamo l'app completamente real-time. Nessuna nuova dipendenza.
 Nessun comando o test eseguito localmente dall'assistente.
 
@@ -162,7 +183,8 @@ non applicati ai documenti grandi. Nessuna esecuzione o riuscita presunta.
 La 15a-4a parte da 4430d409a84b541c8f8bd096a0d7589935166460, PR 14 in bozza.
 Riletti layout e autenticazione, pagine campionato/gara, polling, store revisione,
 protocollo backend, package.json e vite.config.ts. Scaffold e lockfile conservati.
-Questo riallineamento riguarda solo i tre documenti del client e della fase.
-Ricontrollati gli esiti della CI 39425660561; nessun conteggio test inventato.
+Questo riallineamento modifica soltanto PHASE_15_FRONTEND_LIVE.md e PHASE_15.md.
+La verifica del commit 1 si basa sui dettagli del commit bot e sui tre esiti CI
+39457551822, non su conteggi numerici o log completi del job formatter.
 Il nuovo commit documentale richiede una verifica CI separata.
-Il collegamento alle schermate richiede analisi e approvazione della 15a-4b.
+Nessun codice o workflow modificato e nessun avvio del commit 2 in questo passaggio.
