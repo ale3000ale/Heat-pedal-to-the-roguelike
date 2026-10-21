@@ -1,26 +1,24 @@
-# Guardie sessione conteggi revisione
+# Guardie sessione e limite del genitore
 
 Aggiornamento: 2026-10-21. Solo phase-15-sse-sistemazione.
-Preparazione 37e635c, bot 01c567a; CI 39636047244 verde su frontend, backend e
-migrazioni di test. Cronologia dettagliata nella versione a36e536 e nella storia Git.
+Guardie 37e635c/01c567a, CI 39636047244 verde. Integrazione 1145a9a, CI 39650297363;
+limite del genitore 8018d18, CI 39658083388, entrambe verdi. Cronologia in Git.
 
-## Guardie conservate nel collegamento live
+Utente iniziale e chiave revisione caricata vincolano le scritture. Verifica prima
+dei conteggi e fra PUT bozza e DELETE rinuncia; progresso browser sotto la chiave
+propria. Nessuna atomicita' fra verifica e richiesta successiva. Sei test iniziali
+coprono salvataggio valido, titolare/inizio cambiati, cambio fra PUT/DELETE, cambio
+utente e dispose durante verifica. I sette casi live sono descritti nella nota live.
 
-Store legato all'utente iniziale e alla chiave della revisione caricata, controllo
-prima di inviare conteggi e fra PUT bozza e DELETE rinuncia. Progresso browser
-sotto la chiave iniziale. Nessuna atomicita' aggiunta fra verifica e scrittura.
-Sei test simulati: salvataggio consentito, titolare cambiato, nuovo inizio dello
-stesso revisore, cambio fra PUT e DELETE, cambio utente, dispose durante verifica.
+Ora enabled del genitore limita anche lo store: false preserva copia, revoca spunte
+e blocca azioni; true impone nuova lettura. Apertura e recupero confermati non
+aggirano il limite. Tre test aggiunti coprono blocco/preservazione, cambio durante
+preinvio e riabilitazione. Il limite non concede diritti backend e non annulla HTTP
+in corso. Il pannello resta sul solo cambio stato se il ruolo e' ancora ammesso;
+cambio contesto o perdita ruolo possono smontarlo senza trasferire copie.
 
-Dal bot 1145a9a queste guardie fanno parte dello store collegato realmente a SSE
-e merge inventari. CI 39650297363 tutta verde, inclusi i test preesistenti e sette
-nuovi casi simulati. Apertura al mount ora GET-only; merge, revoca spunte, blocchi
-e recupero confermato implementati. Le precedenti indicazioni di integrazione
-ancora pendente descrivevano il blocco storico 01c567a, non la testa corrente.
-Dettagli in PHASE_15_REVIEW_LIVE_CONNECT.md.
-
-Nessun comando locale o collaudo DOM/browser dell'assistente. Esiti/file modificati
-letti, non log completi. Restano lifecycle del genitore al cambio fase, dialoghi e
-warning canvas da valutare prima del collaudo finale. Nessuna modifica ad API,
-backend, dati, dipendenze o documenti protetti in questo riallineamento solo .md.
-Non attendere CI dei soli documenti. Nessun merge o intervento sui dati reali.
+Diff del blocco 8018d18 ed esiti CI letti. Nessun nuovo test DOM/browser e nessun
+npm locale dell'assistente. Per il collaudo seguire PHASE_15_BROWSER_CHECKLIST.md,
+solo dati isolati. Non certificare guardie UI o SSE complessivi dalla sola CI.
+Solo documenti in questo riallineamento; backend, DB, dipendenze e documenti protetti
+intatti. Nessun merge e nessuna attesa CI dei soli .md.
