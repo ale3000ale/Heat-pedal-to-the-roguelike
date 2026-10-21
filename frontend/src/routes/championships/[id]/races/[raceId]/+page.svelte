@@ -64,9 +64,10 @@
 			!order.some((row) => row.pilot_id === r.pilot_id) &&
 			!absent.some((a) => a.pilot_id === r.pilot_id)) : []
 	);
+	// La callback legge un Set sempre definito, non la variabile nullable race.
+	let knownPilotIds = $derived(new Set(race?.results.map((r) => r.pilot_id) ?? []));
 	let unknownPilot = $derived(
-		race !== null && [...order, ...absent].some((row) =>
-			!race.results.some((r) => r.pilot_id === row.pilot_id))
+		race !== null && [...order, ...absent].some((row) => !knownPilotIds.has(row.pilot_id))
 	);
 	let canFinish = $derived(
 		order.length > 0 && order.length <= MAX_PARTICIPANTS && available.length === 0 && !unknownPilot

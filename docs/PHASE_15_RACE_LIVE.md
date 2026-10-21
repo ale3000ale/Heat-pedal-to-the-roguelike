@@ -3,6 +3,8 @@
 Data: 2026-10-21. Solo phase-15-sse-sistemazione, PR 14 in bozza.
 Base riletta 0709ca4, commit solo documentale senza attesa CI, come richiesto.
 Merge puro verificato sulla testa 3c860d2, CI 39509635060 verde.
+Implementazione del collegamento: 4833a8dce73dec8d6634376fdaaab67fa1d24168.
+Controlli del collegamento non ancora superati: primo tentativo fallito, fix sotto.
 
 ## File e comportamento implementato
 
@@ -42,6 +44,32 @@ senza window.location.reload e senza richiamare genitore dopo smontaggio.
 Il componente e' ricreato per campionato/gara/utente/stato, non a ogni snapshot:
 non si azzerano conteggi locali per un semplice aggiornamento dei risultati.
 
+## Primo tentativo e fix del type-check
+
+CI ordinaria 39593722874: frontend failure alle 13:41:05 CEST del 2026-10-21,
+migrazioni success alle 13:41:13, backend pytest success alle 13:43:00.
+Formatter 39593716889: failure alle 13:41:16. Esiti dei job letti su GitHub;
+non si dichiara pubblicato un commit bot di formattazione riuscita.
+
+Il log dell'autore alle 13:54 segnala un errore svelte-check: race potenzialmente
+null nel callback di unknownPilot, oltre a un warning separato sul role img del
+canvas in card-crop-editor.svelte. Non si presumono riusciti test/build dei job
+falliti o risultati di step non riportati dal log.
+
+Fix mirato: knownPilotIds e' un Set derivato da race?.results oppure da [].
+unknownPilot mantiene la guardia race !== null, ma il callback legge solo il Set
+sempre definito. Nessun race!, cast, soppressione TypeScript o cambio alle regole
+di salvataggio. La modifica preserva il significato del controllo: nessun pilota
+sconosciuto prima della lettura, blocco se una bozza contiene ID non piu' presenti.
+
+Il workflow viene riattivato cambiando soltanto il nome dello step check; comandi,
+file formattabili, trigger e protezioni restano invariati. Formatter dal lockfile,
+lint completo/check/test/build prima di pubblicare i due componenti. Se il ramo
+cambia si ferma senza force push. Verificare nuovo job, eventuale bot e CI della
+testa risultante; non dichiarare risolto il type-check prima degli esiti reali.
+Il warning canvas e' registrato come sistemazione separata e non viene corretto
+qui; non si dichiara quindi ottenuto un check senza warning.
+
 ## Confini e verifiche ancora pendenti
 
 Lo store review-counts.svelte.ts non e' modificato: nessuna nuova sincronizzazione
@@ -51,18 +79,17 @@ blocco collega intestazione/risultati/stato gara e rimuove il reload distruttivo
 non certifica completata ogni vista di revisione della fase 15.
 
 La suite pura di riconciliazione e i test del coordinatore sono gia' presenti.
-Non sono aggiunti test DOM dei due componenti: guardia uscita, vista in sola lettura,
-modifiche durante PUT e callback richiedono ancora verifica integrata/browser.
-Nessun npm, formatter, lint, check, test o build locale eseguito dall'assistente.
-Nessun controllo dei nuovi componenti ancora dichiarato superato: leggere formatter,
-eventuale commit bot, diff e CI della testa risultante. Il formatter usa il lockfile,
-esegue lint completo/check/test/build prima di pubblicare solo i due file;
-se cambia il ramo si ferma senza force push. Prima CI non formattata distinta.
+Non sono aggiunti test DOM dei componenti: guardia uscita, vista in sola lettura,
+modifiche durante PUT, callback e reattivita' del controllo piloti richiedono
+ancora verifica integrata/browser. Nessun npm, formatter, lint, check, test o build
+locale eseguito dall'assistente. Nessun successo dei nuovi controlli dichiarato.
 
-Nessuna nuova dipendenza, lockfile, API, migrazione, immagine o dato modificato.
-PROJECT_SPEC.md e PROJECT_STATUS.md protetti. Dopo CI riuscita riallineare tutte
-le note interessate e PHASE_15.md, senza attendere test dei soli commit .md.
-Prima di dichiarare completato SSE, affrontare la sincronizzazione interna del
-pannello. Nessuna prova browser eseguita o richiesta ora: avviso e checklist finali
-solo dopo completamento dei collegamenti restanti e relativi controlli verdi.
+Questo fix modifica pagina gara, nome dello step nel workflow e questa nota;
+nessuna modifica diretta al pannello o al componente canvas. Nessuna dipendenza,
+lockfile, API, migrazione, immagine o dato modificato. PROJECT_SPEC.md e
+PROJECT_STATUS.md protetti. Dopo CI riuscita riallineare tutte le note interessate
+e PHASE_15.md, senza attendere test dei soli commit .md. Prima di dichiarare
+completato SSE, affrontare la sincronizzazione interna del pannello.
+Nessuna prova browser eseguita o richiesta ora: avviso e checklist finali solo
+dopo completamento dei collegamenti restanti e relativi controlli verdi.
 Nessun merge o intervento sul database reale autorizzato.

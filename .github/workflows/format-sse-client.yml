@@ -46,7 +46,7 @@ jobs:
       - name: Lint e formattazione completi
         working-directory: frontend
         run: npm run lint
-      - name: Controllo dei tipi
+      - name: Controllo dei tipi dopo il fix nullable della gara
         working-directory: frontend
         run: npm run check
       - name: Test frontend
