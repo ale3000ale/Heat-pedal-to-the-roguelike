@@ -1,0 +1,211 @@
+name: Verifica lifecycle revisione e canvas
+on:
+  push:
+    branches: [phase-15-sse-sistemazione]
+    paths: [.github/workflows/review-lifecycle-canvas.yml]
+permissions:
+  contents: read
+concurrency:
+  group: review-live-connect
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Applica soltanto la patch ai cinque file vincolati
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          files = {
+              'frontend/src/routes/championships/[id]/races/[raceId]/+page.svelte': '33ed166148e9621f5f01b7c96c8b1e505e546e9c',
+              'frontend/src/lib/components/race-review-panel.svelte': '392f7965b7d9299c810e4f1fb612efded5fb7fa9',
+              'frontend/src/lib/stores/review-counts.svelte.ts': '9f877ef9ee2b933645dc570edb9df4cf168e63ae',
+              'frontend/src/lib/components/card-crop-editor.svelte': '697472d57c494fd00cd024f6c8dc30e2a131e1bf',
+              'frontend/src/lib/review-session-guard.spec.ts': '36f8fa1d29d0aad07654e2d74dcc77cbec7185dc'
+          }
+          for name, sha in files.items():
+              actual = subprocess.check_output(['git', 'hash-object', name], text=True).strip()
+              if actual != sha: raise RuntimeError('Base diversa: ' + name)
+          def change(old, new, count=1):
+              global text
+              if text.count(old) != count: raise RuntimeError('Ancora diversa: ' + old)
+              text = text.replace(old, new)
+          p = Path(next(iter(files)))
+          text = p.read_text()
+          change('\tlet error = $state<string | null>(null);', '\tlet reviewMounted = $state(false);\n\tlet error = $state<string | null>(null);')
+          change('\tlet available = $derived(', '\t$effect(() => { if (canReview) reviewMounted = true; });\n\tlet available = $derived(')
+          change('\t\tcontext = null;', '\t\tcontext = null;\n\t\treviewMounted = false;')
+          change('{#if canReview && context}', '{#if (canReview || reviewMounted) && context && auth.canManageRaces}')
+          change('{#key `${context.championshipId}:${context.raceId}:${context.userId}:${race.status}`}', '{#key `${context.championshipId}:${context.raceId}:${context.userId}`}')
+          change('canOpen={auth.canCorrectRaces && race.is_last}', 'enabled={canReview}\n\t\t\t\t\tcanOpen={canReview && auth.canCorrectRaces && race.is_last}')
+          p.write_text(text)
+          p = Path('frontend/src/lib/stores/review-counts.svelte.ts')
+          text = p.read_text()
+          change('private disposed = false;', 'private editAllowed = $state(true);\nprivate disposed = false;')
+          change('!this.disposed &&', '!this.disposed && this.editAllowed &&')
+          change('get owned(): boolean {', '''/**
+          * Riceve un limite dal genitore: non concede permessi backend.
+          * @param allowed False congela editing e revoca spunte; true richiede una nuova lettura.
+          * @returns Nessun valore; copie e contesto corrente non vengono sostituiti.
+          */
+          setEditingAllowed(allowed: boolean): void {
+          if (this.disposed || this.editAllowed === allowed) return;
+          this.editAllowed = allowed;
+          this.checked = [];
+          if (!this.blocked) this.persist();
+          if (allowed) { this.synchronized = false; void this.refreshStatus(); }
+          }
+          get owned(): boolean {''')
+          change('async start(reopen = false, confirmed = false): Promise<boolean> {', 'async start(reopen = false, confirmed = false): Promise<boolean> {\nif (!this.editAllowed || this.disposed || auth.user?.id !== this.userId) return false;')
+          change('if (!confirmed) return false;', 'if (!confirmed || !this.editAllowed || this.disposed) return false;')
+          p.write_text(text)
+          p = Path('frontend/src/lib/components/race-review-panel.svelte')
+          text = p.read_text()
+          change("import { onDestroy, onMount } from 'svelte';", "import { onDestroy, onMount, untrack } from 'svelte';")
+          change('canOpen = false,', 'canOpen = false,\n\t\tenabled = true,')
+          change('canOpen?: boolean;', 'canOpen?: boolean;\n\t\tenabled?: boolean;')
+          change('let disposed = false;', '''let disposed = false;
+          $effect(() => {
+          const allowed = enabled;
+          untrack(() => store.setEditingAllowed(allowed));
+          });''')
+          change('{#if canOpen}', '{#if canOpen && enabled}')
+          change('{:else if canOpen}', '{:else if canOpen && enabled}')
+          change('{#if store.owned}', '{#if store.owned && enabled}')
+          change('<Card.Content class="space-y-4">', '<Card.Content class="space-y-4">\n{#if !enabled}<p role="status" class="text-sm text-muted-foreground">Lo stato corrente non consente modifiche. La copia resta in sola lettura nella pagina.</p>{/if}')
+          p.write_text(text)
+          p = Path('frontend/src/lib/components/card-crop-editor.svelte')
+          text = p.read_text()
+          change('currentTarget: HTMLCanvasElement', 'currentTarget: HTMLButtonElement', 2)
+          change('const ratio = CARD_WIDTH / e.currentTarget.clientWidth;', 'const ratio = CARD_WIDTH / (canvas?.clientWidth ?? e.currentTarget.clientWidth);')
+          change('\tfunction changeZoom(', '''/**
+          * Sposta il ritaglio con le frecce del controllo nativo; Maiusc usa un passo fine.
+          * @param event Evento tastiera; gli altri tasti mantengono il comportamento nativo.
+          * @returns Attende il ridisegno prima di esportare il WebP, senza nuove regole di ritaglio.
+          */
+          async function keyPan(event: KeyboardEvent): Promise<void> {
+          if (!view || !image) return;
+          const step = event.shiftKey ? 1 : 10;
+          const directions: Record<string, readonly [number, number]> = {
+          ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step]
+          };
+          const delta = directions[event.key];
+          if (!delta) return;
+          event.preventDefault();
+          view = panView(view, delta[0], delta[1], image.width, image.height);
+          await tick();
+          exportBlob();
+          }
+
+          function changeZoom(''')
+          handlers = '\t\t\tonpointerdown={startDrag}\n\t\t\tonpointermove={drag}\n\t\t\tonpointerup={endDrag}\n\t\t\tonpointercancel={endDrag}\n'
+          change(handlers, '')
+          change('\t\t<canvas\n', '''\t\t<button
+          type="button"
+          class="block w-full max-w-[280px] rounded-md p-0 text-left focus-visible:outline-2 focus-visible:outline-offset-2"
+          aria-label="Editor ritaglio: usa le frecce per spostare e Invio o Spazio per applicare"
+          disabled={!image || !view}
+          onpointerdown={startDrag}
+          onpointermove={drag}
+          onpointerup={endDrag}
+          onpointercancel={endDrag}
+          onkeydown={keyPan}
+          onclick={exportBlob}
+          >
+          <canvas
+          ''')
+          change('\t\t></canvas>', '\t\t></canvas>\n\t\t</button>')
+          change("Trascina l'immagine per centrare la carta.", "Trascina o usa le frecce per centrare la carta (Maiusc: spostamento fine). Invio o Spazio applicano il ritaglio.")
+          change('\tcanvas {\n', '\tcanvas {\n\t\tdisplay: block;\n')
+          p.write_text(text)
+          p = Path('frontend/src/lib/review-session-guard.spec.ts')
+          text = p.read_text()
+          text += '''
+          describe('limite di editing ricevuto dal genitore', () => {
+          it('conserva copia e blocca tutte le scritture quando il genitore passa in sola lettura', async () => {
+          const before = JSON.stringify(store.pilots);
+          store.checked = [1]; mock.open.mockClear();
+          store.setEditingAllowed(false);
+          expect(store.active).toBe(false); expect(store.checked).toEqual([]);
+          expect(JSON.stringify(store.pilots)).toBe(before);
+          expect(await store.navigate(-1, true)).toBe(false);
+          expect(await store.confirm()).toBe(false);
+          expect(await store.start(true, true)).toBe(false);
+          expect(await store.reloadInventory(true)).toBe(false);
+          expect(mock.open).not.toHaveBeenCalled(); expect(mock.save).not.toHaveBeenCalled();
+          });
+          it('non invia PUT se il limite cambia durante la verifica preinvio', async () => {
+          let release!: (value: RaceReview) => void;
+          mock.read.mockReturnValueOnce(new Promise<RaceReview>((resolve) => { release = resolve; }));
+          const pending = store.navigate(-1, true);
+          store.setEditingAllowed(false); release({ ...review });
+          expect(await pending).toBe(false); expect(mock.save).not.toHaveBeenCalled();
+          expect(store.pilots).toHaveLength(1);
+          });
+          it('richiede lettura nuova e ricontrollo dopo il ripristino del permesso', async () => {
+          store.checked = [1]; mock.open.mockClear();
+          store.setEditingAllowed(false); store.setEditingAllowed(true);
+          await store.refreshStatus();
+          expect(store.active).toBe(true); expect(store.checked).toEqual([]);
+          expect(mock.open).not.toHaveBeenCalled(); expect(mock.save).not.toHaveBeenCalled();
+          });
+          });
+          '''
+          p.write_text(text)
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Formatta e verifica senza modificare dipendenze
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            'src/routes/championships/[id]/races/[raceId]/+page.svelte'
+            src/lib/components/race-review-panel.svelte
+            src/lib/stores/review-counts.svelte.ts
+            src/lib/components/card-crop-editor.svelte
+            src/lib/review-session-guard.spec.ts
+          )
+          npm ci
+          npx --no-install prettier --write "${files[@]}"
+          npm run lint
+          npm run check 2>&1 | tee "$RUNNER_TEMP/heat-review-lifecycle-check.log"
+          if grep -F 'card-crop-editor.svelte' "$RUNNER_TEMP/heat-review-lifecycle-check.log"; then
+            echo 'Diagnostica canvas ancora presente: nessuna pubblicazione.'
+            exit 1
+          fi
+          npm test
+          npm run build
+      - name: Pubblica esclusivamente i file autorizzati dopo i controlli
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- frontend/package.json frontend/package-lock.json frontend/prettier.config.js
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/PHASE_15_REVIEW_LIFECYCLE_CANVAS.md')
+          text = p.read_text()
+          old = 'Stato: patch preparata, applicazione e controlli ancora da verificare.'
+          if text.count(old) != 1: raise RuntimeError('Nota diversa')
+          p.write_text(text.replace(old, 'Stato: patch applicata; formatter, lint, check senza diagnostica del canvas, test e build frontend riusciti prima del commit bot.'))
+          PY
+          git add -- 'frontend/src/routes/championships/[id]/races/[raceId]/+page.svelte' frontend/src/lib/components/race-review-panel.svelte frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/components/card-crop-editor.svelte frontend/src/lib/review-session-guard.spec.ts docs/PHASE_15_REVIEW_LIFECYCLE_CANVAS.md
+          git diff --cached --check
+          git fetch origin phase-15-sse-sistemazione
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: conserva revisione in sola lettura e rende interattivo il canvas accessibile'
+          git push origin HEAD:refs/heads/phase-15-sse-sistemazione
