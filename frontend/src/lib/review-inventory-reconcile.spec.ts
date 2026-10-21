@@ -4,19 +4,34 @@ import type { ReviewInventoryPilot } from './review-counts-types';
 import type { RaceReview } from './race-review-types';
 
 function pilots(): ReviewInventoryPilot[] {
-	return [{
-		pilot_id: 1, pilot_name: 'Pilota', cards: [{
-			card_name: 'Freno', card_path: 'cards/freno.webp', total: 3, remaining: 1,
-			gifted: 1, start: 2, pool_now: 2, pool_max: 7
-		}]
-	}];
+	return [
+		{
+			pilot_id: 1,
+			pilot_name: 'Pilota',
+			cards: [
+				{
+					card_name: 'Freno',
+					card_path: 'cards/freno.webp',
+					total: 3,
+					remaining: 1,
+					gifted: 1,
+					start: 2,
+					pool_now: 2,
+					pool_max: 7
+				}
+			]
+		}
+	];
 }
 
 function review(): RaceReview {
 	return {
-		race_id: 7, in_review: true, reviewer_user_id: 9,
+		race_id: 7,
+		in_review: true,
+		reviewer_user_id: 9,
 		review_started_at: '2026-10-21T12:00:00',
-		review_expires_at: '2026-10-21T12:15:00', review_closed_at: null
+		review_expires_at: '2026-10-21T12:15:00',
+		review_closed_at: null
 	};
 }
 

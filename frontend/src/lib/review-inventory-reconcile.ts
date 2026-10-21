@@ -23,10 +23,14 @@ const copyPilots = (pilots: readonly Pilot[]) =>
  */
 export function ownReviewKey(review: RaceReview, userId: number): string | null {
 	if (
-		!review.in_review || review.reviewer_user_id !== userId ||
-		!review.review_started_at || review.review_closed_at !== null ||
-		!Number.isSafeInteger(userId) || userId < 1
-	) return null;
+		!review.in_review ||
+		review.reviewer_user_id !== userId ||
+		!review.review_started_at ||
+		review.review_closed_at !== null ||
+		!Number.isSafeInteger(userId) ||
+		userId < 1
+	)
+		return null;
 	return JSON.stringify([review.race_id, userId, review.review_started_at]);
 }
 
@@ -41,20 +45,35 @@ function validate(pilots: readonly Pilot[], checkCounts: boolean): void {
 			const key = nameKey(card.card_name);
 			if (!key || names.has(key)) throw new RangeError('Carta duplicata o senza nome');
 			names.add(key);
-			if (checkCounts && (
-				!Number.isInteger(card.total) || card.total < 0 ||
-				!Number.isInteger(card.remaining) || card.remaining < 0 || card.remaining > card.total
-			)) throw new RangeError('Snapshot server con conteggi non validi');
+			if (
+				checkCounts &&
+				(!Number.isInteger(card.total) ||
+					card.total < 0 ||
+					!Number.isInteger(card.remaining) ||
+					card.remaining < 0 ||
+					card.remaining > card.total)
+			)
+				throw new RangeError('Snapshot server con conteggi non validi');
 		}
 	}
 }
 
 /** Firma dei dati carte; ignora ordine delle carte e nome visualizzato del pilota. */
 function signature(pilot: Pilot | undefined): string {
-	return JSON.stringify((pilot?.cards ?? []).map((card) => [
-		nameKey(card.card_name), card.card_path, card.total, card.remaining,
-		card.gifted, card.start, card.pool_now, card.pool_max
-	]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
+	return JSON.stringify(
+		(pilot?.cards ?? [])
+			.map((card) => [
+				nameKey(card.card_name),
+				card.card_path,
+				card.total,
+				card.remaining,
+				card.gifted,
+				card.start,
+				card.pool_now,
+				card.pool_max
+			])
+			.sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+	);
 }
 
 /**
@@ -68,16 +87,20 @@ function signature(pilot: Pilot | undefined): string {
  * Con incompatibilita' restituisce l'intera copia locale, senza clamp o scarti.
  */
 export function reconcileReviewInventory(
-	base: readonly Pilot[], local: readonly Pilot[], remote: readonly Pilot[]
+	base: readonly Pilot[],
+	local: readonly Pilot[],
+	remote: readonly Pilot[]
 ) {
 	validate(base, true);
 	validate(remote, true);
 	validate(local, false);
 	const baseById = new Map(base.map((pilot) => [pilot.pilot_id, pilot]));
 	const remoteById = new Map(remote.map((pilot) => [pilot.pilot_id, pilot]));
-	const changedPilotIds = [...new Set([...baseById.keys(), ...remoteById.keys()])]
-		.filter((id) => baseById.has(id) !== remoteById.has(id) ||
-			signature(baseById.get(id)) !== signature(remoteById.get(id)));
+	const changedPilotIds = [...new Set([...baseById.keys(), ...remoteById.keys()])].filter(
+		(id) =>
+			baseById.has(id) !== remoteById.has(id) ||
+			signature(baseById.get(id)) !== signature(remoteById.get(id))
+	);
 	const merged = copyPilots(remote);
 	const mergedById = new Map(merged.map((pilot) => [pilot.pilot_id, pilot]));
 	const issues: ReviewLocalIssue[] = [];
@@ -97,16 +120,23 @@ export function reconcileReviewInventory(
 			let reason: ReviewLocalIssue['reason'] | null = null;
 			if (!freshPilot) reason = 'pilot_removed';
 			else if (!fresh) reason = 'card_removed';
-			else if (!Number.isInteger(card.remaining) || card.remaining < 0 ||
-				card.remaining > fresh.total) reason = 'out_of_range';
+			else if (
+				!Number.isInteger(card.remaining) ||
+				card.remaining < 0 ||
+				card.remaining > fresh.total
+			)
+				reason = 'out_of_range';
 			if (reason) {
 				issues.push({
-					pilotId: pilot.pilot_id, cardName: card.card_name, reason,
-					remaining: card.remaining, total: fresh?.total ?? null
+					pilotId: pilot.pilot_id,
+					cardName: card.card_name,
+					reason,
+					remaining: card.remaining,
+					total: fresh?.total ?? null
 				});
 			} else if (fresh) {
-				if ((!before || before.remaining !== fresh.remaining) &&
-					card.remaining !== fresh.remaining) conflicts.add(pilot.pilot_id);
+				if ((!before || before.remaining !== fresh.remaining) && card.remaining !== fresh.remaining)
+					conflicts.add(pilot.pilot_id);
 				fresh.remaining = card.remaining;
 			}
 		}
