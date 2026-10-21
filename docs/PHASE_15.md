@@ -1,13 +1,12 @@
 # Fase 15 - SSE in tempo reale e sistemazione
 
 Aggiornamento: 2026-10-21. Solo phase-15-sse-sistemazione; PR 14 in bozza.
-Base iniziale main 2cded6d. Nessun merge o intervento sui dati reali autorizzato.
-Riepilogo corrente abbreviato; cronologia completa nella versione fcead0f di
-questo documento, nella storia Git e nelle note dei singoli blocchi.
+Base main 2cded6d. Nessun merge o intervento sui dati reali autorizzato.
+Riepilogo corrente; cronologia estesa nelle versioni fcead0f/a36e536, note e Git.
 
-## Stato verificato
+## Collegamenti verificati
 
-| Blocco | Testa verificata | CI verde |
+| Blocco | Testa | CI verde |
 |---|---|---|
 | Client condiviso | 33f01f0 | 39425660561 |
 | Coalescer e fallback | fb4f128 | 39457551822 |
@@ -17,85 +16,88 @@ questo documento, nella storia Git e nelle note dei singoli blocchi.
 | Controller e popup | 936f27b | 39500026385 |
 | Campionato collegato | dc97fcf | 39502927035 |
 | Merge risultati puro | 3c860d2 | 39509635060 |
-| Gara collegata e nullable corretto | 4978f73 | 39596834057 |
+| Gara e fix nullable | 4978f73 | 39596834057 |
 | Merge inventari puro | 6aa7fe6 | 39599465230 |
-| Guardie sessione dello store | 01c567a | 39636047244 |
+| Guardie sessione store | 01c567a | 39636047244 |
+| Store/pannello inventari live | 1145a9a | 39650297363 |
 
-Backend SSE, event_log, eventi e timer erano gia' verificati nei blocchi precedenti.
-Le nuove guardie non completano la sincronizzazione interna della revisione.
+Backend SSE, eventi e timer gia' verificati nei blocchi precedenti.
+Campionato usa /seen-selected per i soli regali resi, snapshot e popup riconciliati;
+annulli/chiusure remote non confermano notifiche. Gara preserva ordine/assenti come
+assegnazione unica e sponsor locali per pilota, aggiorna ufficiali/permessi e usa
+PUT esplicita con copia preinvio. Bozza risultati in sola lettura se perde permesso;
+uscita protetta con modifiche/PUT, senza annullare HTTP gia' partite.
 
-Campionato usa /seen-selected sui soli regali resi, non /seen generale. Snapshot
-completi, popup riconciliati, nessuna conferma per annulli o chiusure remote.
-Gara usa merge risultati, aggiorna ufficiali e permessi, preserva ordine/assenti
-come assegnazione unica e sponsor locali per pilota. PUT esplicita con copia
-preinvio; bozza risultati in sola lettura se il permesso viene meno. Protezione
-uscita con modifiche o PUT in corso; uscire non annulla HTTP gia' partite.
-Pannello usa onchanged, non reload browser, ed e' ricreato per contesto/stato.
+## Inventari: ora realmente collegati
 
-## Revisione inventari: cosa e' realmente collegato
+Store e pannello usano coda live condivisa e reconcileReviewInventory. Mount senza
+POST, ripresa GET della revisione propria. autoOpen resta richiesta GET accorpata.
+Bozza mai richiesta quando lo stato non indica titolarita'; confronto chiave anche
+dopo risorse, verifica contesto su 403/409 senza convertirli in bozze vuote.
+Base server distinta, remaining locali preservati con metadati remoti, revoca spunte
+interessate. Incompatibilita' congela la copia senza clamp e blocca editing/conferma.
+Cambio titolare/inizio non trasferisce lavoro automaticamente. Guardie utente e
+preinvio mantenute; nessun ETag, lock ottimistico o atomicita' nuova nel backend.
 
-Il modulo puro review-inventory-reconcile.ts contiene ownReviewKey e il merge
-conservativo. Dal commit 01c567a lo store usa ownReviewKey per legare i conteggi
-all'utente e all'inizio revisione, ricontrolla lo stato dopo il caricamento e prima
-delle scritture, anche fra PUT bozza e DELETE di rinuncia. Il progresso browser
-resta sotto la chiave iniziale. Nessun nuovo salvataggio automatico.
+Rilettura/apertura che sostituisce lavoro richiede conferma e backup browser
+riuscito; copie distinte mai eliminate, precedente visibile nella vista. Fallimento
+storage interrompe il recupero. Progresso legacy revoca spunte; non applicabile
+conservato come testo. Recupero confermato puo' ignorare un'esatta bozza server
+incompatibile nella stessa revisione; un nuovo contenuto incompatibile riblocca.
+Nessuna scrittura REST dei conteggi agli eventi. Risposte durante scritture o di
+generazioni precedenti non applicate; nuova lettura accorpata dopo le azioni.
+401/auth.expired fermano il contesto senza svuotare un diverso utente sopraggiunto.
 
-Il merge reconcileReviewInventory NON e' ancora usato dallo store/pannello.
-Restano sottoscrizione live interna, fallback, merge dei nuovi inventari, revoca
-spunte sui dati remoti, blocco delle incompatibilita' e recupero con conferma.
-La politica approvata conserva copie incompatibili senza clamp, non trasferisce
-bozze fra revisori/nuovi inizi e richiede conferma per abbandonare modifiche.
-403/409 nelle letture non devono diventare bozze vuote. Inventario leggibile per
-giudice/admin; bozza solo titolare attivo. GET stato puo' elaborare scadenze.
-Verifica preinvio e scrittura sono richieste distinte: nessun lock ottimistico,
-ETag o nuova atomicita' backend. Il vecchio POST di apertura al mount resta nel
-pannello: questo blocco non ha cambiato il suo lifecycle.
+Bot 1145a9af097b839a06e10e7bd22df9e742a4520f alle 20:10:11 CEST del 2026-10-21.
+Modifica solo store, pannello, sette test simulati e stato della nota live.
+CI ordinaria 39650297363 della nuova testa: migrazioni di test success 20:12:09,
+frontend check/lint/test/build success 20:12:36, backend pytest success 20:14:01.
+Esiti e file modificati letti, non log completi o conteggio totale suite.
+Primo tentativo 23b6bda fermato da sette errori ESLint; non gli si attribuiscono
+check/test/build riusciti. Preparazione fix dbe8204, nessuna regola disattivata.
 
-Implementazione guardie: preparazione 37e635c, bot 01c567aeff63646ce9ad5eec4412e85bc25af9cd.
-CI 39636047244 del 2026-10-21: migrazioni di test success 18:35:53 CEST,
-frontend check/lint/test/build success 18:36:16, backend pytest success 18:37:54.
-Letti esiti e file modificati, non log completi o conteggi dell'intera suite.
-Sei test mirati delle guardie, non prove DOM/browser. Nessun comando locale eseguito.
+## Invarianti e sicurezza dati
 
-## Invarianti SSE e limiti
+Un EventSource condiviso. Polling/card_poll_seconds solo senza stream open, mai
+polling lento di sicurezza. Countdown con rilettura alla scadenza senza riarmare
+su scadenza trascorsa. Eventi carte, gara/revisione, risultati e classifica, non ogni
+CRUD/impostazione. Event_log persistente, ID non riusati, eventi nella transazione;
+stream autenticato, resync e auth.expired. Payload pubblici senza conteggi o bozze.
+Replay rilegge REST autorizzate e non ricrea popup. Nessun retry delle scritture.
 
-Un client EventSource condiviso; polling/card_poll_seconds solo senza stream open,
-mai polling lento di sicurezza. Letture accorpate, cleanup di contesto, risposte
-vecchie scartate secondo i singoli moduli; nessun retry automatico delle scritture.
-Eventi carte, gara/revisione, risultati e classifica: non ogni CRUD o impostazione.
-Event_log persistente con ID non riusati, eventi nella transazione dell'azione;
-stream autenticato, resync e auth.expired. Payload pubblici senza carte private,
-conteggi o bozze. Replay rilegge REST autorizzate, non ricrea popup.
+Timer per worker ogni 5 secondi, stop cooperativo e pulizia registro, nessuna
+migrazione nel lifespan. Test a due processi sullo stesso SQLite sintetico, non
+prove di carico/multi-host. Uso previsto a bassa affluenza, piu' worker sullo stesso
+SQLite e /api same-origin. Proxy reale e buffering non collaudati.
 
-Timer per worker ogni 5 secondi, stop cooperativo e pulizia periodica del registro;
-nessuna migrazione nel lifespan. Test a due processi sullo stesso SQLite sintetico,
-non prove di carico o multi-host. Uso previsto online a bassa affluenza, piu' worker
-sullo stesso SQLite e /api same-origin. Proxy reale e buffering non collaudati.
+Nessun dato reale migrato, salvato in backup o modificato dall'assistente. Anche
+heat.py start/setup migrano: arresto app, backup verificato, prova su copia e
+permesso prima dell'uso reale. Catena letta a2e6c0d4f8b3, d5e9a3b7c1f6,
+d6f0a4b8c2e7, merge b2d6f0a4c8e1. Downgrade perde storia/garanzia non riuso:
+non usarlo con client che dipendono da ID stabili. Non trasferire conferme pendenti
+fra backup/DB ricreati. CI sintetica non certifica gli originali. Differenza
+Deck.cards in DATABASE.md, nessun cambio di formato o percorsi.
 
-Nessuna migrazione, backup o modifica dei dati reali eseguita dall'assistente.
-Anche heat.py start/setup migrano: prima dell'uso reale arrestare app, autorizzare,
-verificare backup e provare su copia. Catena letta a2e6c0d4f8b3, d5e9a3b7c1f6,
-d6f0a4b8c2e7, merge storico b2d6f0a4c8e1. Downgrade perde storia/garanzia di non
-riuso: non usarlo con client che dipendono da ID stabili. Non trasferire conferme
-pendenti fra backup/DB ricreati. CI su DB sintetici non certifica gli originali.
-Differenza Deck.cards documentata in DATABASE.md, nessun cambio di formato/percorsi.
+## Pendenti e seguito
 
-## Seguito e documentazione
+Il genitore puo' smontare/nascondere il pannello per stato/permessi: copia visibile
+fino allo smontaggio, progresso nel browser sotto chiave propria. Da valutare e
+collaudare cambio fase, dialoghi, permessi, callback e chiusure durante richieste.
+Nessuna nuova prova DOM/browser dell'assistente. Warning canvas role img in
+card-crop-editor.svelte ancora pendente. SSE non dichiarato complessivamente concluso.
+Nessun avviso/checklist manuale finale prima della valutazione di questi confini.
 
-Dettagli correnti: PHASE_15_CHAMPIONSHIP_LIVE.md, PHASE_15_RACE_LIVE.md,
+npm ci ha segnalato 10 vulnerabilita' (6 low, 2 moderate, 2 high), non risolte qui;
+nessun audit fix/force o aggiornamento dipendenze autorizzato. Backup/setup sicuro
+ancora da verificare; cookie secure disattivato e URL SQLite fisso in config.py
+pendenti per online. 15b da definire dopo SSE. PROJECT_SPEC.md e PROJECT_STATUS.md
+protetti, loro riallineamento ancora da autorizzare. Prima di aggiornamenti generali
+leggere SHOP_DESIGN.md e PROJECT_NOTES.md. Comandi setup/database invariati.
+
+Dettagli: PHASE_15_CHAMPIONSHIP_LIVE.md, PHASE_15_RACE_LIVE.md,
 PHASE_15_RACE_RESULT_RECONCILE.md, PHASE_15_REVIEW_INVENTORY_RECONCILE.md,
-PHASE_15_REVIEW_SESSION_GUARD.md. Altre note di contratto, servizio, eventi, timer,
-concorrenza, client e notifiche restano riferimenti dei rispettivi blocchi.
-
-Pendenti: integrazione interna inventari e prove browser; warning canvas role img
-in card-crop-editor.svelte; 15b da definire dopo SSE. PROJECT_SPEC.md e
-PROJECT_STATUS.md protetti: vecchia riga 14, fase 15 mancante e descrizione/data 13e
-restano da riallineare con autorizzazione. Prima di altri aggiornamenti generali
-leggere SHOP_DESIGN.md e PROJECT_NOTES.md. Backup/setup sicuro da verificare;
-cookie secure disattivato e URL SQLite fisso in config.py da sistemare per online.
-
-Questo aggiornamento cambia solo quattro .md: riepilogo, nota gara, inventari e
-guardie. Nessuna modifica a codice, workflow, dipendenze o dati. Non attendere CI
-per i soli .md e non attribuire loro esiti presunti. Prossimo blocco funzionale:
-collegamento effettivo store/pannello al merge e alla coda live. Avviso e checklist
-manuale finale solo dopo collegamenti restanti e controlli verdi. Nessun merge.
+PHASE_15_REVIEW_SESSION_GUARD.md e PHASE_15_REVIEW_LIVE_CONNECT.md; altre note
+restano cronologia dei propri blocchi. Nessun comando npm locale dell'assistente.
+Questo aggiornamento cambia solo cinque .md: non attendere CI e non attribuire
+esiti presunti al commit documentale. Prossimo passo: valutare lifecycle del
+genitore e warning prima del collaudo finale, non altri moduli preparatori.

@@ -1,54 +1,47 @@
-# Fase 15a-4b - Riconciliazione conservativa inventari revisione
+# Fase 15a-4b - Merge inventari e integrazione
 
 Aggiornamento: 2026-10-21. Solo phase-15-sse-sistemazione, PR 14 in bozza.
-Modulo 05b2829, bot formattazione 6aa7fe6, CI 39599465230 tutti success:
-migrazioni 14:26:26 CEST, frontend 14:26:47, backend 14:28:04 del 2026-10-21.
-Cronologia dettagliata nella versione fcead0f e nella storia Git.
+Modulo puro 05b2829, bot 6aa7fe6, CI 39599465230 verde. Cronologia estesa nelle
+versioni fcead0f/a36e536 e Git. Guardie 01c567a, CI 39636047244 verde.
 
 ## Politica e funzioni
 
-Politica approvata: conservare conteggi incompatibili senza clamp, bloccare
-conferma, revocare spunte interessate, non trasferire bozze fra revisori/nuovi
-inizi; rilettura che abbandona modifiche solo con conferma esplicita.
+ownReviewKey identifica gara/revisore/inizio della revisione propria attiva, senza
+sostituire autorizzazione o scadenza server. reconcileReviewInventory confronta
+base server, locale e remoto con bozza applicata. Remaining locali modificati
+preservati con metadati nuovi; changedPilotIds ignora riordino/solo nome pilota,
+conflictingPilotIds segnala conteggi concorrenti validi. Carte/piloti rimossi
+con modifiche o quantita' oltre il nuovo totale producono issues/blocked e copia
+locale intera. Nessun clamp. Duplicati/fonti server invalide generano RangeError,
+non []. Copie indipendenti e nessuna REST nel modulo puro.
 
-ownReviewKey distingue gara/revisore/inizio della propria revisione attiva.
-Non autorizza HTTP e non sostituisce controllo server di scadenza.
-reconcileReviewInventory confronta base server, copia locale e remoto con bozza
-gia' applicata. Preserva remaining locali modificati con metadati remoti nuovi;
-changedPilotIds ignora riordini e solo nome pilota, conflictingPilotIds segnala
-conteggi concorrenti validi. Carte/piloti rimossi con modifiche o quantita' oltre
-il nuovo totale producono issues/blocked e preservano l'intera copia locale.
-Duplicati normalizzati o fonti server invalide generano RangeError, mai [].
-Restituisce copie indipendenti, senza richieste REST o scritture.
+## Collegamento verificato
 
-## Collegamento effettivamente presente
+Dal commit 1145a9a lo store usa anche il merge, non solo ownReviewKey. Pannello
+collegato alla coda live condivisa, fallback solo senza open, caricamento GET
+senza apertura automatica. Bozza richiesta solo allo stato proprio attivo,
+chiave verificata anche dopo letture. Snapshot vecchi o durante scritture scartati.
+Spunte interessate revocate, incompatibilita' preservate e editing/conferma bloccati.
+Cambio titolare/inizio non trasferisce conteggi. Recupero che abbandona modifiche
+richiede dialogo e backup browser riuscito; se storage fallisce si interrompe.
+Conferme/salvataggi REST soltanto azioni esplicite, mai agli eventi.
 
-Dal commit 01c567a lo store importa ownReviewKey per le guardie della sessione.
-Non e' quindi piu' corretto dire che nessuna parte del modulo sia usata.
-La funzione di merge reconcileReviewInventory NON e' ancora collegata allo store
-o al pannello. Restano nuovi inventari live, revoca spunte da snapshot, blocchi UI
-e recupero confermato. Le guardie preinvio non completano questa politica.
+Inventario leggibile da giudice/admin senza titolarita', bozza solo titolare;
+GET stato puo' elaborare scadenze. 403/409 verificano il contesto e non diventano
+bozze vuote. Recupero confermato puo' ripartire dall'inventario ignorando una bozza
+server incompatibile esatta nella stessa chiave; un contenuto nuovo riblocca.
+Nessuna nuova concorrenza protetta o atomicita' backend fra verifica e scrittura.
 
-Le guardie hanno sei test mirati e CI 39636047244 verde su frontend, backend e
-migrazioni di test. Dettagli in PHASE_15_REVIEW_SESSION_GUARD.md. Nessuna nuova
-atomicita' fra verifica e scrittura, nessun lock ottimistico o cambio backend.
+CI ordinaria 39650297363 sulla nuova testa tutta verde: frontend check/lint/test/
+build, backend pytest e migrazioni di test. Sette test simulati di integrazione
+oltre a suite pura e guardie preesistenti. Dettagli in PHASE_15_REVIEW_LIVE_CONNECT.md.
+Esiti e file modificati letti, non log completi o totale numerico della suite.
 
-## API, verifiche e seguito
+## Confini
 
-API rilette nei blocchi precedenti: inventario leggibile da giudice/admin senza
-titolarita', bozza solo titolare attivo. GET stato puo' elaborare scadenze.
-Il futuro collegamento non deve introdurre salvataggi/conferme agli eventi;
-403/409 nelle letture richiedono verifica contesto, non bozze vuote fittizie.
-
-Suite pura verificata: chiave/nuovo inizio, fonti pulite, conteggi locali, nuove
-carte, immutabilita', totale ridotto, carta/pilota rimosso, conflitto valido,
-snapshot vuoto riuscito e input invalidi. Test puri e guardie non sono prove DOM.
-Letti esiti e commit, non log completi o conteggi dell'intera suite. Nessun comando
-npm/formatter/lint/check/test/build locale eseguito dall'assistente.
-
-Solo documenti in questo riallineamento; nessuna modifica a codice, workflow,
-dipendenze, API, schema, immagini o dati. PROJECT_SPEC.md e PROJECT_STATUS.md
-protetti. Non attendere CI dei soli .md. Collegare ora store/pannello a coda live,
-fallback e merge nella stessa chiave, mantenendo copie, permessi e conferme.
-Warning canvas e prove browser pendenti; avviso manuale finale dopo collegamenti
-restanti e controlli verdi. Nessun nuovo prerequisito backend o merge autorizzato.
+Test simulati non collaudano DOM, dialoghi o cambio fase. Il genitore puo' smontare
+il pannello; copia visibile fino a quel momento, progresso sotto la chiave propria.
+Valutazione lifecycle e warning canvas pendenti prima del collaudo finale.
+Nessun npm locale o riuscita browser dichiarata dall'assistente. Solo .md in questo
+riallineamento, nessun codice, workflow, dipendenza, API o dato modificato.
+Documenti protetti intatti. Non attendere CI dei soli .md. Nessun merge autorizzato.

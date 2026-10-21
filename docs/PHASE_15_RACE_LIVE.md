@@ -1,58 +1,47 @@
-# Fase 15a-4b - Collegamento gara e callback revisione
+# Fase 15a-4b - Gara e revisione live
 
 Aggiornamento: 2026-10-21. Solo phase-15-sse-sistemazione, PR 14 in bozza.
-Riepilogo abbreviato; cronologia dettagliata nella versione fcead0f e nella storia Git.
+Cronologia gara estesa nelle versioni fcead0f/a36e536 e nella storia Git.
 
-## Gara collegata e verificata
+## Gara verificata
 
-Implementazione 4833a8d, fix nullable 44bb4dd, bot formattazione 4978f73.
-CI 39596834057 verde: migrazioni 14:06:53 CEST, frontend 14:07:09,
-backend pytest 14:08:53 del 2026-10-21. Il primo tentativo 4833a8d falli' il
-frontend/type-check; nessun test/build riuscito attribuito a quel tentativo.
-Il fix usa knownPilotIds da race?.results o [], non race!, cast o soppressioni.
+Implementazione 4833a8d, fix nullable 44bb4dd, bot 4978f73, CI 39596834057 verde.
+Il primo tentativo falli' il frontend/type-check: nessun test/build riuscito
+attribuito a quello. knownPilotIds da race?.results o [], niente race! o cast.
+Pagina con startLiveRefresh per gara/campionato/piloti, eventi anche per is_last,
+fallback solo senza open. Base distinta da ordine/assenti/sponsor, merge risultati
+3c860d2. Ufficiali/permessi aggiornati, bozza locale preservata in sola lettura se
+non modificabile, in memoria fino all'uscita. PUT esplicita con copia preinvio,
+controlli ID/duplicati/piloti e massimo 12, normalizzazione sponsor preesistente.
+Nessun lock ottimistico. Letture durante PUT non applicate, nuova lettura dopo esito.
+Uscita/unload protetti, HTTP gia' partite non annullate. Cleanup per contesto,
+401 libera auth. Pannello usa onchanged, non reload browser.
 
-La pagina gara usa startLiveRefresh condiviso per gara/campionato/piloti propri;
-eventi campionato/resync coprono anche is_last. Fallback solo senza stream open.
-Base server separata da ordine/assenti/sponsor, merge puro verificato in 3c860d2.
-Risultati ufficiali/permessi aggiornati; bozza locale preservata e in sola lettura
-se non modificabile, solo in memoria fino all'uscita. Nessun autosalvataggio.
-PUT esplicita con copia preinvio, controllo piloti/duplicati/ID e massimo 12;
-normalizzazione sponsor preesistente. Letture durante PUT non applicate, nuova
-lettura accorpata dopo esito anche fallito. Nessun lock ottimistico backend.
+## Store e pannello ora collegati
 
-Uscita interna/unload protetti con bozza o PUT in corso; uscire non annulla HTTP.
-Sessione scaduta non blocca autenticazione; errori conservano dati, 401 svuota auth.
-Cleanup e risposte vecchie gestiti per contesto. Pannello usa onchanged, non reload,
-ricreato per campionato/gara/utente/stato, non a ogni snapshot risultati.
+Guardie 01c567a, CI 39636047244; collegamento effettivo 1145a9a, CI 39650297363
+verde su frontend, backend e migrazioni di test. Non e' piu' corretto descrivere
+merge inventari o coda interna come ancora da collegare. Mount GET-only, bozza
+propria, merge conservativo, spunte revocate sui dati cambiati, blocchi espliciti,
+backup e recupero confermato. autoOpen non invia POST. Nessun EventSource aggiunto.
+Dettagli, errori iniziali e sette test in PHASE_15_REVIEW_LIVE_CONNECT.md.
 
-## Store revisione: aggiornamento distinto
-
-Non e' piu' corretto dire che review-counts.svelte.ts sia invariato.
-Dal bot 01c567a usa ownReviewKey, controlla utente e inizio revisione prima di
-inviare conteggi e ricontrolla il contesto fra PUT e DELETE di rinuncia.
-CI ordinaria 39636047244: frontend, backend e migrazioni di test tutti success.
-Dettagli e sei test in PHASE_15_REVIEW_SESSION_GUARD.md.
-
-Questo NON collega ancora inventari/bozze alla coda SSE interna: il merge
-reconcileReviewInventory, verificato su 6aa7fe6, non e' usato dallo store/pannello.
-Il pannello e la sua apertura automatica non sono cambiati nel blocco guardie.
-La ricreazione per stato puo' smontarlo: lifecycle, conservazione copie e recupero
-restano da affrontare nel collegamento effettivo, non certificati dai test guardie.
-Verifica preinvio e richiesta successiva non sono una transazione atomica.
+Rimane la ricreazione del pannello per campionato/gara/utente/stato: non viene
+ricreato a ogni snapshot risultati, ma puo' essere smontato al cambio fase.
+La copia visibile vive nella vista, il progresso usa la chiave browser propria.
+Il comportamento fra smontaggio, nuova fase e recupero va valutato/collaudato;
+non e' certificato dai test simulati dello store. Verifica preinvio e scrittura
+restano richieste separate, non una transazione backend.
 
 ## Limiti e seguito
 
-Warning canvas role img non corretto. CI verde non significa assenza di warning,
-prova DOM, callback/guardie uscita o modifiche durante PUT collaudate nel browser.
-Nessun comando locale o nuovo collaudo manuale dell'assistente.
+Sette errori lint del tentativo 23b6bda corretti senza disabilitare regole:
+autoOpen usato come GET, chiavi each e SvelteSet. Bot pubblicato dopo controlli.
+Verificati esiti e file modificati, non log completi. Nessun comando locale o
+nuovo test DOM/browser dell'assistente. Warning canvas role img ancora pendente.
+CI verde non prova dialoghi, guardie uscita, callback o modifiche durante PUT.
 
-Workflow review-session-guard applica una patch deterministica allo store originale,
-formatta store/test e pubblica solo dopo tutti i controlli. Il vecchio formatter
-format-sse-client resta una configurazione di un blocco precedente, non il nuovo
-collegamento SSE del pannello.
-
-Questo riallineamento e' solo documentale: codice, workflow, API, schema, immagini,
-lockfile e dati intatti. PROJECT_SPEC.md e PROJECT_STATUS.md protetti. Non attendere
-CI dei soli .md. Seguito: coda live interna, merge conservativo, revoca spunte,
-blocchi e recupero confermato, con test lifecycle/permessi; poi collaudo browser.
-Avviso manuale finale solo dopo collegamenti restanti e CI verde. Nessun merge.
+Solo documenti in questo riallineamento, nessuna modifica a codice, workflow,
+API, schema, immagini, lockfile o dati. Documenti protetti intatti. Non attendere
+CI dei soli .md. Seguito: valutazione lifecycle genitore e warning, poi collaudo
+browser con avviso esplicito quando pronto. Nessun merge o intervento sui dati reali.
