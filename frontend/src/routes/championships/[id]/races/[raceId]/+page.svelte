@@ -32,6 +32,7 @@
 	let absent = $state<ResultForm['absent']>([]);
 	let base = $state<ResultForm | null>(null);
 	let context = $state<{ championshipId: number; raceId: number; userId: number } | null>(null);
+	let reviewMounted = $state(false);
 	let error = $state<string | null>(null);
 	let liveError = $state<string | null>(null);
 	let saveError = $state<string | null>(null);
@@ -65,6 +66,9 @@
 					race.is_last &&
 					(race.status === 'to_review' || race.status === 'closed')))
 	);
+	$effect(() => {
+		if (canReview) reviewMounted = true;
+	});
 	let available = $derived(
 		race
 			? race.results.filter(
@@ -148,6 +152,7 @@
 		absent = [];
 		base = null;
 		context = null;
+		reviewMounted = false;
 		error = null;
 		liveError = null;
 		saveError = null;
@@ -383,13 +388,14 @@
 				</Card.Content>
 			</Card.Root>
 		{/if}
-		{#if canReview && context}
-			{#key `${context.championshipId}:${context.raceId}:${context.userId}:${race.status}`}
+		{#if (canReview || reviewMounted) && context && auth.canManageRaces}
+			{#key `${context.championshipId}:${context.raceId}:${context.userId}`}
 				<RaceReviewPanel
 					championshipId={context.championshipId}
 					raceId={context.raceId}
 					autoOpen={race.status === 'in_review'}
-					canOpen={auth.canCorrectRaces && race.is_last}
+					enabled={canReview}
+					canOpen={canReview && auth.canCorrectRaces && race.is_last}
 					reopen={race.status === 'closed'}
 					onchanged={reload}
 				/>

@@ -1,6 +1,6 @@
 # Lifecycle revisione e controllo canvas
 
-Stato: patch preparata, applicazione e controlli ancora da verificare.
+Stato: patch applicata; formatter, lint, check senza diagnostica del canvas, test e build frontend riusciti prima del commit bot.
 Base frontend invariata dopo cc8ba7a/1145a9a; solo phase-15-sse-sistemazione.
 Nessun merge o intervento sui dati reali autorizzato.
 

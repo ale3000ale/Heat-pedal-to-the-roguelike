@@ -63,6 +63,7 @@ export class ReviewCountsStore {
 	private live: { refresh: () => Promise<void>; dispose: () => void } | null = null;
 	private stopStatus: () => void = () => undefined;
 	private stopAuthEvents: () => void = () => undefined;
+	private editAllowed = $state(true);
 	private disposed = false;
 	private readonly userId = auth.user?.id ?? 0;
 	private sessionKey: string | null = null;
@@ -76,6 +77,7 @@ export class ReviewCountsStore {
 	get active(): boolean {
 		return (
 			!this.disposed &&
+			this.editAllowed &&
 			this.synchronized &&
 			!this.blocked &&
 			auth.user?.id === this.userId &&
@@ -178,6 +180,21 @@ export class ReviewCountsStore {
 		}
 	}
 
+	/**
+	 * Riceve un limite dal genitore: non concede permessi backend.
+	 * @param allowed False congela editing e revoca spunte; true richiede una nuova lettura.
+	 * @returns Nessun valore; copie e contesto corrente non vengono sostituiti.
+	 */
+	setEditingAllowed(allowed: boolean): void {
+		if (this.disposed || this.editAllowed === allowed) return;
+		this.editAllowed = allowed;
+		this.checked = [];
+		if (!this.blocked) this.persist();
+		if (allowed) {
+			this.synchronized = false;
+			void this.refreshStatus();
+		}
+	}
 	get owned(): boolean {
 		return (
 			auth.user?.id === this.userId &&
@@ -372,7 +389,7 @@ export class ReviewCountsStore {
 	}
 	/** Conferma obbligatoria; backup, nuova lettura e reset spunte senza scritture REST. */
 	async reloadInventory(confirmed = false): Promise<boolean> {
-		if (!confirmed) return false;
+		if (!confirmed || !this.editAllowed || this.disposed) return false;
 		return this.run(async () => {
 			this.backupLocal();
 			const snapshot = await this.loadLive();
@@ -426,6 +443,7 @@ export class ReviewCountsStore {
 
 	/** Apre solo su azione esplicita; sostituire una copia richiede conferma e backup. */
 	async start(reopen = false, confirmed = false): Promise<boolean> {
+		if (!this.editAllowed || this.disposed || auth.user?.id !== this.userId) return false;
 		if ((this.pilots.length || this.localBackup || this.serverDraftText) && !confirmed) {
 			this.error = 'Conferma prima di sostituire la copia locale';
 			return false;

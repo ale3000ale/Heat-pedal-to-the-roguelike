@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { loadPollIntervalMs } from '$lib/card-poll.svelte';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 	import * as Card from '$lib/components/ui/card';
@@ -14,6 +14,7 @@
 		raceId,
 		autoOpen = false,
 		canOpen = false,
+		enabled = true,
 		reopen = false,
 		onchanged = () => Promise.resolve()
 	}: {
@@ -21,6 +22,7 @@
 		raceId: number;
 		autoOpen?: boolean;
 		canOpen?: boolean;
+		enabled?: boolean;
 		reopen?: boolean;
 		onchanged?: () => void | Promise<void>;
 	} = $props();
@@ -28,6 +30,10 @@
 	// svelte-ignore state_referenced_locally
 	const store = new ReviewCountsStore(championshipId, raceId);
 	let disposed = false;
+	$effect(() => {
+		const allowed = enabled;
+		untrack(() => store.setEditingAllowed(allowed));
+	});
 	let recoveryOpen = $state(false);
 	let pending = $state<'reload' | 'start' | 'reopen'>('reload');
 	function requestStart(again: boolean): void {
@@ -83,6 +89,9 @@
 		></Card.Header
 	>
 	<Card.Content class="space-y-4">
+		{#if !enabled}<p role="status" class="text-sm text-muted-foreground">
+				Lo stato corrente non consente modifiche. La copia resta in sola lettura nella pagina.
+			</p>{/if}
 		{#if store.active}
 			<p class="text-sm" role="timer" aria-live="off">
 				Tempo rimasto: {formatCountdown(store.remaining)}
@@ -152,15 +161,17 @@
 			</p>
 		{:else if store.review?.review_closed_at}
 			<p class="text-sm text-green-600">Revisione conclusa.</p>
-			{#if canOpen}<Button type="button" disabled={store.busy} onclick={() => requestStart(true)}
-					>Riapri la revisione</Button
+			{#if canOpen && enabled}<Button
+					type="button"
+					disabled={store.busy}
+					onclick={() => requestStart(true)}>Riapri la revisione</Button
 				>{/if}
-		{:else if canOpen}
+		{:else if canOpen && enabled}
 			<Button type="button" disabled={store.busy} onclick={() => requestStart(reopen)}
 				>{reopen ? 'Riapri la revisione' : 'Apri la revisione'}</Button
 			>
 		{/if}
-		{#if store.owned}<Button
+		{#if store.owned && enabled}<Button
 				type="button"
 				variant="outline"
 				disabled={store.busy}

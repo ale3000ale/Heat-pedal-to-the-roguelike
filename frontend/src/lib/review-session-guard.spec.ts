@@ -107,3 +107,46 @@ describe('guardie scritture conteggi', () => {
 		expect(mock.save).not.toHaveBeenCalled();
 	});
 });
+
+describe('limite di editing ricevuto dal genitore', () => {
+	it('conserva copia e blocca tutte le scritture quando il genitore passa in sola lettura', async () => {
+		const before = JSON.stringify(store.pilots);
+		store.checked = [1];
+		mock.open.mockClear();
+		store.setEditingAllowed(false);
+		expect(store.active).toBe(false);
+		expect(store.checked).toEqual([]);
+		expect(JSON.stringify(store.pilots)).toBe(before);
+		expect(await store.navigate(-1, true)).toBe(false);
+		expect(await store.confirm()).toBe(false);
+		expect(await store.start(true, true)).toBe(false);
+		expect(await store.reloadInventory(true)).toBe(false);
+		expect(mock.open).not.toHaveBeenCalled();
+		expect(mock.save).not.toHaveBeenCalled();
+	});
+	it('non invia PUT se il limite cambia durante la verifica preinvio', async () => {
+		let release!: (value: RaceReview) => void;
+		mock.read.mockReturnValueOnce(
+			new Promise<RaceReview>((resolve) => {
+				release = resolve;
+			})
+		);
+		const pending = store.navigate(-1, true);
+		store.setEditingAllowed(false);
+		release({ ...review });
+		expect(await pending).toBe(false);
+		expect(mock.save).not.toHaveBeenCalled();
+		expect(store.pilots).toHaveLength(1);
+	});
+	it('richiede lettura nuova e ricontrollo dopo il ripristino del permesso', async () => {
+		store.checked = [1];
+		mock.open.mockClear();
+		store.setEditingAllowed(false);
+		store.setEditingAllowed(true);
+		await store.refreshStatus();
+		expect(store.active).toBe(true);
+		expect(store.checked).toEqual([]);
+		expect(mock.open).not.toHaveBeenCalled();
+		expect(mock.save).not.toHaveBeenCalled();
+	});
+});
