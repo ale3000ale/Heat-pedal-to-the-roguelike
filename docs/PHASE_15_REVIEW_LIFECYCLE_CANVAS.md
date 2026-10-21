@@ -4,6 +4,16 @@ Stato: patch preparata, applicazione e controlli ancora da verificare.
 Base cc8ba7a, dopo collegamento 1145a9a e CI 39650297363 verde. Solo ramo
 phase-15-sse-sistemazione. Nessun merge o intervento sui dati reali autorizzato.
 
+## Correzione dell'applicazione
+
+Preparazione 9a0ef20, job verify 39654061238 fallito prima dei controlli frontend.
+Analisi dello store 9f877ef: la vecchia ancora !this.disposed && compare sia nel
+getter active sia nel ritorno di refreshStatus, mentre change richiede una sola
+occorrenza. La guardia interrompe la patch senza pubblicare un commit bot.
+Ancora ora limitata a firma e prime righe del getter active: refreshStatus resta
+invariato. Nessun altro ampliamento della patch o indebolimento delle verifiche.
+Causa ricavata dal codice letto, non da un log completo del runner.
+
 ## Valutazione e modifica prevista
 
 Pagina gara letta: canReview puo' diventare false e la key include race.status.

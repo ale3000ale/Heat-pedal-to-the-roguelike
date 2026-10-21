@@ -50,7 +50,7 @@ jobs:
           p = Path('frontend/src/lib/stores/review-counts.svelte.ts')
           text = p.read_text()
           change('private disposed = false;', 'private editAllowed = $state(true);\nprivate disposed = false;')
-          change('!this.disposed &&', '!this.disposed && this.editAllowed &&')
+          change('get active(): boolean {\n\t\treturn (\n\t\t\t!this.disposed &&', 'get active(): boolean {\n\t\treturn (\n\t\t\t!this.disposed && this.editAllowed &&')
           change('get owned(): boolean {', '''/**
           * Riceve un limite dal genitore: non concede permessi backend.
           * @param allowed False congela editing e revoca spunte; true richiede una nuova lettura.
