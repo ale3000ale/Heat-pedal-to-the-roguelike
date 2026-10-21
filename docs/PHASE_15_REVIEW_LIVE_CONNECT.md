@@ -1,6 +1,6 @@
 # Collegamento effettivo inventari revisione
 
-Stato: correzione lint preparata, applicazione e controlli ancora da verificare.
+Stato: collegamento e correzione lint applicati; formatter, lint, check, test e build frontend riusciti prima del commit bot.
 Base: store 1a5e941 e pannello aa14960, dopo guardie 01c567a e documenti a36e536.
 Solo phase-15-sse-sistemazione. Nessun merge o intervento sui dati reali autorizzato.
 
