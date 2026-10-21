@@ -1,4 +1,6 @@
 import { api } from '$lib/api';
+import { auth } from '$lib/auth.svelte';
+import { ownReviewKey } from '$lib/review-inventory-reconcile';
 import { abandonReview, openReview, reopenReview } from '$lib/race-review-api';
 import { secondsLeft } from '$lib/race-review-format';
 import type { RaceReview } from '$lib/race-review-types';
@@ -26,6 +28,9 @@ export class ReviewCountsStore {
 	conflictOpen = $state(false);
 	private timer: ReturnType<typeof setInterval> | null = null;
 	private disposed = false;
+	private readonly userId = auth.user?.id ?? 0;
+	private sessionKey: string | null = null;
+	private progressScope: string | null = null;
 
 	constructor(
 		private championshipId: number,
@@ -33,7 +38,14 @@ export class ReviewCountsStore {
 	) {}
 
 	get active(): boolean {
-		return this.review?.in_review === true && this.remaining > 0;
+		return (
+			!this.disposed &&
+			auth.user?.id === this.userId &&
+			this.review !== null &&
+			this.sessionKey !== null &&
+			ownReviewKey(this.review, this.userId) === this.sessionKey &&
+			this.remaining > 0
+		);
 	}
 
 	get allReviewed(): boolean {
@@ -41,7 +53,10 @@ export class ReviewCountsStore {
 	}
 
 	private get progressKey(): string {
-		return `heat:review:${this.championshipId}:${this.raceId}:${this.review?.reviewer_user_id}:${this.review?.review_started_at}`;
+		return (
+			this.progressScope ??
+			`heat:review:${this.championshipId}:${this.raceId}:${this.review?.reviewer_user_id}:${this.review?.review_started_at}`
+		);
 	}
 
 	private persist(): void {
@@ -140,12 +155,23 @@ export class ReviewCountsStore {
 		return this.run(async () => {
 			const review = await (reopen ? reopenReview : openReview)(this.championshipId, this.raceId);
 			if (this.disposed) return;
+			const key = ownReviewKey(review, this.userId);
+			if (!key) throw new Error('Revisione non propria: conteggi non caricati');
 			this.review = review;
 			const [inventory, draft] = await Promise.all([
 				fetchReviewInventory(this.championshipId, this.raceId),
 				fetchReviewDraft(this.championshipId, this.raceId)
 			]);
 			if (this.disposed) return;
+			const latest = await api<RaceReview>(
+				`/championships/${this.championshipId}/races/${this.raceId}/review`
+			);
+			if (this.disposed) return;
+			this.review = latest;
+			if (ownReviewKey(latest, this.userId) !== key || auth.user?.id !== this.userId)
+				throw new Error('Revisione cambiata durante il caricamento');
+			this.sessionKey = key;
+			this.progressScope = `heat:review:${this.championshipId}:${this.raceId}:${this.userId}:${latest.review_started_at}`;
 			this.pilots = inventory.pilots;
 			this.checked = [];
 			try {
@@ -171,10 +197,31 @@ export class ReviewCountsStore {
 		this.persist();
 	}
 
+	/**
+	 * Controlla utente e chiave prima di ogni scrittura dei conteggi.
+	 * @returns Nessun valore se il contesto e' ancora proprio e attivo.
+	 * @throws Error per contesto terminato/cambiato; propaga gli errori HTTP.
+	 * Non rende atomiche la verifica e la successiva richiesta al backend.
+	 */
+	private async verifySession(): Promise<void> {
+		if (!this.active) throw new Error('Revisione non modificabile');
+		const review = await api<RaceReview>(
+			`/championships/${this.championshipId}/races/${this.raceId}/review`
+		);
+		if (this.disposed) throw new Error('Contesto terminato');
+		this.review = review;
+		this.startTimer();
+		if (!this.active) {
+			this.checked = [];
+			throw new Error('Utente, revisore o revisione cambiati: conteggi non inviati');
+		}
+	}
+
 	/** Salva tutti i conteggi; completa il pilota corrente solo con Prossimo. */
 	async navigate(target: number, complete = false): Promise<boolean> {
 		if (!this.active || target < -1 || target >= this.pilots.length) return false;
 		return this.run(async () => {
+			await this.verifySession();
 			await saveReviewDraft(this.championshipId, this.raceId, toReviewCounts(this.pilots));
 			if (this.disposed) return;
 			const pilot = this.pilots[this.index];
@@ -189,6 +236,7 @@ export class ReviewCountsStore {
 	async confirm(): Promise<boolean> {
 		if (!this.active || !this.allReviewed) return false;
 		return this.run(async () => {
+			await this.verifySession();
 			const review = await confirmReviewCounts(
 				this.championshipId,
 				this.raceId,
@@ -206,7 +254,9 @@ export class ReviewCountsStore {
 	async abandon(): Promise<boolean> {
 		if (!this.active) return false;
 		return this.run(async () => {
+			await this.verifySession();
 			await saveReviewDraft(this.championshipId, this.raceId, toReviewCounts(this.pilots));
+			await this.verifySession();
 			const review = await abandonReview(this.championshipId, this.raceId);
 			if (this.disposed) return;
 			this.review = review;

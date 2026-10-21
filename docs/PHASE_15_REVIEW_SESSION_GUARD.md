@@ -1,6 +1,6 @@
 # Guardie sessione conteggi revisione
 
-Stato: applicazione e controlli CI ancora da eseguire.
+Stato: patch applicata; formatter, lint, type-check, test e build frontend riusciti nel workflow che pubblica questo commit.
 
 Blocco ridotto sul ramo phase-15-sse-sistemazione. Il workflow richiede il blob
 store originale 326adebf9c500af51e1c5e613b6d0d2798e621b6, verifica ogni sostituzione
