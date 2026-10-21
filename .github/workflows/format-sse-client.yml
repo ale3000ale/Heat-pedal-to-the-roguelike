@@ -32,13 +32,14 @@ jobs:
       - name: Installa dal lockfile senza aggiornarlo
         working-directory: frontend
         run: npm ci
-      - name: Formatta soltanto il modulo di riconciliazione risultati segnalato
+      - name: Formatta soltanto pagina gara e pannello revisione
         working-directory: frontend
         shell: bash
         run: |
           set -euo pipefail
           files=(
-            src/lib/race-result-reconcile.ts
+            'src/routes/championships/[id]/races/[raceId]/+page.svelte'
+            src/lib/components/race-review-panel.svelte
           )
           ./node_modules/.bin/prettier --write "${files[@]}"
           ./node_modules/.bin/prettier --check "${files[@]}"
@@ -59,7 +60,8 @@ jobs:
         run: |
           set -euo pipefail
           files=(
-            frontend/src/lib/race-result-reconcile.ts
+            'frontend/src/routes/championships/[id]/races/[raceId]/+page.svelte'
+            frontend/src/lib/components/race-review-panel.svelte
           )
           git diff --exit-code -- frontend/package.json frontend/package-lock.json frontend/prettier.config.js
           git add -- "${files[@]}"
@@ -75,5 +77,5 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m "style: formatta riconciliazione risultati con Prettier del lockfile"
+          git commit -m "style: formatta collegamento gara e callback revisione con Prettier del lockfile"
           git push origin HEAD:refs/heads/phase-15-sse-sistemazione
