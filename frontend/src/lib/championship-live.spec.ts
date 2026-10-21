@@ -217,3 +217,27 @@ describe('collegamento campionato', () => {
 		expect(f).not.toHaveBeenCalled();
 	});
 });
+
+it('aggiorna iscritti e conteggio sul segnale remoto senza ack o POST', async () => {
+	const { live, client, load, onSnapshot, f, setSnapshot } = setup();
+	await live.refresh();
+	const before = load.mock.calls.length;
+	const fresh = snapshot();
+	fresh.championship.pilots_count = 2;
+	fresh.championship.pilots.push({ id: 3, name: 'Nuovo pilota', team_id: null, point: 0 });
+	setSnapshot(fresh);
+	for (const listener of client.events)
+		void listener({
+			type: 'championship.pilots_changed',
+			id: '31',
+			championshipId: 3,
+			pilotId: null,
+			payload: {}
+		});
+	await vi.waitFor(() =>
+		expect(onSnapshot.mock.calls.at(-1)?.[0].championship.pilots_count).toBe(2)
+	);
+	expect(onSnapshot.mock.calls.at(-1)?.[0].championship.pilots).toHaveLength(2);
+	expect(load.mock.calls.length).toBeGreaterThan(before);
+	expect(f).not.toHaveBeenCalled();
+});

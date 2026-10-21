@@ -33,8 +33,9 @@ def read_events(db: Session, user_id: int, after_id: int, limit: int = MAX_BATCH
     Parametri: sessione, id dell'utente autenticato dal server, cursore >= 0,
     massimo 1..100 righe. Ritorna una lista vuota per utente non esistente.
     Admin/giudice vedono gli eventi pubblici di tutti i campionati, mai i privati
-    altrui; il giocatore vede i pubblici dei campionati con un proprio pilota
-    iscritto e non eliminato. ValueError per cursore o limite non validi.
+    altrui. Il solo segnale iscrizioni vuoto e senza pilot_id e
+    disponibile anche agli osservatori autenticati, come il dettaglio REST. Gli
+    altri pubblici richiedono un proprio pilota iscritto e non eliminato. ValueError per cursore o limite non validi.
     Non sostituisce la verifica della sessione HTTP a ogni ciclo SSE.
     """
     if type(after_id) is not int or after_id < 0:
@@ -55,7 +56,14 @@ def read_events(db: Session, user_id: int, after_id: int, limit: int = MAX_BATCH
                 Pilot.deleted_at.is_(None),
             ).exists()
         )
-        public_access = and_(public_access, enrolled)
+        public_access = and_(
+            public_access,
+            or_(enrolled, and_(
+                EventLog.type == "championship.pilots_changed",
+                EventLog.pilot_id.is_(None),
+                EventLog.payload == "{}",
+            )),
+        )
     statement = select(EventLog).where(
         EventLog.id > after_id,
         or_(EventLog.recipient_user_id == user_id, public_access),

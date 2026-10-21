@@ -48,6 +48,11 @@ export function parseStreamEvent(type: string, raw: unknown, id: string): Stream
 		if (data.pilot_id !== null && !positive(data.pilot_id)) return null;
 		if (!object(data.payload) || !Object.values(data.payload).every(json)) return null;
 		if ('race_id' in data.payload && !positive(data.payload.race_id)) return null;
+		if (
+			domainType === 'championship.pilots_changed' &&
+			(data.pilot_id !== null || Object.keys(data.payload).length !== 0)
+		)
+			return null;
 		return {
 			type: domainType,
 			id,

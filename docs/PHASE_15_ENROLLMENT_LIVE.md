@@ -1,6 +1,6 @@
 # Collaudo ricevuto e iscrizioni live
 
-Stato fix: applicazione e controlli ancora da verificare.
+Stato fix: applicato; suite backend completa e formatter/lint/check/test/build frontend riusciti prima del commit bot.
 Solo phase-15-sse-sistemazione, PR 14 in bozza. Nessun merge o modifica ai dati reali.
 
 ## Riscontro autore
