@@ -1,7 +1,12 @@
 # Specifiche del Progetto — Heat
 
 > STATO: APPROVATO. Si aggiorna nel tempo quando emergono nuove esigenze.
-> Ultimo aggiornamento: 13 ottobre 2026 (fase 13: backend delle carte sponsor in gara, della revisione con revisore unico, del tasto S e della rimozione di carte, intervallo di controllo delle notifiche; interfacce in corso nelle sottofasi 13c e 13d; sezione 14. La fase 12, Negozio, è unita in `main`).
+> Ultimo aggiornamento: 22 ottobre 2026. Fase 15 chiusa sul ramo con limiti manuali accettati; appendice consolidata in fondo al documento. Nessun merge o intervento sul database reale autorizzato.
+
+> Riallineamento autorizzato il 2026-10-22: per SSE, notifiche, timer e stato di
+> completamento prevale l'appendice "Fase 15 - specifica consolidata". I passaggi
+> delle fasi 13/14 preservati sotto descrivono anche stati storici, non nuove
+> attivita' da ricreare. Regole di gioco non coinvolte e testo restante conservati.
 
 ## 1. Stack e contesto
 
@@ -399,3 +404,75 @@ La fase 13 ha sottofasi 13a-13g; il piano completo e le decisioni approvate sono
 ### Stato
 
 Fase 13 completata e unita in `main` (pull request #9, 18 ottobre 2026). Backend delle sottofasi 13a, 13b, 13c-1 e 13e; frontend della 13c (uso e annulla ultima, sezione del pilota aperta quando è l'unico iscritto, riepilogo con immagini del mazzo da gioco), della 13d (revisione nella pagina della gara), del popup della notifica con controllo periodico, del campo dell'intervallo nelle impostazioni generali, dell'inventario in due sezioni, del tasto S nella pagina della gara e della 13f (caricamento con ritaglio e zoom, elenco con nomi in arancione, eliminazione, tasti di esclusione nelle pool personalizzate). CI verde sui commit della fase e su `main` dopo l'unione. Il ripristino di una carta da parte dell'admin dopo la chiusura non è previsto: la riapertura della revisione e l'annullo di giocate consumate lo sostituiscono.
+
+
+## Fase 15 - specifica consolidata (2026-10-22)
+
+## Chiusura autorizzata della fase 15 - 2026-10-22
+
+Alle 00:47 CEST l'autore autorizza il riallineamento dei documenti generali e
+la chiusura della fase 15 senza riprendere i test manuali non praticabili.
+Fase 15 completata e chiusa sul ramo phase-15-sse-sistemazione, con limiti di
+collaudo accettati. Non significa PR 14 unita a main o messa in produzione.
+Codice finale 1226172, CI ordinaria 39674942800 verde; lifecycle/canvas 8018d18,
+CI 39658083388 verde. Sei casi manuali PASS (1/4/5/6/7/9), 2/3 non verificabili,
+8/10 non eseguiti. Restano tali: non sono convertiti in PASS. Fix iscrizioni
+confermato dall'autore alle 23:24 del 2026-10-21 con "funziona".
+Nessun ulteriore collaudo di quei quattro casi e' richiesto per questa chiusura.
+Restano fuori da questa accettazione produzione, vulnerabilita' npm,
+backup/setup sicuro, configurazione online, nuove fasi e migrazioni reali.
+Merge e gestione della PR richiedono una richiesta separata.
+Dettagli e verifiche in PHASE_15.md, PHASE_15_BROWSER_CHECKLIST.md,
+PHASE_15_ENROLLMENT_LIVE.md e PHASE_15_CLOSURE.md.
+
+### Contratto corrente approvato
+
+- SSE autenticato via cookie e /api/events/stream same-origin. Un client
+  condiviso per applicazione nella scheda, registro event_log persistente,
+  cursori/Last-Event-ID, resync e auth.expired. Gli eventi invalidano letture
+  REST autorizzate, non trasferiscono carte o bozze nei payload pubblici.
+- Polling con card_poll_seconds solo come fallback senza stream open; niente
+  polling lento di sicurezza con stream aperto. Nessun retry automatico delle
+  scritture. Le descrizioni storiche di startGiftPolling non rappresentano
+  il collegamento corrente del campionato.
+- Timer periodico delle revisioni nel lifespan per worker, ogni 5 secondi,
+  con controllo transazionale e stop cooperativo; resta la verifica REST.
+  La scadenza non dipende piu' soltanto dal prossimo accesso. Nessuna
+  migrazione nel timer. Questo aggiorna i passaggi storici "senza background".
+- Conferma notifiche con /seen-selected sui soli ID effettivamente resi,
+  per pilota; annulli/chiusure remote non confermano. /seen resta compatibile
+  ma non e' il nuovo flusso campionato. Replay non ricrea popup visti.
+- Gara: assegnazione ordine/assenti coerente e sponsor per pilota, base server
+  distinta dalla bozza, PUT esplicita e conservazione delle modifiche locali.
+  Permesso perso rende la bozza readonly, uscite protette senza annullare
+  richieste gia' inviate. Nessuna nuova atomicita' fra REST o lock ottimistico.
+- Revisione inventari: GET-only al mount, bozza solo propria, chiave
+  gara/revisore/inizio controllata. Merge conserva conteggi locali e aggiorna
+  metadati remoti; revoca spunte interessate e blocca incompatibilita' senza
+  clamp. Rilettura sostitutiva richiede conferma e backup browser riuscito.
+  Un nuovo titolare/inizio non riceve automaticamente la vecchia bozza.
+- Il pannello gia' mostrato resta sul solo cambio stato nel medesimo contesto
+  finche' il ruolo e' ammesso; enabled del genitore congela le azioni senza
+  eliminare la copia. Nuovo contesto o perdita ruolo possono smontarlo.
+  Riapertura e recupero rispettano il limite, riabilitazione richiede lettura.
+- Canvas: controllo nativo con nome/focus, trascinamento e frecce, Maiusc per
+  passo fine, Invio/Spazio per esportare. Ruolo img non consentito rimosso,
+  senza soppressioni; dimensioni, zoom e WebP invariati.
+- Iscrizioni: championship.pilots_changed registrato con iscrizione/reset,
+  solo ID campionato, pilot_id nullo e payload vuoto. Solo questo segnale
+  canonico raggiunge anche osservatori autenticati non iscritti, coerentemente
+  con il dettaglio REST. Non amplia altri eventi o dati privati; modello SQL
+  ed endpoint d'iscrizione invariati. Backend e frontend validano il segnale.
+
+### Limiti dell'accettazione
+
+Accettazione funzionale sul ramo e limiti manuali sopra, non certificazione
+di accessibilita', carico, proxy/buffering reale, produzione o collaudo completo.
+Nessun test saltato dichiarato superato e nessuna nuova esecuzione locale
+dell'assistente. Restano separati vulnerabilita' npm, backup/setup e cookie/
+percorso SQLite per online. Nessun audit fix/force implicito.
+Questa appendice non cambia formati Deck.cards, immagini, stack, dipendenze
+o altre regole del Negozio. La discrepanza sul formato carte gia' annotata in
+DATABASE.md resta separata, non risolta cambiando dati. Le indicazioni
+storiche di migrate/start non autorizzano operazioni sul DB originale:
+prima arresto app, backup verificato, prova su copia e permesso esplicito.

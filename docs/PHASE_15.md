@@ -1,8 +1,25 @@
 # Fase 15 - SSE: implementazione e riscontri
 
-Aggiornamento: 2026-10-21. Solo phase-15-sse-sistemazione; PR 14 in bozza.
+Aggiornamento: 2026-10-22. Solo phase-15-sse-sistemazione; PR 14 in bozza.
 Base main 2cded6d. Nessun merge autorizzato. Storia estesa in Git e nelle versioni
 fcead0f/a36e536/cc8ba7a/b1035c2 e nelle note dei singoli blocchi.
+
+## Chiusura autorizzata della fase 15 - 2026-10-22
+
+Alle 00:47 CEST l'autore autorizza il riallineamento dei documenti generali e
+la chiusura della fase 15 senza riprendere i test manuali non praticabili.
+Fase 15 completata e chiusa sul ramo phase-15-sse-sistemazione, con limiti di
+collaudo accettati. Non significa PR 14 unita a main o messa in produzione.
+Codice finale 1226172, CI ordinaria 39674942800 verde; lifecycle/canvas 8018d18,
+CI 39658083388 verde. Sei casi manuali PASS (1/4/5/6/7/9), 2/3 non verificabili,
+8/10 non eseguiti. Restano tali: non sono convertiti in PASS. Fix iscrizioni
+confermato dall'autore alle 23:24 del 2026-10-21 con "funziona".
+Nessun ulteriore collaudo di quei quattro casi e' richiesto per questa chiusura.
+Restano fuori da questa accettazione produzione, vulnerabilita' npm,
+backup/setup sicuro, configurazione online, nuove fasi e migrazioni reali.
+Merge e gestione della PR richiedono una richiesta separata.
+Dettagli e verifiche in PHASE_15.md, PHASE_15_BROWSER_CHECKLIST.md,
+PHASE_15_ENROLLMENT_LIVE.md e PHASE_15_CLOSURE.md.
 
 ## Verifiche automatiche
 
@@ -88,8 +105,7 @@ completo dalla sola CI. Non sono richieste altre modifiche funzionali in questo 
 
 Pendenti separati: vulnerabilita' npm segnalate (6 low, 2 moderate, 2 high), nessun
 audit fix/force; backup/setup sicuro da verificare, cookie secure e SQLite fisso
-in config.py per online; 15b da definire. PROJECT_SPEC.md/PROJECT_STATUS.md protetti,
-riallineamento da autorizzare. Prima di aggiornamenti generali leggere SHOP_DESIGN.md
+in config.py per online; 15b da definire. PROJECT_SPEC.md/PROJECT_STATUS.md riallineati con autorizzazione del 2026-10-22. Prima di aggiornamenti generali leggere SHOP_DESIGN.md
 e PROJECT_NOTES.md. Nessun merge, produzione o migrazione reale impliciti.
 
 Note di dettaglio: PHASE_15_CHAMPIONSHIP_LIVE.md, PHASE_15_RACE_LIVE.md,

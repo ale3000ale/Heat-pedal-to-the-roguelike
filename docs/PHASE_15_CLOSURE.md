@@ -1,7 +1,7 @@
 # Chiusura autorizzata fase 15
 
 Data: 2026-10-22. Solo ramo phase-15-sse-sistemazione.
-Riallineamento generale: preparato, pubblicazione automatica ancora da verificare.
+Riallineamento generale: applicato ai cinque documenti vincolati dal workflow di chiusura.
 
 ## Decisione dell'autore
 
