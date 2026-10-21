@@ -8,6 +8,7 @@ from app.db.models.card_play import STATUS_PLAYED, STATUS_UNDONE, CardPlay
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race, RaceResult
+from app.services.card_events import record_card_action
 from app.services.cards import CardEntry, card_key, parse_cards
 from app.services.championships import ChampionshipClosedError, get_championship
 from app.services.pilots import get_own_pilot
@@ -162,9 +163,9 @@ def get_play_state(db: Session, user: User, championship_id: int, pilot_id: int)
 def play_card(
     db: Session, user: User, championship_id: int, pilot_id: int, card_name: str
 ) -> PlayState:
-    # Registra la giocata di una carta sponsor. Non cambia l'inventario: quello cambia
-    # solo alla chiusura della gara. Un solo commit; in caso di errore non cambia nulla.
-    # Errori: quelli di _authorize, RaceInReviewError, CardNotAvailableError.
+    # Giocata ed eventi nello stesso commit; inventario invariato fino alla chiusura.
+    # Errori: quelli di _authorize, RaceInReviewError, CardNotAvailableError,
+    # validazione/scrittura eventi; ogni errore provoca rollback completo.
     try:
         _lock_database(db)
         pilot, race = _authorize(db, user, championship_id, pilot_id)
@@ -174,9 +175,11 @@ def play_card(
         card = next((c for c in state.available if card_key(c.name) == key), None)
         if card is None or card.copies_available < 1:
             raise CardNotAvailableError
-        db.add(CardPlay(race_id=race.id, pilot_id=pilot.id, card_name=card.name, card_path=card.path))
+        play = CardPlay(race_id=race.id, pilot_id=pilot.id, card_name=card.name, card_path=card.path)
+        db.add(play)
         db.flush()
         state = _state(db, pilot, race)
+        record_card_action(db, race, pilot, "card.played", play.id)
         db.commit()
     except Exception:
         db.rollback()
@@ -185,8 +188,9 @@ def play_card(
 
 
 def undo_last_play(db: Session, user: User, championship_id: int, pilot_id: int) -> PlayState:
-    # Annulla l'ultima giocata attiva, fino a MAX_UNDOS volte di fila.
-    # Errori: quelli di _authorize, RaceInReviewError, NothingToUndoError, UndoLimitError.
+    # Annulla l'ultima giocata attiva, fino a MAX_UNDOS volte di fila, con eventi atomici.
+    # Errori: quelli di _authorize, RaceInReviewError, NothingToUndoError, UndoLimitError,
+    # validazione/scrittura eventi; rollback completo su ogni errore.
     try:
         _lock_database(db)
         pilot, race = _authorize(db, user, championship_id, pilot_id)
@@ -200,6 +204,7 @@ def undo_last_play(db: Session, user: User, championship_id: int, pilot_id: int)
         active[-1].status = STATUS_UNDONE
         db.flush()
         state = _state(db, pilot, race)
+        record_card_action(db, race, pilot, "card.play_undone", active[-1].id)
         db.commit()
     except Exception:
         db.rollback()

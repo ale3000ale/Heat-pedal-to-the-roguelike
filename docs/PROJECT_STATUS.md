@@ -1,6 +1,23 @@
 # Stato del progetto — Heat
 
-Ultimo aggiornamento: 2026-10-18
+Ultimo aggiornamento: 2026-10-22
+
+## Chiusura autorizzata della fase 15 - 2026-10-22
+
+Alle 00:47 CEST l'autore autorizza il riallineamento dei documenti generali e
+la chiusura della fase 15 senza riprendere i test manuali non praticabili.
+Fase 15 completata e chiusa sul ramo phase-15-sse-sistemazione, con limiti di
+collaudo accettati. Non significa PR 14 unita a main o messa in produzione.
+Codice finale 1226172, CI ordinaria 39674942800 verde; lifecycle/canvas 8018d18,
+CI 39658083388 verde. Sei casi manuali PASS (1/4/5/6/7/9), 2/3 non verificabili,
+8/10 non eseguiti. Restano tali: non sono convertiti in PASS. Fix iscrizioni
+confermato dall'autore alle 23:24 del 2026-10-21 con "funziona".
+Nessun ulteriore collaudo di quei quattro casi e' richiesto per questa chiusura.
+Restano fuori da questa accettazione produzione, vulnerabilita' npm,
+backup/setup sicuro, configurazione online, nuove fasi e migrazioni reali.
+Merge e gestione della PR richiedono una richiesta separata.
+Dettagli e verifiche in PHASE_15.md, PHASE_15_BROWSER_CHECKLIST.md,
+PHASE_15_ENROLLMENT_LIVE.md e PHASE_15_CLOSURE.md.
 
 ## Fasi
 
@@ -42,7 +59,16 @@ Ultimo aggiornamento: 2026-10-18
 | 13e | Backend amministrazione carte: caricamento, conversione, eliminazione, origine "caricata" | Completata nel ramo `phase-13a-card-plays` (commit da `358297a` a `14557ab`, tutti del 2026-10-13: servizio di caricamento delle carte, eliminazione delle carte caricate con pulizia dei file orfani, `delete_championship` che cancella i file delle carte rimasti senza uso, rotte admin per caricare ed eliminare le carte, test di caricamento, eliminazione e pulizia dei file; l'autore ha riferito che tutto funziona; CI verde sul commit `9f3b517`, letta il 2026-10-18, esecuzione 38480483060: Backend pytest, Migrazioni e Frontend con successo) |
 | 13f | Frontend: ritaglio con zoom, nome e quantità, nomi in arancione, tasti di esclusione nelle pool personalizzate | Completata nel ramo `phase-13a-card-plays`: ritaglio con zoom, modulo di caricamento (nome e copie), elenco delle carte della pool di base con i nomi in arancione per le carte caricate a mano e tasto "Elimina", integrazione nella pagina admin delle pool (commit `254b015`, `e5cf313`, `062629f`, `1391a70`, `8dbd7c2`) e i due tasti di esclusione nella creazione delle pool personalizzate (aggiunti il 2026-10-18: `lib/pool-exclusion.ts` con il suo test, `isBaseCard` in `lib/card-origin.ts`, tasti "Escludi tutte le carte caricate" ed "Escludi tutte le carte di base" sopra l'elenco in `routes/admin/pools/+page.svelte`; azzera le copie scelte del gruppo nel solo modulo, senza toccare il database). Controlli eseguiti in locale il 2026-10-18: `npm run check` (0 errori, resta il solo warning preesistente del canvas in `card-crop-editor.svelte`), `npm run lint`, `npm test` (110 test passati su 110: la base era 101, i 9 nuovi sono 7 di `pool-exclusion.spec.ts` e 2 di `pilot-deck-api.spec.ts`) e `npm run build`; CI verde sul commit `5ed659e`, letta il 2026-10-18 (esecuzione [39126355821](https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39126355821): Backend pytest, Migrazioni e Frontend con successo) |
 | 13g | Documenti e test finali, unione in `main` | Completata: tasti di esclusione e riepilogo del mazzo aggiunti il 2026-10-18 (commit `5ed659e`) con test, verifica nel browser e documenti riallineati; CI verde su `5ed659e` (esecuzione 39126355821); pull request #9 uscita dalla bozza e unita in `main` il 2026-10-18 (merge `cdea876`, testa precedente `68dd4d7`) |
-| 14 | Sistemazione generale, modifiche di vivibilità e miglioramenti | Da definire a fine fase 13 |
+| 14 | Sistemazione generale, modifiche di vivibilità e miglioramenti | Unita a main con PR #13 il 2026-10-19; stato post-merge in PHASE_14_POST_MERGE.md |
+| 15 | SSE, aggiornamenti campionato/gara/revisione, notifiche selettive, iscrizioni live e correzioni lifecycle/canvas | Completata e chiusa sul ramo per decisione del 2026-10-22, con limiti manuali accettati; PR #14 non unita da questo aggiornamento |
+
+## Come leggere la cronologia
+
+Le righe delle sottofasi 13 e i dettagli tecnici seguenti conservano i riscontri
+dell'epoca, inclusi limiti allora aperti. La riga complessiva 13 ne registra il
+merge; la fase 15 e l'appendice corrente di PROJECT_SPEC.md prevalgono per SSE,
+timer, aggiornamenti UI e chiusura del lavoro. Non rimettere in corso la fase
+15 sulla base di una descrizione storica del polling o di un vecchio warning.
 
 ## Backend
 

@@ -1,0 +1,81 @@
+name: Formatta client SSE
+
+on:
+  push:
+    branches: [phase-15-sse-sistemazione]
+    paths:
+      - .github/workflows/format-sse-client.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: format-sse-client-phase-15
+  cancel-in-progress: false
+
+jobs:
+  format:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Installa dal lockfile senza aggiornarlo
+        working-directory: frontend
+        run: npm ci
+      - name: Formatta soltanto riconciliazione inventari revisione e test
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            src/lib/review-inventory-reconcile.ts
+            src/lib/review-inventory-reconcile.spec.ts
+          )
+          ./node_modules/.bin/prettier --write "${files[@]}"
+          ./node_modules/.bin/prettier --check "${files[@]}"
+      - name: Lint e formattazione completi
+        working-directory: frontend
+        run: npm run lint
+      - name: Controllo dei tipi
+        working-directory: frontend
+        run: npm run check
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Pubblica solo la formattazione verificata sul ramo fase 15
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            frontend/src/lib/review-inventory-reconcile.ts
+            frontend/src/lib/review-inventory-reconcile.spec.ts
+          )
+          git diff --exit-code -- frontend/package.json frontend/package-lock.json frontend/prettier.config.js
+          git add -- "${files[@]}"
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica di formattazione necessaria."
+            exit 0
+          fi
+          git fetch origin phase-15-sse-sistemazione
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/phase-15-sse-sistemazione)" ]; then
+            echo "Il ramo e' cambiato durante i controlli: nessun push eseguito."
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "style: formatta riconciliazione inventari revisione con Prettier del lockfile"
+          git push origin HEAD:refs/heads/phase-15-sse-sistemazione

@@ -5,6 +5,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import User
+from app.schemas.events import EventCreate
+from app.services.event_log import append_event
 from app.db.models.card_gift import CardGift
 from app.db.models.card_play import CardPlay
 from app.db.models.championship import Championship, ChampionshipPilot, ChampionshipStanding
@@ -176,6 +178,7 @@ def enroll_pilot(db: Session, user: User, championship_id: int, pilot_id: int) -
     _reset_pilot(db, pilot)
     db.add(ChampionshipPilot(championship_id=championship.id, pilot_id=pilot.id))
     try:
+        append_event(db, EventCreate(type="championship.pilots_changed", championship_id=championship.id))
         db.commit()
     except IntegrityError:
         db.rollback()

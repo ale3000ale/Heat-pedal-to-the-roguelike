@@ -1,0 +1,301 @@
+name: Verifica iscrizioni live
+on:
+  push:
+    branches: [phase-15-sse-sistemazione]
+    paths: [.github/workflows/enrollment-live.yml]
+permissions:
+  contents: read
+concurrency:
+  group: review-live-connect
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Applica contratto, evento e test ai file vincolati
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          expected = {
+              'backend/app/services/championships.py': '98ba0fde34920bfb8b0668c83989457864d70155',
+              'backend/app/services/event_log.py': '262bd6e97015d7d50bfa1ccd5a47f5d9bddb7a5d',
+              'backend/app/schemas/events.py': 'd92263f1fc0b480ca211908db555955eaa77e42c',
+              'frontend/src/lib/events/event-types.ts': 'e743170435a92625373c02f4b29ae984a5b16d0f',
+              'frontend/src/lib/events/event-validation.ts': '7c523c40888e34fbba1c4d24b978dd3674910400',
+              'frontend/src/lib/events/event-validation.spec.ts': '21d0601a86b54d0eff3dd108ef77c1fd20b45c31',
+              'frontend/src/lib/championship-live.spec.ts': '59d1436a8cfea21bb9893fdc901b61e343d37dd0'
+          }
+          for name, sha in expected.items():
+              if subprocess.check_output(['git', 'hash-object', name], text=True).strip() != sha:
+                  raise RuntimeError('Base diversa: ' + name)
+          def change(old, new):
+              global text
+              if text.count(old) != 1: raise RuntimeError('Ancora non univoca: ' + old)
+              text = text.replace(old, new)
+          p = Path('backend/app/schemas/events.py')
+          text = p.read_text()
+          change('from pydantic import BaseModel, ConfigDict, Field, JsonValue', 'from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator')
+          change('"race.results_changed", "standings.changed",', '"race.results_changed", "standings.changed", "championship.pilots_changed",')
+          text += '''
+              @model_validator(mode="after")
+              def enrollment_signal_only(self) -> "EventCreate":
+                  """Il segnale iscrizioni non trasporta dati del pilota o destinatari privati."""
+                  if self.type == "championship.pilots_changed" and (
+                      self.pilot_id is not None or self.recipient_user_id is not None or self.payload
+                  ):
+                      raise ValueError("Il segnale iscrizioni deve avere riferimenti nulli e payload vuoto")
+                  return self
+          '''
+          p.write_text(text)
+          p = Path('backend/app/services/championships.py')
+          text = p.read_text()
+          change('from app.db.models import User', 'from app.db.models import User\nfrom app.schemas.events import EventCreate\nfrom app.services.event_log import append_event')
+          change('db.add(ChampionshipPilot(championship_id=championship.id, pilot_id=pilot.id))\n    try:\n        db.commit()', 'db.add(ChampionshipPilot(championship_id=championship.id, pilot_id=pilot.id))\n    try:\n        append_event(db, EventCreate(type="championship.pilots_changed", championship_id=championship.id))\n        db.commit()')
+          p.write_text(text)
+          p = Path('backend/app/services/event_log.py')
+          text = p.read_text()
+          change('altrui; il giocatore vede i pubblici dei campionati con un proprio pilota\n    iscritto e non eliminato.', 'altrui. Il solo segnale iscrizioni vuoto e senza pilot_id e\n    disponibile anche agli osservatori autenticati, come il dettaglio REST. Gli\n    altri pubblici richiedono un proprio pilota iscritto e non eliminato.')
+          change('public_access = and_(public_access, enrolled)', 'public_access = and_(\n            public_access,\n            or_(enrolled, and_(\n                EventLog.type == "championship.pilots_changed",\n                EventLog.pilot_id.is_(None),\n                EventLog.payload == "{}",\n            )),\n        )')
+          p.write_text(text)
+          p = Path('frontend/src/lib/events/event-types.ts')
+          text = p.read_text()
+          change("\t'card.gifted',", "\t'championship.pilots_changed',\n\t'card.gifted',")
+          p.write_text(text)
+          p = Path('frontend/src/lib/events/event-validation.ts')
+          text = p.read_text()
+          change('\t\treturn {\n\t\t\ttype: domainType,', '''\t\tif (domainType === 'championship.pilots_changed' &&
+          (data.pilot_id !== null || Object.keys(data.payload).length !== 0)) return null;
+          return {
+          type: domainType,''')
+          p.write_text(text)
+          p = Path('frontend/src/lib/events/event-validation.spec.ts')
+          text = p.read_text()
+          change("const event = parseStreamEvent(type, JSON.stringify(body), '9223372036854775807');", "const value = type === 'championship.pilots_changed' ? { championship_id: 1, pilot_id: null, payload: {} } : body;\nconst event = parseStreamEvent(type, JSON.stringify(value), '9223372036854775807');")
+          change("expect(event).toMatchObject({ type, id: '9223372036854775807', championshipId: 1, pilotId: 2 });", "expect(event).toMatchObject({ type, id: '9223372036854775807', championshipId: 1, pilotId: value.pilot_id });")
+          text += '''
+          it('rifiuta dettagli pilota e payload sul segnale iscrizioni', () => {
+          expect(parseStreamEvent('championship.pilots_changed', JSON.stringify(body), '1')).toBeNull();
+          expect(parseStreamEvent('championship.pilots_changed', JSON.stringify({ championship_id: 1, pilot_id: null, payload: { cards: ['privata'] } }), '1')).toBeNull();
+          expect(parseStreamEvent('championship.pilots_changed', JSON.stringify({ championship_id: 1, pilot_id: 2, payload: {} }), '1')).toBeNull();
+          });
+          '''
+          p.write_text(text)
+          p = Path('frontend/src/lib/championship-live.spec.ts')
+          text = p.read_text()
+          text += '''
+          it('aggiorna iscritti e conteggio sul segnale remoto senza ack o POST', async () => {
+          const { live, client, load, onSnapshot, f, setSnapshot } = setup();
+          await live.refresh();
+          const before = load.mock.calls.length;
+          const fresh = snapshot();
+          fresh.championship.pilots_count = 2;
+          fresh.championship.pilots.push({ id: 3, name: 'Nuovo pilota', team_id: null, point: 0 });
+          setSnapshot(fresh);
+          for (const listener of client.events) void listener({
+          type: 'championship.pilots_changed', id: '31', championshipId: 3, pilotId: null, payload: {}
+          });
+          await vi.waitFor(() => expect(onSnapshot.mock.calls.at(-1)?.[0].championship.pilots_count).toBe(2));
+          expect(onSnapshot.mock.calls.at(-1)?.[0].championship.pilots).toHaveLength(2);
+          expect(load.mock.calls.length).toBeGreaterThan(before);
+          expect(f).not.toHaveBeenCalled();
+          });
+          '''
+          p.write_text(text)
+          p = Path('backend/tests/test_enrollment_events.py')
+          if p.exists(): raise RuntimeError('Test gia presente')
+          p.write_text('''"""Iscrizioni live su SQLite sintetico: privacy, consegna e atomicita'."""
+          import json
+
+          import pytest
+          from pydantic import ValidationError
+          from sqlalchemy import func, select
+
+          from app.config import SESSION_COOKIE_NAME
+          from app.db.models import ChampionshipPilot, Deck, EventLog, Pilot, User
+          from app.schemas.events import EventCreate
+          from app.services.championships import enroll_pilot
+          from app.services.event_log import append_event, read_events
+          from app.services.event_stream import poll_events
+          from tests.test_championships_api import (
+              enroll, make_admin, make_pilot, make_player, new_championship, seed_base_pool,
+          )
+
+          TOPIC = "championship.pilots_changed"
+
+
+          @pytest.fixture()
+          def enrollment_case(make_client, session_factory):
+              seed_base_pool(session_factory)
+              admin = make_admin(make_client, session_factory)
+              owner = make_player(make_client, "owner")
+              member = make_player(make_client, "member")
+              observer = make_player(make_client, "observer")
+              champ = new_championship(admin, "Enrollment").json()["id"]
+              pilot = make_pilot(owner, "Entrante")
+              member_pilot = make_pilot(member, "Iscritto")
+              assert enroll(member, champ, member_pilot).status_code == 201
+              with session_factory() as db:
+                  ids = {user.username: user.id for user in db.scalars(select(User))}
+                  cursor = db.scalar(select(func.max(EventLog.id))) or 0
+              return dict(admin=admin, owner=owner, member=member, observer=observer,
+                          champ=champ, pilot=pilot, ids=ids, cursor=cursor)
+
+
+          def event_ids(factory):
+              with factory() as db:
+                  return list(db.scalars(select(EventLog.id).order_by(EventLog.id)))
+
+
+          def test_signal_reaches_members_and_observers_without_details(enrollment_case, session_factory, make_client):
+              c = enrollment_case
+              assert c["observer"].get(f"/api/championships/{c['champ']}").status_code == 200
+              assert enroll(c["owner"], c["champ"], c["pilot"]).status_code == 201
+              with session_factory() as db:
+                  rows = list(db.scalars(select(EventLog).where(EventLog.id > c["cursor"])))
+                  assert len(rows) == 1
+                  row = rows[0]
+                  assert row.type == TOPIC
+                  assert row.pilot_id is None and row.recipient_user_id is None
+                  assert json.loads(row.payload) == {}
+                  for uid in c["ids"].values():
+                      assert [r.id for r in read_events(db, uid, c["cursor"])] == [row.id]
+                  assert read_events(db, 999999, c["cursor"]) == []
+              token = c["observer"].cookies.get(SESSION_COOKIE_NAME)
+              assert token
+              frames, cursor = poll_events(session_factory, token, c["cursor"])
+              assert len(frames) == 1 and f"event: {TOPIC}\\n" in frames[0]
+              data = json.loads(frames[0].split("data: ", 1)[1].strip())
+              assert data == {"championship_id": c["champ"], "pilot_id": None, "payload": {}}
+              assert poll_events(session_factory, token, cursor) == ([], cursor)
+              assert make_client().get("/api/events/stream").status_code == 401
+
+
+          def test_observer_exception_does_not_broaden_other_events(enrollment_case, session_factory):
+              c = enrollment_case
+              assert enroll(c["owner"], c["champ"], c["pilot"]).status_code == 201
+              with session_factory() as db:
+                  append_event(db, EventCreate(type="card.gifted", championship_id=c["champ"],
+                                               recipient_user_id=c["ids"]["owner"], payload={"gift_id": 7}))
+                  append_event(db, EventCreate(type="cards.changed", championship_id=c["champ"], payload={}))
+                  db.add(EventLog(type=TOPIC, championship_id=c["champ"], payload='{"private":"hidden"}'))
+                  db.add(EventLog(type=TOPIC, championship_id=c["champ"], pilot_id=c["pilot"], payload="{}"))
+                  db.add(EventLog(type=TOPIC, championship_id=c["champ"],
+                                  recipient_user_id=c["ids"]["owner"], payload="{}"))
+                  db.commit()
+                  seen = read_events(db, c["ids"]["observer"], c["cursor"])
+                  assert [row.type for row in seen] == [TOPIC]
+                  assert all(row.pilot_id is None and row.payload == "{}" for row in seen)
+                  assert any(row.type == "cards.changed" for row in read_events(db, c["ids"]["member"], c["cursor"]))
+                  for name in ("member", "observer", "capo"):
+                      assert all(row.type != "card.gifted" for row in read_events(db, c["ids"][name], c["cursor"]))
+
+
+          @pytest.mark.parametrize("mode", ["duplicate", "foreign", "closed", "no_team"])
+          def test_failed_enrollment_does_not_emit(enrollment_case, session_factory, mode):
+              c = enrollment_case
+              actor, pilot, expected = c["owner"], c["pilot"], 409
+              if mode == "duplicate":
+                  assert enroll(actor, c["champ"], pilot).status_code == 201
+              elif mode == "foreign":
+                  actor, expected = c["member"], 404
+              elif mode == "closed":
+                  assert c["admin"].post(f"/api/championships/{c['champ']}/close").status_code == 200
+              elif mode == "no_team":
+                  pilot = make_pilot(actor, "SenzaTeam", with_team=False)
+              before = event_ids(session_factory)
+              assert enroll(actor, c["champ"], pilot).status_code == expected
+              assert event_ids(session_factory) == before
+
+
+          def state(factory, pilot_id, champ):
+              with factory() as db:
+                  pilot = db.get(Pilot, pilot_id)
+                  decks = [db.get(Deck, key).cards for key in (
+                      pilot.inventory_deck_id, pilot.sponsor_inventory_deck_id, pilot.game_deck_id)]
+                  enrolled = db.scalar(select(ChampionshipPilot.id).where(
+                      ChampionshipPilot.championship_id == champ, ChampionshipPilot.pilot_id == pilot_id))
+                  return (pilot.gold, pilot.sponsor, pilot.point), decks, enrolled, event_ids(factory)
+
+
+          def test_event_failure_rolls_back_enrollment_and_reset(enrollment_case, session_factory, monkeypatch):
+              c = enrollment_case
+              with session_factory() as db:
+                  pilot = db.get(Pilot, c["pilot"])
+                  pilot.gold, pilot.sponsor, pilot.point = 50, 4, 7
+                  db.get(Deck, pilot.inventory_deck_id).cards = "[]"
+                  db.commit()
+              before = state(session_factory, c["pilot"], c["champ"])
+              def fail(db, data):
+                  append_event(db, data)
+                  db.flush()
+                  raise RuntimeError("event failure")
+              monkeypatch.setattr("app.services.championships.append_event", fail)
+              with session_factory() as db:
+                  with pytest.raises(RuntimeError, match="event failure"):
+                      enroll_pilot(db, db.get(User, c["ids"]["owner"]), c["champ"], c["pilot"])
+              assert state(session_factory, c["pilot"], c["champ"]) == before
+
+
+          @pytest.mark.parametrize("extra", [
+              {"pilot_id": 2}, {"recipient_user_id": 2}, {"payload": {"name": "hidden"}},
+          ])
+          def test_enrollment_schema_forbids_details(extra):
+              with pytest.raises(ValidationError):
+                  EventCreate(type=TOPIC, championship_id=1, **extra)
+          ''')
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Esegui tutta la suite backend come nella CI corrente
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          python -m pip install -r requirements.txt pytest httpx
+          python -m pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Formatta e verifica frontend dal lockfile
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm ci
+          npx --no-install prettier --write src/lib/events/event-types.ts src/lib/events/event-validation.ts src/lib/events/event-validation.spec.ts src/lib/championship-live.spec.ts
+          npm run lint
+          npm run check
+          npm test
+          npm run build
+      - name: Pubblica solo i nove file verificati
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- frontend/package.json frontend/package-lock.json backend/requirements.txt
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/PHASE_15_ENROLLMENT_LIVE.md')
+          text = p.read_text()
+          old = 'Stato fix: applicazione e controlli ancora da verificare.'
+          if text.count(old) != 1: raise RuntimeError('Nota diversa')
+          p.write_text(text.replace(old, 'Stato fix: applicato; suite backend completa e formatter/lint/check/test/build frontend riusciti prima del commit bot.'))
+          PY
+          git add -- backend/app/services/championships.py backend/app/services/event_log.py backend/app/schemas/events.py backend/tests/test_enrollment_events.py frontend/src/lib/events/event-types.ts frontend/src/lib/events/event-validation.ts frontend/src/lib/events/event-validation.spec.ts frontend/src/lib/championship-live.spec.ts docs/PHASE_15_ENROLLMENT_LIVE.md
+          git diff --cached --check
+          git fetch origin phase-15-sse-sistemazione
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: aggiorna iscrizioni live anche agli osservatori autenticati'
+          git push origin HEAD:refs/heads/phase-15-sse-sistemazione

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -9,12 +8,8 @@
 	import { canShowEnroll, enrollablePilots } from '$lib/enroll-candidates';
 	import { deckAction } from '$lib/deck-access';
 	import { raceStatusView } from '$lib/race-status';
-	import {
-		fetchUnseenGifts,
-		loadPollIntervalMs,
-		markGiftsSeen,
-		startGiftPolling
-	} from '$lib/card-poll.svelte';
+	import { loadPollIntervalMs } from '$lib/card-poll.svelte';
+	import { startChampionshipLive } from '$lib/championship-live';
 	import type { CardGift } from '$lib/card-play-types';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
 	import type { Race, Standing } from '$lib/race-types';
@@ -35,6 +30,7 @@
 	let races = $state<Race[]>([]);
 	let myPilots = $state<Pilot[]>([]);
 	let error = $state<string | null>(null);
+	let liveError = $state<string | null>(null);
 	let raceError = $state<string | null>(null);
 	let busy = $state(false);
 	let settingsOpen = $state(false);
@@ -42,34 +38,26 @@
 	let deckOpen = $state(false);
 	let gifts = $state<CardGift[]>([]);
 	let giftOpen = $state(false);
-	// Aumenta a ogni controllo periodico: fa rileggere in silenzio le carte giocabili.
+	// Ogni snapshot applicato aggiorna anche le sezioni sponsor aperte.
 	let giftTick = $state(0);
+	let currentLive: ReturnType<typeof startChampionshipLive> | null = null;
 
 	let myIds = $derived(new Set(myPilots.map((p) => p.id)));
-	// Piloti che si possono iscrivere: hanno un team e non sono in nessun campionato attivo.
 	let candidates = $derived(enrollablePilots(myPilots));
-	// I miei piloti iscritti a questo campionato: sono quelli che giocano le carte sponsor.
 	let enrolled = $derived(
 		myPilots.filter((p) => championship?.pilots.some((entrant) => entrant.id === p.id))
 	);
-	// Il pulsante d'iscrizione c'è solo in un campionato attivo senza miei piloti iscritti.
 	let showEnroll = $derived(
 		championship !== null && canShowEnroll(championship.is_closed, enrolled.length)
 	);
-	// Cosa fa il pulsante del mazzo: nascosto, apre il pilota oppure chiede quale pilota.
 	let deckMode = $derived(
 		championship ? deckAction(championship.is_closed, enrolled.length) : 'hidden'
 	);
-	// Una gara senza classifica è in corso: carte sponsor e tasto S valgono solo finché c'è.
 	let raceInProgress = $derived(races.some((race) => race.participants === 0));
-	// Una gara non è conclusa finché è in corso o in revisione: finché c'è non se ne può
-	// creare un'altra (lo stesso controllo del backend).
 	let raceUnfinished = $derived(races.some((race) => race.status !== 'closed'));
-	// Il tasto S accanto ai piloti compare solo a giudice e admin, con una gara in corso.
 	let canGift = $derived(
 		championship !== null && !championship.is_closed && auth.canManageRaces && raceInProgress
 	);
-	// Gare dalla più recente: per data decrescente, a parità (o senza data) per numero.
 	let sortedRaces = $derived(
 		[...races].sort((a, b) => {
 			const byDate = raceTime(b.date) - raceTime(a.date);
@@ -77,132 +65,139 @@
 		})
 	);
 
-	// Istante della data in millisecondi; una data non impostata vale 0 (in fondo all'elenco).
 	function raceTime(value: string | null): number {
 		const time = value ? new Date(value).getTime() : 0;
 		return Number.isNaN(time) ? 0 : time;
 	}
 
-	// La data della gara può non essere impostata (gare create prima della data automatica).
 	function raceDate(value: string | null): string {
 		return value ? new Date(value).toLocaleDateString('it-IT') : 'Data da definire';
 	}
 
-	// Ricarica i dati del campionato che cambiano dopo un'iscrizione o una chiusura.
-	async function reload() {
-		[championship, standings] = await Promise.all([
-			api<ChampionshipDetail>(`/championships/${page.params.id}`),
-			api<Standing[]>(`/championships/${page.params.id}/standings`)
-		]);
+	/**
+	 * Rilegge attraverso la stessa coda live dopo azioni REST della pagina o dei dialoghi.
+	 * @returns Attende lo svuotamento della coda; gli errori sono mostrati dai callback live.
+	 */
+	async function reload(): Promise<void> {
+		await currentLive?.refresh();
 	}
 
 	async function afterDelete() {
+		currentLive?.dispose();
 		await goto(resolve('/championships'));
 	}
 
-	// Controllo periodico. Prima fa rileggere le carte giocabili (una carta ricevuta o annullata
-	// compare entro l'intervallo, senza ricaricare la pagina), poi, se c'è una carta ottenuta
-	// non vista, apre il popup. Mentre il popup è aperto non cerca altre notifiche, così non
-	// si accavallano.
-	async function checkGifts(championshipId: number, pilotIds: number[]) {
-		giftTick += 1;
-		if (giftOpen) return;
-		const found = await fetchUnseenGifts(championshipId, pilotIds);
-		if (found.length > 0 && !giftOpen) {
-			gifts = found;
-			giftOpen = true;
-		}
+	/**
+	 * Conferma soltanto le notifiche rese dal popup chiuso volontariamente.
+	 * @param shown Ultima lista resa dal componente; non la coda delle notifiche nuove.
+	 * @returns Attende conferma e rilettura. Errori e 401 sono gestiti dal modulo live.
+	 */
+	async function onGiftsClosed(shown: CardGift[]): Promise<void> {
+		if (!auth.user) return;
+		await currentLive?.close(shown.map((gift) => gift.id));
 	}
 
-	// Alla chiusura del popup le notifiche dei miei piloti risultano viste.
-	async function onGiftsClosed() {
-		if (!championship) return;
-		try {
-			await markGiftsSeen(
-				championship.id,
-				enrolled.map((p) => p.id)
-			);
-		} catch {
-			// Se non si riesce a segnarle, riappariranno al prossimo controllo.
-		}
-		gifts = [];
-	}
-
-	// Avvia il controllo periodico quando ci sono piloti miei iscritti a un campionato attivo.
-	// L'intervallo è quello impostato dall'admin: va letto prima di avviare il controllo, e se
-	// la pagina cambia nel frattempo `cancelled` impedisce di avviarlo dopo la chiusura.
+	// Il contesto dipende solo da parametro e utente, non dagli snapshot applicati.
+	// Dispose invalida risposte tardive; una lettura dell'intervallo tardiva non avvia lavoro.
 	$effect(() => {
-		if (!championship || championship.is_closed) return;
-		const championshipId = championship.id;
-		const pilotIds = enrolled.map((p) => p.id);
-		if (pilotIds.length === 0) return;
-		let stop: (() => void) | null = null;
+		const championshipId = Number(page.params.id);
+		const userId = auth.user?.id;
+		championship = null;
+		standings = [];
+		races = [];
+		myPilots = [];
+		gifts = [];
+		giftOpen = false;
+		giftTick = 0;
+		error = null;
+		liveError = null;
+		raceError = null;
+		busy = false;
+		settingsOpen = false;
+		enrollOpen = false;
+		deckOpen = false;
+		if (!userId) return;
+		if (!Number.isSafeInteger(championshipId) || championshipId < 1) {
+			error = 'Campionato non valido';
+			return;
+		}
 		let cancelled = false;
+		let active: ReturnType<typeof startChampionshipLive> | null = null;
 		void loadPollIntervalMs().then((intervalMs) => {
 			if (cancelled) return;
-			stop = startGiftPolling(() => checkGifts(championshipId, pilotIds), intervalMs);
+			active = startChampionshipLive({
+				championshipId,
+				intervalMs,
+				onSnapshot: (snapshot) => {
+					championship = snapshot.championship;
+					standings = snapshot.standings;
+					races = snapshot.races;
+					myPilots = snapshot.myPilots;
+					error = null;
+					liveError = null;
+					giftTick += 1;
+				},
+				onGifts: (visible) => {
+					gifts = visible.map(({ gift }) => gift);
+					giftOpen = visible.length > 0;
+				},
+				onError: (cause) => {
+					const message = cause instanceof Error ? cause.message : 'Errore sconosciuto';
+					if (championship) liveError = message;
+					else error = message;
+				},
+				onUnauthorized: () => {
+					auth.user = null;
+				}
+			});
+			currentLive = active;
 		});
 		return () => {
 			cancelled = true;
-			stop?.();
+			active?.dispose();
+			if (currentLive === active) currentLive = null;
 		};
 	});
 
-	onMount(async () => {
-		try {
-			[championship, standings, races, myPilots] = await Promise.all([
-				api<ChampionshipDetail>(`/championships/${page.params.id}`),
-				api<Standing[]>(`/championships/${page.params.id}/standings`),
-				api<Race[]>(`/championships/${page.params.id}/races`),
-				api<Pilot[]>('/pilots')
-			]);
-		} catch (e) {
-			error = e instanceof Error ? e.message : 'Errore sconosciuto';
-		}
-	});
-
-	// Iscrive un proprio pilota (la finestra ha già chiesto la conferma) e ricarica campionato
-	// e piloti: l'iscrizione cambia sia la classifica sia il campionato attivo del pilota.
-	// Se la richiesta fallisce lancia l'errore, che la finestra mostra all'utente.
+	// La finestra chiede gia' conferma. Il refresh comprende anche l'elenco dei piloti.
 	async function enrollPilot(pilotId: number) {
-		await api(`/championships/${page.params.id}/pilots`, {
+		const active = currentLive;
+		const championshipId = Number(page.params.id);
+		await api(`/championships/${championshipId}/pilots`, {
 			method: 'POST',
 			body: { pilot_id: pilotId }
 		});
-		await reload();
-		myPilots = await api<Pilot[]>('/pilots');
+		if (active === currentLive) await active?.refresh();
 	}
 
-	// Apre la pagina del pilota, dove si vedono e si modificano mazzo e inventario.
 	function goToDeck(pilot: Pilot) {
 		void goto(resolve('/pilots/[id]', { id: String(pilot.id) }));
 	}
 
-	// Con un solo pilota iscritto va dritta alla sua pagina, altrimenti chiede quale.
 	function openDeck() {
 		if (deckMode === 'choose') deckOpen = true;
 		else if (enrolled.length > 0) goToDeck(enrolled[0]);
 	}
 
-	// Admin e giudice: crea la prossima gara. Resta in questa pagina: la gara nuova
-	// compare in lista come "in corso" e si apre da lì. Con una gara non conclusa il pulsante
-	// sembra spento ma si può premere: il click mostra solo l'avviso, senza chiamare l'API.
+	// La lettura dopo POST usa la coda live, senza applicare risposte del vecchio contesto.
 	async function createRace() {
 		if (raceUnfinished) {
 			raceError = RACE_UNFINISHED_MESSAGE;
 			return;
 		}
+		const active = currentLive;
+		const championshipId = Number(page.params.id);
 		raceError = null;
 		busy = true;
 		try {
-			const created = await api<Race>(`/championships/${page.params.id}/races`, {
-				method: 'POST'
-			});
-			races = [...races, created];
+			await api<Race>(`/championships/${championshipId}/races`, { method: 'POST' });
+			if (active === currentLive) await active?.refresh();
 		} catch (e) {
-			raceError = e instanceof Error ? e.message : 'Errore sconosciuto';
+			if (active === currentLive) {
+				raceError = e instanceof Error ? e.message : 'Errore sconosciuto';
+			}
 		} finally {
-			busy = false;
+			if (active === currentLive) busy = false;
 		}
 	}
 </script>
@@ -213,6 +208,10 @@
 	<a href={resolve('/championships')} class="text-sm text-muted-foreground hover:text-foreground">
 		← Campionati
 	</a>
+
+	{#if liveError}
+		<p class="text-sm text-destructive" role="alert">Aggiornamento non riuscito: {liveError}</p>
+	{/if}
 
 	{#if error}
 		<p class="text-sm text-destructive" role="alert">{error}</p>

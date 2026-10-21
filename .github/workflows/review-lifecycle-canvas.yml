@@ -1,0 +1,90 @@
+name: Verifica lifecycle revisione e canvas
+on:
+  push:
+    branches: [phase-15-sse-sistemazione]
+    paths: [.github/workflows/review-lifecycle-canvas.yml]
+permissions:
+  contents: read
+concurrency:
+  group: review-live-connect
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Riapplica patch approvata immutabile e rimuovi soltanto il ruolo canvas
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+          import subprocess
+          ref = '5908cc656324dc34e7de03513059ca7087a19fa1:.github/workflows/review-lifecycle-canvas.yml'
+          original = subprocess.check_output(['git', 'show', ref], text=True)
+          marker = "          python - <<'PY'\n"
+          start = original.index(marker) + len(marker)
+          end = original.index('          PY\n', start)
+          exec(compile(dedent(original[start:end]), 'lifecycle-approved-5908cc6', 'exec'), {'__name__': '__main__'})
+          p = Path('frontend/src/lib/components/card-crop-editor.svelte')
+          text = p.read_text()
+          old = '\t\t\trole="img"\n'
+          if text.count(old) != 1:
+              raise RuntimeError('Ruolo canvas diverso: nessuna pubblicazione')
+          p.write_text(text.replace(old, ''))
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Formatta e verifica senza modificare dipendenze
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            'src/routes/championships/[id]/races/[raceId]/+page.svelte'
+            src/lib/components/race-review-panel.svelte
+            src/lib/stores/review-counts.svelte.ts
+            src/lib/components/card-crop-editor.svelte
+            src/lib/review-session-guard.spec.ts
+          )
+          npm ci
+          npx --no-install prettier --write "${files[@]}"
+          npm run lint
+          npm run check 2>&1 | tee "$RUNNER_TEMP/heat-review-lifecycle-check.log"
+          if grep -F 'card-crop-editor.svelte' "$RUNNER_TEMP/heat-review-lifecycle-check.log"; then
+            echo 'Diagnostica canvas ancora presente: nessuna pubblicazione.'
+            exit 1
+          fi
+          npm test
+          npm run build
+      - name: Pubblica esclusivamente i file autorizzati dopo i controlli
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- frontend/package.json frontend/package-lock.json frontend/prettier.config.js
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/PHASE_15_REVIEW_LIFECYCLE_CANVAS.md')
+          text = p.read_text()
+          old = 'Stato: patch preparata, applicazione e controlli ancora da verificare.'
+          if text.count(old) != 1: raise RuntimeError('Nota diversa')
+          p.write_text(text.replace(old, 'Stato: patch applicata; formatter, lint, check senza diagnostica del canvas, test e build frontend riusciti prima del commit bot.'))
+          PY
+          git add -- 'frontend/src/routes/championships/[id]/races/[raceId]/+page.svelte' frontend/src/lib/components/race-review-panel.svelte frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/components/card-crop-editor.svelte frontend/src/lib/review-session-guard.spec.ts docs/PHASE_15_REVIEW_LIFECYCLE_CANVAS.md
+          git diff --cached --check
+          git fetch origin phase-15-sse-sistemazione
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: conserva pannello revisione e corregge semantica canvas senza warning'
+          git push origin HEAD:refs/heads/phase-15-sse-sistemazione

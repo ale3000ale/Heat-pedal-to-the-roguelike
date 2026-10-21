@@ -7,10 +7,12 @@ from app.db.models.championship import Championship
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race
+from app.services.card_events import record_card_action
 from app.services.card_gift import _with_one_more_copy, _without_one_copy
 from app.services.card_play import CardNotAvailableError
 from app.services.cards import CardEntry, card_key, dump_cards, parse_cards
 from app.services.championships import get_championship
+from app.services.judge_events import record_inventory_correction
 from app.services.pilots import PilotNotFoundError
 from app.services.race_review import (
     ReviewHeldByOtherError,
@@ -88,9 +90,10 @@ def cancel_play(
     # Il revisore annulla una giocata: resta nello storico con stato "annullata".
     # Se era attiva la carta resta al pilota; se era già consumata (revisione riaperta
     # dall'admin) la carta torna al pilota dalla pool. Possibile solo con la revisione
-    # attiva. Un solo commit.
+    # attiva. Un solo commit per stato, eventuali trasferimenti ed eventi.
     # Errori: quelli di _reviewed_race, CardPlayNotFoundError, CardPlayNotActiveError,
-    # CardNotAvailableError (giocata consumata e carta non più nella pool).
+    # CardNotAvailableError (giocata consumata e carta non più nella pool),
+    # validazione/scrittura eventi. Rollback completo su errore.
     try:
         _lock_database(db)
         race = _reviewed_race(db, championship_id, race_id, user)
@@ -102,6 +105,8 @@ def cancel_play(
         elif play.status != STATUS_PLAYED:
             raise CardPlayNotActiveError
         play.status = STATUS_UNDONE
+        pilot = db.get(Pilot, play.pilot_id)
+        record_card_action(db, race, pilot, "card.play_undone", play.id)
         db.commit()
         db.refresh(play)
     except Exception:
@@ -114,12 +119,13 @@ def grant_bonus(
     db: Session, championship_id: int, race_id: int, pilot_id: int, card_name: str, user: User
 ) -> tuple[Pilot, CardEntry]:
     # Bonus del revisore per correggere errori: una copia dalla pool all'inventario del
-    # pilota, senza notifica. Possibile solo con la revisione attiva. Un solo commit.
+    # pilota, senza notifica regalo. Revisione attiva. Trasferimento e cards.changed
+    # nello stesso commit; rollback completo anche per errori degli eventi.
     # Errori: quelli di _reviewed_race, PilotNotFoundError, PilotNotEnrolledError,
-    # CardNotAvailableError.
+    # CardNotAvailableError e validazione/scrittura eventi.
     try:
         _lock_database(db)
-        _reviewed_race(db, championship_id, race_id, user)
+        race = _reviewed_race(db, championship_id, race_id, user)
         championship = get_championship(db, championship_id)
         pilot = db.get(Pilot, pilot_id)
         if pilot is None or pilot.deleted_at is not None:
@@ -135,6 +141,7 @@ def grant_bonus(
         inventory_deck = db.get(Deck, pilot.sponsor_inventory_deck_id)
         inventory_deck.cards = dump_cards(_with_one_more_copy(parse_cards(inventory_deck.cards), picked))
         pool_deck.cards = dump_cards(_without_one_copy(pool, picked))
+        record_inventory_correction(db, race, pilot)
         db.commit()
     except Exception:
         db.rollback()
@@ -160,11 +167,13 @@ def remove_card(
 ) -> tuple[Pilot, CardEntry]:
     # Il revisore toglie una copia dall'inventario sponsor del pilota e la rimette nella
     # pool sponsor del campionato (inverso del bonus). Possibile solo con la revisione
-    # attiva e se almeno una copia non è impegnata in una giocata attiva. Un solo commit.
+    # attiva e se almeno una copia non è impegnata in una giocata attiva.
+    # Trasferimento e cards.changed nello stesso commit; rollback completo su errore.
     # Nota: _without_one_copy confronta per identità, quindi riceve `held`, cioè lo stesso
     # oggetto presente nella lista dell'inventario, non una copia.
     # Errori: quelli di _reviewed_race, PilotNotFoundError, PilotNotEnrolledError,
-    # CardNotRemovableError (pool assente, carta non in inventario, copie tutte in gioco).
+    # CardNotRemovableError (pool assente, carta non in inventario, copie tutte in gioco),
+    # validazione/scrittura eventi.
     try:
         _lock_database(db)
         race = _reviewed_race(db, championship_id, race_id, user)
@@ -188,6 +197,7 @@ def remove_card(
         one = CardEntry(name=held.name, path=held.path, copies=1)
         inventory_deck.cards = dump_cards(_without_one_copy(inventory, held))
         pool_deck.cards = dump_cards(_with_one_more_copy(parse_cards(pool_deck.cards), one))
+        record_inventory_correction(db, race, pilot)
         db.commit()
     except Exception:
         db.rollback()

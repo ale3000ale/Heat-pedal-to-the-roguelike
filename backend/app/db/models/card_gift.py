@@ -19,4 +19,8 @@ class CardGift(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     seen_at = Column(DateTime, nullable=True)
 
-    __table_args__ = (Index("ix_card_gift_pilot_seen", "pilot_id", "seen_at"),)
+    # Una conferma ritardata non deve riferirsi a un nuovo regalo con ID riciclato.
+    __table_args__ = (
+        Index("ix_card_gift_pilot_seen", "pilot_id", "seen_at"),
+        {"sqlite_autoincrement": True},
+    )

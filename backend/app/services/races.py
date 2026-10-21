@@ -5,13 +5,16 @@ from sqlalchemy.orm import Session
 
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race, RaceResult
+from app.schemas.events import EventCreate
 from app.services.championships import (
     ChampionshipClosedError,
     get_championship,
     list_entrants,
     pilot_totals,
 )
+from app.services.event_log import append_event
 from app.services.gold import award_race_gold, rules_of
+from app.services.review_events import record_review_changed
 
 # Punti per posizione di arrivo; dalla 7ª in poi si prendono 0 punti.
 POINTS_BY_POSITION = {1: 9, 2: 6, 3: 4, 4: 3, 5: 2, 6: 1}
@@ -50,9 +53,7 @@ def get_race(db: Session, championship_id: int, race_id: int) -> Race:
 
 
 def has_race_in_progress(db: Session, championship_id: int) -> bool:
-    # Una gara non è conclusa finché non ha risultati e la revisione delle carte non è
-    # confermata (review_closed_at vuota). Le gare chiuse prima di questa regola hanno
-    # review_closed_at valorizzata dalla migrazione.
+    # Una gara resta non conclusa finché manca la conferma della revisione.
     has_results = select(RaceResult.race_id).where(RaceResult.race_id == Race.id).exists()
     stmt = (
         select(Race.id)
@@ -66,24 +67,39 @@ def has_race_in_progress(db: Session, championship_id: int) -> bool:
 
 
 def create_race(db: Session, championship_id: int, date: datetime | None = None) -> Race:
-    # Nuova gara con il numero successivo, datata al momento della creazione se non
-    # indicato altrimenti. Non si crea in un campionato chiuso né con una gara non conclusa.
-    # Le revisioni scadute vanno confermate prima (race_review.settle_expired_reviews).
-    championship = get_championship(db, championship_id)
-    if championship.is_closed:
-        raise ChampionshipClosedError
-    if has_race_in_progress(db, championship_id):
-        raise RaceInProgressError
-    last = db.scalar(select(func.max(Race.number)).where(Race.championship_id == championship_id))
-    race = Race(
-        championship_id=championship_id,
-        number=(last or 0) + 1,
-        date=date or datetime.now(timezone.utc),
-    )
-    db.add(race)
-    db.commit()
-    db.refresh(race)
-    return race
+    """Crea gara ed evento atomicamente; rollback su errori di stato, SQL o evento.
+
+    Parametri: sessione, campionato, data opzionale. Ritorna la gara persistita.
+    ChampionshipClosedError/RaceInProgressError impediscono la creazione.
+    Le revisioni scadute vanno elaborate dal chiamante prima della creazione.
+    """
+    # Import locale: shop_purchase importa has_race_in_progress da questo modulo.
+    from app.services.shop_purchase import _lock_database
+    try:
+        _lock_database(db)
+        championship = get_championship(db, championship_id)
+        if championship.is_closed:
+            raise ChampionshipClosedError
+        if has_race_in_progress(db, championship_id):
+            raise RaceInProgressError
+        last = db.scalar(select(func.max(Race.number)).where(Race.championship_id == championship_id))
+        race = Race(
+            championship_id=championship_id,
+            number=(last or 0) + 1,
+            date=date or datetime.now(timezone.utc),
+        )
+        db.add(race)
+        db.flush()
+        append_event(db, EventCreate(
+            type="race.started", championship_id=championship_id,
+            payload={"race_id": race.id},
+        ))
+        db.commit()
+        db.refresh(race)
+        return race
+    except Exception:
+        db.rollback()
+        raise
 
 
 def count_participants(db: Session, race_id: int) -> int:
@@ -99,18 +115,31 @@ def set_results(
     absent: list[int] | None = None,
     reviewer_id: int | None = None,
 ) -> Race:
-    # entries: (pilot_id, punti sponsor) nell'ordine di arrivo.
-    # absent: piloti dichiarati assenti; se indicato, ogni iscritto deve essere o in
-    # entries o in absent.
-    # reviewer_id: utente che preme "Termina"; alla prima registrazione dei risultati
-    # diventa il revisore e la revisione delle carte parte subito, nello stesso commit.
-    # Le correzioni dell'admin non riaprono la revisione.
-    # Una gara ha i risultati quando ha almeno un risultato: da allora solo chi ha
-    # can_correct (l'admin) può sostituirli. Il campionato deve essere attivo.
-    # L'oro si assegna una sola volta, alla prima registrazione dei risultati, con le
-    # regole del campionato di quel momento: le correzioni non lo toccano.
-    # Le carte sponsor giocate NON si consumano qui: lo fa la conferma della revisione
-    # (race_review.confirm_review o la conferma alla scadenza).
+    """Salva risultati, saldi, revisione ed eventi con un solo commit.
+
+    entries contiene (pilota, sponsor) in ordine; absent elenca gli assenti.
+    can_correct permette la correzione; reviewer_id identifica chi termina.
+    Ritorna la gara. Errori di dominio, SQL o evento causano rollback completo.
+    La correzione non riavvia la revisione e non assegna nuovamente oro.
+    """
+    from app.services.shop_purchase import _lock_database
+    try:
+        _lock_database(db)
+        race = _set_results(db, championship_id, race_id, entries, can_correct, absent, reviewer_id)
+        db.commit()
+        db.refresh(race)
+        return race
+    except Exception:
+        db.rollback()
+        raise
+
+
+def _set_results(db, championship_id, race_id, entries, can_correct, absent, reviewer_id) -> Race:
+    """Valida e prepara i risultati e gli eventi; nessun commit o rollback interno.
+
+    Mantiene punti, oro una sola volta, delta sponsor e assenti delle regole esistenti.
+    Le carte sponsor sono consumate soltanto dalla conferma della revisione.
+    """
     championship = get_championship(db, championship_id)
     race = get_race(db, championship_id, race_id)
     if championship.is_closed:
@@ -145,15 +174,10 @@ def set_results(
             raise RaceResultError("Indica per ogni iscritto se ha partecipato o no")
     db.query(RaceResult).where(RaceResult.race_id == race.id).delete()
     for position, (pilot_id, sponsor) in enumerate(entries, start=1):
-        db.add(
-            RaceResult(
-                race_id=race.id,
-                pilot_id=pilot_id,
-                position=position,
-                points=POINTS_BY_POSITION.get(position, 0),
-                sponsor_points=sponsor,
-            )
-        )
+        db.add(RaceResult(
+            race_id=race.id, pilot_id=pilot_id, position=position,
+            points=POINTS_BY_POSITION.get(position, 0), sponsor_points=sponsor,
+        ))
     db.flush()
     _sync_pilot_points(db, championship_id)
     _apply_sponsor_delta(db, old_sponsor, dict(entries))
@@ -162,8 +186,12 @@ def set_results(
         if reviewer_id is not None:
             race.review_started_at = datetime.now(timezone.utc)
             race.review_started_by_user_id = reviewer_id
-    db.commit()
-    db.refresh(race)
+            record_review_changed(db, race, "opened")
+    for kind in ("race.results_changed", "standings.changed"):
+        append_event(db, EventCreate(
+            type=kind, championship_id=championship_id,
+            payload={"race_id": race.id},
+        ))
     return race
 
 
@@ -175,8 +203,7 @@ def _sync_pilot_points(db: Session, championship_id: int) -> None:
 
 
 def _apply_sponsor_delta(db: Session, old: dict[int, int], new: dict[int, int]) -> None:
-    # Lo sponsor si può spendere: si applica solo la differenza rispetto ai valori
-    # precedenti della gara, senza ricalcolare il totale (mai sotto zero).
+    # Lo sponsor si può spendere: si applica solo la differenza, mai sotto zero.
     for pilot_id in old.keys() | new.keys():
         pilot = db.get(Pilot, pilot_id)
         if pilot is not None:
@@ -187,7 +214,6 @@ def race_table(
     db: Session, championship_id: int, race_id: int
 ) -> tuple[Race, list[tuple[Pilot, int | None, int, int]]]:
     # Tutti gli iscritti: prima chi ha corso (per posizione), poi gli altri a 0 punti.
-    # Ogni riga: (pilota, posizione, punti, punti sponsor).
     race = get_race(db, championship_id, race_id)
     entrants = list_entrants(db, championship_id)
     results = {

@@ -1,0 +1,203 @@
+name: Chiudi documentazione fase 15
+on:
+  push:
+    branches: [phase-15-sse-sistemazione]
+    paths: [.github/workflows/close-phase-15-docs.yml]
+permissions:
+  contents: read
+concurrency:
+  group: close-phase-15-docs
+  cancel-in-progress: false
+jobs:
+  close-docs:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Riallinea esclusivamente documenti con basi vincolate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          expected = {
+              'docs/PROJECT_STATUS.md': '6b6fcfd3a25326a55b3ef1fbef03e1117843a18b',
+              'docs/PROJECT_SPEC.md': 'eee0660f9d96641c89a3564ad0118cfc758b3469',
+              'docs/PROJECT_NOTES.md': '119232e40e7c3e85648d2d34951fdfd5ad36cbd3',
+              'docs/PHASE_15.md': '18b7bee7586449634e6521ce33a820ee4f803085',
+              'docs/PHASE_15_BROWSER_CHECKLIST.md': 'af81be3ded106840fa97706c0b95afc6bee0e7c9'
+          }
+          contents = {}
+          for name, sha in expected.items():
+              actual = subprocess.check_output(['git', 'hash-object', name], text=True).strip()
+              if actual != sha: raise RuntimeError('Documento cambiato: ' + name)
+              contents[name] = Path(name).read_text(encoding='utf-8')
+          def replace(text, old, new):
+              if text.count(old) != 1: raise RuntimeError('Ancora non univoca: ' + old)
+              return text.replace(old, new)
+          decision = '''## Chiusura autorizzata della fase 15 - 2026-10-22
+
+          Alle 00:47 CEST l'autore autorizza il riallineamento dei documenti generali e
+          la chiusura della fase 15 senza riprendere i test manuali non praticabili.
+          Fase 15 completata e chiusa sul ramo phase-15-sse-sistemazione, con limiti di
+          collaudo accettati. Non significa PR 14 unita a main o messa in produzione.
+          Codice finale 1226172, CI ordinaria 39674942800 verde; lifecycle/canvas 8018d18,
+          CI 39658083388 verde. Sei casi manuali PASS (1/4/5/6/7/9), 2/3 non verificabili,
+          8/10 non eseguiti. Restano tali: non sono convertiti in PASS. Fix iscrizioni
+          confermato dall'autore alle 23:24 del 2026-10-21 con "funziona".
+          Nessun ulteriore collaudo di quei quattro casi e' richiesto per questa chiusura.
+          Restano fuori da questa accettazione produzione, vulnerabilita' npm,
+          backup/setup sicuro, configurazione online, nuove fasi e migrazioni reali.
+          Merge e gestione della PR richiedono una richiesta separata.
+          Dettagli e verifiche in PHASE_15.md, PHASE_15_BROWSER_CHECKLIST.md,
+          PHASE_15_ENROLLMENT_LIVE.md e PHASE_15_CLOSURE.md.
+
+          '''
+          name = 'docs/PROJECT_STATUS.md'
+          text = contents[name]
+          text = replace(text, 'Ultimo aggiornamento: 2026-10-18', 'Ultimo aggiornamento: 2026-10-22')
+          text = replace(text, '## Fasi\n', decision + '## Fasi\n')
+          text = replace(text,
+              '| 14 | Sistemazione generale, modifiche di vivibilità e miglioramenti | Da definire a fine fase 13 |',
+              '| 14 | Sistemazione generale, modifiche di vivibilità e miglioramenti | Unita a main con PR #13 il 2026-10-19; stato post-merge in PHASE_14_POST_MERGE.md |\n| 15 | SSE, aggiornamenti campionato/gara/revisione, notifiche selettive, iscrizioni live e correzioni lifecycle/canvas | Completata e chiusa sul ramo per decisione del 2026-10-22, con limiti manuali accettati; PR #14 non unita da questo aggiornamento |')
+          text = replace(text, '## Backend\n', '''## Come leggere la cronologia
+
+          Le righe delle sottofasi 13 e i dettagli tecnici seguenti conservano i riscontri
+          dell'epoca, inclusi limiti allora aperti. La riga complessiva 13 ne registra il
+          merge; la fase 15 e l'appendice corrente di PROJECT_SPEC.md prevalgono per SSE,
+          timer, aggiornamenti UI e chiusura del lavoro. Non rimettere in corso la fase
+          15 sulla base di una descrizione storica del polling o di un vecchio warning.
+
+          ## Backend
+          ''')
+          contents[name] = text
+          name = 'docs/PROJECT_SPEC.md'
+          text = contents[name]
+          lines = text.splitlines(keepends=True)
+          positions = [i for i, line in enumerate(lines) if line.startswith('> Ultimo aggiornamento:')]
+          if len(positions) != 1: raise RuntimeError('Intestazione specifica diversa')
+          lines[positions[0]] = '> Ultimo aggiornamento: 22 ottobre 2026. Fase 15 chiusa sul ramo con limiti manuali accettati; appendice consolidata in fondo al documento. Nessun merge o intervento sul database reale autorizzato.\n'
+          text = ''.join(lines)
+          text = replace(text, '## 1. Stack e contesto', '''> Riallineamento autorizzato il 2026-10-22: per SSE, notifiche, timer e stato di
+          > completamento prevale l'appendice "Fase 15 - specifica consolidata". I passaggi
+          > delle fasi 13/14 preservati sotto descrivono anche stati storici, non nuove
+          > attivita' da ricreare. Regole di gioco non coinvolte e testo restante conservati.
+
+          ## 1. Stack e contesto''')
+          heading = '## Fase 15 - specifica consolidata (2026-10-22)'
+          if heading in text: raise RuntimeError('Appendice gia presente')
+          text += '\n\n' + heading + '\n\n' + decision + '''### Contratto corrente approvato
+
+          - SSE autenticato via cookie e /api/events/stream same-origin. Un client
+            condiviso per applicazione nella scheda, registro event_log persistente,
+            cursori/Last-Event-ID, resync e auth.expired. Gli eventi invalidano letture
+            REST autorizzate, non trasferiscono carte o bozze nei payload pubblici.
+          - Polling con card_poll_seconds solo come fallback senza stream open; niente
+            polling lento di sicurezza con stream aperto. Nessun retry automatico delle
+            scritture. Le descrizioni storiche di startGiftPolling non rappresentano
+            il collegamento corrente del campionato.
+          - Timer periodico delle revisioni nel lifespan per worker, ogni 5 secondi,
+            con controllo transazionale e stop cooperativo; resta la verifica REST.
+            La scadenza non dipende piu' soltanto dal prossimo accesso. Nessuna
+            migrazione nel timer. Questo aggiorna i passaggi storici "senza background".
+          - Conferma notifiche con /seen-selected sui soli ID effettivamente resi,
+            per pilota; annulli/chiusure remote non confermano. /seen resta compatibile
+            ma non e' il nuovo flusso campionato. Replay non ricrea popup visti.
+          - Gara: assegnazione ordine/assenti coerente e sponsor per pilota, base server
+            distinta dalla bozza, PUT esplicita e conservazione delle modifiche locali.
+            Permesso perso rende la bozza readonly, uscite protette senza annullare
+            richieste gia' inviate. Nessuna nuova atomicita' fra REST o lock ottimistico.
+          - Revisione inventari: GET-only al mount, bozza solo propria, chiave
+            gara/revisore/inizio controllata. Merge conserva conteggi locali e aggiorna
+            metadati remoti; revoca spunte interessate e blocca incompatibilita' senza
+            clamp. Rilettura sostitutiva richiede conferma e backup browser riuscito.
+            Un nuovo titolare/inizio non riceve automaticamente la vecchia bozza.
+          - Il pannello gia' mostrato resta sul solo cambio stato nel medesimo contesto
+            finche' il ruolo e' ammesso; enabled del genitore congela le azioni senza
+            eliminare la copia. Nuovo contesto o perdita ruolo possono smontarlo.
+            Riapertura e recupero rispettano il limite, riabilitazione richiede lettura.
+          - Canvas: controllo nativo con nome/focus, trascinamento e frecce, Maiusc per
+            passo fine, Invio/Spazio per esportare. Ruolo img non consentito rimosso,
+            senza soppressioni; dimensioni, zoom e WebP invariati.
+          - Iscrizioni: championship.pilots_changed registrato con iscrizione/reset,
+            solo ID campionato, pilot_id nullo e payload vuoto. Solo questo segnale
+            canonico raggiunge anche osservatori autenticati non iscritti, coerentemente
+            con il dettaglio REST. Non amplia altri eventi o dati privati; modello SQL
+            ed endpoint d'iscrizione invariati. Backend e frontend validano il segnale.
+
+          ### Limiti dell'accettazione
+
+          Accettazione funzionale sul ramo e limiti manuali sopra, non certificazione
+          di accessibilita', carico, proxy/buffering reale, produzione o collaudo completo.
+          Nessun test saltato dichiarato superato e nessuna nuova esecuzione locale
+          dell'assistente. Restano separati vulnerabilita' npm, backup/setup e cookie/
+          percorso SQLite per online. Nessun audit fix/force implicito.
+          Questa appendice non cambia formati Deck.cards, immagini, stack, dipendenze
+          o altre regole del Negozio. La discrepanza sul formato carte gia' annotata in
+          DATABASE.md resta separata, non risolta cambiando dati. Le indicazioni
+          storiche di migrate/start non autorizzano operazioni sul DB originale:
+          prima arresto app, backup verificato, prova su copia e permesso esplicito.
+          '''
+          contents[name] = text
+          name = 'docs/PROJECT_NOTES.md'
+          text = contents[name]
+          text = replace(text, 'Ultimo riallineamento: 2026-10-13.', 'Ultimo riallineamento: 2026-10-22.')
+          text = replace(text, '## Regole di lavoro con l’assistente', '## Regole di lavoro con l’assistente') if '## Regole di lavoro con l’assistente' in text else text
+          marker = "## Regole di lavoro con l'assistente"
+          current = '''## Contesto corrente - fase 15 chiusa
+
+          Il 2026-10-22 alle 00:47 CEST l'autore autorizza chiusura della fase 15 e
+          riallineamento di PROJECT_SPEC.md/PROJECT_STATUS.md con limiti pratici di
+          collaudo accettati: 2/3 non verificabili, 8/10 non eseguiti, mai convertiti
+          in PASS. Codice finale 1226172, CI 39674942800 verde e iscrizioni confermate
+          funzionanti. Ramo corrente phase-15-sse-sistemazione, PR 14 ancora separata
+          dal merge. Nessun ulteriore fix, test manuale obbligatorio o nuova fase avviati.
+          Le sezioni 13/14 e i comandi sotto conservano contesto storico: per timer,
+          polling, SSE e stato corrente leggere l'appendice della specifica e PHASE_15.md.
+          Nessuna migrazione o avvio sul DB originale senza autorizzazione e backup;
+          accettazione della fase non certifica produzione o risolve vulnerabilita'.
+          SHOP_DESIGN.md e questa guida riletti per il riallineamento, senza cambiare
+          regole del Negozio. Dettagli in PHASE_15_CLOSURE.md.
+
+          '''
+          text = replace(text, marker, current + marker)
+          contents[name] = text
+          name = 'docs/PHASE_15.md'
+          text = contents[name]
+          text = replace(text, 'Aggiornamento: 2026-10-21.', 'Aggiornamento: 2026-10-22.')
+          text = replace(text, '## Verifiche automatiche', decision + '## Verifiche automatiche')
+          text = replace(text, 'PROJECT_SPEC.md/PROJECT_STATUS.md protetti,\nriallineamento da autorizzare.', 'PROJECT_SPEC.md/PROJECT_STATUS.md riallineati con autorizzazione del 2026-10-22.')
+          contents[name] = text
+          name = 'docs/PHASE_15_BROWSER_CHECKLIST.md'
+          text = contents[name]
+          text = replace(text, 'Aggiornamento: 2026-10-21.', 'Aggiornamento: 2026-10-22.')
+          text = replace(text, '## Riscontro registrato', decision + '## Riscontro registrato')
+          contents[name] = text
+          for name, text in contents.items():
+              if not text.startswith('# '): raise RuntimeError('Titolo mancante: ' + name)
+              if '2026-10-22' not in text: raise RuntimeError('Data mancante: ' + name)
+              Path(name).write_text(text, encoding='utf-8')
+          p = Path('docs/PHASE_15_CLOSURE.md')
+          text = p.read_text(encoding='utf-8')
+          old = 'Riallineamento generale: preparato, pubblicazione automatica ancora da verificare.'
+          if text.count(old) != 1: raise RuntimeError('Nota chiusura diversa')
+          p.write_text(text.replace(old, 'Riallineamento generale: applicato ai cinque documenti vincolati dal workflow di chiusura.'), encoding='utf-8')
+          PY
+      - name: Verifica perimetro e pubblica solo i sei documenti
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- frontend backend database heat.py README.md
+          git add -- docs/PROJECT_STATUS.md docs/PROJECT_SPEC.md docs/PROJECT_NOTES.md docs/PHASE_15.md docs/PHASE_15_BROWSER_CHECKLIST.md docs/PHASE_15_CLOSURE.md
+          git diff --cached --check
+          git diff --cached --stat
+          git fetch origin phase-15-sse-sistemazione
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: chiudi fase 15 sul ramo con limiti manuali accettati'
+          git push origin HEAD:refs/heads/phase-15-sse-sistemazione

@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.db.models import User
 from app.db.models.card_play import CardPlay, STATUS_CONSUMED, STATUS_PLAYED, STATUS_UNDONE
 from app.db.models.deck import Deck
+from app.schemas.events import EventCreate
 from app.schemas.review_counts import ReviewCountsRequest
+from app.services.event_log import append_event
 from app.services.cards import CardEntry, CardError, card_key, dump_cards, parse_cards
 from app.services.championships import get_championship, list_entrants
 from app.services.race_review import (
@@ -154,6 +156,8 @@ def commit_review_counts(db: Session, championship_id: int, race_id: int,
     Restituisce la gara chiusa. ReviewPlanConflict salva soltanto la bozza,
     lasciando inventari, pool, registro e stato invariati. Gli altri errori
     provocano rollback completo. Nessuna autorizzazione viene dal browser.
+    Gli eventi pubblici di invalidazione sono nella stessa transazione e non
+    contengono conteggi, nomi delle carte o la bozza del revisore.
     """
     try:
         _lock_database(db)
@@ -167,6 +171,15 @@ def commit_review_counts(db: Session, championship_id: int, race_id: int,
         _apply(db, race.id, snapshot, plan)
         race.review_draft = None
         race.review_closed_at = datetime.now(timezone.utc)
+        # Accodamento senza commit: un errore annulla anche inventari, pool e stato.
+        append_event(db, EventCreate(
+            type="race.review_changed", championship_id=championship_id,
+            payload={"race_id": race.id, "action": "counts_confirmed"},
+        ))
+        append_event(db, EventCreate(
+            type="cards.changed", championship_id=championship_id,
+            payload={"race_id": race.id},
+        ))
         db.commit()
         db.refresh(race)
         return race

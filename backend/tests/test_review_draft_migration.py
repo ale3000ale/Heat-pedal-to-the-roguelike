@@ -13,8 +13,14 @@ PREVIOUS = "b4d8f2a6c0e3"
 
 
 def test_review_draft_has_one_head():
+    """Richiede una sola testa e mantiene la bozza nella sua catena di antenati."""
     config = Config(str(BACKEND_DIR / "alembic.ini"))
-    assert ScriptDirectory.from_config(config).get_heads() == [REVISION]
+    scripts = ScriptDirectory.from_config(config)
+    heads = scripts.get_heads()
+    assert len(heads) == 1, f"Attesa una sola testa Alembic, trovate: {heads}"
+    ancestors = {script.revision for script in scripts.walk_revisions(base="base", head=heads[0])}
+    assert REVISION in ancestors
+    assert scripts.get_revision(REVISION).down_revision == PREVIOUS
 
 
 def test_upgrade_preserves_rows_and_draft_on_repeat(tmp_path, monkeypatch):

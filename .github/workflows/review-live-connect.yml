@@ -1,0 +1,429 @@
+name: Collega revisione live verificata
+on:
+  push:
+    branches: [phase-15-sse-sistemazione]
+    paths: [.github/workflows/review-live-connect.yml]
+permissions:
+  contents: read
+concurrency:
+  group: review-live-connect
+  cancel-in-progress: false
+jobs:
+  connect:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Applica collegamento ai soli file conosciuti
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object frontend/src/lib/stores/review-counts.svelte.ts)" = "1a5e941859e49360bbe5686125750997fe6e928d"
+          test "$(git hash-object frontend/src/lib/components/race-review-panel.svelte)" = "aa14960434c1ed145899a6511e571a0eaca2c4f7"
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/lib/stores/review-counts.svelte.ts')
+          text = p.read_text()
+          def change(old, new):
+              global text
+              if text.count(old) != 1:
+                  raise RuntimeError('Base diversa: patch interrotta')
+              text = text.replace(old, new)
+          def section(start, end, new):
+              global text
+              a = text.index(start)
+              b = text.index(end, a)
+              text = text[:a] + new + text[b:]
+          change("import { api }", "import { api, ApiError }")
+          change("import { ownReviewKey }", "import { ownReviewKey, reconcileReviewInventory, type ReviewLocalIssue }")
+          change('import type { ReviewIncongruity, ReviewInventoryPilot }', 'import type { ReviewCounts, ReviewIncongruity, ReviewInventoryPilot }')
+          change('export class ReviewCountsStore {', '''import { startLiveRefresh, type LiveRefreshOptions } from '$lib/events/live-refresh.svelte';
+          import { eventClient } from '$lib/events/event-client';
+          type Pilot = ReviewInventoryPilot;
+          interface LiveSnapshot {
+          review: RaceReview; pilots: Pilot[] | null; version: number;
+          problem: string | null; draftKey: string | null; rawDraft: string | null;
+          }
+          const copyPilots = (pilots: readonly Pilot[]) => pilots.map((p) => ({ ...p, cards: p.cards.map((c) => ({ ...c })) }));
+          export class ReviewCountsStore {''')
+          change('\tprivate disposed = false;', '''\tblocked = $state(false);
+          synchronized = $state(true);
+          liveError = $state<string | null>(null);
+          localIssues = $state<ReviewLocalIssue[]>([]);
+          previousPilots = $state<Pilot[]>([]);
+          localBackup = $state<string | null>(null);
+          serverDraftText = $state<string | null>(null);
+          private baseline: Pilot[] | null = null;
+          private ignoredDraft: string | null = null;
+          private liveVersion = 0;
+          private backupNumber = 0;
+          private live: { refresh: () => Promise<void>; dispose: () => void } | null = null;
+          private stopStatus: () => void = () => undefined;
+          private stopAuthEvents: () => void = () => undefined;
+          private disposed = false;''')
+          change('!this.disposed &&', '!this.disposed && this.synchronized && !this.blocked &&')
+          change('\t\ttry {\n\t\t\tsessionStorage.setItem(', '\t\tif (!this.progressScope) return;\n\t\ttry {\n\t\t\tsessionStorage.setItem(')
+          change('checked: this.checked\n', 'checked: this.checked, base: this.baseline\n')
+          section('\tprivate restore(): void {', '\t/** Esegue un\'azione esclusiva;', '''\t/** Ripristina solo la chiave propria; bozze legacy revocano tutte le spunte. */
+          private restore(): void {
+          let raw: string | null = null;
+          try {
+          raw = sessionStorage.getItem(this.progressKey);
+          if (!raw) return;
+          const saved = JSON.parse(raw) as { counts: ReviewCounts; checked?: unknown[]; base?: Pilot[] };
+          const fresh = this.baseline ?? [];
+          const base = saved.base ?? fresh;
+          const result = reconcileReviewInventory(base, mergeReviewDraft(base, saved.counts), fresh);
+          this.pilots = result.pilots;
+          this.blocked = result.blocked;
+          this.localIssues = result.issues;
+          if (result.blocked) this.baseline = copyPilots(base);
+          const changed = new Set([...result.changedPilotIds, ...result.conflictingPilotIds]);
+          this.checked = !saved.base || result.blocked ? [] : [...new Set((saved.checked ?? []).filter(
+          (id): id is number => typeof id === 'number' && !changed.has(id) && this.pilots.some((p) => p.pilot_id === id)
+          ))];
+          } catch {
+          this.localBackup = raw; this.blocked = true; this.checked = [];
+          this.notice = 'Progresso locale incompatibile conservato: rileggi con conferma.';
+          }
+          }
+
+          ''')
+          change('\t\tthis.busy = true;', '\t\tthis.liveVersion += 1;\n\t\tthis.busy = true;')
+          change('\t\t\tthis.busy = false;', '\t\t\tthis.busy = false;\n\t\t\tthis.liveVersion += 1;\n\t\t\tif (!this.disposed) void this.live?.refresh();')
+          change('\t\tthis.disposed = true;', '\t\tif (this.disposed) return;\n\t\tthis.disposed = true;\n\t\tthis.synchronized = false;\n\t\tthis.live?.dispose();\n\t\tthis.stopStatus();\n\t\tthis.stopAuthEvents();')
+          change('if (!this.review?.in_review || this.disposed) return;', 'if (!this.review?.in_review || this.disposed || this.remaining <= 0) return;')
+          section('\t/** Rilegge lo stato una volta,', '\t/** Apre/riprende', '''\t/** Rilegge lo snapshot senza aprire o salvare revisioni; errori conservano i dati. */
+          async refreshStatus(): Promise<boolean> {
+          if (this.disposed) return false;
+          try {
+          if (this.live) await this.live.refresh(); else this.applyLive(await this.loadLive());
+          } catch (cause) { this.liveFailed(cause); }
+          return !this.disposed && this.synchronized;
+          }
+
+          ''')
+          section('\t/** Apre/riprende', '\t/** Corregge una carta', '''\t/** Apre solo su azione esplicita; sostituire una copia richiede conferma e backup. */
+          async start(reopen = false, confirmed = false): Promise<boolean> {
+          if ((this.pilots.length || this.localBackup || this.serverDraftText) && !confirmed) {
+          this.error = 'Conferma prima di sostituire la copia locale'; return false;
+          }
+          return this.run(async () => {
+          if (this.pilots.length || this.localBackup || this.serverDraftText) this.backupLocal();
+          await (reopen ? reopenReview : openReview)(this.championshipId, this.raceId);
+          const snapshot = await this.loadLive();
+          if (!snapshot.pilots || !ownReviewKey(snapshot.review, this.userId)) throw new Error('Revisione non propria');
+          if (snapshot.problem && !confirmed) {
+          this.review = snapshot.review; this.serverDraftText = snapshot.rawDraft;
+          this.blocked = true; this.startTimer(); throw new Error(snapshot.problem);
+          }
+          this.applyLive(snapshot, true);
+          });
+          }
+
+          ''')
+          change('await saveReviewDraft(this.championshipId, this.raceId, toReviewCounts(this.pilots));\n\t\t\tif (this.disposed) return;', 'const sent = copyPilots(this.pilots);\n\t\t\tawait saveReviewDraft(this.championshipId, this.raceId, toReviewCounts(sent));\n\t\t\tif (this.disposed) return;\n\t\t\tthis.baseline = sent;\n\t\t\tthis.ignoredDraft = null;')
+          methods = '''
+          get owned(): boolean {
+          return auth.user?.id === this.userId && this.review?.in_review === true && this.review.reviewer_user_id === this.userId;
+          }
+          private ensureContext(): void {
+          if (this.disposed || auth.user?.id !== this.userId) throw new Error('Contesto terminato');
+          }
+          private expireLive(): void {
+          if (this.disposed) return;
+          this.dispose();
+          if (auth.user?.id === this.userId) auth.user = null;
+          }
+          private liveFailed(cause: unknown): void {
+          if (this.disposed) return;
+          if (cause instanceof ApiError && cause.status === 401) { this.expireLive(); return; }
+          if (auth.user?.id !== this.userId) { this.dispose(); return; }
+          this.synchronized = false;
+          this.liveError = cause instanceof Error ? cause.message : 'Errore aggiornamento';
+          }
+          private async readLiveState(): Promise<RaceReview> {
+          this.ensureContext();
+          const review = await api<RaceReview>(`/championships/${this.championshipId}/races/${this.raceId}/review`);
+          this.ensureContext();
+          if (review.race_id !== this.raceId) throw new Error('Risposta di altra gara');
+          return review;
+          }
+          /** Snapshot immutabile; bozza solo propria, chiave verificata prima e dopo le risorse. */
+          private async loadLive(): Promise<LiveSnapshot> {
+          const version = this.liveVersion;
+          const only = (review: RaceReview): LiveSnapshot => ({ review, version, pilots: null, problem: null, draftKey: null, rawDraft: null });
+          const first = await this.readLiveState();
+          const key = ownReviewKey(first, this.userId);
+          if (!key) return only(first);
+          let inventory; let draft: ReviewCounts | null;
+          try {
+          [inventory, draft] = await Promise.all([
+          fetchReviewInventory(this.championshipId, this.raceId), fetchReviewDraft(this.championshipId, this.raceId)
+          ]);
+          } catch (cause) {
+          if (cause instanceof ApiError && (cause.status === 403 || cause.status === 409)) {
+          const latest = await this.readLiveState();
+          if (ownReviewKey(latest, this.userId) !== key) return only(latest);
+          }
+          throw cause;
+          }
+          const review = await this.readLiveState();
+          if (ownReviewKey(review, this.userId) !== key) return only(review);
+          if (inventory.race_id !== this.raceId) throw new Error('Inventario di altra gara');
+          let pilots = inventory.pilots; let problem: string | null = null;
+          try { pilots = mergeReviewDraft(pilots, draft); }
+          catch (cause) { if (!(cause instanceof RangeError)) throw cause; problem = cause.message; }
+          return { review, version, pilots, problem, draftKey: JSON.stringify([key, draft]), rawDraft: problem ? JSON.stringify(draft) : null };
+          }
+          /** Applica copie e merge nel solo contesto corrente; replace e' solo un recupero esplicito. */
+          private applyLive(snapshot: LiveSnapshot, replace = false): void {
+          if (this.disposed) return;
+          if (!replace && (this.busy || snapshot.version !== this.liveVersion)) {
+          if (!this.busy) void this.live?.refresh(); return;
+          }
+          this.ensureContext();
+          this.review = snapshot.review; this.startTimer();
+          this.synchronized = true; this.liveError = null;
+          const key = ownReviewKey(snapshot.review, this.userId);
+          if (!key || snapshot.pilots === null) {
+          this.checked = []; this.blocked = this.pilots.length > 0;
+          if (key) this.synchronized = false;
+          this.notice = 'Revisione non modificabile: copia locale conservata.'; return;
+          }
+          if (!replace && this.sessionKey !== null && this.sessionKey !== key) {
+          this.blocked = true; this.checked = [];
+          this.notice = 'Inizio revisione cambiato: rileggi con conferma.'; return;
+          }
+          this.serverDraftText = snapshot.rawDraft;
+          if (!replace && snapshot.problem && this.ignoredDraft !== snapshot.draftKey) {
+          this.blocked = true; this.checked = []; this.notice = snapshot.problem; return;
+          }
+          if (!replace && this.blocked) return;
+          const fresh = reconcileReviewInventory([], [], snapshot.pilots).pilots;
+          if (replace || this.baseline === null) {
+          this.sessionKey = key;
+          this.progressScope = `heat:review:${this.championshipId}:${this.raceId}:${this.userId}:${snapshot.review.review_started_at}`;
+          this.baseline = copyPilots(fresh); this.pilots = copyPilots(fresh);
+          this.checked = []; this.index = 0; this.blocked = false; this.localIssues = [];
+          this.ignoredDraft = snapshot.problem ? snapshot.draftKey : null;
+          if (!replace) this.restore();
+          } else {
+          const selected = this.pilots[this.index]?.pilot_id;
+          const result = reconcileReviewInventory(this.baseline, this.pilots, fresh);
+          const changed = new Set([...result.changedPilotIds, ...result.conflictingPilotIds]);
+          this.checked = this.checked.filter((id) => !changed.has(id) && result.pilots.some((p) => p.pilot_id === id));
+          this.pilots = result.pilots; this.blocked = result.blocked; this.localIssues = result.issues;
+          if (!result.blocked) this.baseline = copyPilots(fresh);
+          this.index = this.pilots.findIndex((p) => p.pilot_id === selected);
+          if (changed.size) this.notice = 'Dati aggiornati: ricontrolla i piloti senza spunta.';
+          }
+          if (!snapshot.problem) this.ignoredDraft = null;
+          if (!this.blocked) this.persist();
+          }
+          /** Un solo client condiviso; dispose rimuove sottoscrizioni e timer. Nessuna POST al mount. */
+          connect(intervalMs: number, client?: LiveRefreshOptions<LiveSnapshot>['client']): void {
+          if (this.disposed || this.live) return;
+          const current = client ?? eventClient;
+          const filter = { championshipId: this.championshipId, raceId: this.raceId };
+          this.synchronized = false;
+          this.live = startLiveRefresh<LiveSnapshot>({
+          intervalMs, client: current, filter, load: () => this.loadLive(),
+          apply: (snapshot) => this.applyLive(snapshot), onError: (cause) => this.liveFailed(cause),
+          onUnauthorized: () => this.expireLive()
+          });
+          this.stopAuthEvents = current.subscribe((event) => { if (event.type === 'auth.expired') this.expireLive(); }, filter);
+          this.stopStatus = current.subscribeStatus((status) => { if (status === 'expired') this.expireLive(); });
+          if (this.disposed) { this.live.dispose(); this.stopAuthEvents(); this.stopStatus(); }
+          }
+          /** Backup persistente prima di sostituzioni; se storage fallisce interrompe l'operazione. */
+          private backupLocal(): void {
+          const previous = copyPilots(this.pilots);
+          let key = `${this.progressKey}:backup:${Date.now()}:${++this.backupNumber}`;
+          while (sessionStorage.getItem(key) !== null) key += ':1';
+          sessionStorage.setItem(key, JSON.stringify({ counts: toReviewCounts(previous), checked: this.checked, base: this.baseline, local: this.localBackup, server: this.serverDraftText }));
+          this.previousPilots = previous;
+          }
+          /** Conferma obbligatoria; backup, nuova lettura e reset spunte senza scritture REST. */
+          async reloadInventory(confirmed = false): Promise<boolean> {
+          if (!confirmed) return false;
+          return this.run(async () => {
+          this.backupLocal();
+          const snapshot = await this.loadLive();
+          if (!snapshot.pilots || !ownReviewKey(snapshot.review, this.userId)) throw new Error('Revisione non propria o conclusa');
+          this.applyLive(snapshot, true);
+          this.notice = 'Inventario riletto e spunte azzerate; nessun conteggio confermato.';
+          });
+          }
+          '''
+          change('\tprivate stopTimer(): void {', methods + '\n\tprivate stopTimer(): void {')
+          p.write_text(text)
+          p = Path('frontend/src/lib/components/race-review-panel.svelte')
+          text = p.read_text()
+          change("import { onDestroy, onMount } from 'svelte';", "import { onDestroy, onMount } from 'svelte';\nimport { loadPollIntervalMs } from '$lib/card-poll.svelte';\nimport ConfirmDialog from '$lib/components/confirm-dialog.svelte';")
+          change('\t\tautoOpen = false,\n', '')
+          change('\tlet disposed = false;', '''\tlet disposed = false;
+          let recoveryOpen = $state(false);
+          let pending = $state<'reload' | 'start' | 'reopen'>('reload');
+          function requestStart(again: boolean): void {
+          if (store.pilots.length || store.localBackup || store.serverDraftText) {
+          pending = again ? 'reopen' : 'start'; recoveryOpen = true;
+          } else void transition(() => store.start(again));
+          }
+          async function approveRecovery(): Promise<void> {
+          const choice = pending;
+          await transition(() => choice === 'reload' ? store.reloadInventory(true) : store.start(choice === 'reopen', true));
+          }''')
+          change('\t\tif (autoOpen) void store.start();', '''\t\tvoid loadPollIntervalMs().then((intervalMs) => {
+          if (!disposed) store.connect(intervalMs);
+          }).catch((cause) => { if (!disposed) store.error = String(cause); });''')
+          change('onclick={() => transition(() => store.start(true))}', 'onclick={() => requestStart(true)}')
+          change('onclick={() => transition(() => store.start(reopen))}', 'onclick={() => requestStart(reopen)}')
+          change('\t\t{#if store.error}', '''\t\t{#if store.owned}<Button type="button" variant="outline" disabled={store.busy} onclick={() => { pending = 'reload'; recoveryOpen = true; }}>Rileggi inventario</Button>{/if}
+          {#if store.liveError}<p role="alert" class="text-sm text-destructive">Aggiornamento non riuscito: {store.liveError}</p>{/if}
+          {#if store.blocked}<p role="alert" class="text-sm text-destructive">Copia conservata: conferma bloccata. Rileggi con conferma per recuperare.</p>{/if}
+          {#if store.localIssues.length}<ul class="text-sm">{#each store.localIssues as issue}<li>Pilota {issue.pilotId}, {issue.cardName}: {issue.remaining} copie, totale corrente {issue.total ?? 'non disponibile'} ({issue.reason}).</li>{/each}</ul>{/if}
+          {#if !store.active && store.pilots.length}<details><summary>Conteggi locali in sola lettura</summary>{#each store.pilots as pilot}<p>{pilot.pilot_name}: {pilot.cards.map((c) => `${c.card_name} ${c.remaining}/${c.total}`).join(', ')}</p>{/each}</details>{/if}
+          {#if store.previousPilots.length}<details><summary>Copia precedente al recupero</summary>{#each store.previousPilots as pilot}<p>{pilot.pilot_name}: {pilot.cards.map((c) => `${c.card_name} ${c.remaining}/${c.total}`).join(', ')}</p>{/each}</details>{/if}
+          {#if store.localBackup}<details><summary>Progresso locale precedente</summary><pre class="overflow-x-auto text-xs">{store.localBackup}</pre></details>{/if}
+          {#if store.serverDraftText}<details><summary>Bozza server non applicata</summary><pre class="overflow-x-auto text-xs">{store.serverDraftText}</pre></details>{/if}
+          {#if store.error}''')
+          text += '''
+          <ConfirmDialog bind:open={recoveryOpen} title="Sostituire la copia di lavoro?" message="Conteggi locali e spunte saranno sostituiti dopo un backup nel browser. La bozza server verrà riletta; se incompatibile, ripartirai dall'inventario corrente. Nessun conteggio sarà confermato automaticamente. Se il backup non riesce, l'operazione si interrompe." confirmLabel={pending === 'reload' ? 'Rileggi' : 'Apri revisione'} onconfirm={approveRecovery} />
+          '''
+          p.write_text(text)
+          p = Path('frontend/src/lib/review-live-integration.spec.ts')
+          if p.exists(): raise RuntimeError('Test gia presente')
+          p.write_text('''import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+          import { ApiError } from './api';
+          import { ReviewCountsStore } from './stores/review-counts.svelte';
+          import type { RaceReview } from './race-review-types';
+          import type { ReviewCounts, ReviewInventory } from './review-counts-types';
+          import type { ConnectionStatus, Listener, StreamEvent } from './events/event-types';
+          const mock = vi.hoisted(() => ({ read: vi.fn(), inventory: vi.fn(), draft: vi.fn(), save: vi.fn(), open: vi.fn(), auth: { user: { id: 9 } as { id: number } | null } }));
+          vi.mock('./auth.svelte', () => ({ auth: mock.auth }));
+          vi.mock('./api', async (original) => ({ ...(await original<typeof import('./api')>()), api: mock.read }));
+          vi.mock('./race-review-api', () => ({ openReview: mock.open, reopenReview: mock.open, abandonReview: vi.fn() }));
+          vi.mock('./review-counts-api', async (original) => ({ ...(await original<typeof import('./review-counts-api')>()), fetchReviewInventory: mock.inventory, fetchReviewDraft: mock.draft, saveReviewDraft: mock.save, confirmReviewCounts: vi.fn() }));
+          class FakeClient {
+          events = new Set<Listener<StreamEvent>>(); statuses = new Set<Listener<ConnectionStatus>>();
+          subscribe(listener: Listener<StreamEvent>) { this.events.add(listener); return () => { this.events.delete(listener); }; }
+          subscribeStatus(listener: Listener<ConnectionStatus>) { this.statuses.add(listener); void listener('open'); return () => { this.statuses.delete(listener); }; }
+          status(value: ConnectionStatus) { for (const listener of this.statuses) void listener(value); }
+          emit() { for (const listener of this.events) void listener({ type: 'cards.changed', id: '1', championshipId: 3, pilotId: 1, payload: { race_id: 7 } }); }
+          }
+          let review: RaceReview; let inventory: ReviewInventory; let draft: ReviewCounts | null;
+          let store: ReviewCountsStore; let client: FakeClient;
+          beforeEach(async () => {
+          vi.clearAllMocks(); mock.auth.user = { id: 9 };
+          review = { race_id: 7, in_review: true, reviewer_user_id: 9, review_started_at: '2099-01-01T00:00:00Z', review_expires_at: '2099-01-01T00:15:00Z', review_closed_at: null };
+          inventory = { race_id: 7, pilots: [{ pilot_id: 1, pilot_name: 'Pilota', cards: [{ card_name: 'Freno', card_path: 'cards/freno.webp', total: 3, remaining: 1, gifted: 1, start: 2, pool_now: 2, pool_max: 7 }] }] };
+          draft = null;
+          mock.read.mockImplementation(async () => ({ ...review }));
+          mock.inventory.mockImplementation(async () => structuredClone(inventory));
+          mock.draft.mockImplementation(async () => structuredClone(draft));
+          mock.save.mockImplementation(async (_c, _r, data: ReviewCounts) => { draft = structuredClone(data); });
+          const memory = new Map<string, string>();
+          vi.stubGlobal('sessionStorage', { getItem: (key: string) => memory.get(key) ?? null, setItem: (key: string, value: string) => { memory.set(key, value); } });
+          client = new FakeClient(); store = new ReviewCountsStore(3, 7);
+          store.connect(1000, client); await store.refreshStatus();
+          });
+          afterEach(() => { store.dispose(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+          describe('collegamento live inventari', () => {
+          it('riprende senza POST e fonde eventi preservando conteggi e revocando spunte', async () => {
+          expect(mock.open).not.toHaveBeenCalled(); store.adjust(1, 'Freno', 1); store.checked = [1];
+          inventory.pilots[0].cards[0].total = 4; client.emit();
+          await vi.waitFor(() => expect(store.pilots[0].cards[0].total).toBe(4));
+          expect(store.pilots[0].cards[0].remaining).toBe(2); expect(store.checked).toEqual([]);
+          expect(mock.save).not.toHaveBeenCalled();
+          });
+          it('congela incompatibilita e recupera solo con conferma e copia precedente', async () => {
+          store.adjust(1, 'Freno', 1); store.adjust(1, 'Freno', 1);
+          inventory.pilots[0].cards[0].total = 1; await store.refreshStatus();
+          expect(store.blocked).toBe(true); expect(store.pilots[0].cards[0].remaining).toBe(3);
+          expect(await store.confirm()).toBe(false); expect(await store.reloadInventory()).toBe(false);
+          expect(await store.reloadInventory(true)).toBe(true);
+          expect(store.previousPilots[0].cards[0].remaining).toBe(3);
+          expect(store.pilots[0].cards[0].remaining).toBe(1); expect(store.active).toBe(true);
+          expect(mock.save).not.toHaveBeenCalled();
+          });
+          it('non legge bozze altrui e non trasferisce lavoro a un nuovo inizio', async () => {
+          store.adjust(1, 'Freno', 1); review.reviewer_user_id = 10; mock.draft.mockClear();
+          await store.refreshStatus(); expect(mock.draft).not.toHaveBeenCalled(); expect(store.active).toBe(false);
+          review.reviewer_user_id = 9; review.review_started_at = '2099-01-01T00:01:00Z';
+          await store.refreshStatus(); expect(store.blocked).toBe(true);
+          expect(store.pilots[0].cards[0].remaining).toBe(2); expect(mock.save).not.toHaveBeenCalled();
+          });
+          it('bozza server invalida non diventa vuota; recupero ignora solo quella bozza confermata', async () => {
+          draft = { pilots: [{ pilot_id: 1, cards: [{ card_name: 'Freno', remaining: 9 }] }] };
+          await store.refreshStatus(); expect(store.blocked).toBe(true); expect(store.serverDraftText).toContain('9');
+          expect(await store.reloadInventory(true)).toBe(true); expect(store.active).toBe(true);
+          draft.pilots[0].cards[0].remaining = 8; await store.refreshStatus();
+          expect(store.blocked).toBe(true); expect(mock.save).not.toHaveBeenCalled();
+          });
+          it('errori preservano conteggi e 401 chiude sottoscrizioni e contesto', async () => {
+          mock.draft.mockRejectedValueOnce(new ApiError(503, 'Non disponibile'));
+          await store.refreshStatus(); expect(store.synchronized).toBe(false); expect(store.pilots).toHaveLength(1);
+          mock.read.mockRejectedValueOnce(new ApiError(401, 'Sessione scaduta'));
+          await store.refreshStatus(); expect(mock.auth.user).toBeNull();
+          expect(client.events.size).toBe(0); expect(client.statuses.size).toBe(0);
+          });
+          it('non sovrascrive conteggi dopo dispose durante una lettura', async () => {
+          let entered!: () => void; let release!: (value: ReviewInventory) => void;
+          const arrived = new Promise<void>((resolve) => { entered = resolve; });
+          const held = new Promise<ReviewInventory>((resolve) => { release = resolve; });
+          mock.inventory.mockImplementationOnce(() => { entered(); return held; });
+          const pending = store.refreshStatus(); await arrived; const before = JSON.stringify(store.pilots);
+          store.dispose(); release({ race_id: 7, pilots: [] }); await pending;
+          expect(JSON.stringify(store.pilots)).toBe(before); expect(client.events.size).toBe(0);
+          });
+          it('fallback solo senza open, nessun polling di sicurezza', async () => {
+          vi.useFakeTimers(); const before = mock.read.mock.calls.length;
+          await vi.advanceTimersByTimeAsync(5000); expect(mock.read).toHaveBeenCalledTimes(before);
+          client.status('retrying'); await vi.advanceTimersByTimeAsync(1000);
+          expect(mock.read.mock.calls.length).toBeGreaterThan(before);
+          client.status('open'); const after = mock.read.mock.calls.length;
+          await vi.advanceTimersByTimeAsync(5000); expect(mock.read).toHaveBeenCalledTimes(after);
+          });
+          });
+          ''')
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Formatta e verifica frontend dal lockfile
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm ci
+          npx --no-install prettier --write src/lib/stores/review-counts.svelte.ts src/lib/components/race-review-panel.svelte src/lib/review-live-integration.spec.ts
+          npm run lint
+          npm run check
+          npm test
+          npm run build
+      - name: Pubblica solo il collegamento verificato
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- frontend/package.json frontend/package-lock.json frontend/prettier.config.js
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/PHASE_15_REVIEW_LIVE_CONNECT.md')
+          text = p.read_text()
+          old = 'Stato: applicazione e controlli ancora da verificare.'
+          if text.count(old) != 1: raise RuntimeError('Nota diversa')
+          p.write_text(text.replace(old, 'Stato: applicato; formatter, lint, check, test e build frontend riusciti prima del commit bot.'))
+          PY
+          git add -- frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/components/race-review-panel.svelte frontend/src/lib/review-live-integration.spec.ts docs/PHASE_15_REVIEW_LIVE_CONNECT.md
+          git diff --cached --check
+          git fetch origin phase-15-sse-sistemazione
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: collega inventari revisione a SSE e merge conservativo'
+          git push origin HEAD:refs/heads/phase-15-sse-sistemazione

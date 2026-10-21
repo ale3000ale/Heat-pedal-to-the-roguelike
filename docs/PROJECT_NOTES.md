@@ -2,7 +2,22 @@
 
 Questo file serve a chi lavora sul progetto (anche l'assistente) per ripartire senza rileggere tutto. La fonte delle regole di gioco e di prodotto è `docs/PROJECT_SPEC.md`: qui ci sono mappa del codice, comandi, convenzioni e stato del lavoro. Si aggiorna passo passo, ogni volta che qualcosa cambia.
 
-Ultimo riallineamento: 2026-10-13.
+Ultimo riallineamento: 2026-10-22.
+
+## Contesto corrente - fase 15 chiusa
+
+Il 2026-10-22 alle 00:47 CEST l'autore autorizza chiusura della fase 15 e
+riallineamento di PROJECT_SPEC.md/PROJECT_STATUS.md con limiti pratici di
+collaudo accettati: 2/3 non verificabili, 8/10 non eseguiti, mai convertiti
+in PASS. Codice finale 1226172, CI 39674942800 verde e iscrizioni confermate
+funzionanti. Ramo corrente phase-15-sse-sistemazione, PR 14 ancora separata
+dal merge. Nessun ulteriore fix, test manuale obbligatorio o nuova fase avviati.
+Le sezioni 13/14 e i comandi sotto conservano contesto storico: per timer,
+polling, SSE e stato corrente leggere l'appendice della specifica e PHASE_15.md.
+Nessuna migrazione o avvio sul DB originale senza autorizzazione e backup;
+accettazione della fase non certifica produzione o risolve vulnerabilita'.
+SHOP_DESIGN.md e questa guida riletti per il riallineamento, senza cambiare
+regole del Negozio. Dettagli in PHASE_15_CLOSURE.md.
 
 ## Regole di lavoro con l'assistente
 
