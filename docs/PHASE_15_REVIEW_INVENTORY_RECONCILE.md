@@ -1,52 +1,69 @@
 # Fase 15a-4b - Riconciliazione conservativa degli inventari di revisione
 
-Data: 2026-10-21. Solo phase-15-sse-sistemazione, PR 14 in bozza.
-Primo sottoinsieme della sincronizzazione interna: funzione pura e test.
-Store e pannello non la usano ancora; nessun collegamento SSE nuovo dichiarato.
+Aggiornamento: 2026-10-21. Solo phase-15-sse-sistemazione, PR 14 in bozza.
+Modulo e test verificati su 6aa7fe6 in CI 39599465230. Store e pannello non lo
+usano ancora: primo sottoinsieme, non nuova sincronizzazione interna completata.
 
 ## Politica approvata e modulo
 
 Proposta seguita alle 14:15: conservare conteggi locali incompatibili, bloccare
 conferma senza clamp, revocare spunte interessate, non trasferire bozze a un altro
-revisore/inizio e richiedere conferma per una rilettura che abbandona modifiche.
-Questo modulo calcola il risultato; blocchi UI, spunte e dialogo saranno nello store.
+revisore/inizio e richiedere conferma per riletture che abbandonano modifiche.
+Modulo calcola il risultato; blocchi UI, spunte, dialogo e lifecycle ancora da collegare.
 
-review-inventory-reconcile.ts lavora su base server, copia locale e nuovo remoto
-con bozza server gia' applicata, nella medesima revisione propria. ownReviewKey
-identifica gara/revisore/inizio soltanto per il proprio stato attivo; non autorizza
-richieste o sostituisce la verifica server della scadenza. Il chiamante deve
-confrontare le chiavi prima di applicare il merge.
+review-inventory-reconcile.ts usa base server, copia locale e nuovo remoto con
+bozza server gia' applicata, nella stessa revisione propria. ownReviewKey distingue
+gara/revisore/inizio solo per il proprio stato attivo. Non autorizza HTTP e non
+sostituisce il controllo server della scadenza; il chiamante confronta le chiavi
+prima del merge e impedisce bozze trasferite a un altro contesto.
 
-Restano locali i remaining modificati, con nuovi metadati e carte dal remoto.
-changedPilotIds segnala differenze dei dati carte rispetto alla base, non riordini
-o cambi del solo nome pilota. conflictingPilotIds segnala conteggi concorrenti
-validi da ricontrollare. Carte/piloti rimossi con modifiche o conteggi oltre il
-nuovo totale producono issues e blocked: l'intera copia locale resta intatta.
-Nessuna riduzione automatica o scarto silenzioso. Duplicati normalizzati e fonti
-server non valide generano RangeError; il chiamante non deve convertirli in [].
-Le liste e le carte restituite sono copie indipendenti, nessuna scrittura REST.
+Remaining locali modificati preservati con nuovi metadati/carte remoti.
+changedPilotIds rileva dati carte rispetto alla base, non riordini o solo nome
+pilota. conflictingPilotIds segnala conteggi concorrenti validi da ricontrollare.
+Carte/piloti rimossi con modifiche o conteggi oltre il nuovo totale producono
+issues/blocked e l'intera copia locale resta intatta. Nessuna riduzione o scarto
+silenzioso. Duplicati normalizzati e fonti server non valide generano RangeError,
+mai fallback a []. Risultati restituiti come copie indipendenti; nessuna REST di scrittura.
 
-## Fonti verificate e limiti
+## Fonti e verifiche effettive
 
-Rilette API review_counts.py e race_review.py: inventario giudice/admin in lettura,
-bozza solo titolare attivo; GET stato puo' gia' elaborare scadenze sul server.
-Il futuro client non deve aggiungere conferme/salvataggi automatici agli eventi.
-Un cambio di proprietario durante le letture puo' dare 403/409: rileggere lo stato,
-non interpretare una bozza non leggibile come bozza vuota o autorizzazione a scrivere.
+Rilette API review_counts.py e race_review.py: inventario giudice/admin leggibile
+senza titolarita', bozza solo titolare attivo. GET stato puo' gia' elaborare
+scadenze sul server; il nuovo client non deve introdurre conferme/salvataggi agli
+eventi. 403/409 per cambio proprietario durante letture: rileggere lo stato,
+non interpretare bozza non leggibile come bozza vuota o permesso di scrittura.
 
-Test preparati: chiave propria/nuovo inizio, aggiornamenti puliti, conteggi locali,
-nuove carte e immutabilita', totale ridotto, carta/pilota rimosso, conflitto valido,
-snapshot vuoto riuscito e input invalidi. Sono test puri, non dello store o DOM.
-Nessun npm, formatter, lint, check, test o build locale eseguito. Nuova CI da leggere:
-nessun successo del nuovo codice dichiarato prima dei controlli.
+Implementazione 05b282984b492fdf3a666c2383d40b938e7e6c19. Bot
+6aa7fe6c4b2307550aa3f229b0a3f99810d1a67a alle 14:25:19 CEST del 2026-10-21.
+Letto il diff: sola formattazione di modulo e .spec.ts, nessun cambio logico.
+Il workflow aveva i soli due nuovi TypeScript e verifiche complete dal lockfile;
+si ferma se il ramo cambia senza force push. Nessuna dipendenza/versione nuova.
 
-Workflow formatter limitato ai due nuovi file TypeScript, con lockfile invariato.
-Esegue lint completo/check/test/build prima di eventuale commit, si ferma se il
-ramo cambia, senza force push. Verificare eventuale bot, diff e nuova testa.
-Dopo esiti verdi riallineare le note interessate, poi collegare realmente store,
-pannello e recupero esplicito delle bozze, con test del lifecycle e dei permessi.
-Commit solo .md non bloccano il seguito, come richiesto. PROJECT_SPEC.md e
-PROJECT_STATUS.md protetti. Nessuna nuova dipendenza, API, migrazione, immagine
-o dato modificato. Warning canvas e prove browser ancora separati e pendenti.
-Nessun merge o intervento sui dati reali autorizzato; nessun test manuale finale
-richiesto ora. Il merge frontend non introduce concorrenza protetta lato server.
+CI ordinaria sulla testa formattata: 39599465230, tutti i job success.
+https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39599465230
+
+| Job | Esito | Conclusione CEST del 2026-10-21 |
+|---|---|---|
+| Migrazioni (database di test) | success | 14:26:26 |
+| Frontend (check, lint, test, build) | success | 14:26:47 |
+| Backend (pytest) | success | 14:28:04 |
+
+Suite passata: chiave propria/nuovo inizio, fonti pulite, conteggi locali, nuove
+carte, immutabilita', totale ridotto, carta/pilota rimosso, conflitto valido,
+snapshot vuoto riuscito e input invalidi. Test puri, non store o DOM. Verificati
+esiti, commit e diff, non log completi formatter o conteggi numerici. Nessun comando
+npm, formatter, lint, check, test o build locale eseguito dall'assistente.
+
+## Seguito
+
+Riallineamento di questa nota, PHASE_15.md, nota gara e nota risultati: soli .md,
+non blocca il seguito in attesa CI e non attribuisce esiti presunti a quel commit.
+Nessuna modifica a codice, workflow, dipendenze, API, schema, immagini o dati qui.
+PROJECT_SPEC.md e PROJECT_STATUS.md protetti. Collegare ora realmente store e
+pannello: stato/proprietario, sottoscrizioni/fallback, merge nella stessa chiave,
+revoca spunte, blocchi conferma e recupero esplicito confermato con test lifecycle,
+permessi, errori, 401 e risposte tardive. Non introdurre altri prerequisiti backend.
+Warning canvas e prove browser separati e pendenti. Nessun test manuale finale
+richiesto ora: avviso dopo collegamenti restanti e relativi controlli verdi.
+Nessun merge o intervento sui dati reali autorizzato. Il merge frontend non crea
+concorrenza protetta lato server.

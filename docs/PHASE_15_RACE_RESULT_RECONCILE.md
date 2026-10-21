@@ -1,56 +1,37 @@
 # Fase 15a-4b - Riconciliazione dei risultati gara
 
 Aggiornamento: 2026-10-21. Solo phase-15-sse-sistemazione, PR 14 in bozza.
-Funzione pura e test verificati sulla testa formattata 3c860d2, CI 39509635060 verde.
-Non ancora importata nella pagina gara. Nessun merge o intervento sul database.
+Funzione pura verificata su 3c860d2 in CI 39509635060, ora usata dalla pagina gara:
+collegamento 4833a8d, fix 44bb4dd, testa 4978f73 e CI 39596834057 verde.
+Nessun merge o intervento sui dati autorizzato da questo riallineamento.
 
-## Decisione e implementazione
+## Decisione e contratto
 
-Confermata nel seguito della proposta delle 00:27: ordine/assenti come unica
-assegnazione coerente; sponsor riconciliati per pilota. Se l'assegnazione locale
-cambia, non si importa separatamente una lista remota che potrebbe duplicare
-piloti. Se il remoto rimuove dalla classifica un pilota con sponsor modificati,
-si conserva l'assegnazione locale e si segnala il conflitto.
+Scelta dopo proposta delle 00:27: ordine/assenti unica assegnazione coerente,
+sponsor riconciliati per pilota. Assegnazione locale modificata conservata, non
+importare separatamente liste remote che duplicano piloti. Se il remoto rimuove
+dalla classifica un pilota con sponsor modificati, preservare il locale e segnalare
+conflitto. race-result-reconcile.ts espone ResultForm, hasResultChanges e reconcileResults.
 
-race-result-reconcile.ts espone ResultForm, hasResultChanges e reconcileResults.
-Merge a tre vie: base autorevole, modulo locale e nuovo modulo remoto nello
-stesso contesto. Nomi non considerati campi editabili. Sponsor undefined conserva
-un input numerico svuotato, senza convertirlo prematuramente in zero. Restituisce
-nuove liste/righe, conflitto, assegnazione preservata e modifiche residue.
-Assegnazioni duplicate negli input generano RangeError, non una correzione silenziosa.
-Nessuna rete, timer, dipendenza Svelte, scrittura o validazione dei permessi.
-Il merge frontend non introduce una garanzia di concorrenza lato server.
+Tre vie: base server, copia locale, nuovo remoto nello stesso contesto. Nomi non
+editabili, undefined conserva input sponsor vuoto senza anticipare normalizzazione
+zero. Restituisce nuove righe/liste, conflitto, assegnazione preservata e modifiche
+residue. Duplicati generano RangeError, non correzioni silenziose. Niente REST,
+timer, dipendenza Svelte o autorizzazione nel modulo. Nessuna nuova garanzia di
+concorrenza lato server dal merge frontend.
 
-## Primo tentativo e correzione mirata
+## Cronologia e verifiche
 
-Commit implementativo: cebccebfbda69f8d9a1c24623f0c29fcfeefe905.
-CI della PR 14: run 39509013765. Esiti dei job letti tramite GitHub.
-https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39509013765
+Implementazione cebccebfbda69f8d9a1c24623f0c29fcfeefe905, prima CI 39509013765:
+frontend failure 00:34:08 CEST, migrazioni success 00:34:10, backend success 00:36:10
+il 2026-10-21. Log autore 00:36: Prettier del solo race-result-reconcile.ts. ESLint
+non parte dopo prettier --check fallito, nessun test/build frontend certificato
+per quel tentativo. Workflow 823572fcd165b67a76250460098edc430969ca5e limitato al modulo,
+con npm ci/Prettier dal lockfile e lint/check/test/build prima di pubblicare.
+Protezione da ramo cambiato e nessun force push, trigger sul solo ramo previsto.
 
-| Job | Esito | Conclusione CEST del 2026-10-21 |
-|---|---|---|
-| Frontend (check, lint, test, build) | failure | 00:34:08 |
-| Migrazioni (database di test) | success | 00:34:10 |
-| Backend (pytest) | success | 00:36:10 |
-
-Log dell'autore alle 00:36: prettier --check sul solo race-result-reconcile.ts.
-Lint usa prettier --check . && eslint .: ESLint non parte dopo Prettier fallito.
-Non si dichiarano test/build frontend superati nel primo job fallito.
-
-Correzione 823572fcd165b67a76250460098edc430969ca5e: workflow formatter e nota.
-Entrambi gli elenchi per Prettier e git add limitati a race-result-reconcile.ts.
-Runner con npm ci e Prettier dal lockfile, senza versioni/configurazioni nuove.
-Lint completo, check, test e build prima di un eventuale commit automatico;
-se il ramo cambia si ferma senza force push. Trigger solo sul ramo fase 15 e sul
-workflow stesso nel repository previsto. Nessuna modifica manuale alla logica.
-
-## Testa formattata e verifiche effettive
-
-Il bot ha pubblicato 3c860d2f9c576146a1867ca0da65634d0dc1d138 alle 00:38:52 CEST.
-Letto il diff: solo race-result-reconcile.ts, espressione conflict su una riga
-invece di due. Nessun cambiamento logico o modifica alla suite nel commit bot.
-
-CI ordinaria sulla nuova testa della PR 14: 39509635060, tutti i job success.
+Bot 3c860d2f9c576146a1867ca0da65634d0dc1d138 alle 00:38:52: diff letto, sola espressione
+conflict su una riga, nessun cambio logico o alla suite. CI 39509635060 tutta verde.
 https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39509635060
 
 | Job | Esito | Conclusione CEST del 2026-10-21 |
@@ -59,32 +40,27 @@ https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/395096350
 | Frontend (check, lint, test, build) | success | 00:40:28 |
 | Backend (pytest) | success | 00:41:44 |
 
-Errore Prettier risolto sulla testa formattata, non dichiarato risolto sulla
-prima CI fallita. Verificati commit bot, diff ed esiti dei job ordinari, non log
-completi del formatter o conteggi numerici dei test. Nessun comando locale.
+Suite passata: adozione remota, immutabilita', sponsor con riordino, assegnazione
+accoppiata, sola lista assenti modificata, pilota spostato dal remoto, input vuoto,
+conflitto, convergenza, base PUT e duplicati. Esiti/commit/diff verificati, non log
+completi o conteggi. Nessun comando locale. Prove pure, non DOM o autorizzazione.
 
-La suite passata comprende adozione remota e immutabilita', sponsor per pilota
-con riordino, assegnazione accoppiata, modifica della sola lista assenti, sponsor
-protetto quando il remoto sposta il pilota, input vuoto e conflitto sponsor,
-convergenza, base della PUT e duplicati. Sono prove della funzione pura, non
-DOM, browser, permessi o integrazione della pagina. Il verde non certifica ancora
-bozza in sola lettura, protezione uscita, SSE gara o sostituzione del reload.
+## Uso corrente e limiti
 
-## Seguito e metodo
+La pagina gara importa ora il modulo e tiene base server separata dal lavoro locale.
+La copia preinvio e' base del merge della risposta PUT per conservare nuove modifiche.
+Il pannello usa rilettura coordinata, non reload completo. Bozza risultati in sola
+lettura quando permessi cambiano, uscita protetta con modifiche o richiesta in corso.
+Il collegamento ha superato la CI su 4978f73: dettagli in PHASE_15_RACE_LIVE.md.
+Non confondere codice presente/CI verde con guardie e rendering collaudati nel browser.
 
-Questo push riallinea solo questa nota e PHASE_15.md. Per richiesta dell'autore
-alle 00:26, commit esclusivamente .md non bloccano il seguito in attesa dei test.
-Nessun nuovo esito CI viene presunto per il commit documentale. Codice e workflow
-continuano invece a richiedere i controlli pertinenti prima della conclusione.
-PROJECT_SPEC.md e PROJECT_STATUS.md protetti. Nessuna nuova modifica a codice,
-workflow, dipendenze, lockfile, API, migrazioni, immagini o dati in questo push.
+Store inventari ancora da collegare al proprio helper, non a questo merge risultati:
+sono dati e bozze distinti. Politica conservativa degli inventari nella nota
+PHASE_15_REVIEW_INVENTORY_RECONCILE.md. Prossimo blocco: integrazione interna con
+spunte, blocchi, conferma della rilettura e test mirati. Nessun nuovo prerequisito backend.
 
-Prossimo blocco: collegare pagina gara e pannello alla coda SSE; conservare base
-server separata dal modulo e usare la bozza inviata per il merge della risposta
-PUT, senza perdere modifiche fatte durante la richiesta. Sostituire il reload
-completo del pannello con rilettura coordinata; mostrare conflitti senza salvataggi
-automatici, proteggere uscita con modifiche pendenti e mantenere una copia in sola
-lettura quando lo stato remoto toglie il permesso di modifica. Validare payload,
-ID e permessi autorevoli prima di salvare. Nessun ulteriore prerequisito backend.
-Nessuna prova browser richiesta ora: avviso e checklist manuale finale soltanto
-dopo completamento dei collegamenti e relativa CI verde. Nessun merge autorizzato.
+Solo riallineamento di documenti in questo push, niente codice, workflow, dipendenze,
+lockfile, API, schema, immagini o dati. PROJECT_SPEC.md e PROJECT_STATUS.md protetti.
+Commit solo .md non bloccano il seguito in attesa CI, come richiesto alle 00:26.
+Nessuna prova browser richiesta ora: avviso e checklist finale dopo completamento
+dei collegamenti restanti e relativi controlli verdi. Nessun merge autorizzato.

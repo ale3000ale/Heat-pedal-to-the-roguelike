@@ -1,95 +1,85 @@
 # Fase 15a-4b - Collegamento gara e callback revisione
 
-Data: 2026-10-21. Solo phase-15-sse-sistemazione, PR 14 in bozza.
-Base riletta 0709ca4, commit solo documentale senza attesa CI, come richiesto.
-Merge puro verificato sulla testa 3c860d2, CI 39509635060 verde.
-Implementazione del collegamento: 4833a8dce73dec8d6634376fdaaab67fa1d24168.
-Controlli del collegamento non ancora superati: primo tentativo fallito, fix sotto.
+Aggiornamento: 2026-10-21. Solo phase-15-sse-sistemazione, PR 14 in bozza.
+Base documentale 0709ca4 senza attesa CI, come richiesto. Implementazione
+4833a8dce73dec8d6634376fdaaab67fa1d24168, fix 44bb4dd, testa formattata 4978f73
+verificata in CI 39596834057. Nessun merge o intervento sui dati autorizzato.
 
-## File e comportamento implementato
+## Comportamento corrente
 
-- Pagina championships/[id]/races/[raceId]/+page.svelte.
-- components/race-review-panel.svelte: callback onchanged al posto del reload.
-- Workflow format-sse-client.yml limitato ai due componenti e questa nota.
+Pagina championships/[id]/races/[raceId]/+page.svelte e race-review-panel.svelte
+collegati; il pannello usa onchanged invece del reload. startLiveRefresh condiviso
+legge gara, campionato e piloti propri senza effetti UI durante load. Eventi del
+campionato/resync invalidano la lettura, anche per is_last quando parte una nuova
+gara. Fallback solo senza stream open e con intervallo admin, niente altro
+EventSource o polling lento di sicurezza con stream aperto.
 
-La pagina usa startLiveRefresh condiviso: load completo di gara, campionato e
-piloti propri, senza effetti UI; eventi del campionato e resync invalidano la
-lettura. Filtro per campionato, non sola gara, per aggiornare anche is_last quando
-parte una gara successiva. Polling solo senza stream open, intervallo admin.
-Nessun altro EventSource e nessun polling di sicurezza con stream aperto.
+Base server distinta da ordine/assenti/sponsor. Le REST riuscite usano il merge
+puro gia' verificato su 3c860d2: assegnazione coerente, sponsor locali preservati,
+conflitti senza scritture. Risultati ufficiali/permessi aggiornati comunque;
+bozza in sola lettura se non piu' modificabile, solo in memoria fino all'uscita,
+non autosalvata in browser o backend. Cambio utente svuota il contesto.
 
-Base server separata da ordine/assenti/sponsor. Le REST riuscite applicano il
-merge a tre vie gia' testato. Ordine/assenti restano accoppiati; sponsor locali
-non sovrascritti. Conflitti segnalati senza scrivere. I risultati ufficiali e i
-permessi si aggiornano comunque; se la modifica non e' piu' permessa la bozza
-locale resta visibile in sola lettura. Bozza solo in memoria fino all'uscita,
-non salvata automaticamente sul server o nel browser. Un cambio utente svuota
-il contesto per non trasferire bozze tra utenti.
+PUT esplicita verifica stato UI, tutti i piloti assegnati, duplicati, ID presenti
+e massimo 12 partecipanti; normalizzazione sponsor preesistente. Backend autorevole
+su regole/permessi. Copia preinvio come base per fondere risposta e modifiche fatte
+durante richiesta. Nessun lock ottimistico introdotto, nessuna garanzia contro
+sovrascritture concorrenti sul server. Letture durante PUT non applicate, nuova
+lettura accorpata alla fine anche dopo errore. Risposte del vecchio contesto ignorate.
 
-Il salvataggio esplicito verifica stato UI, tutti i piloti assegnati, duplicati,
-ID ancora presenti e massimo 12 partecipanti; mantiene la normalizzazione sponsor
-preesistente. Il backend resta autorevole su regole e permessi. La copia locale
-prima della PUT e' la base per fondere la risposta con modifiche fatte durante
-la richiesta. Nessun lock ottimistico/versione backend introdotto: non garantisce
-assenza di sovrascritture concorrenti sul server. Letture durante PUT non applicate,
-poi nuova lettura accorpata anche dopo errore. Risposte di vecchio contesto ignorate.
+Uscita interna/unload protetti con bozza modificata o PUT in corso, anche su gare
+concluse; il dialogo dice che uscire non annulla HTTP gia' partite. Sessione scaduta
+non blocca autenticazione, errori refresh conservano dati, 401 svuota auth. Cleanup
+invalida code/avvii tardivi. Pannello non richiama genitore dopo smontaggio e viene
+ricreato per campionato/gara/utente/stato, non a ogni snapshot: semplici aggiornamenti
+risultati non azzerano conteggi del pannello.
 
-Uscita interna o unload protetti con bozza modificata o PUT in corso, anche per
-correzioni di gare gia' concluse. Il dialogo chiarisce che uscire non annulla HTTP
-gia' inviate. Sessione scaduta non blocca il flusso di autenticazione. Errori di
-refresh conservano i dati, 401 svuota auth; cleanup invalida code e avvii tardivi.
+## Cronologia del type-check e verifica riuscita
 
-Il pannello notifica una transizione riuscita alla pagina tramite onchanged,
-senza window.location.reload e senza richiamare genitore dopo smontaggio.
-Il componente e' ricreato per campionato/gara/utente/stato, non a ogni snapshot:
-non si azzerano conteggi locali per un semplice aggiornamento dei risultati.
+Prima CI ordinaria 39593722874 su 4833a8d: frontend failure 13:41:05 CEST,
+migrazioni success 13:41:13, backend pytest success 13:43:00 del 2026-10-21.
+Formatter 39593716889 failure 13:41:16, nessun bot riuscito dichiarato per quel tentativo.
+Log autore 13:54: race potenzialmente null nel callback unknownPilot e warning
+separato canvas role img. Non presumere test/build riusciti nel tentativo fallito.
 
-## Primo tentativo e fix del type-check
+Fix 44bb4dd6a7eb90dca59299c0a09dea2795e5f6e8: knownPilotIds derivato da race?.results
+o [], callback su Set sempre definito, guardia race !== null conservata. Nessun
+race!, cast, soppressione TypeScript o cambio regole di salvataggio. Resta falso
+prima della lettura e blocca bozza con ID non piu' presenti. Workflow riattivato
+cambiando nome dello step check, senza ampliare file, trigger o comandi.
 
-CI ordinaria 39593722874: frontend failure alle 13:41:05 CEST del 2026-10-21,
-migrazioni success alle 13:41:13, backend pytest success alle 13:43:00.
-Formatter 39593716889: failure alle 13:41:16. Esiti dei job letti su GitHub;
-non si dichiara pubblicato un commit bot di formattazione riuscita.
+Bot 4978f7387562aea7f09d14fea05025ae01ed3025 alle 14:05:14 CEST. Diff letto:
+sola formattazione di pagina gara e pannello, nessun ulteriore cambio logico.
+CI ordinaria della nuova testa: 39596834057, tutti i job success.
+https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39596834057
 
-Il log dell'autore alle 13:54 segnala un errore svelte-check: race potenzialmente
-null nel callback di unknownPilot, oltre a un warning separato sul role img del
-canvas in card-crop-editor.svelte. Non si presumono riusciti test/build dei job
-falliti o risultati di step non riportati dal log.
+| Job | Esito | Conclusione CEST del 2026-10-21 |
+|---|---|---|
+| Migrazioni (database di test) | success | 14:06:53 |
+| Frontend (check, lint, test, build) | success | 14:07:09 |
+| Backend (pytest) | success | 14:08:53 |
 
-Fix mirato: knownPilotIds e' un Set derivato da race?.results oppure da [].
-unknownPilot mantiene la guardia race !== null, ma il callback legge solo il Set
-sempre definito. Nessun race!, cast, soppressione TypeScript o cambio alle regole
-di salvataggio. La modifica preserva il significato del controllo: nessun pilota
-sconosciuto prima della lettura, blocco se una bozza contiene ID non piu' presenti.
+Errore nullable risolto sulla testa formattata, non sul primo tentativo fallito.
+Letti commit, diff ed esiti, non log completi formatter o conteggi dei test.
+Nessun comando locale eseguito. Warning canvas non corretto: verde non significa
+check privo di warning. I test puri/coordinatore e compiler non sono prove DOM.
+Guardia uscita, sola lettura, callback e modifiche durante PUT da verificare
+in integrazione/browser; nessuna riuscita manuale dichiarata o richiesta ora.
 
-Il workflow viene riattivato cambiando soltanto il nome dello step check; comandi,
-file formattabili, trigger e protezioni restano invariati. Formatter dal lockfile,
-lint completo/check/test/build prima di pubblicare i due componenti. Se il ramo
-cambia si ferma senza force push. Verificare nuovo job, eventuale bot e CI della
-testa risultante; non dichiarare risolto il type-check prima degli esiti reali.
-Il warning canvas e' registrato come sistemazione separata e non viene corretto
-qui; non si dichiara quindi ottenuto un check senza warning.
+## Integrazione interna ancora pendente
 
-## Confini e verifiche ancora pendenti
+review-counts.svelte.ts resta invariato: qui non si dichiara nuova sincronizzazione
+SSE di inventari, bozze o cambio revisore a stato gara invariato. Il nuovo helper
+review-inventory-reconcile.ts e' ora verificato su 6aa7fe6, CI 39599465230, ma non
+ancora usato dallo store. Questa distinzione evita di dichiarare conclusa ogni
+vista di revisione solo per la riuscita del collegamento gara.
 
-Lo store review-counts.svelte.ts non e' modificato: nessuna nuova sincronizzazione
-SSE interna degli inventari, delle bozze o del revisore a stato gara invariato
-viene dichiarata qui. Restano le sue operazioni e il suo timer esistenti. Questo
-blocco collega intestazione/risultati/stato gara e rimuove il reload distruttivo;
-non certifica completata ogni vista di revisione della fase 15.
-
-La suite pura di riconciliazione e i test del coordinatore sono gia' presenti.
-Non sono aggiunti test DOM dei componenti: guardia uscita, vista in sola lettura,
-modifiche durante PUT, callback e reattivita' del controllo piloti richiedono
-ancora verifica integrata/browser. Nessun npm, formatter, lint, check, test o build
-locale eseguito dall'assistente. Nessun successo dei nuovi controlli dichiarato.
-
-Questo fix modifica pagina gara, nome dello step nel workflow e questa nota;
-nessuna modifica diretta al pannello o al componente canvas. Nessuna dipendenza,
-lockfile, API, migrazione, immagine o dato modificato. PROJECT_SPEC.md e
-PROJECT_STATUS.md protetti. Dopo CI riuscita riallineare tutte le note interessate
-e PHASE_15.md, senza attendere test dei soli commit .md. Prima di dichiarare
-completato SSE, affrontare la sincronizzazione interna del pannello.
-Nessuna prova browser eseguita o richiesta ora: avviso e checklist finali solo
-dopo completamento dei collegamenti restanti e relativi controlli verdi.
-Nessun merge o intervento sul database reale autorizzato.
+Il formatter attuale e' mirato ai due file TypeScript degli inventari, non piu'
+ai due componenti del blocco gara: le istruzioni di formattazione sopra sono
+cronologia di 4833a8d/44bb4dd. Nessuna modifica ai componenti in questo riallineamento.
+Nessuna nuova dipendenza, lockfile, API, schema, immagine o dato modificato.
+PROJECT_SPEC.md e PROJECT_STATUS.md protetti. Solo documenti, non attendere CI per
+il seguito. Prossimo lavoro: collegare store/pannello al merge conservativo,
+revoca spunte, blocchi e recupero esplicito confermato, con test lifecycle/permessi.
+Nessuna prova browser finale richiesta prima del completamento e CI verde dei
+collegamenti restanti. Nessun merge o intervento sul database reale autorizzato.

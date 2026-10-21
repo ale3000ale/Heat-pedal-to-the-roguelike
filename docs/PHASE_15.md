@@ -2,41 +2,44 @@
 
 Aggiornamento: 2026-10-21. Solo ramo phase-15-sse-sistemazione.
 Base iniziale main 2cded6d. PR 14 in bozza; nessun merge senza richiesta.
-Questa pagina descrive lo stato corrente. Le note dei singoli blocchi restano
-cronologia dei commit indicati: "timer non attivo" o "pagine non collegate"
-nei blocchi precedenti non descrivono automaticamente la testa corrente.
+Stato corrente qui; note precedenti limitate ai commit del singolo blocco.
+"Timer non attivo" o "pagine non collegate" nei blocchi storici non descrivono
+la testa corrente. Nessun esito CI attribuito a commit solo documentali non letti.
 
 ## Stato e decisioni approvate
 
 - Backend SSE, timer, client condiviso, servizio notifiche e controller verificati.
-- Pagina campionato collegata in df7edf5 e formattata in dc97fcf; CI 39502927035
-  tutta verde. La pagina usa /seen-selected, non la conferma generale /seen.
-- Funzione pura di riconciliazione risultati verificata su 3c860d2, CI 39509635060
-  verde, ma non ancora collegata. Pagina gara e pannello di revisione da completare.
-- Scelta confermata nel seguito delle 00:27 del 2026-10-21: ordine e assenti come
-  unica assegnazione coerente, sponsor riconciliati per pilota. Preservare modifiche
-  locali e segnalare conflitti, anche se il remoto sposta un pilota con sponsor
-  modificati. Se lo stato remoto revoca la modifica, mantenere bozza in sola lettura.
-- Polling e card_poll_seconds conservati come fallback soltanto senza stream open.
-  Nessun polling lento di sicurezza con stream aperto; buffering proxy da verificare.
-- Eventi carte ottenute/annullate/giocate, stato gara/revisione, risultati e classifica.
-  Non estende SSE automaticamente a tutti i CRUD o alle impostazioni/iscrizioni remote.
-- Uso online a bassa affluenza, piu' worker sullo stesso SQLite. Nessuna prova di carico,
-  multi-host o filesystem di rete dichiarata. /api same-origin tramite proxy FastAPI.
-- ID CardGift stabili con nuova migrazione e conferma selettiva. La CI non autorizza
-  migrazioni sui dati reali. PROJECT_SPEC.md e PROJECT_STATUS.md restano protetti.
-- Richiesta dell'autore del 2026-10-20 alle 20:37 CEST: avviso esplicito e checklist
-  per test manuali finali dopo il collegamento restante e la relativa CI verde.
-  Nessuna nuova prova manuale richiesta ora.
-- Richiesta del 2026-10-21 alle 00:26: i commit esclusivamente .md non bloccano il
-  seguito in attesa della CI. Non attribuire loro esiti non letti. Modifiche a codice,
-  configurazioni, workflow, dipendenze o migrazioni richiedono ancora i controlli.
+- Campionato collegato df7edf5/dc97fcf, CI 39502927035 verde: /seen-selected al
+  posto della conferma generale /seen, snapshot completi e popup riconciliati.
+- Gara collegata in 4833a8d, fix nullable 44bb4dd, testa formattata 4978f73:
+  CI 39596834057 verde. Merge risultati usato dalla pagina, callback revisione
+  senza reload completo. Non sono ancora prove DOM/browser dei nuovi componenti.
+- Inventari: modulo puro 05b2829/6aa7fe6 verificato in CI 39599465230. Non ancora
+  usato da review-counts.svelte.ts o dal pannello: sincronizzazione interna pendente.
+- Scelta confermata dopo proposta delle 00:27: ordine/assenti unica assegnazione,
+  sponsor per pilota; preservare modifiche e segnalare conflitti. Se cambia il
+  permesso, bozza risultati in sola lettura, non autosalvata.
+- Politica inventari approvata dopo proposta delle 14:13 e seguito delle 14:15:
+  conservare conteggi incompatibili, non ridurli automaticamente; bloccare conferma,
+  revocare spunte interessate e non trasferire bozze tra revisori/nuovi inizi.
+  Rilettura che abbandona modifiche solo con conferma esplicita. UI ancora da collegare.
+- Polling/card_poll_seconds soltanto come fallback senza stream open. Nessun polling
+  lento di sicurezza con stream aperto; buffering proxy reale non verificato.
+- Eventi carte ottenute/annullate/giocate, stato gara/revisione, risultati/classifica.
+  Non estende SSE a tutti i CRUD o a impostazioni/iscrizioni remote senza eventi.
+- Uso online a bassa affluenza e piu' worker sullo stesso SQLite. Nessuna prova di
+  carico, multi-host o filesystem di rete. /api same-origin tramite proxy FastAPI.
+- ID CardGift stabili e conferma selettiva non autorizzano migrazioni sui dati reali.
+  PROJECT_SPEC.md e PROJECT_STATUS.md restano protetti.
+- Autore, 2026-10-20 alle 20:37 CEST: avviso esplicito e checklist per test manuali
+  finali dopo collegamenti restanti e relativa CI verde. Nessuna prova nuova richiesta ora.
+- Autore, 2026-10-21 alle 00:26: commit solo .md non bloccano il seguito in attesa CI.
+  Codice, configurazioni, workflow, dipendenze e migrazioni richiedono ancora controlli.
 
 ## Registro sintetico delle verifiche
 
-Le esecuzioni riportate sono quelle gia' lette nei blocchi. I dettagli storici,
-le correzioni e le ore dei blocchi precedenti sono nelle note e nella storia Git.
-"Verde" indica i job previsti completati con successo, non un collaudo browser.
+Esecuzioni gia' lette nei blocchi; dettagli, ore e correzioni nelle note e nella
+storia Git. Verde significa job previsti riusciti, non collaudo browser.
 
 | Blocco | Commit o testa verificata | Esecuzione CI verde |
 |---|---|---|
@@ -62,114 +65,136 @@ le correzioni e le ore dei blocchi precedenti sono nelle note e nella storia Git
 | Riallineamento | 991c218 | 39498576979 |
 | Controller e popup | 936f27b | 39500026385 |
 | Riallineamento | eca9adb | 39501199891 |
-| Pagina campionato collegata e formattata | dc97fcf | 39502927035 |
-| Riconciliazione risultati formattata | 3c860d2 | 39509635060 |
+| Campionato collegato e formattato | dc97fcf | 39502927035 |
+| Merge risultati puro formattato | 3c860d2 | 39509635060 |
+| Gara collegata, fix nullable e formattazione | 4978f73 | 39596834057 |
+| Merge inventari puro formattato | 6aa7fe6 | 39599465230 |
 
 Correzioni storiche: cb5d649 ebbe lint fallito in 39424794586, workflow bf1ab11
 poi bot 33f01f0447706cbfe78a7468b4e0c7cb13696deb sui sei file previsti.
 33b87b8 ebbe lint fallito in 39454933814, workflow 96f98ef poi bot
 fb4f128786d74bdcece526f28a8f158fb13374eb sui tre file del coordinatore.
-493a3fb ebbe frontend fallito in 39491830284; log dell'autore alle 22:43 CEST
-su Prettier del solo test notifiche. Workflow ae161cc poi bot
-de29e7000aa5ad9bc6c313817178622b9844f903 alle 23:04:11 CEST.
-936f27b ebbe anche formatter 39500018271 success alle 23:24:49 CEST;
-testa riletta invariata, nessun nuovo commit bot presente al controllo.
-cebcceb ebbe frontend fallito in 39509013765 sul Prettier del solo modulo
-race-result-reconcile.ts; backend e migrazioni passati. Workflow 823572f poi
-bot 3c860d2f9c576146a1867ca0da65634d0dc1d138 alle 00:38:52 CEST del 2026-10-21.
-Diff letto: sola espressione conflict su una riga, nessun cambiamento logico.
-Non si dichiarano test/build riusciti nei tentativi fermati dal lint.
+493a3fb ebbe frontend fallito in 39491830284; log autore 22:43 CEST sul Prettier
+del test notifiche. Workflow ae161cc poi bot de29e7000aa5ad9bc6c313817178622b9844f903
+alle 23:04:11 CEST. 936f27b ebbe anche formatter 39500018271 success 23:24:49,
+testa riletta invariata senza nuovo bot. cebcceb ebbe Prettier fallito in
+39509013765, backend/migrazioni passati; workflow 823572f poi bot
+3c860d2f9c576146a1867ca0da65634d0dc1d138 alle 00:38:52 del 2026-10-21, sola
+espressione conflict su una riga. Non dichiarare test/build riusciti nei tentativi
+fermati dal lint. Il primo collegamento gara 4833a8d ebbe frontend e formatter
+falliti; cronologia del type-check nella nota PHASE_15_RACE_LIVE.md.
 
-Riscontro manuale dell'autore del 2026-10-20 alle 15:23 CEST: "ok per ora va tutto".
-Nessun elenco casi, log o ambiente: non esteso ai blocchi introdotti successivamente.
+Riscontro autore del 2026-10-20 alle 15:23 CEST: "ok per ora va tutto". Nessun
+elenco casi, log o ambiente; non esteso ai blocchi introdotti successivamente.
 
-## Campionato collegato: verifica
+## Campionato e gara collegati
 
-Implementazione df7edf52e46092a0102d5edcb3ac4a2373bf22ed. Bot
+Campionato: implementazione df7edf52e46092a0102d5edcb3ac4a2373bf22ed, bot
 dc97fcf91a9c39ae4efcd956c64955a3006edcfe alle 23:45:21 CEST del 2026-10-20.
-Diff letto: sola formattazione di championship-live.ts, championship-live.spec.ts
-e routes/championships/[id]/+page.svelte. Nessun cambiamento logico nel commit bot.
-CI 39502927035: migrazioni success alle 23:56:31, frontend check/lint/test/build
-success alle 23:57:05, backend pytest success alle 23:58:10 CEST del 2026-10-20.
-Verificati esiti, commit e diff, non log completi o conteggi numerici dei test.
+Diff letto, sola formattazione dei tre file del collegamento. CI 39502927035:
+migrazioni 23:56:31, frontend check/lint/test/build 23:57:05, backend 23:58:10.
+Legge campionato, classifica, gare, piloti propri e regali dei soli propri iscritti;
+piu' REST, non transazione unica. Errori non diventano []. Apply aggiorna popup e
+refreshKey delle sezioni sponsor. Solo ID resi a /seen-selected; annulli/chiusure
+remote non confermano. Dopo ack nuova lettura accorpata. Cleanup per parametro e
+utente, 401 ferma il modulo prima di svuotare auth, auth.expired gestito dal layout.
+Campionati chiusi senza popup regali come prima, API comunque disponibile per ack storici.
 
-championship-live.ts riusa coordinatore, servizio e controller: legge campionato,
-classifica, gare e piloti propri, poi regali dei soli propri iscritti. Sono piu'
-REST, non una transazione unica. Errori non diventano snapshot vuoti. Apply
-aggiorna anche popup aperti e refreshKey delle sezioni sponsor. /seen-selected
-riceve solo ID resi; annulli e chiusure remote non confermano. Dopo l'ack nuova
-lettura accorpata. Contesto legato a parametro e utente, cleanup invalida risposte
-tardive e avvii dopo lettura intervallo; 401 ferma il modulo prima di svuotare auth.
-Il layout gestisce auth.expired. Nessun secondo EventSource o retry di scritture.
-Campionati chiusi senza popup regali come prima; l'API ammette ack storici.
-Test con dipendenze simulate, non DOM/browser; non dichiariamo l'app completamente
-real-time.
+Risultati: funzione pura cebcceb/3c860d2, CI 39509635060 verde il 2026-10-21:
+migrazioni 00:40:00, frontend 00:40:28, backend 00:41:44. Ora usata nella pagina gara.
+Base server separata dal modulo; ordine/assenti coerenti e sponsor locali preservati.
+PUT esplicita con copia preinvio come base per non perdere modifiche durante la
+richiesta. Valida tutti i piloti/duplicati/ID e massimo 12 partecipanti, normalizzazione
+sponsor preesistente. Backend resta autorevole; nessun lock ottimistico introdotto.
 
-## Riconciliazione risultati: verifica e collegamento pendente
+Gara: implementazione 4833a8dce73dec8d6634376fdaaab67fa1d24168, fix
+44bb4dd6a7eb90dca59299c0a09dea2795e5f6e8, bot 4978f7387562aea7f09d14fea05025ae01ed3025
+alle 14:05:14 CEST del 2026-10-21. Diff letto: sola formattazione dei due componenti.
+CI 39596834057: migrazioni 14:06:53, frontend 14:07:09, backend 14:08:53, tutti success.
+Snapshot gara/campionato/piloti, eventi del campionato anche per is_last e resync;
+fallback solo senza stream open. Risultati ufficiali e permessi aggiornati, bozza
+locale in sola lettura se la modifica non e' piu' permessa, fino all'uscita.
+Uscita protetta con modifiche o PUT in corso; uscire non annulla HTTP gia' partite.
+Risposte del vecchio contesto scartate. Pannello usa onchanged, non reload browser;
+ricreato per contesto/stato, non a ogni snapshot. Store inventari ancora invariato.
 
-Implementazione cebcceb, correzione formatter 823572f e testa bot 3c860d2.
-CI 39509635060 tutta verde il 2026-10-21: migrazioni 00:40:00 CEST,
-frontend check/lint/test/build 00:40:28, backend pytest 00:41:44.
-Funzione pura e suite passate: base server, modulo locale e nuovo remoto;
-ordine/assenti coerenti, sponsor non sovrascritti se modificati, input vuoto
-preservato, conflitto e modifiche residue, nessuna mutazione degli input.
-Non e' ancora usata dalla pagina gara e non implementa da sola permessi,
-protezione uscita, bozza in sola lettura o sostituzione del reload del pannello.
-Il prossimo blocco deve collegarla realmente e verificare anche questi aspetti.
-Nessuna nuova garanzia di concorrenza lato server introdotta dal merge frontend.
+Nessun secondo EventSource o retry automatico delle scritture. Test puri/coordinatore
+e controlli compiler superati non certificano DOM, guardie uscita, vista bozza,
+callback e modifiche durante PUT. Nessuna prova browser dell'assistente.
+
+## Inventari: modulo verificato, integrazione pendente
+
+Implementazione 05b282984b492fdf3a666c2383d40b938e7e6c19, bot
+6aa7fe6c4b2307550aa3f229b0a3f99810d1a67a alle 14:25:19 CEST del 2026-10-21.
+Diff letto: sola formattazione di review-inventory-reconcile.ts e .spec.ts.
+CI 39599465230: migrazioni 14:26:26, frontend check/lint/test/build 14:26:47,
+backend pytest 14:28:04, tutti success. Verificati esiti, commit e diff, non log
+completi o conteggi numerici. Funzione pura, non ancora importata da store/pannello.
+
+ownReviewKey distingue gara/revisore/inizio della propria revisione attiva, non
+sostituisce autorizzazione o scadenza server. Merge conteggi locali nella stessa
+revisione, nuovi metadati dal remoto; piloti da ricontrollare e conflitti validi.
+Con carte/piloti rimossi con modifiche o quantita' oltre il nuovo totale, blocco
+esplicito e intera copia locale preservata, nessun clamp. Fonti invalide non sono [].
+API rilette: inventario giudice/admin leggibile senza essere titolare, bozza solo
+al titolare attivo. GET stato puo' elaborare scadenze come gia' avviene nel backend.
+Il collegamento non dovra' introdurre conferme o salvataggi automatici agli eventi.
+403/409 durante le letture richiedono verifica del contesto, non bozze vuote fittizie.
+
+Da fare nello store e nel pannello: sottoscrizioni/fallback, confronto chiavi prima
+del merge, aggiornamenti che preservano conteggi, revoca spunte, blocchi conferma,
+chiusura/cambio titolare, recupero esplicito con conferma e test di permessi/lifecycle.
+Non e' un altro prerequisito backend. Fase SSE non ancora conclusa.
 
 ## Timer, registro e autorizzazioni
 
-main.py avvia heat-review-timer per worker dopo la manutenzione iniziale, ogni
-5 secondi per revisioni scadute con risultati in campionati aperti. Riusa
-settle_expired_reviews: ricontrollo sotto lock, commit per gara ed eventi nella
-stessa transazione. Bozze applicate secondo logica esistente. Resta il controllo
-REST di scadenza. Pulizia eventi oltre 24 ore al primo giro e poi ogni ora,
-non esatta al secondo. Stop cooperativo e attesa anche se il corpo lifespan
-fallisce; nessuna interruzione di transazioni. Errori loggati e ritentati.
-Nessuna migrazione automatica nel lifespan. Test lifecycle in test_review_timer_lifespan.py.
+main.py avvia heat-review-timer per worker dopo manutenzione iniziale, ogni 5 secondi
+per revisioni scadute con risultati in campionati aperti. settle_expired_reviews
+ricontrolla sotto lock e committa gara/eventi nella stessa transazione; bozze secondo
+logica esistente. Resta il controllo REST di scadenza. Pulizia oltre 24 ore al primo
+giro e poi ogni ora, non esatta al secondo. Stop cooperativo e attesa anche se il
+corpo lifespan fallisce; nessuna interruzione di transazioni. Errori loggati/ritentati.
+Nessuna migrazione nel lifespan. Test lifecycle in test_review_timer_lifespan.py.
 
-Event_log persistente condiviso, ID AUTOINCREMENT non riutilizzati. Eventi prima
-del commit dell'azione, rollback comune. GET /api/events/stream autenticato con
-cookie e Last-Event-ID, letture ogni secondo, keep-alive 15 secondi, retry 3 secondi.
-Sessioni SQL brevi nel thread pool, chiuse prima di invio/attesa. Sessione HTTP
-ricontrollata a ogni lettura, auth.expired chiude lo stream. Primo accesso o cursore
+Event_log condiviso e persistente, ID AUTOINCREMENT non riutilizzati. Eventi prima
+del commit dell'azione e rollback comune. GET /api/events/stream autenticato con
+cookie/Last-Event-ID, letture ogni secondo, keep-alive 15 secondi, retry 3 secondi.
+Sessioni SQL brevi nel thread pool, chiuse prima di invio/attesa; sessione HTTP
+ricontrollata a ogni lettura, auth.expired chiude lo stream. Primo accesso/cursore
 non recuperabile inviano resync, rilevato anche registro svuotato con sqlite_sequence.
-Privati solo al destinatario; pubblici agli iscritti con pilota non eliminato e ad
-admin/giudici. Nessuna carta privata, conteggio o bozza nei pubblici.
+Privati al destinatario; pubblici agli iscritti con pilota non eliminato e admin/giudici.
+Mai carte private, conteggi o bozze nei pubblici.
 
 card.played/card.play_undone privati con race_id/play_id; card.gifted/card.gift_undone
-privati con race_id/gift_id. Anche cards.changed pubblico con soli race_id/pilot_id.
-Nessun nome, immagine o conteggio nei payload. Il replay richiede REST autorizzate,
-non ricrea direttamente popup. seen_at resta riferimento delle notifiche non viste.
-Inventario, pool, notifica ed eventi condividono transazione. Revisore riusa
-card.play_undone/cards.changed; bonus e rimozione emettono solo cards.changed,
-non creano CardGift. Test concorrenti: due processi spawn indipendenti sullo stesso
-SQLite sintetico per scadenza/scadenza e scadenza/conferma manuale, una sola
-chiusura, consumo/restituzione e coppia di eventi. Non sono prove di carico.
+privati con race_id/gift_id; cards.changed pubblico con soli race_id/pilot_id.
+Niente nomi, immagini o conteggi nei payload. Replay tramite REST autorizzate,
+non ricrea popup. seen_at riferimento notifiche non viste. Inventario, pool,
+notifica ed eventi condividono transazione. Revisore riusa card.play_undone/cards.changed;
+bonus/rimozione solo cards.changed, non CardGift. Test a due processi spawn sullo
+stesso SQLite sintetico per scadenza/scadenza e scadenza/conferma manuale: una sola
+chiusura, consumo/restituzione e coppia eventi. Non prove di carico.
 
 ## Conferma selettiva e database reale
 
-POST /api/championships/{id}/card-gifts/seen-selected: pilot_id e lista da 1 a 100
-ID positivi int64, solo proprietario anche per admin/giudice, ambito campionato.
-ID assenti, annullati, gia' visti o fuori ambito ignorati; 204 senza dettagli.
-Solo seen_at ancora vuoto, ripetizioni non riscrivono date; niente carte, saldi o
-SSE nuovi. /seen storico resta compatibile, non usato dal nuovo flusso campionato.
-Servizio TypeScript conserva pilotId assente nel DTO, valida ID sicuri JavaScript,
-deduplica e usa batch per pilota. Nessuna atomicita' tra batch; quelli gia' riusciti
-possono restare persistiti dopo errore. Controller gestisce coda, annulli senza ack,
+POST /api/championships/{id}/card-gifts/seen-selected: pilot_id e lista 1..100 ID
+positivi int64, solo proprietario anche per admin/giudice, ambito campionato.
+Assenti, annullati, gia' visti o fuori ambito ignorati, 204 senza dettagli.
+Solo seen_at vuoto modificato, ripetizioni non riscrivono date; niente carte,
+saldi o SSE nuovi. /seen compatibile ma non usato dal nuovo flusso campionato.
+Servizio conserva pilotId assente nel DTO, valida ID sicuri JavaScript e invia
+batch deduplicati per pilota. Nessuna atomicita' tra batch, precedenti possono
+restare persistiti dopo errore. Controller gestisce coda, annulli senza ack,
 chiusura volontaria e dispose; popup passa l'ultima lista registrata dopo render.
-Backend e servizio non provano da soli la visibilita' nel browser.
+Backend/servizio non provano da soli la visibilita' nel browser.
 
 Nessuna migrazione, backup o modifica dei dati del gioco eseguita dall'assistente.
-Prima dell'uso reale: arrestare app, backup verificato, prova su copia e autorizzazione
-all'applicazione. Anche heat.py start/setup migrano: non avviarli prima. Catena
-letta a2e6c0d4f8b3, d5e9a3b7c1f6, d6f0a4b8c2e7; merge storico b2d6f0a4c8e1.
-Nuovi moduli frontend non cambiano schema o dipendenze. Downgrade d6f0a4b8c2e7
-conserva righe ma perde storia e garanzia di non riuso: non usarlo con client che
-richiedono ID stabili. Non trasferire conferme pendenti tra backup o DB ricreati.
-Nessun reset autorizzato. CI su DB nuovi/sintetici non certifica i dati originali.
-Nessun comando o test locale eseguito e nessuna prova browser dell'assistente.
+Prima dell'uso reale: arresto app, backup verificato, prova su copia e autorizzazione.
+Anche heat.py start/setup migrano, non avviarli prima. Catena letta a2e6c0d4f8b3,
+d5e9a3b7c1f6, d6f0a4b8c2e7; merge storico b2d6f0a4c8e1. Moduli frontend non cambiano
+schema/dipendenze. Downgrade d6f0a4b8c2e7 conserva righe ma perde storia/garanzia di
+non riuso: non usarlo con client che richiedono ID stabili; non trasferire conferme
+pendenti tra backup o DB ricreati. Nessun reset autorizzato. CI su DB sintetici non
+certifica gli originali. Nessun comando o test locale eseguito dall'assistente.
 
 ## Note, sistemazioni e seguito
 
@@ -179,25 +204,26 @@ PHASE_15_STATE_EVENTS.md, PHASE_15_RACE_EVENTS.md, PHASE_15_CARD_PLAY_EVENTS.md,
 PHASE_15_GIFT_EVENTS.md, PHASE_15_JUDGE_EVENTS.md. Timer: PHASE_15_TIMER.md.
 Frontend: PHASE_15_FRONTEND_CLIENT.md, PHASE_15_FRONTEND_FORMATTING.md,
 PHASE_15_FRONTEND_LIVE.md, PHASE_15_FRONTEND_GIFT_SERVICE.md,
-PHASE_15_GIFT_POPUP_CONTROLLER.md, PHASE_15_CHAMPIONSHIP_LIVE.md e
-PHASE_15_RACE_RESULT_RECONCILE.md.
-ID/API: PHASE_15_GIFT_ID_MIGRATION.md e PHASE_15_GIFT_SEEN_SELECTED.md.
-Concorrenza: PHASE_15_CONCURRENCY.md. Fix storici: PHASE_15_CI_FIX.md (47df2a5)
-e PHASE_15_STATE_EVENTS_FIX.md (53709a0). Stato corrente nelle sezioni sopra;
-indicazioni delle vecchie note limitate ai commit del loro blocco.
+PHASE_15_GIFT_POPUP_CONTROLLER.md, PHASE_15_CHAMPIONSHIP_LIVE.md,
+PHASE_15_RACE_RESULT_RECONCILE.md, PHASE_15_RACE_LIVE.md e
+PHASE_15_REVIEW_INVENTORY_RECONCILE.md. ID/API: PHASE_15_GIFT_ID_MIGRATION.md,
+PHASE_15_GIFT_SEEN_SELECTED.md. Concorrenza: PHASE_15_CONCURRENCY.md. Fix storici:
+PHASE_15_CI_FIX.md (47df2a5), PHASE_15_STATE_EVENTS_FIX.md (53709a0).
 
-Pendenti: 15b da definire con autore dopo SSE; PROJECT_STATUS.md con riga 14 vecchia,
-manca 15 e data/descrizione 13e; PROJECT_SPEC.md da rileggere dopo bc0fbfb e refuso
-storico. PHASE_14_POST_MERGE.md/aae6c33 storico, format-championships non verificato.
-README.md, SETUP.md e SCRIPTS.md riletti in blocchi precedenti, comandi invariati;
-prima di altri aggiornamenti rileggere SHOP_DESIGN.md e PROJECT_NOTES.md.
-Backup/setup sicuro ancora da verificare nel codice. config.py: cookie secure
-disattivato e URL SQLite fisso da sistemare per online. Differenza Deck.cards tra
-istruzioni e codice segnalata da DATABASE.md: nessuna modifica al formato/percorsi.
+Pendenti: sincronizzazione interna revisione e test integrati/browser; warning
+canvas role img in card-crop-editor.svelte non corretto dal fix nullable. 15b da
+definire dopo SSE. PROJECT_STATUS.md con riga 14 vecchia, manca 15 e data/descrizione
+13e; PROJECT_SPEC.md da rileggere dopo bc0fbfb e refuso storico. PHASE_14_POST_MERGE.md/
+aae6c33 storico, format-championships non verificato. README.md, SETUP.md e SCRIPTS.md
+riletti in blocchi precedenti, comandi invariati; prima di altri aggiornamenti leggere
+SHOP_DESIGN.md e PROJECT_NOTES.md. Backup/setup sicuro ancora da verificare nel codice.
+config.py: cookie secure disattivato e URL SQLite fisso da sistemare per online.
+Differenza Deck.cards tra istruzioni e codice in DATABASE.md, nessuna modifica formato/percorsi.
 
-Questo riallineamento aggiorna solo questa pagina e PHASE_15_RACE_RESULT_RECONCILE.md.
-Nessuna modifica a codice, workflow, dipendenze, schema o dati. PROJECT_SPEC.md e
-PROJECT_STATUS.md intatti. Essendo soltanto .md, non attendere i test del commit
-per il seguito e non attribuirgli esiti presunti. Prossimo blocco: collegamento
-pagina gara/pannello, controlli del codice, riallineamento e avviso esplicito per
-i test manuali finali. Nessun merge autorizzato.
+Questo push aggiorna solo quattro documenti: questa pagina, nota gara, nota risultati
+e nota inventari. Nessuna modifica a codice, workflow, schema, dipendenze o dati.
+PROJECT_SPEC.md e PROJECT_STATUS.md intatti. Solo .md: non attendere la CI per il
+seguito e non attribuire esiti presunti. Prossimo blocco funzionale: collegare store
+e pannello al merge inventari e alla coda live, con test mirati, poi riallineare.
+Avviso e checklist manuale finale solo dopo completamento e relativi controlli verdi.
+Nessun merge autorizzato.
