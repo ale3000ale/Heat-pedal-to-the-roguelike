@@ -1,79 +1,49 @@
-# Fase 15a-4b - Collegamento effettivo della pagina campionato
+# Pagina campionato e iscrizioni live
 
-Aggiornamento: 2026-10-21. Solo ramo phase-15-sse-sistemazione, PR 14 in bozza.
-Base eca9adb verificata in CI 39501199891. Implementazione df7edf5,
-testa formattata dc97fcf verificata in CI 39502927035. Nessun merge autorizzato.
+Aggiornamento: 2026-10-21. Solo phase-15-sse-sistemazione, PR 14 in bozza.
+Collegamento df7edf5/dc97fcf, CI 39502927035 verde. Cronologia estesa in Git e nella
+versione precedente della nota. Nessun merge autorizzato.
 
-## File e comportamento corrente
+## Collegamento corrente
 
-- frontend/src/lib/championship-live.ts: lettura e coordinamento testabili.
-- frontend/src/lib/championship-live.spec.ts: REST e client SSE simulati.
-- frontend/src/routes/championships/[id]/+page.svelte: collegamento reale.
-- .github/workflows/format-sse-client.yml: formatter sui tre file frontend sopra.
-- Questa nota. Pagina gara, API e migrazioni non modificate dal blocco.
+championship-live.ts legge campionato/classifica/gare/piloti propri e notifiche
+solo dei propri iscritti. Snapshot completo o errore, mai [] fittizio; piu' REST,
+non singola transazione SQL. Campionato chiuso senza popup, API storica conservata.
+Coda SSE condivisa e fallback con intervallo admin soltanto senza open, nessun
+secondo stream o polling di sicurezza. Apply aggiorna pagina, popup e sezioni sponsor.
+Ack solo /seen-selected sugli ID resi alla chiusura volontaria; annulli o chiusure
+remote non scrivono. Dopo ack nuova lettura; limiti batch parziali e HTTP in corso
+conservati. Nessun retry automatico delle scritture.
 
-La pagina non usa piu' startGiftPolling, il wrapper che nasconde errori o
-markGiftsSeen generale. Riusa servizio selettivo, controller popup e coordinatore
-SSE condiviso, senza un secondo EventSource o modifiche al layout autenticato.
-Load rilegge campionato, classifica, gare e piloti propri, poi le notifiche dei
-soli piloti propri iscritti, mantenendo associazione pilota/regalo. Sono piu'
-REST autorizzate, non una transazione SQL unica. Un errore rifiuta lo snapshot:
-non diventa [] e non chiude il popup. Campionato chiuso: nessun popup regali,
-come prima; l'API backend puo' comunque confermare notifiche storiche.
+Contesto legato a campionato/utente, cleanup per avvii tardivi e risposte vecchie.
+401 ferma il modulo prima di auth; errori conservano dati e popup. Reload delle
+azioni locali passa dalla stessa coda. I CRUD senza eventi non diventano per questo
+immediati tra utenti; non si dichiara tutta l'applicazione real-time.
 
-Apply aggiorna pagina e controller anche con popup aperto; refreshKey aggiorna
-le sezioni sponsor aperte. Eventi del campionato e resync richiedono riletture,
-non costruiscono carte dai payload. Polling con intervallo admin soltanto senza
-stream open, nessun polling di sicurezza con stream aperto. Resta il limite
-non verificato del proxy che mantiene open ma trattiene gli eventi.
+## Iscrizioni remote corrette
 
-La X passa la lista resa al controller. Conferma soltanto /seen-selected, in
-batch per pilota; chiusure remote e snapshot vuoti riusciti non scrivono.
-Dopo l'ack richiede una rilettura accorpata che invalida risposte precedenti.
-Restano i limiti sui batch parziali, sugli ID sicuri JavaScript e sulle HTTP
-gia' partite, che non vengono cancellate. Nessun retry automatico delle scritture.
+L'iscrizione prima aggiornava solo la sessione che eseguiva POST. Dal bot 1226172,
+CI 39674942800 tutta verde, championship.pilots_changed viene registrato con
+iscrizione/reset. Solo ID campionato, pilot_id nullo e payload vuoto: nessun nome,
+carta o conteggio. Il segnale canonico e' visibile a tutti gli autenticati, anche
+non iscritti, coerentemente col dettaglio REST. Altri eventi e dati privati mantengono
+i filtri precedenti. Non e' un'estensione generale della visibilita' SSE.
 
-Lifecycle legato a parametro campionato e utente, non agli snapshot. Cleanup
-ferma controller/coordinatore e impedisce avvii tardivi dopo la lettura
-intervallo. Un 401 ferma il modulo prima di svuotare auth; auth.expired resta
-anche gestito dal layout. Reload dopo impostazioni, iscrizione o creazione gara
-usa la stessa coda. Errori di refresh conservano i dati e mostrano un avviso;
-al primo caricamento mostrano l'errore senza inventare dati. I CRUD privi di
-eventi non diventano immediati tra client con stream aperto.
+Registro tipi e validatore frontend riconoscono il segnale; il coordinatore gia'
+presente rilegge campionato/classifica/gare e soli dati propri autorizzati, senza
+nuovi polling, stream, POST o ack in risposta all'evento. Test backend su consegna,
+privacy, rollback e rifiuti; parser e aggiornamento snapshot testati nel frontend.
+Nessuna modifica a pagina, endpoint, modello SQL o dipendenze per questo fix.
 
-## Verifiche effettive
+## Riscontri e seguito
 
-Implementazione: df7edf52e46092a0102d5edcb3ac4a2373bf22ed.
-Commit bot: dc97fcf91a9c39ae4efcd956c64955a3006edcfe, pubblicato il
-2026-10-20 alle 23:45:21 CEST. Letto il diff: sola formattazione dei tre file
-frontend previsti, nessun cambiamento logico; nessuna modifica ai lockfile.
-Non si attribuisce il verde della nuova testa alla prima CI del commit iniziale.
+Autore 22:39: casi 1/4/5/6/7/9 PASS, 2/3 non verificabili, 8/10 non eseguiti.
+Autore 22:41: difetto iscrizioni per membri e osservatori autenticati; 23:24:
+"funziona" dopo richiesta di riprova del fix. Conferma complessiva, non log separati
+dei due scenari. Browser/commit locale non registrati; nessuna riproduzione manuale
+dell'assistente. Dettagli in PHASE_15_ENROLLMENT_LIVE.md e checklist aggiornata.
 
-CI della PR 14 sulla testa dc97fcf: run 39502927035, tutta verde.
-https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39502927035
-
-| Job | Esito | Conclusione CEST del 2026-10-20 |
-|---|---|---|
-| Migrazioni (database di test) | success | 23:56:31 |
-| Frontend (check, lint, test, build) | success | 23:57:05 |
-| Backend (pytest) | success | 23:58:10 |
-
-La suite include filtro piloti propri/iscritti, campionato chiuso, popup/ack
-selettivo, nuovi arrivi in coda, errore che conserva il popup, snapshot vuoto
-senza scrittura, fallback/open, 401 e risposta tardiva dopo dispose. Sono prove
-con dipendenze simulate, non DOM o browser. Verificati commit, diff ed esiti dei
-job, non log completi o conteggi numerici. Nessun comando locale eseguito.
-
-## Riallineamento e seguito
-
-Riallineati PHASE_15.md, note API/servizio/controller, questa nota e DATABASE.md
-per la disponibilita' effettiva del campionato. Il nuovo commit documentale
-richiede una CI separata. PROJECT_SPEC.md e PROJECT_STATUS.md restano protetti.
-Nessuna nuova modifica a codice, workflow, dipendenze, immagini, schema o dati.
-
-Prossimo passo: pagina gara e merge dei soli campi risultati non modificati
-localmente, preservando ordine, assenti e sponsor modificati ma non salvati.
-Campionato collegato non significa app interamente real-time o rendering,
-proxy, deployment e carico verificati. Nessuna prova browser eseguita o richiesta
-ora. Avviso e checklist dei test manuali finali dopo il collegamento restante
-e la relativa CI verde. Migrazioni sui dati reali ancora non autorizzate.
+Proxy/buffering, carico e i casi non eseguiti restano non verificati. Nessun altro
+fix in questo riallineamento solo documentale. Non attendere CI dei soli .md.
+Documenti protetti, codice, workflow, schema e dati intatti; nessun merge o intervento
+sul database reale autorizzato.
