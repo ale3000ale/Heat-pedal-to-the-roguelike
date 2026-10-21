@@ -1,57 +1,55 @@
 # Lifecycle revisione e controllo canvas
 
 Stato: patch preparata, applicazione e controlli ancora da verificare.
-Base cc8ba7a, dopo collegamento 1145a9a e CI 39650297363 verde. Solo ramo
-phase-15-sse-sistemazione. Nessun merge o intervento sui dati reali autorizzato.
+Base frontend invariata dopo cc8ba7a/1145a9a; solo phase-15-sse-sistemazione.
+Nessun merge o intervento sui dati reali autorizzato.
 
-## Correzione dell'applicazione
+## Tentativi e correzioni
 
-Preparazione 9a0ef20, job verify 39654061238 fallito prima dei controlli frontend.
-Analisi dello store 9f877ef: la vecchia ancora !this.disposed && compare sia nel
-getter active sia nel ritorno di refreshStatus, mentre change richiede una sola
-occorrenza. La guardia interrompe la patch senza pubblicare un commit bot.
-Ancora ora limitata a firma e prime righe del getter active: refreshStatus resta
-invariato. Nessun altro ampliamento della patch o indebolimento delle verifiche.
-Causa ricavata dal codice letto, non da un log completo del runner.
+9a0ef20, verify 39654061238: arresto iniziale. La vecchia ancora !this.disposed &&
+ha due occorrenze; 5908cc6 limita la sostituzione alla firma e prime righe del
+getter active, lasciando refreshStatus invariato. Analisi ricavata dal codice letto.
 
-## Valutazione e modifica prevista
+5908cc6, verify 39655437138: log autore delle 20:56 CEST del 2026-10-21.
+npm ci, formatter e lint riusciti. svelte-check riporta 0 errori e 1 warning:
+canvas non puo' avere role img, a11y_no_interactive_element_to_noninteractive_role.
+La guardia diagnostica interrompe correttamente il job: test/build non eseguiti,
+nessun commit bot. La CI ordinaria verde continua a riferirsi al codice gia' pubblicato.
 
-Pagina gara letta: canReview puo' diventare false e la key include race.status.
-Questo smonta il pannello al cambio fase, perdendo la copia visibile in memoria.
-La patch conserva il pannello gia' mostrato nel medesimo contesto gara/utente,
-toglie lo stato dalla key e azzera il flag al cambio contesto. Lo nasconde ancora
-quando manca il ruolo di gestione gare, senza esporre copie a un altro utente.
+Correzione ulteriore: rimuovere soltanto role img, mantenendo aria-label, controllo
+button nativo, focus e comandi. Nessuna soppressione o rimozione della guardia.
+Il workflow breve esegue il solo blocco Python approvato dal commit immutabile
+5908cc656324dc34e7de03513059ca7087a19fa1; checkout include il genitore per leggerlo.
+Quel blocco verifica tutti e cinque i blob frontend. Dopo l'applicazione si rimuove
+una sola occorrenza del ruolo canvas; basi diverse interrompono la pubblicazione.
+Non esegue ricorsivamente il nuovo workflow e non scarica script esterni.
 
-Il genitore passa enabled=canReview e limita canOpen. Il pannello inoltra il limite
-allo store tramite effetto con untrack, senza dipendenze reattive involontarie.
-False disabilita editing e scritture, revoca spunte ma non sostituisce conteggi;
-true richiede nuova lettura. Verifica preinvio ricontrolla anche questo limite.
-Apertura e recupero confermati non aggirano il limite. SSE rimane una lettura e
-non concede permessi; backend ancora autorevole, HTTP gia' partite non annullate.
+## Modifica funzionale conservata
 
-Canvas letto: role img con gestori pointer. La patch mantiene il canvas come
-immagine senza gestori e sposta interazione su un button nativo con nome accessibile.
-Trascinamento usa la stessa panView e la larghezza del canvas; frecce spostano,
-Maiusc usa passo fine, Invio/Spazio esportano. Zoom e dimensioni/WebP invariati.
-Focus visibile, istruzioni aggiornate, nessuna soppressione a11y o finto ruolo.
+Pannello gia' mostrato conservato nello stesso contesto gara/utente, senza stato
+nella key; flag azzerato al cambio contesto. Resta nascosto senza ruolo di gestione
+gare. enabled=canReview limita editing e canOpen; effetto con untrack inoltra il
+limite allo store. False revoca spunte e congela scritture senza sostituire copie;
+true richiede nuova lettura. Verifica preinvio, apertura e recupero rispettano il
+limite. Backend autorevole, nessuna cancellazione di HTTP gia' partite.
 
-## Verifiche e confini
+Canvas senza ruolo esplicito non consentito; gestori sul button nativo con nome
+accessibile. Trascinamento tramite panView e larghezza canvas, frecce per spostare,
+Maiusc per passo fine, Invio/Spazio per esportare. Zoom, dimensioni e WebP invariati.
+Nessuna dichiarazione di accessibilita' completa prima del collaudo browser.
 
-Workflow vincola i cinque blob frontend, applica sostituzioni univoche e aggiunge
-tre test reali dello store con API simulate: sola lettura preserva copia e blocca
-scritture, limite cambiato durante verifica impedisce PUT, riabilitazione rilegge
-e revoca spunte. Nessun nuovo test DOM o dipendenza. Suite precedenti conservate.
-Formatter, lint, check, test e build prima del commit sui cinque frontend e nota;
-se check riporta diagnostica di card-crop-editor.svelte il workflow si ferma.
-Guardia testa ramo e niente force push. Questo commit prepara solo workflow/nota.
+## Controlli e seguito
 
-Nessun npm locale eseguito dall'assistente. Non dichiarare riuscita prima di job,
-bot, diff e CI ordinaria. Compilazione e test dello store non provano DOM: restano
-verifica browser di cambio fase, nuove autorizzazioni, dialoghi, focus, tastiera,
-mouse/touch e uscita durante HTTP. Non dichiarare accessibilita' o SSE complessivi
-certificati dalla sola CI. Dopo verde riallineare le note interessate e preparare
-l'avviso/checklist manuale finale se non emergono altri blocchi.
+Tre test store con API simulate: sola lettura preserva copia e blocca scritture,
+limite cambiato durante verifica impedisce PUT, riabilitazione rilegge e revoca
+spunte. Suite precedenti conservate; nessun nuovo test DOM o dipendenza.
+Formatter, lint, check con guardia canvas, test e build precedono il commit dei
+cinque file frontend e nota. Testa ramo verificata prima del push, nessun force.
+Questo commit prepara soltanto workflow e nota; verificare job, bot e CI della
+nuova testa prima di dichiarare applicazione riuscita. Nessun npm locale eseguito.
 
-Backend, API, SQLite, dipendenze, lockfile e documenti protetti intatti. Nessuna
-migrazione, reset o modifica ai dati reali. Vulnerabilita' npm segnalate dal blocco
-precedente non risolte qui; nessun audit fix/force.
+Restano verifica browser di cambio fase, permessi, dialoghi, focus, tastiera,
+mouse/touch e uscita durante HTTP. Dopo verde riallineare le note interessate e
+preparare avviso/checklist finale se non emergono altri blocchi. SSE non certificato
+dalla sola CI. Backend, API, SQLite, lockfile e documenti protetti intatti.
+Vulnerabilita' npm gia' segnalate non risolte; nessun audit fix/force.
