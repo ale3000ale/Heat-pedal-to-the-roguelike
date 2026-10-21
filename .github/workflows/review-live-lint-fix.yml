@@ -1,0 +1,93 @@
+name: Correggi lint revisione live
+on:
+  push:
+    branches: [phase-15-sse-sistemazione]
+    paths: [.github/workflows/review-live-lint-fix.yml]
+permissions:
+  contents: read
+concurrency:
+  group: review-live-connect
+  cancel-in-progress: false
+jobs:
+  fix:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Riapplica il collegamento approvato e correggi solo i sette errori lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object .github/workflows/review-live-connect.yml)" = "3f597946dbc10639e6dcc590f8e6cb3bd7dbd47a"
+          test "$(git hash-object frontend/src/lib/stores/review-counts.svelte.ts)" = "1a5e941859e49360bbe5686125750997fe6e928d"
+          test "$(git hash-object frontend/src/lib/components/race-review-panel.svelte)" = "aa14960434c1ed145899a6511e571a0eaca2c4f7"
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+          original = Path('.github/workflows/review-live-connect.yml').read_text()
+          marker = "          python - <<'PY'\n"
+          start = original.index(marker) + len(marker)
+          end = original.index('          PY\n', start)
+          scope = {'__name__': '__main__'}
+          exec(compile(dedent(original[start:end]), 'review-live-connect-approved', 'exec'), scope)
+          p = Path('frontend/src/lib/stores/review-counts.svelte.ts')
+          text = p.read_text()
+          if text.count('new Set(') != 3:
+              raise RuntimeError('Numero Set inatteso: nessuna pubblicazione')
+          text = "import { SvelteSet } from 'svelte/reactivity';\n" + text.replace('new Set(', 'new SvelteSet(')
+          p.write_text(text)
+          p = Path('frontend/src/lib/components/race-review-panel.svelte')
+          text = p.read_text()
+          replacements = [
+              ('\t\traceId,\n', '\t\traceId,\n\t\tautoOpen = false,\n'),
+              ('if (!disposed) store.connect(intervalMs);', 'if (!disposed) { store.connect(intervalMs); if (autoOpen) void store.refreshStatus(); }'),
+              ('{#each store.localIssues as issue}', '{#each store.localIssues as issue (JSON.stringify([issue.pilotId, issue.cardName, issue.reason]))}'),
+              ('{#each store.pilots as pilot}', '{#each store.pilots as pilot (pilot.pilot_id)}'),
+              ('{#each store.previousPilots as pilot}', '{#each store.previousPilots as pilot (pilot.pilot_id)}')
+          ]
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise RuntimeError('Pannello diverso: nessuna pubblicazione')
+              text = text.replace(old, new)
+          p.write_text(text)
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Formatta, lint, tipi, test e build dal lockfile
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm ci
+          npx --no-install prettier --write src/lib/stores/review-counts.svelte.ts src/lib/components/race-review-panel.svelte src/lib/review-live-integration.spec.ts
+          npm run lint
+          npm run check
+          npm test
+          npm run build
+      - name: Pubblica esclusivamente i quattro file verificati
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- frontend/package.json frontend/package-lock.json frontend/prettier.config.js
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/PHASE_15_REVIEW_LIVE_CONNECT.md')
+          text = p.read_text()
+          old = 'Stato: correzione lint preparata, applicazione e controlli ancora da verificare.'
+          if text.count(old) != 1:
+              raise RuntimeError('Nota diversa: nessuna pubblicazione')
+          p.write_text(text.replace(old, 'Stato: collegamento e correzione lint applicati; formatter, lint, check, test e build frontend riusciti prima del commit bot.'))
+          PY
+          git add -- frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/components/race-review-panel.svelte frontend/src/lib/review-live-integration.spec.ts docs/PHASE_15_REVIEW_LIVE_CONNECT.md
+          git diff --cached --check
+          git fetch origin phase-15-sse-sistemazione
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: collega revisione live con lint Svelte corretto e controlli riusciti'
+          git push origin HEAD:refs/heads/phase-15-sse-sistemazione
