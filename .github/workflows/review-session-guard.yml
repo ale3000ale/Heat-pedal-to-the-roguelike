@@ -1,0 +1,104 @@
+name: Verifica guardie sessione revisione
+on:
+  push:
+    branches: [phase-15-sse-sistemazione]
+    paths: [.github/workflows/review-session-guard.yml]
+permissions:
+  contents: read
+concurrency:
+  group: review-session-guard
+  cancel-in-progress: false
+jobs:
+  patch:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Applica soltanto la patch allo store conosciuto
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object frontend/src/lib/stores/review-counts.svelte.ts)" = "326adebf9c500af51e1c5e613b6d0d2798e621b6"
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/lib/stores/review-counts.svelte.ts')
+          text = p.read_text()
+          def change(old, new, count=1):
+              global text
+              if text.count(old) != count:
+                  raise RuntimeError('Base diversa: patch interrotta')
+              text = text.replace(old, new)
+          change("import { api } from '$lib/api';", "import { api } from '$lib/api';\nimport { auth } from '$lib/auth.svelte';\nimport { ownReviewKey } from '$lib/review-inventory-reconcile';")
+          change('\tprivate disposed = false;', '\tprivate disposed = false;\n\tprivate readonly userId = auth.user?.id ?? 0;\n\tprivate sessionKey: string | null = null;\n\tprivate progressScope: string | null = null;')
+          change('return this.review?.in_review === true && this.remaining > 0;', 'return !this.disposed && auth.user?.id === this.userId &&\n\t\t\tthis.review !== null && this.sessionKey !== null &&\n\t\t\townReviewKey(this.review, this.userId) === this.sessionKey && this.remaining > 0;')
+          change('return `heat:review:', 'return this.progressScope ?? `heat:review:')
+          change('\t\t\tthis.review = review;\n\t\t\tconst [inventory, draft]', '\t\t\tconst key = ownReviewKey(review, this.userId);\n\t\t\tif (!key) throw new Error("Revisione non propria: conteggi non caricati");\n\t\t\tthis.review = review;\n\t\t\tconst [inventory, draft]')
+          change('\t\t\tthis.pilots = inventory.pilots;', '\t\t\tconst latest = await api<RaceReview>(\n\t\t\t\t`/championships/${this.championshipId}/races/${this.raceId}/review`\n\t\t\t);\n\t\t\tif (this.disposed) return;\n\t\t\tthis.review = latest;\n\t\t\tif (ownReviewKey(latest, this.userId) !== key || auth.user?.id !== this.userId)\n\t\t\t\tthrow new Error("Revisione cambiata durante il caricamento");\n\t\t\tthis.sessionKey = key;\n\t\t\tthis.progressScope = `heat:review:${this.championshipId}:${this.raceId}:${this.userId}:${latest.review_started_at}`;\n\t\t\tthis.pilots = inventory.pilots;')
+          marker = '\t/** Salva tutti i conteggi; completa il pilota corrente solo con Prossimo. */'
+          helper = '''\t/**
+          \t * Controlla utente e chiave prima di ogni scrittura dei conteggi.
+          \t * @returns Nessun valore se il contesto e' ancora proprio e attivo.
+          \t * @throws Error per contesto terminato/cambiato; propaga gli errori HTTP.
+          \t * Non rende atomiche la verifica e la successiva richiesta al backend.
+          \t */
+          \tprivate async verifySession(): Promise<void> {
+          \t\tif (!this.active) throw new Error('Revisione non modificabile');
+          \t\tconst review = await api<RaceReview>(
+          \t\t\t`/championships/${this.championshipId}/races/${this.raceId}/review`
+          \t\t);
+          \t\tif (this.disposed) throw new Error('Contesto terminato');
+          \t\tthis.review = review;
+          \t\tthis.startTimer();
+          \t\tif (!this.active) {
+          \t\t\tthis.checked = [];
+          \t\t\tthrow new Error('Utente, revisore o revisione cambiati: conteggi non inviati');
+          \t\t}
+          \t}
+
+          '''
+          change(marker, helper + marker)
+          change('\t\t\tawait saveReviewDraft(', '\t\t\tawait this.verifySession();\n\t\t\tawait saveReviewDraft(', 2)
+          change('\t\t\tconst review = await confirmReviewCounts(', '\t\t\tawait this.verifySession();\n\t\t\tconst review = await confirmReviewCounts(')
+          change('\t\t\tconst review = await abandonReview(', '\t\t\tawait this.verifySession();\n\t\t\tconst review = await abandonReview(')
+          p.write_text(text)
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Installa e verifica frontend
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm ci
+          npx --no-install prettier --write src/lib/stores/review-counts.svelte.ts src/lib/review-session-guard.spec.ts
+          npm run lint
+          npm run check
+          npm test
+          npm run build
+      - name: Pubblica esclusivamente i file autorizzati dopo i controlli
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- frontend/package.json frontend/package-lock.json
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/PHASE_15_REVIEW_SESSION_GUARD.md')
+          text = p.read_text()
+          old = 'Stato: applicazione e controlli CI ancora da eseguire.'
+          if text.count(old) != 1:
+              raise RuntimeError('Nota diversa: pubblicazione interrotta')
+          p.write_text(text.replace(old, 'Stato: patch applicata; formatter, lint, type-check, test e build frontend riusciti nel workflow che pubblica questo commit.'))
+          PY
+          git add -- frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/review-session-guard.spec.ts docs/PHASE_15_REVIEW_SESSION_GUARD.md
+          git diff --cached --check
+          git fetch origin phase-15-sse-sistemazione
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: proteggi conteggi revisione con guardie sessione verificate'
+          git push origin HEAD:refs/heads/phase-15-sse-sistemazione
