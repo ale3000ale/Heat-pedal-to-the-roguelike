@@ -12,137 +12,141 @@ jobs:
   align-docs:
     if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Applica solo il riallineamento ai documenti letti
+      - name: Installa le dipendenze esistenti senza modificarle
+        run: python -m pip install -r backend/requirements.txt
+      - name: Verifica il dominio prima del riallineamento
+        run: PYTHONPATH=backend python -m unittest discover -s backend/tests -p test_admin_card_transfers.py -v
+      - name: Riallinea i documenti conservando il testo storico
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
           import subprocess
+
           expected = {
-              'docs/PROJECT_SPEC.md': 'f43c9641cf26e972870075801390224042012ae8',
-              'docs/PROJECT_STATUS.md': 'a225290f93d15a5dafd3c5798219393fcee8039b',
-              'docs/PROJECT_NOTES.md': '0a6b96b39df70e68f1fd24312c22986b7d721bf6',
-              'docs/PHASE_16_SPEC.md': 'a02d3ca67b5a81a79d136e44b18717384224bb7c',
-              'docs/PHASE_16_STATUS.md': 'f7994236ec386fe83d25ee88080ec2aa1bff7cc6'
+              "docs/PROJECT_SPEC.md": "f43c9641cf26e972870075801390224042012ae8",
+              "docs/PROJECT_STATUS.md": "a225290f93d15a5dafd3c5798219393fcee8039b",
+              "docs/PROJECT_NOTES.md": "0a6b96b39df70e68f1fd24312c22986b7d721bf6",
+              "docs/PHASE_16_SPEC.md": "a02d3ca67b5a81a79d136e44b18717384224bb7c",
+              "docs/PHASE_16_STATUS.md": "f7994236ec386fe83d25ee88080ec2aa1bff7cc6",
           }
-          contents = {}
           for name, sha in expected.items():
-              if subprocess.check_output(['git', 'hash-object', name], text=True).strip() != sha:
-                  raise RuntimeError('Base documentale diversa: ' + name)
-              contents[name] = Path(name).read_text(encoding='utf-8')
+              actual = subprocess.check_output(["git", "hash-object", name], text=True).strip()
+              if actual != sha:
+                  raise RuntimeError("Base documentale cambiata: " + name)
+
+          paths = [
+              "README.md", "docs/PROJECT_SPEC.md", "docs/PROJECT_STATUS.md",
+              "docs/PROJECT_NOTES.md", "docs/DATABASE.md", "docs/SETUP.md", "docs/SCRIPTS.md",
+              "docs/PHASE_16_SPEC.md", "docs/PHASE_16_STATUS.md", "docs/PHASE_16_ALIGNMENT.md",
+          ]
+          contents = {name: Path(name).read_text(encoding="utf-8") for name in paths}
+
           def once(text, old, new):
-              if text.count(old) != 1: raise RuntimeError('Ancora non univoca: ' + old)
+              if text.count(old) != 1:
+                  raise RuntimeError("Ancora non univoca: " + old)
               return text.replace(old, new)
-          name = 'docs/PHASE_16_SPEC.md'
-          phase = contents[name]
+
+          phase = contents["docs/PHASE_16_SPEC.md"]
           phase = once(phase,
               "Questa pubblicazione sottopone la specifica all'approvazione dell'autore prima\n dell'implementazione. Nessun codice applicativo o dato modificato.",
-              "Specifica approvata dall'autore con la pubblicazione f87a759.\nImplementazione applicativa ancora da eseguire; nessun codice o dato modificato.")
+              "Specifica approvata con f87a759. Primo incremento: dominio puro dei trasferimenti;\nAPI, persistenza e frontend ancora da implementare. Nessun dato reale modificato.")
           phase = once(phase,
               "Prima dell'implementazione riallineare PROJECT_SPEC.md/PROJECT_STATUS.md al perimetro\napprovato.",
-              "PROJECT_SPEC.md e PROJECT_STATUS.md riallineati al perimetro approvato in questo blocco.\nImplementazione backend/frontend ancora da avviare.")
-          contents[name] = phase
-          name = 'docs/PROJECT_SPEC.md'
+              "Specifica e stato generali riallineati al perimetro approvato in questo incremento.")
+          contents["docs/PHASE_16_SPEC.md"] = phase
+
+          name = "docs/PROJECT_SPEC.md"
           text = contents[name]
-          lines = text.splitlines(keepends=True)
-          positions = [i for i, line in enumerate(lines) if line.startswith('> Ultimo aggiornamento:')]
-          if len(positions) != 1: raise RuntimeError('Intestazione specifica diversa')
-          lines[positions[0]] = '> Ultimo aggiornamento: 22 ottobre 2026. Fase 15 unita a main con PR 14, merge 6dcdc83. Fase 16: specifica approvata f87a759, implementazione ancora da eseguire sul ramo dedicato.\n'
-          text = ''.join(lines)
-          heading = '## Fase 16 - gestione admin carte e avvio con mazzi da 15'
-          if heading in text: raise RuntimeError('Fase 16 gia consolidata')
-          marker = '## 1. Obiettivo e accesso'
-          if phase.count(marker) != 1: raise RuntimeError('Specifica fase 16 diversa')
-          body = phase[phase.index(marker):]
-          body = '\n'.join('#' + line if line.startswith('## ') else line for line in body.splitlines())
-          text += '\n\n' + heading + '''
+          headers = [line for line in text.splitlines() if line.startswith("> Ultimo aggiornamento:")]
+          if len(headers) != 1:
+              raise RuntimeError("Intestazione specifica diversa")
+          text = once(text, headers[0], "> Ultimo aggiornamento: 22 ottobre 2026. Fase 15 unita a main con PR 14 (6dcdc83). Fase 16 sul ramo dedicato, PR 15 in bozza: dominio trasferimenti, integrazione ancora da eseguire.")
+          heading = "## Fase 16 - gestione admin carte e avvio con mazzi da 15"
+          if heading in text:
+              raise RuntimeError("Fase 16 gia' consolidata")
+          marker = "## 1. Obiettivo e accesso"
+          if phase.count(marker) != 1:
+              raise RuntimeError("Specifica fase 16 diversa")
+          body = "\n".join("#" + line if line.startswith("## ") else line for line in phase[phase.index(marker):].splitlines())
+          contents[name] = text.rstrip() + "\n\n" + heading + "\n\nRequisiti approvati: contratto della fase, non funzionalita' gia' integrate.\nPer questo ambito prevalgono sui passaggi storici precedenti.\n\n" + body + "\n"
 
-          Ramo phase-16-admin-pilot-inventory, da main 6dcdc83. Requisiti approvati con
-          f87a759, fonte dettagliata PHASE_16_SPEC.md. Il testo seguente e' il contratto
-          della nuova fase, non una dichiarazione di funzionalita' gia' implementata.
-          Per questo ambito prevale sui passaggi storici delle fasi precedenti. Il limite
-          massimo di 15 durante la costruzione resta; il requisito di esattamente 15
-          riguarda il nuovo avvio gara. Inventario disponibile e mazzo sono contenitori
-          fisicamente distinti, non due conteggi della medesima copia.
-          Nessun'altra regola di gioco, formato persistente, stack o dipendenza cambia.
-
-          ''' + body + '\n'
-          contents[name] = text
-          name = 'docs/PROJECT_STATUS.md'
+          name = "docs/PROJECT_STATUS.md"
           text = contents[name]
-          lines = text.splitlines(keepends=True)
-          positions = [i for i, line in enumerate(lines) if line.startswith('| 15 |')]
-          if len(positions) != 1: raise RuntimeError('Riga fase 15 diversa')
-          if any(line.startswith('| 16 |') for line in lines): raise RuntimeError('Fase 16 gia registrata')
-          lines[positions[0]] = '| 15 | SSE, aggiornamenti campionato/gara/revisione, notifiche selettive, iscrizioni live e correzioni lifecycle/canvas | Completata e unita a main con PR #14, merge 6dcdc83; limiti manuali accettati |\n| 16 | Gestione admin carte piloti, cinque contenitori, conferma testuale, live e verifica mazzi da 15 prima dell’avvio | In corso: specifica approvata f87a759 e documenti generali riallineati; backend/frontend non implementati |\n'
-          text = ''.join(lines)
-          text = once(text, '## Fasi\n', '''## Contesto corrente - fase 16
+          rows = [line for line in text.splitlines() if line.startswith("| 15 |")]
+          if len(rows) != 1 or any(line.startswith("| 16 |") for line in text.splitlines()):
+              raise RuntimeError("Tabella fasi diversa")
+          contents[name] = once(text, rows[0],
+              "| 15 | SSE, aggiornamenti live e correzioni lifecycle/canvas | Completata e unita a main con PR 14, merge 6dcdc83; limiti manuali accettati |\n"
+              "| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | Specifica approvata; primo modulo di dominio e 19 test unitari. API, transazioni, frontend e test integrati ancora da completare |")
 
-          PR 14 unita a main con merge 6dcdc836dba33a506bd954cd27eda3d212ba84ad.
-          La sezione di chiusura 15 sopra resta la decisione storica prima del merge,
-          non una nuova attesa di autorizzazione. Dal 2026-10-22 lavoro solo sul ramo
-          phase-16-admin-pilot-inventory. PHASE_16_SPEC.md approvata con f87a759:
-          sezione admin Piloti, mazzo/inventari e pool separati, immagini salvo riepilogo,
-          salvataggio confermato e blocco gara/revisione. Nuovo avvio con tutti i mazzi
-          da 15 copie. Nessuna parte applicativa o migrazione della fase 16 gia' eseguita.
-          Nessun nuovo test della funzionalita' o merge fase 16 dichiarato.
+          name = "docs/PHASE_16_ALIGNMENT.md"
+          contents[name] = once(contents[name],
+              "Stato: riallineamento preparato, pubblicazione automatica ancora da verificare.",
+              "Stato: documenti riallineati in questo commit automatico; dominio puro aggiunto, integrazione ancora da eseguire.")
 
-          ## Fasi
-          ''')
-          contents[name] = text
-          name = 'docs/PROJECT_NOTES.md'
-          text = contents[name]
-          text = once(text, '## Contesto corrente - fase 15 chiusa', '''## Contesto corrente - fase 16
+          note = """
+          ## Stato corrente fase 16 - decisione formato e primo dominio (2026-10-22)
 
-          Ramo phase-16-admin-pilot-inventory creato da main 6dcdc83 dopo merge PR 14.
-          Specifica approvata f87a759 in PHASE_16_SPEC.md e consolidata in PROJECT_SPEC.md;
-          PROJECT_STATUS.md distingue pianificazione da codice implementato. Nessun
-          lavoro su main o DB reale. Messaggi vuoti o solo @GitHub sono ok alla proposta
-          pendente, come ricordato dall'autore; restano le conferme tecniche del connettore.
-          Prossimo blocco backend: operazioni atomiche sui cinque contenitori, ruoli,
-          stato gara/revisione e versioni; poi avvio da 15 coerente con modifiche concorrenti.
-          Deck.version e _lock_database esistono: vanno coordinati, non dichiarati una
-          garanzia gia' sufficiente per il nuovo flusso. Nessun nuovo endpoint o evento
-          della fase 16 gia' presente. Piano e verifiche in PHASE_16_ALIGNMENT.md.
-          Le sezioni storiche seguenti non rimettono in corso fasi gia' integrate.
+          Questa sezione aggiorna lo stato corrente; le descrizioni precedenti conservano
+          la cronologia e non dichiarano nuovamente aperte le fasi gia' unite.
+          Fase 15 integrata in main con PR 14, merge 6dcdc83. Fase 16 solo su
+          phase-16-admin-pilot-inventory, PR 15 in bozza, senza merge autorizzato.
 
-          ## Contesto precedente - chiusura fase 15 prima del merge''')
-          contents[name] = text
-          name = 'docs/PHASE_16_STATUS.md'
-          text = contents[name]
-          old = "Specifica consolidata in PHASE_16_SPEC.md, sottoposta all'approvazione con questo\npush."
-          new = 'Specifica PHASE_16_SPEC.md approvata con f87a759. PROJECT_SPEC.md,\nPROJECT_STATUS.md e PROJECT_NOTES.md riallineati dal workflow documentale.'
-          text = once(text, old, new)
-          text = once(text,
-              "Prossimo passo dopo approvazione: riallineamento della specifica/stato generale,\nanalisi tecnica delle operazioni atomiche e della concorrenza, poi backend e\nfrontend in blocchi approvati e verificati.",
-              "Prossimo passo: blocco backend con file/API/DTO e test descritti prima del push,\noperazioni atomiche e concorrenza coerente fra admin, mazzo giocatore e avvio gara;\npoi interfaccia e live, in blocchi approvati e verificati.")
-          contents[name] = text
+          Alle 18:49 CEST l'autore conferma il contratto gia' usato dall'applicazione:
+          Deck.cards resta TEXT con array JSON di name, path e copies. Si mantengono i
+          percorsi correnti relativi ai media, inclusi cards/starter/velocita-1.webp;
+          nessuna conversione al precedente esempio path/value o a /images/cards.
+          Questa decisione aggiorna quel precedente requisito per la fase 16. Nessuna
+          migrazione, modifica del DB reale, nuovo scaffold o dipendenza introdotta.
+
+          backend/app/services/admin_card_transfers.py prepara una copia indipendente dei
+          cinque contenitori e applica una copia per clic nelle sole direzioni approvate.
+          Non modifica gli input neppure su errore; non espone endpoint e non salva dati.
+          Nessuna aggiunta pool/mazzo, nessuna doppia sottrazione. I nomi mantengono
+          l'identita' normalizzata esistente e le immagini non vengono sostituite.
+
+          backend/tests/test_admin_card_transfers.py: 19 test unitari, con cinque sottocasi
+          per le direzioni. Eseguiti con unittest nell'ambiente isolato dell'assistente
+          usando cards.py verificato contro il blob b329ece85fef6cc232ef322cb857108088ea5cf7;
+          esito 19/19 OK. Rieseguiti da questo workflow prima del commit documentale.
+          Non sono test transazionali/HTTP o di concorrenza, ne' collaudo browser.
+          La precedente CI 39815434564 era verde prima di questo incremento: non ne e'
+          una verifica. Rileggere la CI sul nuovo codice; nessun nuovo verde globale gia'
+          dichiarato. Setup, script d'avvio e schema DB restano invariati.
+
+          Da completare nel blocco backend approvato: rotte/DTO admin, iscrizione e username,
+          letture dei cinque Deck, versioni e salvataggio atomico senza retry automatici,
+          blocchi gara/revisione/chiusura, eventi privati e segnali senza carte nel payload,
+          coordinamento con move_card e create_race per il controllo esatto delle 15 copie.
+          Poi frontend, conferma testuale, live autorizzato e prove browser. Il dominio
+          puro non garantisce ancora queste integrazioni e non va presentato come funzione
+          utilizzabile. Nessun test, reset o migrazione sul database reale autorizzato.
+          """
+          for name in paths:
+              if "## Stato corrente fase 16 - decisione formato e primo dominio" in contents[name]:
+                  raise RuntimeError("Incremento gia' registrato: " + name)
+              contents[name] = contents[name].rstrip() + "\n\n" + note.strip() + "\n"
           for name, text in contents.items():
-              if not text.startswith('# '): raise RuntimeError('Titolo perso: ' + name)
-              Path(name).write_text(text, encoding='utf-8')
-          p = Path('docs/PHASE_16_ALIGNMENT.md')
-          text = p.read_text(encoding='utf-8')
-          old = 'Stato: riallineamento preparato, pubblicazione automatica ancora da verificare.'
-          if text.count(old) != 1: raise RuntimeError('Nota diversa')
-          p.write_text(text.replace(old, 'Stato: specifica e documenti generali riallineati; implementazione applicativa ancora da eseguire.'), encoding='utf-8')
+              Path(name).write_text(text, encoding="utf-8")
           PY
-      - name: Verifica perimetro e pubblica solo i sei documenti
+      - name: Verifica perimetro e pubblica solo documenti
         shell: bash
         run: |
           set -euo pipefail
-          git diff --exit-code -- frontend backend database heat.py README.md docs/SHOP_DESIGN.md
-          git add -- docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/PROJECT_NOTES.md docs/PHASE_16_SPEC.md docs/PHASE_16_STATUS.md docs/PHASE_16_ALIGNMENT.md
+          git diff --exit-code -- frontend backend database heat.py
+          git add -- README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/PROJECT_NOTES.md docs/DATABASE.md docs/SETUP.md docs/SCRIPTS.md docs/PHASE_16_SPEC.md docs/PHASE_16_STATUS.md docs/PHASE_16_ALIGNMENT.md
           git diff --cached --check
           git diff --cached --stat
           git fetch origin phase-16-admin-pilot-inventory
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-16-admin-pilot-inventory)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'docs: consolida specifica approvata e stato fase 16'
+          git commit -m 'docs: riallinea fase 16 e contratto carte confermato'
           git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory
