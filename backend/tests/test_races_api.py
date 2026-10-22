@@ -4,6 +4,7 @@ from app.db.models.pilot import Pilot
 from app.security import hash_password
 from app.services.cards import CardEntry, dump_cards
 from app.db.models.championship import ChampionshipStanding
+from .race_fixtures import seed_game_deck_from_inventory_card
 
 PASSWORD = "password123"
 BASE_CARDS = [CardEntry(name="Velocità 1", path="cards/starter/velocita-1.webp", copies=3)]
@@ -41,8 +42,15 @@ def sponsor_of(session_factory, pilot_id):
         return db.get(Pilot, pilot_id).sponsor
 
 
-def setup(make_client, session_factory, names):
-    # Un campionato attivo con i piloti indicati, tutti iscritti.
+def setup(make_client, session_factory, names, *, game_deck_copies: int | None = 15):
+    """Prepara lo scenario gare/punteggi con il conteggio di fixture indicato.
+
+    Parametri: client, factory SQLite di test, nomi e copie nel mazzo di ciascun
+    iscritto. Con None mantiene il mazzo vuoto prodotto dall'iscrizione; un numero
+    diverso da 15 permette scenari non pronti senza intercettare l'avvio.
+    Ritorno: admin, giocatore, ID campionato e mappa dei piloti. Errori HTTP o
+    di preparazione falliscono la fixture. Nessuna modifica all'iscrizione reale.
+    """
     admin = make_admin(make_client, session_factory)
     player = make_player(make_client)
     championship_id = admin.post("/api/championships", json={"name": "Estate"}).json()["id"]
@@ -52,6 +60,10 @@ def setup(make_client, session_factory, names):
         pilot_id = player.post("/api/pilots", json={"name": name, "team_id": team_id}).json()["id"]
         r = player.post(f"/api/championships/{championship_id}/pilots", json={"pilot_id": pilot_id})
         assert r.status_code == 201
+        if game_deck_copies is not None:
+            seed_game_deck_from_inventory_card(
+                session_factory, pilot_id, path=BASE_CARDS[0].path, copies=game_deck_copies
+            )
         pilots[name] = pilot_id
     return admin, player, championship_id, pilots
 
