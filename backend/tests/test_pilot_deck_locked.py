@@ -1,3 +1,4 @@
+from .race_fixtures import seed_game_deck_from_inventory_card
 from .test_race_in_progress import (
     confirm_review,
     enrolled_pilot,
@@ -5,6 +6,9 @@ from .test_race_in_progress import (
     new_championship,
     setup_world,
 )
+
+LOCKED_MESSAGE = "Con una gara in corso il mazzo non si può modificare"
+FULL_MESSAGE = "Il mazzo da gioco ha già 15 carte"
 
 
 def first_path(player, pilot_id):
@@ -41,11 +45,13 @@ def test_deck_is_locked_while_a_race_is_in_progress(make_client, session_factory
     championship_id = new_championship(admin, "Estate")
     pilot_id = enrolled_pilot(player, championship_id, "Ayrton")
     path = first_path(player, pilot_id)
+    seed_game_deck_from_inventory_card(session_factory, pilot_id, path=path, copies=15)
     start_race(admin, championship_id)
     before = detail(player, pilot_id)
     assert before["deck_locked"] is True
     r = move(player, pilot_id, "add", path)
     assert r.status_code == 409
+    assert r.json()["detail"] == LOCKED_MESSAGE
     after = detail(player, pilot_id)
     assert after["game_deck"] == before["game_deck"]
     assert after["inventory"] == before["inventory"]
@@ -56,10 +62,16 @@ def test_remove_is_locked_too(make_client, session_factory):
     championship_id = new_championship(admin, "Estate")
     pilot_id = enrolled_pilot(player, championship_id, "Ayrton")
     path = first_path(player, pilot_id)
-    assert move(player, pilot_id, "add", path).status_code == 200
+    seed_game_deck_from_inventory_card(session_factory, pilot_id, path=path, copies=15)
     start_race(admin, championship_id)
-    assert move(player, pilot_id, "remove", path).status_code == 409
-    assert len(detail(player, pilot_id)["game_deck"]) == 1
+    before = detail(player, pilot_id)
+    r = move(player, pilot_id, "remove", path)
+    assert r.status_code == 409
+    assert r.json()["detail"] == LOCKED_MESSAGE
+    after = detail(player, pilot_id)
+    assert after["game_deck"] == before["game_deck"]
+    assert after["inventory"] == before["inventory"]
+    assert sum(card["copies"] for card in after["game_deck"]) == 15
 
 
 def test_deck_stays_locked_until_the_review_is_confirmed(make_client, session_factory):
@@ -67,13 +79,21 @@ def test_deck_stays_locked_until_the_review_is_confirmed(make_client, session_fa
     championship_id = new_championship(admin, "Estate")
     pilot_id = enrolled_pilot(player, championship_id, "Ayrton")
     path = first_path(player, pilot_id)
+    seed_game_deck_from_inventory_card(session_factory, pilot_id, path=path, copies=15)
     race = start_race(admin, championship_id)
     finish_race(admin, championship_id, race["id"], pilot_id)
     assert detail(player, pilot_id)["deck_locked"] is True
-    assert move(player, pilot_id, "add", path).status_code == 409
+    blocked = move(player, pilot_id, "add", path)
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"] == LOCKED_MESSAGE
     confirm_review(admin, championship_id, race["id"])
     assert detail(player, pilot_id)["deck_locked"] is False
+    full = move(player, pilot_id, "add", path)
+    assert full.status_code == 409
+    assert full.json()["detail"] == FULL_MESSAGE
+    assert move(player, pilot_id, "remove", path).status_code == 200
     assert move(player, pilot_id, "add", path).status_code == 200
+    assert sum(card["copies"] for card in detail(player, pilot_id)["game_deck"]) == 15
 
 
 def test_a_race_in_another_championship_does_not_lock_the_deck(make_client, session_factory):
