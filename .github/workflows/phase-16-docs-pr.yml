@@ -3,7 +3,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [main]
-    paths: [.github/workflows/phase-16-docs.yml, .github/workflows/phase-16-docs-pr.yml]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/phase-16-docs-pr.yml'
+      - 'docs/PHASE_16_ADMIN_SAVE_API.md'
 permissions:
   contents: read
 concurrency:
@@ -22,35 +25,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Installa le dipendenze esistenti
         run: python -m pip install -r backend/requirements.txt
-      - name: Esegui i controlli e il riallineamento gia' approvati
+      - name: Verifica dominio, letture e salvataggio admin
+        run: PYTHONPATH=backend python -m pytest -q backend/tests/test_admin_card_transfers.py backend/tests/test_admin_pilot_cards_api.py backend/tests/test_admin_pilot_card_save.py
+      - name: Riallinea i documenti dopo i test mirati
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import hashlib
-          import subprocess
-          from pathlib import Path
-          import yaml
-
-          marker = "## Stato corrente fase 16 - decisione formato e primo dominio"
-          if marker in Path("docs/PROJECT_STATUS.md").read_text(encoding="utf-8"):
-              print("Riallineamento gia' applicato: nessuna scrittura")
-              raise SystemExit(0)
-          path = Path(".github/workflows/phase-16-docs.yml")
-          content = path.read_bytes()
-          blob = b"blob " + str(len(content)).encode() + b"\0" + content
-          if hashlib.sha1(blob).hexdigest() != "0207c1f1c7c33646e5bb3ef2a5d0bfa2560471ae":
-              raise RuntimeError("Il workflow approvato e' cambiato: arresto senza eseguirlo")
-          steps = yaml.safe_load(content)["jobs"]["align-docs"]["steps"]
-          for step in steps[2:]:
-              print(step["name"], flush=True)
-              subprocess.run(["bash", "-e", "-o", "pipefail", "-c", step["run"]], check=True)
-          PY
-      - name: Verifica API di lettura e aggiorna i documenti
-        shell: bash
-        run: |
-          set -euo pipefail
-          PYTHONPATH=backend python -m pytest -q backend/tests/test_admin_pilot_cards_api.py
           python - <<'PY'
           from pathlib import Path
 
@@ -59,28 +39,44 @@ jobs:
               "docs/PROJECT_NOTES.md", "docs/DATABASE.md", "docs/SETUP.md", "docs/SCRIPTS.md",
               "docs/PHASE_16_SPEC.md", "docs/PHASE_16_STATUS.md", "docs/PHASE_16_ALIGNMENT.md",
           ]
-          source = Path("docs/PHASE_16_ADMIN_READ_API.md").read_text(encoding="utf-8")
-          heading = "## Fase 16 - Incremento API admin di lettura"
-          if not source.startswith("# Fase 16 - Incremento API admin di lettura\n"):
-              raise RuntimeError("Contratto documentale non riconosciuto")
-          body = source.split("\n", 1)[1].strip()
+          source = Path("docs/PHASE_16_ADMIN_SAVE_API.md").read_text(encoding="utf-8")
+          if not source.startswith("# Fase 16 - Salvataggio admin atomico\n"):
+              raise RuntimeError("Documento di salvataggio inatteso")
+          start = "<!-- phase16-admin-save:start -->"
+          end = "<!-- phase16-admin-save:end -->"
+          body = "\n".join("#" + line if line.startswith("#") else line for line in source.splitlines())
+          block = start + "\n" + body.rstrip() + "\n\nTest mirati superati dal workflow prima di questo riallineamento; CI completa separata.\n" + end
+          contents = {}
           for name in paths:
-              path = Path(name)
-              text = path.read_text(encoding="utf-8")
-              if heading not in text:
-                  text = text.rstrip() + "\n\n" + heading + "\n\n" + body + "\n"
-                  path.write_text(text, encoding="utf-8")
+              text = Path(name).read_text(encoding="utf-8")
+              if text.count(start) != text.count(end) or text.count(start) > 1:
+                  raise RuntimeError("Marcatori documentali incoerenti: " + name)
+              if start in text:
+                  begin, finish = text.index(start), text.index(end) + len(end)
+                  if begin >= finish:
+                      raise RuntimeError("Marcatori invertiti: " + name)
+                  text = text[:begin] + block + text[finish:]
+              else:
+                  text = text.rstrip() + "\n\n" + block + "\n"
+              if name == "docs/PROJECT_STATUS.md":
+                  rows = [line for line in text.splitlines() if line.startswith("| 16 |")]
+                  if len(rows) != 1:
+                      raise RuntimeError("Riga fase 16 non univoca")
+                  text = text.replace(rows[0], "| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | Dominio, letture e salvataggio atomico implementati; test mirati superati. Avvio da 15, frontend, live e collaudo ancora da completare |")
+              contents[name] = text
+          for name, text in contents.items():
+              Path(name).write_text(text, encoding="utf-8")
           PY
           git diff --exit-code -- frontend backend database heat.py
           git add -- README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/PROJECT_NOTES.md docs/DATABASE.md docs/SETUP.md docs/SCRIPTS.md docs/PHASE_16_SPEC.md docs/PHASE_16_STATUS.md docs/PHASE_16_ALIGNMENT.md
           git diff --cached --check
           if git diff --cached --quiet; then
-            echo "Documenti API di lettura gia' aggiornati"
+            echo "Documenti gia' aggiornati"
             exit 0
           fi
           git fetch origin phase-16-admin-pilot-inventory
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-16-admin-pilot-inventory)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'docs: riallinea fase 16 alle API admin di lettura'
+          git commit -m 'docs: riallinea fase 16 al salvataggio admin atomico'
           git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory

@@ -1,5 +1,6 @@
-"""Contratto di lettura admin: contenitori fisici, immagini e versioni."""
-from pydantic import BaseModel, Field
+"""Contratto carte admin: lettura, versioni attese e trasferimenti."""
+from pydantic import BaseModel, ConfigDict, Field
+from app.services.admin_card_transfers import Container
 from app.services.cards import CardEntry
 
 
@@ -31,3 +32,30 @@ class AdminPilotCardsRead(BaseModel):
     read_only: bool
     blocked_reason: str | None
     containers: AdminCardContainers
+
+
+class CardAdminRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class ExpectedDeckVersion(CardAdminRequest):
+    id: int = Field(gt=0, strict=True)
+    version: int = Field(gt=0, strict=True)
+
+
+class ExpectedCardVersions(CardAdminRequest):
+    game_deck: ExpectedDeckVersion
+    modification_inventory: ExpectedDeckVersion
+    sponsor_inventory: ExpectedDeckVersion
+    modification_pool: ExpectedDeckVersion | None
+    sponsor_pool: ExpectedDeckVersion | None
+
+
+class AdminCardTransferRequest(CardAdminRequest):
+    source: Container
+    path: str = Field(min_length=1, max_length=255, strict=True)
+
+
+class AdminPilotCardsSave(CardAdminRequest):
+    versions: ExpectedCardVersions
+    transfers: list[AdminCardTransferRequest]
