@@ -72,9 +72,10 @@ def create_race(db: Session, championship_id: int, date: datetime | None = None)
     Parametri: sessione, campionato, data opzionale. Ritorna la gara persistita.
     ChampionshipClosedError/RaceInProgressError impediscono la creazione.
     Le revisioni scadute vanno elaborate dal chiamante prima della creazione.
+    Il lock rifiuta modifiche pendenti e invalida le letture ORM precedenti.
     """
-    # Import locale: shop_purchase importa has_race_in_progress da questo modulo.
-    from app.services.shop_purchase import _lock_database
+    # Lock condiviso con salvataggi admin e movimenti del giocatore.
+    from app.services.sqlite_write_lock import acquire_sqlite_write_lock as _lock_database
     try:
         _lock_database(db)
         championship = get_championship(db, championship_id)
