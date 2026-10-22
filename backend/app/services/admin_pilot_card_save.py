@@ -12,6 +12,7 @@ from app.services.admin_card_transfers import CardTransfer, Container, plan_tran
 from app.services.admin_pilot_cards import CardAdminForbiddenError, read_admin_pilot_cards
 from app.services.cards import dump_cards
 from app.services.event_log import append_event
+from app.services.sqlite_write_lock import SQLiteWriteLockError, acquire_sqlite_write_lock
 
 
 class CardAdminConflictError(ValueError):
@@ -19,22 +20,11 @@ class CardAdminConflictError(ValueError):
 
 
 def _lock_cards(db: Session) -> None:
-    """Acquisisce un lock SQLite di scrittura prima delle letture autorevoli.
-
-    Parametro: sessione della richiesta. Nessun commit. Una transazione gia'
-    aperta viene promossa con un UPDATE senza righe, senza incrementare versioni.
-    Su snapshot non aggiornabile SQLite fallisce: il chiamante fa rollback e
-    restituisce conflitto, mai retry. Altri database non sono supportati qui.
-    """
-    connection = db.connection()
-    if connection.dialect.name != "sqlite":
-        raise CardAdminConflictError("Questo salvataggio richiede SQLite")
-    if connection.connection.driver_connection.in_transaction:
-        connection.exec_driver_sql("UPDATE deck SET version = version WHERE 0")
-    else:
-        connection.exec_driver_sql("BEGIN IMMEDIATE")
-    # Le identita' eventualmente caricate dall'autenticazione non sono uno snapshot valido.
-    db.expire_all()
+    """Usa il lock condiviso; traduce gli errori di contratto senza fare commit."""
+    try:
+        acquire_sqlite_write_lock(db)
+    except SQLiteWriteLockError as exc:
+        raise CardAdminConflictError(str(exc)) from exc
 
 
 def _check_versions(snapshot: AdminPilotCardsRead, data: AdminPilotCardsSave) -> None:
