@@ -316,5 +316,30 @@ verificati dopo la scrittura: questa nota non dichiara gia' risolto il problema
 ne' gia' riallineati i dieci documenti generali. Per il solo aggiornamento
 documentale non attendere la CI applicativa.
 
+### Preparazione del controllo delle 15 copie - 2026-10-22
+
+Nuovo modulo puro backend/app/services/race_deck_readiness.py: conta le copie
+nel solo mazzo da gioco, raccoglie tutti i piloti non pronti e rifiuta anche
+il JSON non valido senza trasformarlo in un mazzo vuoto. Nessun dettaglio
+delle carte nel riepilogo, nessuna modifica o completamento dei mazzi.
+Tredici test in backend/tests/test_race_deck_readiness.py eseguiti con unittest
+in ambiente isolato: 13/13 OK; cards.py verificato contro il blob
+b329ece85fef6cc232ef322cb857108088ea5cf7. Parsing Python e git diff --check
+riusciti. Nuova CI del repository ancora da leggere dopo la pubblicazione.
+
+Questo incremento NON collega ancora il controllo a create_race, non cambia
+API gare, lock, move_card o fixture esistenti e non attiva il blocco di avvio.
+L'integrazione successiva deve leggere tutti gli iscritti nella transazione,
+bloccare gara ed evento race.started in caso di mazzi non pronti, riportare
+i conteggi ai gestori e coordinare avvio, salvataggi admin e movimenti giocatore.
+Le fixture comuni lette avviano gare senza preparare 15 copie; la ricerca del
+codice ha restituito risultati incompleti, non un censimento affidabile dei test.
+Adeguare esplicitamente le fixture, senza autocompletamento nella produzione
+o hook nascosti che rendano sempre pronti i mazzi durante i test.
+Nessun workflow modificato: la pulizia proposta dopo il vecchio errore non e'
+stata applicata, poiche' la CI e il riallineamento successivi erano riusciti.
+La nota viene ripresa nei documenti generali dal riallineamento esistente.
+Nessun nuovo schema DB, migrazione, dipendenza o accesso al database reale.
+
 Test mirati superati dal workflow prima di questo riallineamento; CI completa separata.
 <!-- phase16-admin-save:end -->
