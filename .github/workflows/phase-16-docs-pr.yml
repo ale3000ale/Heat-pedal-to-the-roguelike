@@ -46,3 +46,41 @@ jobs:
               print(step["name"], flush=True)
               subprocess.run(["bash", "-e", "-o", "pipefail", "-c", step["run"]], check=True)
           PY
+      - name: Verifica API di lettura e aggiorna i documenti
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH=backend python -m pytest -q backend/tests/test_admin_pilot_cards_api.py
+          python - <<'PY'
+          from pathlib import Path
+
+          paths = [
+              "README.md", "docs/PROJECT_SPEC.md", "docs/PROJECT_STATUS.md",
+              "docs/PROJECT_NOTES.md", "docs/DATABASE.md", "docs/SETUP.md", "docs/SCRIPTS.md",
+              "docs/PHASE_16_SPEC.md", "docs/PHASE_16_STATUS.md", "docs/PHASE_16_ALIGNMENT.md",
+          ]
+          source = Path("docs/PHASE_16_ADMIN_READ_API.md").read_text(encoding="utf-8")
+          heading = "## Fase 16 - Incremento API admin di lettura"
+          if not source.startswith("# Fase 16 - Incremento API admin di lettura\n"):
+              raise RuntimeError("Contratto documentale non riconosciuto")
+          body = source.split("\n", 1)[1].strip()
+          for name in paths:
+              path = Path(name)
+              text = path.read_text(encoding="utf-8")
+              if heading not in text:
+                  text = text.rstrip() + "\n\n" + heading + "\n\n" + body + "\n"
+                  path.write_text(text, encoding="utf-8")
+          PY
+          git diff --exit-code -- frontend backend database heat.py
+          git add -- README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/PROJECT_NOTES.md docs/DATABASE.md docs/SETUP.md docs/SCRIPTS.md docs/PHASE_16_SPEC.md docs/PHASE_16_STATUS.md docs/PHASE_16_ALIGNMENT.md
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Documenti API di lettura gia' aggiornati"
+            exit 0
+          fi
+          git fetch origin phase-16-admin-pilot-inventory
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-16-admin-pilot-inventory)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: riallinea fase 16 alle API admin di lettura'
+          git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory

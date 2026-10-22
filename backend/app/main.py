@@ -13,6 +13,7 @@ from app.api.championships import router as championships_router
 from app.api.pools import router as pools_router
 from app.api.races import router as races_router
 from app.api.admin import router as admin_router
+from app.api.admin_pilot_cards import router as admin_pilot_cards_router
 from app.api.packs import router as packs_router
 from app.api.shop import router as shop_router
 from app.api.shop_play import router as shop_play_router
@@ -71,6 +72,7 @@ app.include_router(card_gift_seen_router, prefix="/api/championships")
 app.include_router(shop_me_router, prefix="/api/me")
 app.include_router(card_admin_router, prefix="/api/admin/cards")
 app.include_router(admin_router, prefix="/api/admin")
+app.include_router(admin_pilot_cards_router, prefix="/api/admin/championships")
 app.include_router(shop_router, prefix="/api/shop")
 app.include_router(events_router, prefix="/api/events")
 
