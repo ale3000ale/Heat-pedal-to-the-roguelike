@@ -1,0 +1,48 @@
+name: Riallinea documenti fase 16 dalla PR
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths: [.github/workflows/phase-16-docs.yml, .github/workflows/phase-16-docs-pr.yml]
+permissions:
+  contents: read
+concurrency:
+  group: phase-16-docs
+  cancel-in-progress: false
+jobs:
+  align-docs-pr:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'phase-16-admin-pilot-inventory'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Installa le dipendenze esistenti
+        run: python -m pip install -r backend/requirements.txt
+      - name: Esegui i controlli e il riallineamento gia' approvati
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import subprocess
+          from pathlib import Path
+          import yaml
+
+          marker = "## Stato corrente fase 16 - decisione formato e primo dominio"
+          if marker in Path("docs/PROJECT_STATUS.md").read_text(encoding="utf-8"):
+              print("Riallineamento gia' applicato: nessuna scrittura")
+              raise SystemExit(0)
+          path = Path(".github/workflows/phase-16-docs.yml")
+          content = path.read_bytes()
+          blob = b"blob " + str(len(content)).encode() + b"\0" + content
+          if hashlib.sha1(blob).hexdigest() != "0207c1f1c7c33646e5bb3ef2a5d0bfa2560471ae":
+              raise RuntimeError("Il workflow approvato e' cambiato: arresto senza eseguirlo")
+          steps = yaml.safe_load(content)["jobs"]["align-docs"]["steps"]
+          for step in steps[2:]:
+              print(step["name"], flush=True)
+              subprocess.run(["bash", "-e", "-o", "pipefail", "-c", step["run"]], check=True)
+          PY
