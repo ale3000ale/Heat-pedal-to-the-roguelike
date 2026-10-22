@@ -223,5 +223,30 @@ stata applicata, poiche' la CI e il riallineamento successivi erano riusciti.
 La nota viene ripresa nei documenti generali dal riallineamento esistente.
 Nessun nuovo schema DB, migrazione, dipendenza o accesso al database reale.
 
+### Coordinamento scritture admin e giocatore - 2026-10-22
+
+Nuovo helper services/sqlite_write_lock.py condiviso da admin_pilot_card_save
+e pilot_deck.move_card: lock di scrittura prima delle letture e invalidazione
+delle identita' ORM precedenti. Non accetta modifiche pendenti da scartare con
+expire_all; nessuna carta o versione viene cambiata dall'UPDATE senza righe.
+I movimenti del giocatore fanno rollback su errori di dominio e SQL. Restano
+massimo 15 e blocchi gara/revisione; il retry preesistente resta limitato a
+StaleDataError, mentre lock occupato restituisce conflitto senza retry automatico.
+Il salvataggio admin mantiene un solo commit e nessun retry. Nessun nuovo evento.
+
+Preparati solo cinque test importanti in test_sqlite_card_write_lock.py:
+transazione nativa gia' aperta, rilascio su errore, rilettura di oggetti in cache,
+protezione delle modifiche pendenti e due movimenti concorrenti su SQLite di
+prova. Nessuna suite locale eseguita, come richiesto alle 21:49: solo controllo
+sintattico Python; esecuzione e risultati dei test sono affidati alla CI.
+
+create_race, API gare e fixture gare NON cambiano in questo incremento; la regola
+di avvio con esattamente 15 copie non e' ancora attivata. Prossimo collegamento:
+lock condiviso anche all'avvio, lettura di tutti gli iscritti, rifiuto atomico con
+riepilogo e adeguamento esplicito delle fixture. Non usare autocompletamenti o
+hook nascosti per aggirare i test di mazzi incompleti. Nessun workflow modificato,
+nessuna migrazione, dipendenza o operazione sul DB reale. Riallineamento generale
+tramite il processo documentale gia' esistente; niente attesa CI per soli docs.
+
 Test mirati superati dal workflow prima di questo riallineamento; CI completa separata.
 <!-- phase16-admin-save:end -->
