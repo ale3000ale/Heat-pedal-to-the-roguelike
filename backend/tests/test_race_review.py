@@ -4,7 +4,8 @@ from app.db.models.championship import Championship
 from app.db.models.deck import Deck, DeckPrototype
 from app.db.models.pilot import Pilot
 from app.security import hash_password
-from app.services.cards import CardEntry, dump_cards, parse_cards
+from app.services.cards import STARTER_INVENTORY, CardEntry, dump_cards, parse_cards
+from .race_fixtures import seed_game_deck_from_inventory_card
 
 PASSWORD = "password123"
 CARD = "Turbo Sponsor"
@@ -143,12 +144,23 @@ def confirm_review(client, championship_id, race_id):
     return client.post(f"/api/championships/{championship_id}/races/{race_id}/review/confirm")
 
 
-def scenario(make_client, session_factory, copies=3, pool_copies=1):
+def scenario(make_client, session_factory, copies=3, pool_copies=1, *, game_deck_copies: int | None = 15):
+    """Prepara una gara per i test di revisione con il mazzo di fixture indicato.
+
+    copies e pool_copies riguardano gli sponsor; game_deck_copies e' il conteggio
+    del solo mazzo da gioco, oppure None per lasciarlo vuoto. Ritorna admin,
+    giocatore, campionato, pilota e gara. Errori HTTP o di preparazione falliscono
+    la fixture; nessuna intercettazione dell'avvio o modifica all'iscrizione reale.
+    """
     admin, player = setup_world(make_client, session_factory)
     championship_id = admin.post("/api/championships", json={"name": "Estate"}).json()["id"]
     pilot_id = enrolled_pilot(player, championship_id)
     give_sponsor_cards(session_factory, pilot_id, copies)
     give_sponsor_pool(session_factory, championship_id, pool_copies)
+    if game_deck_copies is not None:
+        seed_game_deck_from_inventory_card(
+            session_factory, pilot_id, path=STARTER_INVENTORY[0].path, copies=game_deck_copies
+        )
     race_id = start_race(admin, championship_id)
     return admin, player, championship_id, pilot_id, race_id
 
