@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.db.models.pilot import Pilot
@@ -14,7 +15,9 @@ from app.services.championships import (
 )
 from app.services.event_log import append_event
 from app.services.gold import award_race_gold, rules_of
+from app.services.race_deck_snapshot import require_ready_championship_decks
 from app.services.review_events import record_review_changed
+from app.services.sqlite_write_lock import SQLiteWriteLockError
 
 # Punti per posizione di arrivo; dalla 7ª in poi si prendono 0 punti.
 POINTS_BY_POSITION = {1: 9, 2: 6, 3: 4, 4: 3, 5: 2, 6: 1}
@@ -31,6 +34,10 @@ class RaceAlreadyClosedError(Exception):
 
 class RaceInProgressError(Exception):
     """C'è già una gara non conclusa (senza risultati o con la revisione carte da confermare)."""
+
+
+class RaceStartConflictError(Exception):
+    """Il lock non consente un avvio coerente; nessun retry automatico."""
 
 
 class RaceResultError(ValueError):
@@ -67,10 +74,13 @@ def has_race_in_progress(db: Session, championship_id: int) -> bool:
 
 
 def create_race(db: Session, championship_id: int, date: datetime | None = None) -> Race:
-    """Crea gara ed evento atomicamente; rollback su errori di stato, SQL o evento.
+    """Verifica tutti i mazzi e crea gara/evento nella stessa transazione protetta.
 
     Parametri: sessione, campionato, data opzionale. Ritorna la gara persistita.
-    ChampionshipClosedError/RaceInProgressError impediscono la creazione.
+    ChampionshipClosedError/RaceInProgressError impediscono la creazione;
+    GameDecksNotReadyError riporta tutti gli iscritti non pronti senza carte.
+    RaceStartConflictError traduce solo i conflitti del lock; altri errori SQL
+    propagano. Sempre rollback su errore, nessun retry o completamento dei mazzi.
     Le revisioni scadute vanno elaborate dal chiamante prima della creazione.
     Il lock rifiuta modifiche pendenti e invalida le letture ORM precedenti.
     """
@@ -83,6 +93,8 @@ def create_race(db: Session, championship_id: int, date: datetime | None = None)
             raise ChampionshipClosedError
         if has_race_in_progress(db, championship_id):
             raise RaceInProgressError
+        # Nessuna gara o evento viene preparato prima di questa lettura sotto lock.
+        require_ready_championship_decks(db, championship_id)
         last = db.scalar(select(func.max(Race.number)).where(Race.championship_id == championship_id))
         race = Race(
             championship_id=championship_id,
@@ -98,6 +110,15 @@ def create_race(db: Session, championship_id: int, date: datetime | None = None)
         db.commit()
         db.refresh(race)
         return race
+    except SQLiteWriteLockError as exc:
+        db.rollback()
+        raise RaceStartConflictError from exc
+    except OperationalError as exc:
+        db.rollback()
+        code = getattr(exc.orig, "sqlite_errorcode", 0) or 0
+        if (code & 255) in (5, 6):
+            raise RaceStartConflictError from exc
+        raise
     except Exception:
         db.rollback()
         raise

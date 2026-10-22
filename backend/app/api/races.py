@@ -11,12 +11,14 @@ from app.schemas.race import (
     StandingRead,
 )
 from app.services.championships import standings, ChampionshipClosedError, ChampionshipNotFoundError
+from app.services.race_deck_readiness import GameDecksNotReadyError
 from app.services.race_review import is_last_race, is_review_active, settle_expired_reviews
 from app.services.races import (
     RaceAlreadyClosedError,
     RaceInProgressError,
     RaceNotFoundError,
     RaceResultError,
+    RaceStartConflictError,
     count_participants,
     create_race,
     list_races,
@@ -89,7 +91,7 @@ def list_all(championship_id: int, user: CurrentUser, db: DbDep):
     "/{championship_id}/races", response_model=RaceRead, status_code=status.HTTP_201_CREATED
 )
 def create(championship_id: int, judge: JudgeUser, db: DbDep, data: RaceCreate | None = None):
-    # Crea la gara successiva (giudice o admin), solo se non ce n'è una in corso.
+    # Crea la gara successiva solo dopo la verifica transazionale dei mazzi iscritti.
     # Prima conferma così com'è le revisioni scadute, che altrimenti la terrebbero aperta.
     try:
         settle_expired_reviews(db, championship_id)
@@ -100,6 +102,14 @@ def create(championship_id: int, judge: JudgeUser, db: DbDep, data: RaceCreate |
         raise CLOSED
     except RaceInProgressError:
         raise RACE_IN_PROGRESS
+    except GameDecksNotReadyError as exc:
+        # Il riepilogo contiene nomi/conteggi, mai le carte degli iscritti.
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc))
+    except RaceStartConflictError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Avvio non completato per un conflitto di scrittura; ricarica lo stato prima di riprovare",
+        )
 
 
 @router.get("/{championship_id}/races/{race_id}", response_model=RaceDetail)
