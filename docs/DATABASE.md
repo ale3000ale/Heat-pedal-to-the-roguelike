@@ -138,3 +138,40 @@ Collegamento campionato `df7edf5` e formattazione `dc97fcf`: CI `39502927035` tu
 ## Non verificato
 
 L'analisi iniziale non comprendeva `backend/app/db/models/__init__.py`, `backend/app/db/base.py`, le migrazioni in sé, la cartella `database/` o il database SQLite originale. Nel blocco fase 15 sono stati riletti specificamente modello CardGift, migrazione storica CardGift, migrazione event_log e nuova migrazione degli ID, configurazione Alembic, test e verificatore CI; non equivale a una nuova ispezione dell'intero DB originale. Gli indici automatici delle colonne uniche non sono elencati. Lo schema storico è in `DATABASE_ANALYSIS.md` e quello del Negozio in `SHOP_SCHEMA.md`.
+
+## Stato corrente fase 16 - decisione formato e primo dominio (2026-10-22)
+
+Questa sezione aggiorna lo stato corrente; le descrizioni precedenti conservano
+la cronologia e non dichiarano nuovamente aperte le fasi gia' unite.
+Fase 15 integrata in main con PR 14, merge 6dcdc83. Fase 16 solo su
+phase-16-admin-pilot-inventory, PR 15 in bozza, senza merge autorizzato.
+
+Alle 18:49 CEST l'autore conferma il contratto gia' usato dall'applicazione:
+Deck.cards resta TEXT con array JSON di name, path e copies. Si mantengono i
+percorsi correnti relativi ai media, inclusi cards/starter/velocita-1.webp;
+nessuna conversione al precedente esempio path/value o a /images/cards.
+Questa decisione aggiorna quel precedente requisito per la fase 16. Nessuna
+migrazione, modifica del DB reale, nuovo scaffold o dipendenza introdotta.
+
+backend/app/services/admin_card_transfers.py prepara una copia indipendente dei
+cinque contenitori e applica una copia per clic nelle sole direzioni approvate.
+Non modifica gli input neppure su errore; non espone endpoint e non salva dati.
+Nessuna aggiunta pool/mazzo, nessuna doppia sottrazione. I nomi mantengono
+l'identita' normalizzata esistente e le immagini non vengono sostituite.
+
+backend/tests/test_admin_card_transfers.py: 19 test unitari, con cinque sottocasi
+per le direzioni. Eseguiti con unittest nell'ambiente isolato dell'assistente
+usando cards.py verificato contro il blob b329ece85fef6cc232ef322cb857108088ea5cf7;
+esito 19/19 OK. Rieseguiti da questo workflow prima del commit documentale.
+Non sono test transazionali/HTTP o di concorrenza, ne' collaudo browser.
+La precedente CI 39815434564 era verde prima di questo incremento: non ne e'
+una verifica. Rileggere la CI sul nuovo codice; nessun nuovo verde globale gia'
+dichiarato. Setup, script d'avvio e schema DB restano invariati.
+
+Da completare nel blocco backend approvato: rotte/DTO admin, iscrizione e username,
+letture dei cinque Deck, versioni e salvataggio atomico senza retry automatici,
+blocchi gara/revisione/chiusura, eventi privati e segnali senza carte nel payload,
+coordinamento con move_card e create_race per il controllo esatto delle 15 copie.
+Poi frontend, conferma testuale, live autorizzato e prove browser. Il dominio
+puro non garantisce ancora queste integrazioni e non va presentato come funzione
+utilizzabile. Nessun test, reset o migrazione sul database reale autorizzato.

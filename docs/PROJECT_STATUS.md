@@ -60,7 +60,8 @@ PHASE_15_ENROLLMENT_LIVE.md e PHASE_15_CLOSURE.md.
 | 13f | Frontend: ritaglio con zoom, nome e quantità, nomi in arancione, tasti di esclusione nelle pool personalizzate | Completata nel ramo `phase-13a-card-plays`: ritaglio con zoom, modulo di caricamento (nome e copie), elenco delle carte della pool di base con i nomi in arancione per le carte caricate a mano e tasto "Elimina", integrazione nella pagina admin delle pool (commit `254b015`, `e5cf313`, `062629f`, `1391a70`, `8dbd7c2`) e i due tasti di esclusione nella creazione delle pool personalizzate (aggiunti il 2026-10-18: `lib/pool-exclusion.ts` con il suo test, `isBaseCard` in `lib/card-origin.ts`, tasti "Escludi tutte le carte caricate" ed "Escludi tutte le carte di base" sopra l'elenco in `routes/admin/pools/+page.svelte`; azzera le copie scelte del gruppo nel solo modulo, senza toccare il database). Controlli eseguiti in locale il 2026-10-18: `npm run check` (0 errori, resta il solo warning preesistente del canvas in `card-crop-editor.svelte`), `npm run lint`, `npm test` (110 test passati su 110: la base era 101, i 9 nuovi sono 7 di `pool-exclusion.spec.ts` e 2 di `pilot-deck-api.spec.ts`) e `npm run build`; CI verde sul commit `5ed659e`, letta il 2026-10-18 (esecuzione [39126355821](https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/39126355821): Backend pytest, Migrazioni e Frontend con successo) |
 | 13g | Documenti e test finali, unione in `main` | Completata: tasti di esclusione e riepilogo del mazzo aggiunti il 2026-10-18 (commit `5ed659e`) con test, verifica nel browser e documenti riallineati; CI verde su `5ed659e` (esecuzione 39126355821); pull request #9 uscita dalla bozza e unita in `main` il 2026-10-18 (merge `cdea876`, testa precedente `68dd4d7`) |
 | 14 | Sistemazione generale, modifiche di vivibilità e miglioramenti | Unita a main con PR #13 il 2026-10-19; stato post-merge in PHASE_14_POST_MERGE.md |
-| 15 | SSE, aggiornamenti campionato/gara/revisione, notifiche selettive, iscrizioni live e correzioni lifecycle/canvas | Completata e chiusa sul ramo per decisione del 2026-10-22, con limiti manuali accettati; PR #14 non unita da questo aggiornamento |
+| 15 | SSE, aggiornamenti live e correzioni lifecycle/canvas | Completata e unita a main con PR 14, merge 6dcdc83; limiti manuali accettati |
+| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | Specifica approvata; primo modulo di dominio e 19 test unitari. API, transazioni, frontend e test integrati ancora da completare |
 
 ## Come leggere la cronologia
 
@@ -238,3 +239,40 @@ Questioni rinviate:
 2. Unione del ramo `phase-12f-docs` (solo documenti) in `main`, a cura dell'autore.
 3. Riallineamento dei documenti ancora indietro: rileggere `SETUP.md` e `SCRIPTS.md` rispetto a `heat.py`; decidere con l'autore il destino di `setup.py`, `setup.bat`, `setup.sh` e `scripts/`. Il riallineamento della sezione 14 di `PROJECT_SPEC.md` alla 13e e alla 13f è stato fatto in questa seduta (commit su `main`); resta da rileggere il refuso "varà" dopo `bc0fbfb` se presente.
 4. Dopo l'unione in `main`: eliminare i rami di sottofase creati per errore (a cura dell'autore).
+
+## Stato corrente fase 16 - decisione formato e primo dominio (2026-10-22)
+
+Questa sezione aggiorna lo stato corrente; le descrizioni precedenti conservano
+la cronologia e non dichiarano nuovamente aperte le fasi gia' unite.
+Fase 15 integrata in main con PR 14, merge 6dcdc83. Fase 16 solo su
+phase-16-admin-pilot-inventory, PR 15 in bozza, senza merge autorizzato.
+
+Alle 18:49 CEST l'autore conferma il contratto gia' usato dall'applicazione:
+Deck.cards resta TEXT con array JSON di name, path e copies. Si mantengono i
+percorsi correnti relativi ai media, inclusi cards/starter/velocita-1.webp;
+nessuna conversione al precedente esempio path/value o a /images/cards.
+Questa decisione aggiorna quel precedente requisito per la fase 16. Nessuna
+migrazione, modifica del DB reale, nuovo scaffold o dipendenza introdotta.
+
+backend/app/services/admin_card_transfers.py prepara una copia indipendente dei
+cinque contenitori e applica una copia per clic nelle sole direzioni approvate.
+Non modifica gli input neppure su errore; non espone endpoint e non salva dati.
+Nessuna aggiunta pool/mazzo, nessuna doppia sottrazione. I nomi mantengono
+l'identita' normalizzata esistente e le immagini non vengono sostituite.
+
+backend/tests/test_admin_card_transfers.py: 19 test unitari, con cinque sottocasi
+per le direzioni. Eseguiti con unittest nell'ambiente isolato dell'assistente
+usando cards.py verificato contro il blob b329ece85fef6cc232ef322cb857108088ea5cf7;
+esito 19/19 OK. Rieseguiti da questo workflow prima del commit documentale.
+Non sono test transazionali/HTTP o di concorrenza, ne' collaudo browser.
+La precedente CI 39815434564 era verde prima di questo incremento: non ne e'
+una verifica. Rileggere la CI sul nuovo codice; nessun nuovo verde globale gia'
+dichiarato. Setup, script d'avvio e schema DB restano invariati.
+
+Da completare nel blocco backend approvato: rotte/DTO admin, iscrizione e username,
+letture dei cinque Deck, versioni e salvataggio atomico senza retry automatici,
+blocchi gara/revisione/chiusura, eventi privati e segnali senza carte nel payload,
+coordinamento con move_card e create_race per il controllo esatto delle 15 copie.
+Poi frontend, conferma testuale, live autorizzato e prove browser. Il dominio
+puro non garantisce ancora queste integrazioni e non va presentato come funzione
+utilizzabile. Nessun test, reset o migrazione sul database reale autorizzato.
