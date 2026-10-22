@@ -61,7 +61,7 @@ PHASE_15_ENROLLMENT_LIVE.md e PHASE_15_CLOSURE.md.
 | 13g | Documenti e test finali, unione in `main` | Completata: tasti di esclusione e riepilogo del mazzo aggiunti il 2026-10-18 (commit `5ed659e`) con test, verifica nel browser e documenti riallineati; CI verde su `5ed659e` (esecuzione 39126355821); pull request #9 uscita dalla bozza e unita in `main` il 2026-10-18 (merge `cdea876`, testa precedente `68dd4d7`) |
 | 14 | Sistemazione generale, modifiche di vivibilità e miglioramenti | Unita a main con PR #13 il 2026-10-19; stato post-merge in PHASE_14_POST_MERGE.md |
 | 15 | SSE, aggiornamenti live e correzioni lifecycle/canvas | Completata e unita a main con PR 14, merge 6dcdc83; limiti manuali accettati |
-| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | Specifica approvata; primo modulo di dominio e 19 test unitari. API, transazioni, frontend e test integrati ancora da completare |
+| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | Dominio, letture e salvataggio atomico implementati; test mirati superati. Avvio da 15, frontend, live e collaudo ancora da completare |
 
 ## Come leggere la cronologia
 
@@ -321,3 +321,57 @@ Nessun nuovo schema DB, migrazione, dipendenza o accesso al DB reale. Restano
 il formato confermato name/path/copies e i percorsi relativi ai media correnti.
 Un messaggio vuoto o solo @GitHub approva la proposta pendente; le sole modifiche
 documentali non richiedono attesa della CI applicativa. Nessun merge implicito.
+
+<!-- phase16-admin-save:start -->
+## Fase 16 - Salvataggio admin atomico
+
+Data: 2026-10-22. Ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
+Questo incremento supera il precedente limite delle sole letture. Frontend e
+controllo di avvio gara da 15 copie restano da completare, senza merge implicito.
+
+### Contratto di scrittura
+
+PUT /api/admin/championships/{championship_id}/pilots/{pilot_id}/cards riceve
+versions e transfers. versions contiene tutti i cinque contenitori: id/version
+interi positivi, oppure null per le sole pool assenti. Ogni trasferimento ha solo
+source e path; una copia per elemento, destinazione imposta dal dominio. Campi
+extra, sostituzioni arbitrarie delle carte e destinazioni client sono rifiutati.
+
+Ruolo, pilota visibile/iscritto, chiusura e gara/revisione non confermata vengono
+ricontrollati nella transazione. Confronto id e versione anche dei contenitori
+non toccati; pool assenti non sono create e non possono ricevere o fornire copie.
+Conflitto: 409 e nessun retry automatico. Movimento non applicabile: 422.
+
+SQLite acquisisce il lock prima delle letture autorevoli e scade le identita'
+SQLAlchemy gia' caricate. Una transazione nativa esistente e' promossa con un
+UPDATE senza righe; se lo snapshot non puo' essere promosso si rifiuta la scrittura.
+Un solo commit per Deck ed eventi, rollback anche per errore nel registro eventi.
+Nessun nuovo schema DB, migrazione, dipendenza o accesso al database reale.
+
+Solo le differenze effettive aggiornano le versioni. Nessuna differenza significa
+nessun evento. Il mazzo puo' restare incompleto: nessuna aggiunta pool/mazzo o
+sponsor/mazzo, nessuna doppia sottrazione. Risposta con snapshot e versioni nuove.
+Dopo variazioni sono accodati cards.changed pubblico vuoto e privato al proprietario
+con solo pilot_id: nessun dettaglio carte, regalo o notifica tasto S inventata.
+
+### Verifiche e limiti
+
+Preparati 27 casi in backend/tests/test_admin_pilot_card_save.py: cinque direzioni,
+versioni di tutti i contenitori, blocchi, ruoli, input non ammessi, pool assenti o
+riassegnate, rollback tardivo/eventi, bozza senza differenze, segnali privi di carte
+e due salvataggi concorrenti con sessioni distinte su un SQLite temporaneo.
+Test HTTP non eseguiti localmente. Eseguiti invece controlli sintattici e una prova
+SQLite isolata: UPDATE senza righe blocca il secondo writer, non incrementa
+versioni e rollback libera il lock. Il conteggio dei test e' stato corretto dopo
+un NameError del solo script di analisi; nessun risultato HTTP PASS inventato.
+
+Il workflow esegue dominio, letture e salvataggi prima del riallineamento generale.
+La CI completa resta da leggere separatamente. Non chiudere/riaprire la PR come
+procedura abituale. Per commit solo documentali non attendere la CI applicativa.
+Restano da integrare il controllo esatto di 15 all'avvio e il coordinamento con
+move_card, interfaccia con conferma testuale e protezione bozza, SSE condiviso e
+collaudo browser. Il backend non dimostra ancora queste parti. Il formato resta
+TEXT con array name/path/copies e percorsi correnti relativi ai media.
+
+Test mirati superati dal workflow prima di questo riallineamento; CI completa separata.
+<!-- phase16-admin-save:end -->
