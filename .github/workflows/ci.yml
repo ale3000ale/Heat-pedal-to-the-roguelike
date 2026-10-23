@@ -132,7 +132,7 @@ jobs:
 
           content = Path(".github/workflows/phase-16-docs-pr.yml").read_bytes()
           blob = b"blob " + str(len(content)).encode() + b"\0" + content
-          if hashlib.sha1(blob).hexdigest() != "956f1265996388699cfe05d4abf84a24f51a650a":
+          if hashlib.sha1(blob).hexdigest() != "6858f05d89072cca488efeeb46166a2770383545":
               raise RuntimeError("Workflow documentale diverso da quello approvato")
           step = yaml.safe_load(content)["jobs"]["align-docs-pr"]["steps"][-1]
           if step["name"] != "Riallinea i documenti dopo i test mirati":
