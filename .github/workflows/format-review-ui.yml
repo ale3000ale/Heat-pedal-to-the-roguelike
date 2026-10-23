@@ -1,4 +1,4 @@
-name: Formatta riletture live admin
+name: Formatta integrazione live pannello admin
 
 on:
   push:
@@ -30,14 +30,16 @@ jobs:
       - name: Installa dal lockfile
         working-directory: frontend
         run: npm ci
-      - name: Formatta soltanto i due moduli approvati
+      - name: Formatta soltanto i quattro file frontend approvati
         working-directory: frontend
         shell: bash
         run: |
           set -euo pipefail
           files=(
-            src/lib/admin-pilot-cards-live-refresh.ts
-            src/lib/admin-pilot-cards-live-refresh.spec.ts
+            src/lib/admin-pilot-cards-live.ts
+            src/lib/admin-pilot-cards-live.spec.ts
+            src/lib/components/admin-pilot-cards-panel.svelte
+            src/lib/components/admin-pilot-cards-save-controls.svelte
           )
           ./node_modules/.bin/prettier --write "${files[@]}"
           ./node_modules/.bin/prettier --check "${files[@]}"
@@ -47,8 +49,10 @@ jobs:
           set -euo pipefail
           git diff --exit-code -- backend database heat.py frontend/package.json frontend/package-lock.json frontend/prettier.config.js .github/workflows
           files=(
-            frontend/src/lib/admin-pilot-cards-live-refresh.ts
-            frontend/src/lib/admin-pilot-cards-live-refresh.spec.ts
+            frontend/src/lib/admin-pilot-cards-live.ts
+            frontend/src/lib/admin-pilot-cards-live.spec.ts
+            frontend/src/lib/components/admin-pilot-cards-panel.svelte
+            frontend/src/lib/components/admin-pilot-cards-save-controls.svelte
           )
           git add -- "${files[@]}"
           git diff --cached --check
@@ -63,7 +67,7 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'style: formatta riletture live admin con il lockfile'
+          git commit -m 'style: formatta integrazione live pannello admin con il lockfile'
           git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory
       - name: Identifica il codice sottoposto ai controlli
         run: git rev-parse HEAD
