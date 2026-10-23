@@ -43,19 +43,7 @@ jobs:
           )
           ./node_modules/.bin/prettier --write "${files[@]}"
           ./node_modules/.bin/prettier --check "${files[@]}"
-      - name: Controllo dei tipi
-        working-directory: frontend
-        run: npm run check
-      - name: Lint e formattazione completi
-        working-directory: frontend
-        run: npm run lint
-      - name: Test frontend
-        working-directory: frontend
-        run: npm test
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
-      - name: Pubblica solo la formattazione approvata
+      - name: Pubblica solo lo stile verificato da Prettier
         shell: bash
         run: |
           set -euo pipefail
@@ -81,3 +69,17 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'style: formatta la UI della bozza admin con il lockfile'
           git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory
+      - name: Identifica il codice sottoposto ai controlli
+        run: git rev-parse HEAD
+      - name: Controllo dei tipi sul codice formattato
+        working-directory: frontend
+        run: npm run check
+      - name: Lint e formattazione completi sul codice formattato
+        working-directory: frontend
+        run: npm run lint
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
