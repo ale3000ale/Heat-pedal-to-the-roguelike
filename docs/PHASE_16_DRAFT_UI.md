@@ -1,51 +1,46 @@
 # Fase 16 - Bozza locale nella UI admin
 
-Aggiornamento: 2026-10-23. Solo ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
-Nessun merge, migrazione, modifica di dipendenze o accesso al database reale.
-Documento sorgente generale: PHASE_16_ADMIN_SAVE_API.md.
+Aggiornamento: 2026-10-23. Ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
+Documento sorgente generale: PHASE_16_ADMIN_SAVE_API.md. Nessun merge.
 
-## Baseline verificata
+## Integrazione implementata
 
-La chiusura intercettabile del modal in d9ee662 ha superato la CI 39997899845.
-Il riallineamento documentale 013948f e' stato propagato dal bot e2fbdea nei dieci
-documenti generali, senza attendere nuovi test applicativi per il commit docs.
-Questi riscontri non costituiscono un collaudo browser.
+c950510 collega CardTile alla sessione locale nei quattro componenti admin.
+Ogni clic aggiunge source/path per una copia e ricalcola dalla baseline; le cinque
+destinazioni sono imposte dal dominio. Cinque sezioni distinte, mazzo N/15 per
+copie e differenza tra pool assente e vuota restano. Il blocco iniziale e le
+destinazioni assenti disabilitano i clic. Errori locali distinti da quelli REST
+non sostituiscono la bozza; le risposte tardive sono ignorate, non cancellate.
 
-## Integrazione proposta in questo incremento
+Lo stato pendente risale alle impostazioni. Ripristino, ritorno ai piloti e
+chiusura richiedono conferma prima dello scarto. Ripristino alla baseline senza
+riletture REST, conservando il blocco. I dialog sono montati solo quando aperti
+e il modal sottostante non apre un altro dialog su Escape mentre ne esiste uno
+sopra. La navigazione viene proposta prima della ripresa; un errore di goto
+conserva la bozza. Con componente riusato, ripristino dopo successo soltanto
+sulla sessione originale. Ricarica e chiusura senza destinazione usano la
+protezione browser di SvelteKit. Le interazioni restano da collaudare nel browser.
 
-I quattro componenti admin collegano CardTile alla sessione locale esistente.
-Ogni clic aggiunge una sola operazione source/path e ricalcola dalla baseline.
-La destinazione e' imposta dal pianificatore, non scelta dall'utente. Le cinque
-sezioni, il conteggio N/15 e la distinzione tra pool assente e vuota restano.
-Il blocco iniziale e le destinazioni assenti disabilitano i clic. Gli errori locali
-non sostituiscono la bozza e sono distinti dagli errori della lettura REST.
+## Formattazione e CI
 
-Lo stato pendente risale al modal delle impostazioni. Ripristino, ritorno
-all'elenco e chiusura richiedono conferma prima dello scarto. I dialog di
-conferma sono montati solo mentre aperti; una conferma gia' sopra il pannello
-gestisce Escape senza aprire un secondo dialog dal modal sottostante.
-Il ripristino conserva la baseline e l'eventuale blocco, senza riletture REST.
+2cf25fd separa pubblicazione dello stile e controlli successivi; ceb12b1 formatta
+i soli quattro componenti. 788e6f5 aggiunge l'eccezione ESLint motivata sulla
+sola chiamata goto che riusa navigation.to.url.href, senza modificare il codice
+eseguibile. Dettagli e limiti dell'eccezione in PHASE_16_FORMATTING.md.
 
-La navigazione con destinazione viene prima annullata e proposta nel dialog
-dedicato; dopo conferma viene ripresa con goto o location.assign. I clic sono
-disabilitati durante l'uscita. Un errore di goto conserva la bozza; se il componente
-e' riusato viene ripristinato solo dopo il successo e solo se la sessione e' ancora
-quella originale. Per ricarica o chiusura scheda senza destinazione interviene
-la protezione di uscita gestita dal browser tramite SvelteKit, non window.confirm.
+La lettura del 2026-10-23 della CI 40003767478 sulla testa 788e6f5 riporta
+successo per frontend (check, lint, test, build), job 120586341966, backend,
+migrazioni su database di test e documenti dopo backend. Anche align-docs-pr
+40003767471 e' riuscito. Non sono esecuzioni locali, conteggi letti dai log
+o prove browser. La CI include la toolchain, non prova tutte le interazioni UI.
 
-## Verifiche e limiti
+## Limiti e prossimo passo
 
-Nessuna nuova esecuzione locale di npm, Vitest o browser in questo incremento.
-La toolchain deve ancora verificare i componenti modificati; non si dichiara PASS.
-Il formatter esistente e' limitato ai quattro componenti e conserva npm ci,
-Prettier dal lockfile e check/lint/test/build completi prima del commit del bot.
-La CI ordinaria non cambia. I test del dominio, della sessione e della politica
-di chiusura gia' presenti non equivalgono a test delle interazioni Svelte.
-
-Non sono implementati PUT dalla UI, riepilogo per il salvataggio, conferma unica
-del salvataggio o integrazione live. Il blocco iniziale non e' un aggiornamento
-live della gara. Nessun autosalvataggio, polling o secondo stream SSE.
-Dopo i controlli riusciti riallineare il documento sorgente e i documenti generali
-allo stato verificato; per le sole modifiche docs non attendere test applicativi.
-Restano da collaudare nel browser clic ripetuti, annullamento delle conferme,
-Escape, chiusura, navigazione e conservazione della bozza in caso di errore.
+PUT dalla UI, riepilogo per il salvataggio, conferma unica e live non sono ancora
+implementati. Nessun autosalvataggio, polling o secondo stream SSE. Il blocco
+iniziale non equivale al live della gara. Nessuna migrazione, dipendenza nuova
+o modifica al database reale. Restano prove browser di clic ripetuti, annullamento,
+Escape, chiusura, navigazione ed errori. Fase non completa e nessun merge.
+Il documento sorgente viene riallineato dopo la CI riuscita; la propagazione nei
+dieci documenti generali deve ancora essere verificata sul nuovo commit, senza
+attendere test applicativi per i soli docs.
