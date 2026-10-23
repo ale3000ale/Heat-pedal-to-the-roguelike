@@ -62,7 +62,8 @@ jobs:
                   rows = [line for line in text.splitlines() if line.startswith("| 16 |")]
                   if len(rows) != 1:
                       raise RuntimeError("Riga fase 16 non univoca")
-                  text = text.replace(rows[0], "| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | Dominio, letture e salvataggio atomico implementati; test mirati superati. Avvio da 15, frontend, live e collaudo ancora da completare |")
+                  text = text.replace(rows[0], "| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | Backend letture, salvataggio e avvio da 15 implementati; CI completa verde su 4514348. Frontend admin, live e collaudo della fase ancora da completare |")
+                  text = text.replace("Ultimo aggiornamento: 2026-10-22", "Ultimo aggiornamento: 2026-10-23", 1)
               contents[name] = text
           for name, text in contents.items():
               Path(name).write_text(text, encoding="utf-8")
