@@ -1,35 +1,41 @@
-# Fase 16 - Correzione del flusso di formattazione UI
+# Fase 16 - Formattazione UI e navigazione gia' risolta
 
-Data: 2026-10-23. Solo ramo phase-16-admin-pilot-inventory. Nessun merge.
+Aggiornamento: 2026-10-23. Solo ramo phase-16-admin-pilot-inventory. Nessun merge.
 
-## Errore osservato
+## Formattazione pubblicata
 
-Il log fornito dall'autore mostra npm run lint fermato da prettier --check
-sui quattro componenti admin-card-container, admin-championship-pilots,
-admin-pilot-cards-panel e championship-settings. ESLint non viene eseguito
-in quel comando perche' segue Prettier con &&. Il job format risultava
-fallito nella lettura precedente; questo riepilogo non identifica quale
-suo passaggio sia fallito e non inventa un errore TypeScript o ESLint.
+Il primo log dell'autore mostrava prettier --check fermato sui quattro componenti
+admin. 2cf25fd ha separato la pubblicazione dello stile dai controlli applicativi
+successivi. Il bot ceb12b1 ha effettivamente pubblicato la formattazione dei soli
+admin-card-container, admin-championship-pilots, admin-pilot-cards-panel e
+championship-settings. Il nuovo log fornito dall'autore riporta All matched files
+use Prettier code style: quel controllo e' passato, non l'intera suite frontend.
 
-## Modifica circoscritta
+## Blocco ESLint distinto
 
-format-review-ui.yml usa ancora npm ci e il Prettier del lockfile. Dopo write
-e check dei soli quattro componenti puo' pubblicare solo quei file, conservando
-il controllo del ramo remoto e la protezione dei percorsi estranei. La pubblicazione
-della correzione di stile precede ora check, lint, test e build; tutti restano
-presenti, senza continue-on-error, esclusioni o modifiche alla CI ordinaria.
-Il workflow stampa la SHA locale effettivamente sottoposta ai controlli.
-Un eventuale commit del bot dimostra solo la pubblicazione dello stile dopo
-Prettier, non il successo dei controlli applicativi successivi o del browser.
+Dopo Prettier il log riporta un errore svelte/no-navigation-without-resolve sulla
+chiamata goto(target.url) in admin-pilot-cards-panel.svelte, linea 82 nella versione
+formattata letta. target.url viene memorizzata da navigation.to.url.href dentro
+beforeNavigate: e' la destinazione completa ricevuta da SvelteKit, non una nuova
+rotta costruita dalla UI. Il ramo unload usa gia' location.assign separatamente.
 
-## Verifica ancora necessaria
+La modifica aggiunge un commento sulla provenienza della URL e una sola direttiva
+eslint-disable-next-line svelte/no-navigation-without-resolve immediatamente prima
+di goto. L'eccezione e' limitata a questa ripresa di navigazione gia' risolta; non
+disabilita la regola per il file o nel progetto e non introduce cast, nuove
+dipendenze, concatenazioni di base o trasformazioni della destinazione.
+Il codice eseguibile, la conservazione della bozza su errore e le conferme
+restano invariati. Questa eccezione non va estesa alle nuove rotte dell'app.
 
-Nessuna esecuzione locale del workflow o di npm in questo intervento.
-Controllare l'esecuzione del formatter, l'eventuale commit con soli quattro file
-e i controlli sul codice formattato. Non assumere che il commit del bot attivi
-automaticamente una nuova CI ordinaria: verificare la SHA di ogni riscontro.
-La modifica rende indipendente la pubblicazione dello stile ma non dimostra
-che il blocco segnalato sia gia' risolto. Nessun accesso al database, cambiamento
-di dipendenze, PUT, autosalvataggio o integrazione live.
-Dopo i controlli riusciti riallineare il documento sorgente della fase, il documento
-della UI e i documenti generali, senza attendere test per i soli commit docs.
+## Verifiche e limiti
+
+Nessuna nuova esecuzione locale di npm, lint, Vitest o browser in questo intervento.
+Il passaggio di lint del log e' fallito su ESLint; non dichiarare test e build
+riusciti. La correzione deve ancora essere verificata con la toolchain del progetto.
+Il workflow conserva Prettier dal lockfile, check, lint, test e build e stampa
+la SHA del codice controllato. Un commit del formatter non prova il verde globale
+e non garantisce una nuova CI ordinaria: verificare le SHA e i job effettivi.
+Nessuna modifica al workflow in questo intervento, al database o alle dipendenze.
+Restano esclusi PUT dalla UI, autosalvataggio e live. Dopo i controlli riusciti
+riallineare il documento sorgente della fase, quello della UI e i documenti generali;
+nessuna attesa di test applicativi per i soli commit documentali.

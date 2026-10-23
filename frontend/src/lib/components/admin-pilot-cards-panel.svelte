@@ -79,6 +79,8 @@
 		}
 		const original = session;
 		try {
+			// SvelteKit ha gia' risolto questa URL assoluta, inclusi base, query e hash.
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
 			await goto(target.url);
 			// Anche una navigazione che riusa il componente scarta solo dopo il successo.
 			if (mounted && original && session === original) {
