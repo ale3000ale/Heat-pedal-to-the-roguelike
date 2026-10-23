@@ -165,122 +165,89 @@ documentali non richiedono attesa della CI applicativa. Nessun merge implicito.
 <!-- phase16-admin-save:start -->
 ## Fase 16 - Salvataggio admin atomico
 
-Data: 2026-10-22. Ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
-Questo incremento supera il precedente limite delle sole letture. Frontend e
-controllo di avvio gara da 15 copie restano da completare, senza merge implicito.
+Aggiornamento: 2026-10-23. Ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
+Questa versione consolida le precedenti note incrementali: il backend di lettura,
+salvataggio e avvio con mazzi da 15 e' implementato. La cronologia delle versioni
+precedenti resta nello storico Git. Nessun merge o completamento della fase implicito.
 
-### Contratto di scrittura
+### Contratto di scrittura admin
 
 PUT /api/admin/championships/{championship_id}/pilots/{pilot_id}/cards riceve
-versions e transfers. versions contiene tutti i cinque contenitori: id/version
-interi positivi, oppure null per le sole pool assenti. Ogni trasferimento ha solo
-source e path; una copia per elemento, destinazione imposta dal dominio. Campi
-extra, sostituzioni arbitrarie delle carte e destinazioni client sono rifiutati.
+versions e transfers. versions descrive tutti i cinque contenitori con id/version
+interi positivi, oppure null per le sole pool assenti. Ogni trasferimento contiene
+solo source e path: una copia per elemento, destinazione imposta dal dominio.
+Campi extra, destinazioni client e sostituzioni arbitrarie delle carte sono rifiutati.
 
-Ruolo, pilota visibile/iscritto, chiusura e gara/revisione non confermata vengono
-ricontrollati nella transazione. Confronto id e versione anche dei contenitori
-non toccati; pool assenti non sono create e non possono ricevere o fornire copie.
-Conflitto: 409 e nessun retry automatico. Movimento non applicabile: 422.
+Il backend ricontrolla ruolo admin, pilota visibile/iscritto, campionato chiuso,
+gara aperta e revisione non confermata nella transazione. Confronta id e versione
+anche dei contenitori non toccati. Le pool assenti non vengono create e non possono
+fornire o ricevere copie. Conflitto: 409 senza retry automatico; movimento non
+applicabile: 422. Un solo commit per Deck ed eventi, rollback anche su errore eventi.
 
-SQLite acquisisce il lock prima delle letture autorevoli e scade le identita'
-SQLAlchemy gia' caricate. Una transazione nativa esistente e' promossa con un
-UPDATE senza righe; se lo snapshot non puo' essere promosso si rifiuta la scrittura.
-Un solo commit per Deck ed eventi, rollback anche per errore nel registro eventi.
-Nessun nuovo schema DB, migrazione, dipendenza o accesso al database reale.
+Il mazzo puo' restare incompleto tra le gare. Nessuna aggiunta diretta pool/mazzo
+o sponsor/mazzo e nessuna doppia sottrazione. Solo differenze effettive cambiano
+le versioni; senza differenze non vengono prodotti eventi. La risposta restituisce
+snapshot e versioni aggiornate. Dopo variazioni: cards.changed pubblico vuoto e
+privato al proprietario con solo pilot_id, senza carte o notifiche regalo/tasto S.
 
-Solo le differenze effettive aggiornano le versioni. Nessuna differenza significa
-nessun evento. Il mazzo puo' restare incompleto: nessuna aggiunta pool/mazzo o
-sponsor/mazzo, nessuna doppia sottrazione. Risposta con snapshot e versioni nuove.
-Dopo variazioni sono accodati cards.changed pubblico vuoto e privato al proprietario
-con solo pilot_id: nessun dettaglio carte, regalo o notifica tasto S inventata.
+### Lock condiviso e avvio gara
 
-### Verifiche e limiti
+services/sqlite_write_lock.py e' usato da salvataggio admin, pilot_deck.move_card
+e races.create_race prima delle letture autorevoli. Invalida le identita' ORM
+precedenti e rifiuta modifiche pendenti. Una transazione nativa gia' aperta viene
+promossa con UPDATE senza righe: nessuna carta o versione viene modificata dal lock.
+Il retry preesistente di move_card resta limitato a StaleDataError; il salvataggio
+admin e l'avvio gara non ritentano automaticamente i conflitti di lock.
 
-Preparati 27 casi in backend/tests/test_admin_pilot_card_save.py: cinque direzioni,
-versioni di tutti i contenitori, blocchi, ruoli, input non ammessi, pool assenti o
-riassegnate, rollback tardivo/eventi, bozza senza differenze, segnali privi di carte
-e due salvataggi concorrenti con sessioni distinte su un SQLite temporaneo.
-Test HTTP non eseguiti localmente. Eseguiti invece controlli sintattici e una prova
-SQLite isolata: UPDATE senza righe blocca il secondo writer, non incrementa
-versioni e rollback libera il lock. Il conteggio dei test e' stato corretto dopo
-un NameError del solo script di analisi; nessun risultato HTTP PASS inventato.
+create_race legge i mazzi da gioco di tutti gli iscritti sotto lo stesso lock e
+richiede esattamente 15 copie totali, non 15 nomi o il totale degli inventari.
+La lettura DB in race_deck_snapshot.py riusa il dominio race_deck_readiness.py;
+include gli iscritti nascosti e non aggiunge un nuovo minimo di iscritti.
+Mazzo mancante o JSON corrotto non vengono trasformati in un mazzo valido.
 
-Il workflow esegue dominio, letture e salvataggi prima del riallineamento generale.
-La CI completa resta da leggere separatamente. Non chiudere/riaprire la PR come
-procedura abituale. Per commit solo documentali non attendere la CI applicativa.
-Restano da integrare il controllo esatto di 15 all'avvio e il coordinamento con
-move_card, interfaccia con conferma testuale e protezione bozza, SSE condiviso e
-collaudo browser. Il backend non dimostra ancora queste parti. Il formato resta
-TEXT con array name/path/copies e percorsi correnti relativi ai media.
+Se un iscritto non e' pronto: nessuna nuova gara o race.started, rollback e HTTP
+409 con riepilogo testuale di nomi e conteggi, senza carte. I conflitti SQLite
+BUSY/LOCKED vengono tradotti in RaceStartConflictError e HTTP 409; gli altri
+errori SQL non sono mascherati. Restano chiusura e gara/revisione non confermata.
+La gestione preesistente delle revisioni scadute prima dell'avvio non e' cambiata.
 
-### Riscontro CI e diagnosi sincronizzazione - 2026-10-22 20:15 CEST
+### Verifiche effettive
 
-La lettura della CI 39827070228 riporta successo per backend pytest, frontend
-check/lint/test/build e migrazioni sul database di test. Non e' una nuova
-esecuzione dei test in locale e non costituisce un collaudo browser.
-Il commit fbc7789 aggiunge il collegamento documentale alla CI, ma al controllo
-seguente non risultavano nuovi check o un commit documentale successivo.
-La lettura della PR 15 esponeva ancora db94beb: i risultati del connettore non
-consentono di distinguere sincronizzazione GitHub da dati non aggiornati.
-Nessuna causa certa attribuita a token, eventi o configurazione senza prove.
+Il 2026-10-23 e' stata letta la CI 39917281059 sul codice 4514348: successo per
+Backend (pytest), Frontend (check, lint, test, build), Migrazioni (database di test)
+e Documenti fase 16 dopo backend. Anche align-docs-pr, esecuzione 39917281153,
+risulta riuscito. Questi sono riscontri GitHub, non nuove esecuzioni locali.
 
-Per la verifica si usa un aggiornamento reale di questo documento con
-create_or_update_file (API Contents), anziche' push_files. Nessuna modifica a
-workflow, codice o DB reale e nessuna chiusura/riapertura o merge della PR.
-L'effettivo aggiornamento della testa PR e l'avvio dei nuovi controlli vanno
-verificati dopo la scrittura: questa nota non dichiara gia' risolto il problema
-ne' gia' riallineati i dieci documenti generali. Per il solo aggiornamento
-documentale non attendere la CI applicativa.
+L'autore ha fornito il riepilogo precedente alla pulizia dei warning: 748 passed,
+14 warnings e 14 subtests passed. Il commit 4514348 rimuove soltanto Result.tuples()
+dai due snapshot dei test eventi, conservando le 27 asserzioni verificate tramite
+AST. La CI successiva e' verde; il conteggio esatto dei warning di quella nuova
+esecuzione non e' stato letto e non viene dichiarato zero sulla sola conclusione.
 
-### Preparazione del controllo delle 15 copie - 2026-10-22
+La regressione iniziale mostrava 72 failed e 676 passed, poi un solo fallimento.
+Le fixture residue del giudice e del secondo campionato, l'aspettativa sul nuovo
+errore di conflitto e la preparazione dei mazzi nel test della classifica congelata
+sono state corrette senza saltare test o allentare il vincolo di produzione.
 
-Nuovo modulo puro backend/app/services/race_deck_readiness.py: conta le copie
-nel solo mazzo da gioco, raccoglie tutti i piloti non pronti e rifiuta anche
-il JSON non valido senza trasformarlo in un mazzo vuoto. Nessun dettaglio
-delle carte nel riepilogo, nessuna modifica o completamento dei mazzi.
-Tredici test in backend/tests/test_race_deck_readiness.py eseguiti con unittest
-in ambiente isolato: 13/13 OK; cards.py verificato contro il blob
-b329ece85fef6cc232ef322cb857108088ea5cf7. Parsing Python e git diff --check
-riusciti. Nuova CI del repository ancora da leggere dopo la pubblicazione.
+I test dedicati comprendono dominio puro, letture e salvataggi admin, snapshot DB,
+lock e avvio: dieci casi in test_race_start_readiness.py coprono conteggi errati,
+JSON corrotto, accesso admin/giudice, esclusione dei non iscritti, rollback eventi
+e traduzione di un lock occupato simulato. Non equivalgono a un collaudo browser
+o a una nuova prova reale di tutte le interazioni concorrenti avvio/admin/giocatore.
 
-Questo incremento NON collega ancora il controllo a create_race, non cambia
-API gare, lock, move_card o fixture esistenti e non attiva il blocco di avvio.
-L'integrazione successiva deve leggere tutti gli iscritti nella transazione,
-bloccare gara ed evento race.started in caso di mazzi non pronti, riportare
-i conteggi ai gestori e coordinare avvio, salvataggi admin e movimenti giocatore.
-Le fixture comuni lette avviano gare senza preparare 15 copie; la ricerca del
-codice ha restituito risultati incompleti, non un censimento affidabile dei test.
-Adeguare esplicitamente le fixture, senza autocompletamento nella produzione
-o hook nascosti che rendano sempre pronti i mazzi durante i test.
-Nessun workflow modificato: la pulizia proposta dopo il vecchio errore non e'
-stata applicata, poiche' la CI e il riallineamento successivi erano riusciti.
-La nota viene ripresa nei documenti generali dal riallineamento esistente.
-Nessun nuovo schema DB, migrazione, dipendenza o accesso al database reale.
+### Limiti, dati e prossimo passo
 
-### Coordinamento scritture admin e giocatore - 2026-10-22
+Restano da implementare frontend admin, conferma testuale, protezione della bozza
+e collegamento live tramite il client SSE condiviso, poi verifiche dedicate e
+collaudo browser. Non dichiarare la fase 16 completa sulla sola CI del backend.
+Prima di nuove funzionalita', verificare la propagazione di questo stato nei dieci
+documenti gestiti dal processo esistente. Nessuna attesa CI applicativa per i soli
+commit documentali e nessuna chiusura/riapertura abituale della PR.
 
-Nuovo helper services/sqlite_write_lock.py condiviso da admin_pilot_card_save
-e pilot_deck.move_card: lock di scrittura prima delle letture e invalidazione
-delle identita' ORM precedenti. Non accetta modifiche pendenti da scartare con
-expire_all; nessuna carta o versione viene cambiata dall'UPDATE senza righe.
-I movimenti del giocatore fanno rollback su errori di dominio e SQL. Restano
-massimo 15 e blocchi gara/revisione; il retry preesistente resta limitato a
-StaleDataError, mentre lock occupato restituisce conflitto senza retry automatico.
-Il salvataggio admin mantiene un solo commit e nessun retry. Nessun nuovo evento.
-
-Preparati solo cinque test importanti in test_sqlite_card_write_lock.py:
-transazione nativa gia' aperta, rilascio su errore, rilettura di oggetti in cache,
-protezione delle modifiche pendenti e due movimenti concorrenti su SQLite di
-prova. Nessuna suite locale eseguita, come richiesto alle 21:49: solo controllo
-sintattico Python; esecuzione e risultati dei test sono affidati alla CI.
-
-create_race, API gare e fixture gare NON cambiano in questo incremento; la regola
-di avvio con esattamente 15 copie non e' ancora attivata. Prossimo collegamento:
-lock condiviso anche all'avvio, lettura di tutti gli iscritti, rifiuto atomico con
-riepilogo e adeguamento esplicito delle fixture. Non usare autocompletamenti o
-hook nascosti per aggirare i test di mazzi incompleti. Nessun workflow modificato,
-nessuna migrazione, dipendenza o operazione sul DB reale. Riallineamento generale
-tramite il processo documentale gia' esistente; niente attesa CI per soli docs.
+Deck.cards resta TEXT con array JSON name/path/copies e i percorsi correnti relativi
+ai media, come confermato dall'autore il 2026-10-22. Nessuna conversione al vecchio
+esempio path/value, migrazione, dipendenza nuova, modifica a setup/avvio o accesso
+al database reale. Nessun nuovo scaffold o modifica delle risorse.
 
 Test mirati superati dal workflow prima di questo riallineamento; CI completa separata.
 <!-- phase16-admin-save:end -->
