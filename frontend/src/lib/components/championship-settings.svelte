@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { api } from '$lib/api';
+	import { auth } from '$lib/auth.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import AdminChampionshipPilots from '$lib/components/admin-championship-pilots.svelte';
 	import ChampionshipHistoryPanel from '$lib/components/championship-history-panel.svelte';
 	import ChampionshipPacksManager from '$lib/components/championship-packs-manager.svelte';
 	import ChampionshipPoolPanel from '$lib/components/championship-pool-panel.svelte';
@@ -35,6 +37,7 @@
 	let packsOpen = $state(false);
 	let historyOpen = $state(false);
 	let poolOpen = $state(false);
+	let pilotsOpen = $state(false);
 
 	$effect(() => {
 		if (open) error = null;
@@ -58,6 +61,13 @@
 	function openPool() {
 		open = false;
 		poolOpen = true;
+	}
+
+	// Il controllo UI non sostituisce l'autorizzazione degli endpoint admin.
+	function openPilots() {
+		if (!auth.isAdmin) return;
+		open = false;
+		pilotsOpen = true;
 	}
 
 	async function closeChampionship() {
@@ -107,6 +117,13 @@
 					description="Oro dato a tutti gli iscritti dopo ogni gara, anche a chi non corre. Un totale negativo diventa 0. Le modifiche valgono dalla gara successiva."
 					editable
 				/>
+			{/if}
+
+			{#if !shopOnly && auth.isAdmin}
+				<div class="space-y-2 border-t pt-4">
+					<h3 class="text-sm font-semibold">Piloti</h3>
+					<Button size="sm" variant="outline" onclick={openPilots}>Visualizza piloti e carte</Button>
+				</div>
 			{/if}
 
 			<div class={shopOnly ? 'space-y-2' : 'space-y-2 border-t pt-4'}>
@@ -172,4 +189,13 @@
 			<ChampionshipHistoryPanel championshipId={championship.id} />
 		{/if}
 	</Modal>
+	{#if auth.isAdmin}
+		<Modal bind:open={pilotsOpen} title={`Piloti — ${championship.name}`} wide>
+			{#if pilotsOpen}
+				{#key championship.id}
+					<AdminChampionshipPilots championshipId={championship.id} />
+				{/key}
+			{/if}
+		</Modal>
+	{/if}
 {/if}
