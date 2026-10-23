@@ -72,12 +72,11 @@ function harness() {
 		connect: vi.fn(),
 		disconnect: vi.fn()
 	};
-	let live: ReturnType<typeof startAdminPilotCardsLive> | undefined;
 	const applySession = vi.fn((next: AdminCardDraftSession) => {
 		state.session = next;
-		live?.stateChanged();
+		live.stateChanged();
 	});
-	live = startAdminPilotCardsLive({
+	const live: ReturnType<typeof startAdminPilotCardsLive> = startAdminPilotCardsLive({
 		championshipId: 7,
 		pilotId: 11,
 		client,
