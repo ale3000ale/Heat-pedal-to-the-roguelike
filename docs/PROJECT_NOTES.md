@@ -345,17 +345,55 @@ di immagini. Il rendering e le interazioni nel browser restano da collaudare.
 Le letture ignorano risposte tardive dopo cambio contesto o smontaggio del pannello;
 non annullano la richiesta di rete gia' inviata. Caricamento, errori e rilettura
 manuale sono espliciti. Nessun trasferimento, PUT, autosalvataggio, polling o
-nuovo stream SSE. Gli errori di permesso rimangono controllati dal backend.
+nuovo stream SSE nella UI. Gli errori di permesso rimangono controllati dal backend.
 I quattro casi del modulo Vitest sul conteggio sono inclusi nella suite frontend
 risultata riuscita: copie senza mutazioni, contenitore vuoto e conteggi 14/16
 non corretti artificialmente. Non sono test del rendering Svelte o del browser.
 
+### Dominio e sessione locale della bozza
+
+934333c aggiunge admin-pilot-cards-draft.ts e i test: una copia per operazione,
+destinazioni imposte dal dominio nelle cinque direzioni approvate, nessuna doppia
+sottrazione, pool assenti non create, percorsi ambigui e immagini discordanti
+rifiutati. Snapshot originale, ID e versioni non vengono modificati. Un errore
+tardivo non applica parzialmente la sequenza agli input. Nessuna rete o PUT.
+
+admin-card-identity.ts usa dati casefold Unicode 15.0 per conservare l'identita'
+strip().casefold() del backend senza aggiungere NFC o rimozione degli accenti.
+Il modello dei dati e' stato verificato in Python; una copia JavaScript con le
+sole annotazioni di tipo rimosse e' stata eseguita in Node e confrontata con Python
+su 1.112.064 valori scalari e nove casi composti. Non e' un type-check TypeScript.
+Il formatter locale non era disponibile: tentativo offline ENOTCACHED e comando
+globale assente. Nessun successo locale di Prettier o Vitest viene inventato.
+
+b54cc84 aggiunge i commenti dei code point e lo stile a blocco dei callback di
+verifica errori, mantenendo operazioni e aspettative. Restava un avviso Prettier
+nel test della bozza. Con eedd729 sono stati aggiunti admin-pilot-cards-session.ts
+e otto test dedicati, riusando format-review-ui.yml sul solo ramo fase 16.
+La sessione separa baseline, anteprima e registro; blocca ulteriori clic senza
+perdere la bozza e offre un ripristino esplicito che conserva il blocco corrente.
+Non esegue rebase automatico, retry, scarto implicito o scritture persistenti.
+
+Il bot ha pubblicato f2dc492 il 2026-10-23 alle 19:19:53 CEST, modificando soltanto
+admin-pilot-cards-draft.spec.ts: array della chiamata con sorgente constructor
+disposto su piu' righe dal Prettier del lockfile. Il workflow controllato su
+eedd729 esegue Prettier, npm run check, npm run lint, npm test e npm run build
+prima del passaggio di pubblicazione. La presenza del commit e' evidenza che quel
+passaggio e' stato raggiunto, non una lettura diretta dei log dei singoli comandi.
+
+La nuova lettura del 2026-10-23 alle 19:21 CEST mostra la CI ordinaria 39994183218
+con Backend, Frontend e Migrazioni in coda. Non sono ancora dichiarati riusciti.
+Non confondere il precedente log rosso con il contenuto formattato del bot, ne'
+un elenco inizialmente vuoto di check con un nuovo verde globale.
+
 ### Limiti, dati e prossimo passo
 
-Restano il collaudo browser della UI di consultazione e le verifiche specifiche
-delle interazioni. Il prossimo blocco da proporre e' la logica dei trasferimenti
-in bozza, senza scritture, poi conferma testuale, protezione della bozza e
-collegamento live tramite il client SSE condiviso, con verifiche dedicate.
+La sessione e il pianificatore non sono ancora collegati ai clic della schermata:
+la UI resta in consultazione. Restano integrazione della bozza e conferma prima
+di abbandonarla, riepilogo testuale, conferma unica del salvataggio e collegamento
+live tramite il client SSE condiviso, oltre a verifiche dedicate e collaudo browser.
+Il ripristino della sessione non rilegge il server: l'integrazione deve distinguere
+lo scarto confermato da una rilettura o da un conflitto da preservare.
 Non dichiarare la fase 16 completa sulla sola CI del backend o del frontend.
 Verificare la propagazione di questo stato nei dieci documenti gestiti dal processo
 esistente. Nessuna attesa CI applicativa per i soli commit documentali e nessuna
