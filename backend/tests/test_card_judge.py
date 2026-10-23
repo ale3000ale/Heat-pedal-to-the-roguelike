@@ -3,7 +3,8 @@ from app.db.models.championship import Championship
 from app.db.models.deck import Deck, DeckPrototype
 from app.db.models.pilot import Pilot
 from app.security import hash_password
-from app.services.cards import CardEntry, dump_cards, parse_cards
+from app.services.cards import STARTER_INVENTORY, CardEntry, dump_cards, parse_cards
+from .race_fixtures import seed_game_deck_from_inventory_card
 
 PASSWORD = "password123"
 CARD = "Turbo Sponsor"
@@ -75,7 +76,7 @@ def sponsor_pool(session_factory, championship_id):
 
 def start_race(admin, championship_id):
     r = admin.post(f"/api/championships/{championship_id}/races")
-    assert r.status_code == 201
+    assert r.status_code == 201, r.text
     return r.json()["id"]
 
 
@@ -147,12 +148,23 @@ def other_judge(make_client, session_factory):
     return judge
 
 
-def scenario(make_client, session_factory, copies=2, pool_copies=2):
+def scenario(make_client, session_factory, copies=2, pool_copies=2, *, game_deck_copies: int | None = 15):
+    """Prepara il contesto giudice e un mazzo di prova prima dell'avvio reale.
+
+    copies/pool_copies restano conteggi sponsor; game_deck_copies riguarda solo
+    il mazzo da gioco e None lo lascia vuoto. Ritorna admin, giocatore, ID del
+    campionato, pilota e gara. Errori HTTP o di preparazione falliscono la fixture.
+    Nessun completamento nella produzione, mock dell'avvio o test saltato.
+    """
     admin, player = setup_world(make_client, session_factory)
     championship_id = admin.post("/api/championships", json={"name": "Estate"}).json()["id"]
     pilot_id = enrolled_pilot(player, championship_id)
     give_sponsor_cards(session_factory, pilot_id, copies)
     give_sponsor_pool(session_factory, championship_id, pool_copies)
+    if game_deck_copies is not None:
+        seed_game_deck_from_inventory_card(
+            session_factory, pilot_id, path=STARTER_INVENTORY[0].path, copies=game_deck_copies
+        )
     race_id = start_race(admin, championship_id)
     return admin, player, championship_id, pilot_id, race_id
 
@@ -342,6 +354,9 @@ def test_removal_is_refused_when_the_championship_has_no_sponsor_pool(
     champ = admin.post("/api/championships", json={"name": "Estate"}).json()["id"]
     pilot = enrolled_pilot(player, champ)
     give_sponsor_cards(session_factory, pilot, 2)
+    seed_game_deck_from_inventory_card(
+        session_factory, pilot, path=STARTER_INVENTORY[0].path, copies=15
+    )
     race = start_race(admin, champ)
     reviewing(admin, champ, race, pilot)
     assert removal(admin, champ, race, pilot).status_code == 409

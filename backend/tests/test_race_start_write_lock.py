@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 
 from app.db.models import Championship, EventLog, Race
 from app.services.championships import ChampionshipClosedError
-from app.services.races import create_race
+from app.services.races import RaceStartConflictError, create_race
 from app.services.sqlite_write_lock import SQLiteWriteLockError
 
 
@@ -53,8 +53,10 @@ def test_pending_changes_are_rejected_and_rolled_back(session_factory):
     championship_id = make_championship(session_factory)
     with session_factory() as db:
         db.get(Championship, championship_id).name = "Modifica pendente"
-        with pytest.raises(SQLiteWriteLockError, match="modifiche pendenti"):
+        with pytest.raises(RaceStartConflictError) as error:
             create_race(db, championship_id)
+        assert isinstance(error.value.__cause__, SQLiteWriteLockError)
+        assert "modifiche pendenti" in str(error.value.__cause__)
     with session_factory() as db:
         assert db.get(Championship, championship_id).name == "Lock avvio"
     assert_no_race_or_event(session_factory)
