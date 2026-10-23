@@ -5,7 +5,10 @@
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 
-	let { championshipId, onpendingchange }: { championshipId: number; onpendingchange?: (pending: boolean) => void } = $props();
+	let {
+		championshipId,
+		onpendingchange
+	}: { championshipId: number; onpendingchange?: (pending: boolean) => void } = $props();
 	let pilots = $state<AdminPilotRead[]>([]);
 	let selectedPilotId = $state<number | null>(null);
 	let pending = $state(false);
@@ -44,12 +47,15 @@
 				if (active && attempt === refresh) pilots = rows;
 			})
 			.catch((cause: unknown) => {
-				if (active && attempt === refresh) error = cause instanceof Error ? cause.message : 'Lettura dei piloti non riuscita';
+				if (active && attempt === refresh)
+					error = cause instanceof Error ? cause.message : 'Lettura dei piloti non riuscita';
 			})
 			.finally(() => {
 				if (active && attempt === refresh) loading = false;
 			});
-		return () => { active = false; };
+		return () => {
+			active = false;
+		};
 	});
 </script>
 
@@ -57,7 +63,11 @@
 	{#if selectedPilotId !== null}
 		<Button variant="outline" onclick={requestBack}>Torna ai piloti</Button>
 		{#key `${championshipId}:${selectedPilotId}`}
-			<AdminPilotCardsPanel {championshipId} pilotId={selectedPilotId} onpendingchange={handlePendingChange} />
+			<AdminPilotCardsPanel
+				{championshipId}
+				pilotId={selectedPilotId}
+				onpendingchange={handlePendingChange}
+			/>
 		{/key}
 	{:else if loading}
 		<p role="status" class="text-sm text-muted-foreground">Caricamento dei piloti…</p>
@@ -74,7 +84,12 @@
 						<p class="truncate font-medium">{pilot.name}</p>
 						<p class="truncate text-sm text-muted-foreground">Utente: {pilot.username}</p>
 					</div>
-					<Button size="sm" variant="outline" aria-label={`Visualizza le carte di ${pilot.name} (${pilot.username})`} onclick={() => (selectedPilotId = pilot.pilot_id)}>
+					<Button
+						size="sm"
+						variant="outline"
+						aria-label={`Visualizza le carte di ${pilot.name} (${pilot.username})`}
+						onclick={() => (selectedPilotId = pilot.pilot_id)}
+					>
 						<span aria-hidden="true">🃏</span> Carte
 					</Button>
 				</li>
@@ -84,5 +99,11 @@
 </section>
 
 {#if confirmBack}
-	<ConfirmDialog bind:open={confirmBack} title="Tornare ai piloti?" message="La bozza non è salvata. Tornando all’elenco le operazioni locali verranno scartate." confirmLabel="Scarta e torna ai piloti" onconfirm={leavePilot} />
+	<ConfirmDialog
+		bind:open={confirmBack}
+		title="Tornare ai piloti?"
+		message="La bozza non è salvata. Tornando all’elenco le operazioni locali verranno scartate."
+		confirmLabel="Scarta e torna ai piloti"
+		onconfirm={leavePilot}
+	/>
 {/if}

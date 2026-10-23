@@ -3,12 +3,22 @@
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { fetchAdminPilotCards } from '$lib/admin-pilot-cards-api';
 	import type { AdminCardContainerName } from '$lib/admin-pilot-cards-draft';
-	import { appendAdminCardDraftTransfer, createAdminCardDraftSession, resetAdminCardDraftSession, type AdminCardDraftSession } from '$lib/admin-pilot-cards-session';
+	import {
+		appendAdminCardDraftTransfer,
+		createAdminCardDraftSession,
+		resetAdminCardDraftSession,
+		type AdminCardDraftSession
+	} from '$lib/admin-pilot-cards-session';
 	import AdminCardContainer from '$lib/components/admin-card-container.svelte';
 	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 
-	let { championshipId, pilotId, onpendingchange }: { championshipId: number; pilotId: number; onpendingchange?: (pending: boolean) => void } = $props();
+	let {
+		championshipId,
+		pilotId,
+		onpendingchange
+	}: { championshipId: number; pilotId: number; onpendingchange?: (pending: boolean) => void } =
+		$props();
 	let session = $state.raw<AdminCardDraftSession | null>(null);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
@@ -119,7 +129,9 @@
 			.finally(() => {
 				if (active && attempt === refresh) loading = false;
 			});
-		return () => { active = false; };
+		return () => {
+			active = false;
+		};
 	});
 </script>
 
@@ -133,9 +145,13 @@
 		<div class="space-y-2">
 			<h3 class="font-semibold">{data.pilot.name}</h3>
 			<p class="text-sm text-muted-foreground">Utente: {data.pilot.username}</p>
-			<p class="text-sm text-muted-foreground">Bozza locale: un clic sposta una copia. Nessuna modifica viene salvata sul server.</p>
+			<p class="text-sm text-muted-foreground">
+				Bozza locale: un clic sposta una copia. Nessuna modifica viene salvata sul server.
+			</p>
 			<p role="status" class="text-sm">Operazioni locali: {session.transfers.length}.</p>
-			<Button variant="outline" disabled={!pending || leaving} onclick={() => (confirmReset = true)}>Ripristina bozza</Button>
+			<Button variant="outline" disabled={!pending || leaving} onclick={() => (confirmReset = true)}
+				>Ripristina bozza</Button
+			>
 		</div>
 		{#if session.blockedReason !== null}
 			<p role="status" class="text-sm">{session.blockedReason}</p>
@@ -147,22 +163,65 @@
 		<div class="grid gap-4 md:grid-cols-2">
 			<div class="space-y-3">
 				<h4 class="font-semibold">Carte del pilota</h4>
-				<AdminCardContainer title="Mazzo da gioco" deck={data.containers.game_deck} gameDeck destination="Pool Modifiche" disabled={blocked || !data.containers.modification_pool.available} onmove={(path) => move('game_deck', path)} />
-				<AdminCardContainer title="Inventario Modifiche" deck={data.containers.modification_inventory} destination="Pool Modifiche" disabled={blocked || !data.containers.modification_pool.available} onmove={(path) => move('modification_inventory', path)} />
-				<AdminCardContainer title="Inventario Sponsor" deck={data.containers.sponsor_inventory} destination="Pool Sponsor" disabled={blocked || !data.containers.sponsor_pool.available} onmove={(path) => move('sponsor_inventory', path)} />
+				<AdminCardContainer
+					title="Mazzo da gioco"
+					deck={data.containers.game_deck}
+					gameDeck
+					destination="Pool Modifiche"
+					disabled={blocked || !data.containers.modification_pool.available}
+					onmove={(path) => move('game_deck', path)}
+				/>
+				<AdminCardContainer
+					title="Inventario Modifiche"
+					deck={data.containers.modification_inventory}
+					destination="Pool Modifiche"
+					disabled={blocked || !data.containers.modification_pool.available}
+					onmove={(path) => move('modification_inventory', path)}
+				/>
+				<AdminCardContainer
+					title="Inventario Sponsor"
+					deck={data.containers.sponsor_inventory}
+					destination="Pool Sponsor"
+					disabled={blocked || !data.containers.sponsor_pool.available}
+					onmove={(path) => move('sponsor_inventory', path)}
+				/>
 			</div>
 			<div class="space-y-3">
 				<h4 class="font-semibold">Pool del campionato</h4>
-				<AdminCardContainer title="Pool Modifiche" deck={data.containers.modification_pool} destination="Inventario Modifiche" disabled={blocked || !data.containers.modification_inventory.available} onmove={(path) => move('modification_pool', path)} />
-				<AdminCardContainer title="Pool Sponsor" deck={data.containers.sponsor_pool} destination="Inventario Sponsor" disabled={blocked || !data.containers.sponsor_inventory.available} onmove={(path) => move('sponsor_pool', path)} />
+				<AdminCardContainer
+					title="Pool Modifiche"
+					deck={data.containers.modification_pool}
+					destination="Inventario Modifiche"
+					disabled={blocked || !data.containers.modification_inventory.available}
+					onmove={(path) => move('modification_pool', path)}
+				/>
+				<AdminCardContainer
+					title="Pool Sponsor"
+					deck={data.containers.sponsor_pool}
+					destination="Inventario Sponsor"
+					disabled={blocked || !data.containers.sponsor_inventory.available}
+					onmove={(path) => move('sponsor_pool', path)}
+				/>
 			</div>
 		</div>
 	{/if}
 </section>
 
 {#if confirmReset}
-	<ConfirmDialog bind:open={confirmReset} title="Ripristinare la bozza?" message="Le operazioni locali verranno scartate. Verrà ripristinata la lettura iniziale, senza rileggere o modificare il server." confirmLabel="Scarta e ripristina" onconfirm={resetDraft} />
+	<ConfirmDialog
+		bind:open={confirmReset}
+		title="Ripristinare la bozza?"
+		message="Le operazioni locali verranno scartate. Verrà ripristinata la lettura iniziale, senza rileggere o modificare il server."
+		confirmLabel="Scarta e ripristina"
+		onconfirm={resetDraft}
+	/>
 {/if}
 {#if confirmLeave}
-	<ConfirmDialog bind:open={confirmLeave} title="Abbandonare la bozza?" message="La bozza non è salvata. Proseguendo la navigazione le operazioni locali verranno scartate." confirmLabel="Scarta e prosegui" onconfirm={leavePage} />
+	<ConfirmDialog
+		bind:open={confirmLeave}
+		title="Abbandonare la bozza?"
+		message="La bozza non è salvata. Proseguendo la navigazione le operazioni locali verranno scartate."
+		confirmLabel="Scarta e prosegui"
+		onconfirm={leavePage}
+	/>
 {/if}

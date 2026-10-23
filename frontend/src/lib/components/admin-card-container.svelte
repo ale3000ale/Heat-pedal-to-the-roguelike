@@ -3,7 +3,14 @@
 	import { countAdminDeckCopies } from '$lib/admin-pilot-cards-view';
 	import CardTile from '$lib/components/CardTile.svelte';
 
-	let { title, deck, gameDeck = false, onmove, disabled = false, destination }: {
+	let {
+		title,
+		deck,
+		gameDeck = false,
+		onmove,
+		disabled = false,
+		destination
+	}: {
 		title: string;
 		deck: AdminDeckRead;
 		gameDeck?: boolean;
@@ -30,11 +37,19 @@
 			<p class="text-sm text-muted-foreground">Nessuna carta in questo contenitore.</p>
 		{:else}
 			{#if destination}
-				<p class="text-sm text-muted-foreground">Un clic sposta una copia verso {destination} nella bozza.</p>
+				<p class="text-sm text-muted-foreground">
+					Un clic sposta una copia verso {destination} nella bozza.
+				</p>
 			{/if}
 			<div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
 				{#each deck.cards as card (card.name)}
-					<CardTile {card} compact {disabled} onclick={onmove ? () => onmove?.(card.path) : undefined} title="Copie nel contenitore" />
+					<CardTile
+						{card}
+						compact
+						{disabled}
+						onclick={onmove ? () => onmove?.(card.path) : undefined}
+						title="Copie nel contenitore"
+					/>
 				{/each}
 			</div>
 		{/if}
