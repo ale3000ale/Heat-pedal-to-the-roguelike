@@ -1,4 +1,4 @@
-name: Formatta client PUT carte admin
+name: Formatta preparazione salvataggio admin
 
 on:
   push:
@@ -30,15 +30,14 @@ jobs:
       - name: Installa dal lockfile
         working-directory: frontend
         run: npm ci
-      - name: Formatta soltanto i tre moduli approvati
+      - name: Formatta soltanto i due moduli approvati
         working-directory: frontend
         shell: bash
         run: |
           set -euo pipefail
           files=(
-            src/lib/admin-pilot-cards-save-types.ts
-            src/lib/admin-pilot-cards-save-api.ts
-            src/lib/admin-pilot-cards-save-api.spec.ts
+            src/lib/admin-pilot-cards-save-plan.ts
+            src/lib/admin-pilot-cards-save-plan.spec.ts
           )
           ./node_modules/.bin/prettier --write "${files[@]}"
           ./node_modules/.bin/prettier --check "${files[@]}"
@@ -48,9 +47,8 @@ jobs:
           set -euo pipefail
           git diff --exit-code -- backend database heat.py frontend/package.json frontend/package-lock.json frontend/prettier.config.js .github/workflows
           files=(
-            frontend/src/lib/admin-pilot-cards-save-types.ts
-            frontend/src/lib/admin-pilot-cards-save-api.ts
-            frontend/src/lib/admin-pilot-cards-save-api.spec.ts
+            frontend/src/lib/admin-pilot-cards-save-plan.ts
+            frontend/src/lib/admin-pilot-cards-save-plan.spec.ts
           )
           git add -- "${files[@]}"
           git diff --cached --check
@@ -65,7 +63,7 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'style: formatta il client PUT carte admin con il lockfile'
+          git commit -m 'style: formatta preparazione salvataggio admin con il lockfile'
           git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory
       - name: Identifica il codice sottoposto ai controlli
         run: git rev-parse HEAD
