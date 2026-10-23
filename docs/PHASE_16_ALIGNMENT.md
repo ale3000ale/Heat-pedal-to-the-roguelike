@@ -211,7 +211,7 @@ JSON corrotto, accesso admin/giudice, esclusione dei non iscritti, rollback even
 e traduzione di un lock occupato simulato. Non equivalgono a un collaudo browser
 o a una nuova prova reale di tutte le interazioni concorrenti avvio/admin/giocatore.
 
-### Primo frontend: client verificato e UI di consultazione
+### Primo frontend: client e UI di consultazione verificati in CI
 
 I tipi e il client GET admin sono stati aggiunti in c01b486. La CI frontend si
 e' fermata inizialmente su Prettier; 822a85a corregge soltanto la formattazione
@@ -219,27 +219,36 @@ della condizione. Il job Frontend (check, lint, test, build) 120493926882 della
 CI 39976945581 risulta riuscito ed e' stato letto il 2026-10-23. Nessuna nuova
 esecuzione npm locale e nessun collaudo browser dichiarati.
 
-Questo incremento aggiunge la UI di consultazione, ancora da verificare in CI
-e nel browser: Piloti nelle impostazioni campionato solo admin, nome e username,
-pulsante Carte con etichetta accessibile e cinque sezioni apribili con immagini.
-I tre contenitori del pilota restano separati dalle due pool. Il mazzo mostra
-N/15 contando copie; pool assente e pool vuota restano distinte. Modal e CardTile
-esistenti vengono riusati; nessun nuovo scaffold, dipendenza o copia di immagini.
+La UI di consultazione e' stata aggiunta in bb7f0f7; 89cab3d corregge gli a capo
+nei componenti e 72e4274 rimuove la riga vuota duplicata rimasta nel test. La CI
+39986696961 su 72e4274 e' stata letta il 2026-10-23: successo per Frontend
+(check, lint, test, build), job 120527608290, Backend (pytest), Migrazioni
+(database di test) e Documenti fase 16 dopo backend. Anche align-docs-pr della
+CI 39986696945 risulta riuscito. Non sono nuove esecuzioni locali e non viene
+inventato un conteggio complessivo di test o warning dai soli stati dei job.
+
+La schermata presenta Piloti nelle impostazioni campionato solo admin, nome e
+username, pulsante Carte con etichetta accessibile e cinque sezioni apribili con
+immagini. I tre contenitori del pilota restano separati dalle due pool. Il mazzo
+mostra N/15 contando copie; pool assente e pool vuota restano distinte. Modal e
+CardTile esistenti vengono riusati; nessun nuovo scaffold, dipendenza o copia
+di immagini. Il rendering e le interazioni nel browser restano da collaudare.
 
 Le letture ignorano risposte tardive dopo cambio contesto o smontaggio del pannello;
 non annullano la richiesta di rete gia' inviata. Caricamento, errori e rilettura
 manuale sono espliciti. Nessun trasferimento, PUT, autosalvataggio, polling o
 nuovo stream SSE. Gli errori di permesso rimangono controllati dal backend.
-Quattro casi Vitest preparati verificano il conteggio delle copie senza mutazioni,
-contenitore vuoto e conteggi 14/16 non corretti artificialmente. Non sono test
-del rendering Svelte o di interazione browser e non sono ancora dichiarati PASS.
+I quattro casi del modulo Vitest sul conteggio sono inclusi nella suite frontend
+risultata riuscita: copie senza mutazioni, contenitore vuoto e conteggi 14/16
+non corretti artificialmente. Non sono test del rendering Svelte o del browser.
 
 ### Limiti, dati e prossimo passo
 
-Restano da verificare UI di consultazione e relativi controlli, poi implementare
-trasferimenti in bozza, conferma testuale, protezione della bozza e collegamento
-live tramite il client SSE condiviso, con verifiche dedicate e collaudo browser.
-Non dichiarare la fase 16 completa sulla sola CI del backend o del client GET.
+Restano il collaudo browser della UI di consultazione e le verifiche specifiche
+delle interazioni. Il prossimo blocco da proporre e' la logica dei trasferimenti
+in bozza, senza scritture, poi conferma testuale, protezione della bozza e
+collegamento live tramite il client SSE condiviso, con verifiche dedicate.
+Non dichiarare la fase 16 completa sulla sola CI del backend o del frontend.
 Verificare la propagazione di questo stato nei dieci documenti gestiti dal processo
 esistente. Nessuna attesa CI applicativa per i soli commit documentali e nessuna
 chiusura/riapertura abituale della PR.
