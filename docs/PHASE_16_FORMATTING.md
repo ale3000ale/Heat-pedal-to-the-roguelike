@@ -1,32 +1,44 @@
-# Fase 16 - Formattazione e contratto del riallineamento
+# Fase 16 - Formattazione e contratto documentale
 
 Aggiornamento: 2026-10-23. Solo ramo phase-16-admin-pilot-inventory.
-Sorgente generale: PHASE_16_ADMIN_SAVE_API.md. Nessun merge.
+Sorgente: PHASE_16_ADMIN_SAVE_API.md. Nessun merge autorizzato.
 
-## Cronologia delle correzioni
+## Correzioni consolidate
 
-2cf25fd separa pubblicazione dello stile e controlli successivi. ceb12b1 formatta
-la bozza UI; 788e6f5 aggiunge l'eccezione ESLint limitata al goto della URL gia'
-ricevuta da SvelteKit, senza modificare codice eseguibile o regola globale.
-Successivamente f95c915 formatta il test del client PUT, ad377d4 il piano e
-7d449cb i quattro componenti del salvataggio UI.
+2cf25fd separa pubblicazione dello stile dai controlli applicativi successivi.
+I formatter restano limitati ai file approvati, usando npm ci e Prettier dal
+lockfile, con controlli di ramo, percorsi estranei e SHA effettiva verificata.
+Un commit del bot, da solo, non prova check/lint/test/build riusciti.
 
-La CI 40012639610 su 7d449cb ha frontend, backend e migrazioni riusciti, ma il
-job docs fallito. La causa documentale e' la rinomina del titolo in Salvataggio
-admin atomico e bozza UI mentre il workflow richiedeva il titolo originale.
-Questa correzione ripristina esattamente # Fase 16 - Salvataggio admin atomico.
-La riga di PROJECT_STATUS non usa piu' lo stato fisso del commit 4514348:
-viene ricavata da una riga Stato sintetico fase 16 unica, non vuota e senza pipe.
-I marcatori restano controllati, anche quando invertiti e adiacenti.
+788e6f5 mantiene una sola eccezione ESLint per goto della URL gia' fornita da
+SvelteKit, senza disabilitazione globale. 78661d8 rimuove l'import inutilizzato
+dal pannello; 283c0ac corregge prefer-const nella fixture senza cambiare le
+asserzioni. 6d1b7cd completa riepilogo effettivo e posizione Salva; il bot
+2366d1d formatta esattamente i quattro file frontend di quell'incremento.
 
-## Verifiche e limiti
+Il titolo del sorgente e' stabilizzato a # Fase 16 - Salvataggio admin atomico.
+La riga Stato sintetico fase 16 e' unica, non vuota e senza pipe; alimenta
+PROJECT_STATUS senza vecchi stati hardcoded. Il pin di integrita' in ci.yml
+usa il blob approvato 6858f05d89072cca488efeeb46166a2770383545. I controlli
+su titolo, stato e marcatori, inclusi invertiti/adiacenti, non sono rimossi.
 
-Sette test Python del codice di trasformazione su dieci fixture temporanee
-riusciti, incluse idempotenza, conservazione testo e assenza di scritture
-parziali su errore. Non eseguiti localmente workflow completo, pip, pytest o push.
-Il workflow conserva i test mirati esistenti e le protezioni di ramo e percorsi.
-Il formatter resta limitato ai quattro componenti di salvataggio, con Prettier
-dal lockfile e controlli completi successivi. Nessuna modifica a formatter,
-CI ordinaria, dipendenze o codice applicativo in questa correzione.
-Propagazione e nuova esecuzione documentale ancora da verificare; nessuna
-attesa di nuovi test applicativi per i soli docs. Browser e live non completati.
+## Riscontro finale
+
+CI 40026443509 su 2366d1de37cf1cf638b45c55313a3e31601eebff riuscita per
+frontend, backend, migrazioni e job documentale. Il precedente guasto del
+workflow non e' lo stato corrente. Nessun conteggio globale di warning o test
+letto dai singoli log e nessuna esecuzione locale aggiuntiva dichiarata.
+I precedenti sette test Python su fixture della trasformazione documentale
+erano riusciti, ma non equivalevano al workflow GitHub completo.
+
+Il riscontro manuale dell'autore alle 23:59 CEST del 2026-10-23 e' positivo
+nel complesso e non dettaglia ogni voce della checklist. Nessun collaudo
+browser dell'assistente o superamento automatico di ogni caso dichiarato.
+
+## Riallineamento conclusivo
+
+Si aggiornano soltanto i documenti dopo il codice e le verifiche. La
+propagazione di questo nuovo testo ai dieci documenti generali resta da
+verificare sul commit pubblicato, senza attendere altri test applicativi
+per i soli docs. Nessuna modifica a workflow, codice, dipendenze o dati
+in questo riallineamento; PR in bozza, nessun merge o ZIP finale implicito.

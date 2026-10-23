@@ -1,36 +1,45 @@
-# Fase 16 - Bozza e salvataggio UI admin
+# Fase 16 - UI admin, bozza e live
 
 Aggiornamento: 2026-10-23. Ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
-Sorgente generale: PHASE_16_ADMIN_SAVE_API.md. Nessun merge.
+Sorgente: PHASE_16_ADMIN_SAVE_API.md. Nessun merge autorizzato.
 
-## Stato implementato
+## Perimetro implementato
 
-c950510 collega carte e sessione locale. Cinque sezioni, tre contenitori del
-pilota separati dalle due pool, mazzo N/15 per copie e pool assente distinta da
-vuota. Le operazioni ricalcolano dalla baseline e non la mutano; errori locali
-separati da quelli REST. Ripristino locale, ritorno, chiusura e navigazione
-richiedono protezione prima dello scarto.
+Piloti nelle impostazioni campionato solo admin, nome e username, pulsante Carte
+accessibile. Cinque sezioni apribili con immagini: mazzo N/15, due inventari e
+due pool separati. Pool assente distinta da vuota. Una copia per clic nelle sole
+direzioni approvate, nessun passaggio diretto pool/mazzo o sponsor/mazzo.
 
-Client PUT 549e83e/f95c915 e piano 024d47a/ad377d4 sono collegati alla UI da
-9769dd5, formattato in 7d449cb. Riepilogo per clic, conferma unica e consumo
-della proposta prima della rete; durante conferme o richieste sono bloccati
-modifica carte, ritorno e chiusura ordinaria. Su successo nuova baseline dallo
-snapshot PUT senza GET. Errori conservano la bozza; conflitti/esiti incerti
-bloccano altri invii. Rilettura esplicita con scarto solo dopo risposta utilizzabile.
+Salva in fondo a destra; modal testuale con pilota, username, nuovo N/15 e
+variazioni effettive accorpate. Movimenti opposti compensati nel solo riepilogo;
+registro PUT originale in ordine. Senza differenze non si propone la PUT.
+Annullamento senza scritture, conferma unica, protezione dai doppi invii e
+dallo scarto non confermato. Errori conservano la bozza e conflitti/esiti
+incerti bloccano nuovi invii fino a una rilettura esplicita utilizzabile.
 
-## Riscontri e limite documentale
+Live collegato al pannello mediante client SSE e coalescer condivisi, senza
+nuovo stream o polling. Conferme e richieste HTTP distinte: invalidazione
+della proposta prima dell'invio e differimento dei segnali durante PUT/GET.
+Bozza mai sostituita da una GET live incompatibile; reset locale non sblocca
+un'invalidazione remota. Utente/ruolo e contesto sorvegliati, cleanup dei soli
+listener propri, risultati obsoleti ignorati. Stato trasporto non equivale
+a dati aggiornati. Nessun autosalvataggio o notifica regalo per movimenti admin.
 
-CI 40012639610 su 7d449cb: frontend (check, lint, test, build), backend e
-migrazioni riusciti. Il job documentale e' fallito per il titolo incompatibile
-del sorgente, non per il codice applicativo. La correzione ripristina il titolo
-stabile e ricava la riga di stato dal sorgente. Propagazione ancora da verificare.
-Nessuna esecuzione npm o browser locale in questo riallineamento.
+## Verifiche finali
 
-## Da completare
+Candidato 2366d1de37cf1cf638b45c55313a3e31601eebff. CI 40026443509 riuscita:
+frontend (check, lint, test, build), backend, migrazioni su DB di test e job
+documentale. Conteggi globali e warning non letti dai singoli log; nessuna
+nuova esecuzione locale o prova browser dell'assistente dichiarata.
 
-Live tramite SSE condiviso e collaudo browser: annullamento, doppi clic, 409,
-rete incerta, 422, rilettura fallita, Escape, chiusura/ritorno durante rete e
-risposte tardive. Test di client, piano e sessione non equivalgono a test DOM
-del flusso UI. Nessun autosalvataggio, polling, stream aggiuntivo, migrazione
-o dipendenza nuova. Fase non completa. Per i soli docs non attendere nuovi
-test applicativi; verificare separatamente la propagazione documentale.
+Il 2026-10-23 alle 23:59 CEST, dopo checklist e via libera sul candidato,
+l'autore riferisce «sembra funzionare tutto»: riscontro manuale complessivo
+positivo, senza esiti per singolo caso, browser/dispositivo o log. I casi
+avanzati non diventano automaticamente OK. Dettagli e limiti nel sorgente.
+
+## Documenti e stato di consegna
+
+Riallineamento conclusivo preparato dopo codice e verifiche; propagazione nei
+dieci documenti generali ancora da verificare sul nuovo commit. Per i soli
+docs non attendere nuovi test applicativi. Nessun nuovo codice, dato,
+dipendenza, migrazione, merge o ZIP finale in questo aggiornamento. PR in bozza.

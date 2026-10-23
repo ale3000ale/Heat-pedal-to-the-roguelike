@@ -1,49 +1,52 @@
-# Fase 16 - Salvataggio PUT nella UI admin
+# Fase 16 - Salvataggio admin: contratto, riepilogo e live
 
 Aggiornamento: 2026-10-23. Ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
-Sorgente generale: PHASE_16_ADMIN_SAVE_API.md. Nessun merge.
+Sorgente: PHASE_16_ADMIN_SAVE_API.md. Nessun merge autorizzato.
 
-## Contratto e collegamento
+## Contratto e preparazione
 
-Client 549e83e, formattato in f95c915; piano 024d47a, formattato in ad377d4.
-Richiesta con versioni iniziali di tutti i cinque contenitori e trasferimenti
-source/path, senza destinazioni client. Solo le pool possono essere null.
-Il piano ignora anteprime alterate, ricalcola dal registro e produce una riga
-per clic, non differenze nette. Nessuna applicazione parziale agli input.
+Client saveAdminPilotCards tramite api.ts, con ID verificati e cookie del
+trasporto comune. Richiesta versions per tutti i contenitori e transfers
+source/path; soltanto le pool possono essere null. Validazione autorevole nel
+backend, non sostituita dai tipi TypeScript. Nessun retry di scrittura.
 
-9769dd5 e il formatter 7d449cb collegano il flusso tramite
-admin-pilot-cards-save-controls.svelte. Riepilogo senza invio; Annulla, X,
-Escape e sfondo non fanno PUT. Conferma consuma la proposta e blocca prima
-del primo await; sessione diversa richiede nuovo riepilogo. Nessun retry.
-Conferme e richieste propagano il blocco fino alle impostazioni. Una chiusura
-forzata del browser non annulla una scrittura gia' inviata. Risposte tardive
-di componenti dismessi o sessioni sostituite vengono ignorate.
+prepareAdminCardSave usa versioni della baseline, non quelle dell'anteprima;
+ricalcola tutti i trasferimenti e non muta input su errore tardivo. Il riepilogo
+effettivo accorpa quantita' e compensa versi opposti inventario/pool con la
+stessa identita' e immagine. Non cambia la sequenza PUT o inventa un movimento
+diretto mazzo/inventario. Il modal include pilota, username e nuovo N/15.
+Nessuna proposta di invio se non restano variazioni effettive.
 
-Successo: sessione nuova da snapshot PUT e versioni server, senza GET automatica.
-Errore: bozza conservata; 422 consente azioni manuali, altri errori bloccano
-nuovi invii fino a rilettura. 401/403/404/409 sono rifiuti/conflitti, gli altri
-esiti non verificati. Client controlla contesto e creazione della sessione
-controlla carte: non e' una validazione completa runtime del DTO.
-Rilettura esplicita, con conferma se pendente: scarto solo dopo risposta
-utilizzabile, non su errore. Ripristino locale conserva il blocco.
+Conferma consuma una proposta una sola volta, prima dell'await; proposta
+invalidata richiede nuovo riepilogo. Successo: nuova sessione dallo snapshot
+PUT e versioni server. Errori conservano la bozza; 422 consente nuove azioni
+manuali, altri errori bloccano nuovi invii fino a rilettura. Errore di rete o
+AdminCardSaveResponseError non provano rollback. Il client controlla contesto
+e la creazione della sessione valida carte, non ogni campo runtime del DTO.
 
-## Verifiche effettive
+## Coordinamento live
 
-CI 40012639610 su 7d449cb: frontend (check, lint, test, build), job
-120622516434, backend e migrazioni riusciti. Job documentale 120623536970
-fallito per intestazione del sorgente diversa dal contratto; non confondere
-questo errore con test applicativi falliti o dichiarare la CI tutta verde.
-La correzione documentale ripristina il titolo e deriva lo stato della tabella
-dal sorgente, mantenendo controlli e protezioni. Sette test Python della
-trasformazione su fixture temporanee riusciti; non e' un workflow GitHub locale.
-Propagazione sui dieci documenti ancora da verificare dopo il commit.
+Conferme aperte distinte dalle richieste HTTP: eventi prima dell'invio possono
+invalidare la proposta; durante PUT/GET i segnali attendono e non sostituiscono
+la sessione della richiesta. Un evento pendente puo' generare una GET live dopo
+il PUT; nessuna GET di conferma incondizionata o retry di scrittura.
+Il coordinatore condiviso accorpa letture e scarta risultati obsoleti. Solo uno
+snapshot server utilizzabile accettato esplicitamente libera i blocchi.
+Rileggi dal server conferma lo scarto se pendente e conserva la bozza su errore.
+Reset locale conserva i blocchi. Cambio contesto/utente/ruolo e scadenza
+inibiscono aggiornamenti tardivi; nessuna chiusura dello stream condiviso.
 
-## Limiti
+## Esiti e limiti
 
-Non sono stati eseguiti nuovi test DOM o browser. Restano casi di annullamento,
-doppi clic, successo, conflitto, rete incerta, 422, rilettura fallita, Escape,
-chiusura/ritorno durante rete e risposte tardive. Restano live e collaudo della
-fase; nessun autosalvataggio, polling o nuovo stream SSE. Nessuna modifica
-applicativa, migrazione, dipendenza o accesso al database reale in questa
-correzione documentale. Dopo pubblicazione verificare propagazione, senza
-attendere nuovi test applicativi per i soli aggiornamenti docs. Fase non completa.
+CI 40026443509 riuscita su 2366d1d: frontend (check, lint, test, build), backend,
+migrazioni su DB di test e riallineamento documentale. Non sono nuovi test
+locali; conteggi complessivi e warning non letti dai singoli log.
+Riscontro dell'autore del 2026-10-23, 23:59 CEST: «sembra funzionare tutto»,
+positivo nel complesso dopo la checklist, non un protocollo caso per caso.
+Non attestare singolarmente doppi invii, rete incerta, concorrenza reale,
+privacy o tutti i percorsi di errore senza risultati specifici.
+
+Questo aggiornamento e' solo documentale, successivo al codice come richiesto.
+Propagazione sui dieci documenti generali da verificare dopo pubblicazione,
+senza attesa di nuovi test applicativi per i soli docs. Nessuna migrazione,
+dipendenza nuova, accesso al DB reale dell'assistente, merge o ZIP finale.
