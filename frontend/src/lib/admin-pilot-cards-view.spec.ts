@@ -15,7 +15,6 @@ function deck(copies: number[]): AdminDeckRead {
 	};
 }
 
-
 describe('conteggio copie dei contenitori admin', () => {
 	it('somma le copie senza contare solo i nomi e senza modificare il contenitore', () => {
 		const source = deck([9, 6]);
