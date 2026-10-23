@@ -42,6 +42,10 @@ jobs:
           source = Path("docs/PHASE_16_ADMIN_SAVE_API.md").read_text(encoding="utf-8")
           if not source.startswith("# Fase 16 - Salvataggio admin atomico\n"):
               raise RuntimeError("Documento di salvataggio inatteso")
+          status_prefix = "Stato sintetico fase 16: "
+          statuses = [line[len(status_prefix):].strip() for line in source.splitlines() if line.startswith(status_prefix)]
+          if len(statuses) != 1 or not statuses[0] or "|" in statuses[0]:
+              raise RuntimeError("Stato sintetico fase 16 assente, ambiguo o non valido")
           start = "<!-- phase16-admin-save:start -->"
           end = "<!-- phase16-admin-save:end -->"
           body = "\n".join("#" + line if line.startswith("#") else line for line in source.splitlines())
@@ -52,9 +56,10 @@ jobs:
               if text.count(start) != text.count(end) or text.count(start) > 1:
                   raise RuntimeError("Marcatori documentali incoerenti: " + name)
               if start in text:
-                  begin, finish = text.index(start), text.index(end) + len(end)
-                  if begin >= finish:
+                  begin, end_index = text.index(start), text.index(end)
+                  if begin >= end_index:
                       raise RuntimeError("Marcatori invertiti: " + name)
+                  finish = end_index + len(end)
                   text = text[:begin] + block + text[finish:]
               else:
                   text = text.rstrip() + "\n\n" + block + "\n"
@@ -62,7 +67,7 @@ jobs:
                   rows = [line for line in text.splitlines() if line.startswith("| 16 |")]
                   if len(rows) != 1:
                       raise RuntimeError("Riga fase 16 non univoca")
-                  text = text.replace(rows[0], "| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | Backend letture, salvataggio e avvio da 15 implementati; CI completa verde su 4514348. Frontend admin, live e collaudo della fase ancora da completare |")
+                  text = text.replace(rows[0], "| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | " + statuses[0] + " |")
                   text = text.replace("Ultimo aggiornamento: 2026-10-22", "Ultimo aggiornamento: 2026-10-23", 1)
               contents[name] = text
           for name, text in contents.items():

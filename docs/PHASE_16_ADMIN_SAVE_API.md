@@ -1,158 +1,164 @@
-# Fase 16 - Salvataggio admin atomico e bozza UI
+# Fase 16 - Salvataggio admin atomico
 
 Aggiornamento: 2026-10-23. Ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
-Backend e integrazione locale della bozza sono implementati e verificati in CI.
-Il salvataggio dalla UI e il live restano esclusi. Nessun merge o fase completa.
-Questa versione consolida le note precedenti, conservate nello storico Git.
+Stato sintetico fase 16: Backend, client PUT, piano e salvataggio UI implementati; controlli applicativi riusciti su 7d449cb; live e collaudo browser da completare; fase non conclusa.
 
-## Contratto di scrittura admin
+L'intestazione H1 e la riga Stato sintetico fase 16 sono contratti del processo
+di riallineamento. Non rinominare il titolo senza aggiornare e verificare i suoi
+consumatori. Questo documento consolida le note precedenti, conservate in Git.
+Nessun merge, migrazione o prova sul database reale impliciti.
+
+## Contratto backend
 
 PUT /api/admin/championships/{championship_id}/pilots/{pilot_id}/cards riceve
-versions e transfers. versions descrive tutti i cinque contenitori con id/version
-interi positivi, oppure null per le sole pool assenti. Ogni trasferimento contiene
-solo source e path: una copia per elemento, destinazione imposta dal dominio.
-Campi extra, destinazioni client e sostituzioni arbitrarie delle carte sono rifiutati.
+versions e transfers. versions include tutti i cinque contenitori, con id/version
+interi positivi; solo le due pool possono essere null. Ogni trasferimento contiene
+solo source/path e sposta una copia, con destinazione imposta dal dominio. Campi
+extra, destinazioni client e sostituzioni arbitrarie delle carte sono rifiutati.
 
-Il backend ricontrolla ruolo admin, pilota visibile/iscritto, campionato chiuso,
-gara aperta e revisione non confermata nella transazione. Confronta id e versione
-anche dei contenitori non toccati. Le pool assenti non vengono create e non possono
-fornire o ricevere copie. Conflitto: 409 senza retry automatico; movimento non
-applicabile: 422. Un solo commit per Deck ed eventi, rollback anche su errore eventi.
+Il backend ricontrolla admin, pilota visibile/iscritto, chiusura campionato, gara
+aperta e revisione non confermata nella transazione. Confronta id e versione
+anche dei contenitori non toccati. Pool assenti non create e non utilizzabili
+come sorgente o destinazione. Conflitto 409 senza retry automatico; movimento
+non applicabile 422. Commit unico Deck/eventi, rollback anche su errore eventi.
 
-Il mazzo puo' restare incompleto tra le gare. Nessuna aggiunta diretta pool/mazzo
-o sponsor/mazzo e nessuna doppia sottrazione. Solo differenze effettive cambiano
-le versioni; senza differenze non vengono prodotti eventi. La risposta restituisce
-snapshot e versioni aggiornate. Dopo variazioni: cards.changed pubblico vuoto e
-privato al proprietario con solo pilot_id, senza carte o notifiche regalo/tasto S.
+Il mazzo puo' restare incompleto tra le gare. Nessuna aggiunta pool/mazzo o
+sponsor/mazzo e nessuna doppia sottrazione. Solo differenze effettive cambiano
+versioni ed eventi. La risposta contiene snapshot e versioni server. Dopo
+variazioni: cards.changed pubblico vuoto e privato al proprietario con solo
+pilot_id, senza carte o notifiche regalo/tasto S.
 
-## Lock condiviso e avvio gara
+## Lock e avvio gara
 
-services/sqlite_write_lock.py e' usato da salvataggio admin, pilot_deck.move_card
-e races.create_race prima delle letture autorevoli. Invalida le identita' ORM
-precedenti e rifiuta modifiche pendenti. Una transazione nativa gia' aperta viene
-promossa con UPDATE senza righe: nessuna carta o versione viene modificata dal lock.
-Il retry preesistente di move_card resta limitato a StaleDataError; il salvataggio
-admin e l'avvio gara non ritentano automaticamente i conflitti di lock.
+services/sqlite_write_lock.py e' condiviso da salvataggio admin, move_card e
+create_race prima delle letture autorevoli; invalida identita' ORM precedenti e
+rifiuta modifiche pendenti. La transazione nativa gia' aperta viene promossa con
+UPDATE senza righe, senza modificare carte/versioni. Il retry preesistente di
+move_card resta limitato a StaleDataError; admin e avvio non ritentano i lock.
 
-create_race legge i mazzi da gioco di tutti gli iscritti sotto lo stesso lock e
-richiede esattamente 15 copie totali, non 15 nomi o il totale degli inventari.
-La lettura DB in race_deck_snapshot.py riusa il dominio race_deck_readiness.py;
-include gli iscritti nascosti e non aggiunge un nuovo minimo di iscritti.
-Mazzo mancante o JSON corrotto non vengono trasformati in un mazzo valido.
+create_race richiede esattamente 15 copie nel mazzo da gioco di ogni iscritto
+sotto lo stesso lock, non 15 nomi o il totale degli inventari. Include iscritti
+nascosti, senza nuovo minimo di iscritti. race_deck_snapshot.py riusa il dominio
+race_deck_readiness.py. Mazzo mancante o JSON corrotto non diventano validi.
 
-Se un iscritto non e' pronto: nessuna nuova gara o race.started, rollback e HTTP
-409 con riepilogo testuale di nomi e conteggi, senza carte. I conflitti SQLite
-BUSY/LOCKED vengono tradotti in RaceStartConflictError e HTTP 409; gli altri
-errori SQL non sono mascherati. Restano chiusura e gara/revisione non confermata.
-La gestione preesistente delle revisioni scadute prima dell'avvio non e' cambiata.
+Iscritto non pronto: niente nuova gara o race.started, rollback e 409 con nomi e
+conteggi, senza carte. BUSY/LOCKED diventano RaceStartConflictError e 409; altri
+errori SQL non mascherati. Restano chiusura e gara/revisione non confermata; la
+gestione preesistente delle revisioni scadute prima dell'avvio non cambia.
 
-## Verifiche precedenti e dominio locale
+## Verifiche e incrementi precedenti
 
 La CI 39917281059 su 4514348 e align-docs-pr 39917281153 risultavano riusciti.
-L'autore aveva fornito prima della pulizia: 748 passed, 14 warnings e 14 subtests
-passed. 4514348 rimuove soltanto Result.tuples() dai due snapshot eventi,
-conservando 27 asserzioni verificate tramite AST. I warning successivi non sono
-stati contati dai log e non vengono dichiarati zero. La regressione iniziale,
-72 failed e 676 passed e poi un solo fallimento, e' stata corretta nelle fixture
-e nelle aspettative senza saltare test o allentare il vincolo dei mazzi da 15.
+L'autore aveva fornito prima della pulizia 748 passed, 14 warnings e 14 subtests
+passed. 4514348 rimuove Result.tuples() da due snapshot eventi mantenendo 27
+asserzioni verificate tramite AST. I warning successivi non sono stati contati
+dai log. La regressione iniziale di 72 failed/676 passed, poi un fallimento, e'
+stata corretta in fixture e aspettative senza saltare test o allentare il dominio.
+Dieci casi in test_race_start_readiness.py includono conteggi, JSON corrotto,
+admin/giudice, non iscritti, rollback eventi e lock simulato: non provano tutte
+le interazioni concorrenti reali o il browser.
 
-Dieci casi in test_race_start_readiness.py coprono conteggi errati, JSON corrotto,
-accesso admin/giudice, esclusione dei non iscritti, rollback eventi e lock occupato
-simulato. Non sono un collaudo browser o una nuova prova reale di tutte le
-interazioni concorrenti avvio/admin/giocatore.
+Client GET e tipi c01b486, correzione Prettier 822a85a e consultazione bb7f0f7,
+corretta in 89cab3d/72e4274, hanno riscontri frontend nelle CI 39976945581 e
+39986696961. Quattro test di conteggio coprono copie, vuoto e 14/16 senza
+correzioni artificiali, non interazioni Svelte.
 
-Tipi e client GET admin sono stati aggiunti in c01b486; 822a85a corregge il primo
-stop Prettier, seguito dalla CI frontend 39976945581 riuscita. La consultazione
-bb7f0f7, corretta in 89cab3d e 72e4274, ha superato la CI 39986696961.
-I quattro casi sul conteggio coprono copie senza mutazioni, vuoto e conteggi
-14/16 non corretti artificialmente, non il rendering delle interazioni Svelte.
+934333c aggiunge il pianificatore: game_deck e modification_inventory verso
+modification_pool; sponsor_inventory verso sponsor_pool; modification_pool verso
+modification_inventory; sponsor_pool verso sponsor_inventory. Una copia per
+clic, input immutati anche su errore tardivo, ID/versioni invariati; percorsi
+ambigui e immagini discordanti rifiutati. admin-card-identity.ts conserva
+strip().casefold() con Unicode 15.0, senza NFC o rimozione accenti: confronto
+Node/Python su 1.112.064 scalari e nove casi composti, non un type-check.
+Prettier locale era indisponibile, con ENOTCACHED e comando globale assente.
+b54cc84 mantiene le aspettative e aggiunge commenti dei code point; f2dc492
+formatta il test. La lettura delle 19:21 della CI 39994183218 in coda e' storica,
+non un successo; successivamente la CI 39995224182 e' risultata riuscita.
 
-934333c aggiunge il pianificatore con cinque direzioni imposte: game_deck e
-modification_inventory verso modification_pool, sponsor_inventory verso
-sponsor_pool, modification_pool verso modification_inventory e sponsor_pool
-verso sponsor_inventory. Una copia per clic; nessuna doppia sottrazione, pool
-assente non creata, percorsi ambigui e immagini discordanti rifiutati. Snapshot,
-ID e versioni restano invariati; errore tardivo senza applicazione parziale.
+eedd729 aggiunge sessione e otto test: baseline, anteprima e registro separati,
+blocco senza perdita, ripristino locale che conserva il blocco. Nessun retry,
+rebase o scrittura automatici. d9ee662 aggiunge onrequestclose e politica modal
+con dodici casi parametrizzati; dodici scenari Node senza tipi erano riusciti
+prima della CI 39997899845. Senza callback resta la chiusura precedente; con
+callback nessun open=false automatico, X disponibile ed Escape/sfondo rispettano
+closeOnOutside. Non sono prove browser.
 
-admin-card-identity.ts conserva strip().casefold() usando Unicode 15.0, senza NFC
-o rimozione degli accenti. Dati verificati in Python; copia JavaScript senza tipi
-confrontata in Node con Python su 1.112.064 scalari e nove casi composti. Non era
-un type-check. Prettier locale era indisponibile, con ENOTCACHED e comando globale
-assente: non inventare successi npm locali. b54cc84 conserva le aspettative dei
-test e aggiunge commenti dei code point. Il bot f2dc492 formatta il test della
-bozza; la lettura delle 19:21 della CI 39994183218 in coda e' solo storica.
-Successivamente la CI 39995224182 e' risultata riuscita.
+## Bozza, client PUT e piano
 
-eedd729 aggiunge sessione locale e otto test: baseline, anteprima e registro
-separati, blocco senza perdere la bozza, ripristino esplicito che conserva il
-blocco. Nessun retry, rebase automatico o scrittura. d9ee662 aggiunge politica
-modal-close, dodici casi parametrizzati e onrequestclose opzionale: la chiusura
-e' delegata senza open=false automatico. Senza callback resta il comportamento
-precedente; X disponibile e Escape/sfondo subordinati a closeOnOutside. Dodici
-scenari Node sul corpo senza tipi erano riusciti; la CI 39997899845 su d9ee662
-e' poi risultata riuscita. Non erano prove browser.
+c950510 collega le carte alla sessione: cinque sezioni con immagini, tre
+contenitori del pilota separati dalle due pool, mazzo N/15 per copie e pool
+assente distinta da vuota. Modal/CardTile riusati, nessuno scaffold, dipendenza
+o risorsa nuova. Le risposte tardive vengono ignorate, non annullate in rete.
+Ripristino, ritorno, chiusura e navigazione sono protetti prima dello scarto.
+Il ripristino usa la baseline e conserva il blocco, senza rileggere il server.
 
-## Bozza collegata alla UI e correzioni di stile
+2cf25fd separa pubblicazione dello stile e controlli successivi; ceb12b1 formatta
+i quattro componenti. 788e6f5 aggiunge una sola eccezione ESLint alla chiamata
+goto che riusa navigation.to.url.href, senza modifica della logica o esclusione
+globale. La CI 40003767478 e align-docs-pr 40003767471 erano riusciti.
 
-c950510 collega i quattro componenti admin alla sessione. I tre contenitori del
-pilota e le due pool restano separati in cinque sezioni con immagini; mazzo N/15
-contando copie, pool assente distinta da vuota. Modal e CardTile riusati, nessun
-nuovo scaffold, dipendenza o copia di risorse. I clic modificano solo la bozza,
-con destinazioni imposte dal pianificatore e stato pendente propagato al modal.
-Il blocco iniziale e le destinazioni assenti disabilitano i clic. Gli errori locali
-sono separati dagli errori REST e non sostituiscono la sessione. Le letture tardive
-sono ignorate dopo cambio contesto o smontaggio, senza annullare la rete gia' inviata.
+549e83e aggiunge tipi e trasporto PUT, f95c915 ne formatta il test. Il client
+verifica ID e contesto della risposta, non l'intero DTO runtime; propaga ApiError
+e segnala risposte inutilizzabili con AdminCardSaveResponseError. Nessun retry
+o GET automatica e nessuna interpretazione di errore rete come rollback certo.
+024d47a aggiunge il piano, formattato in ad377d4: tutte le versioni della baseline,
+trasferimenti source/path, anteprima ricalcolata e riepilogo ordinato per clic,
+non differenze nette. Pool assenti null, metadati incoerenti rifiutati e percorsi
+entro 255 code point. La CI frontend 40009944027 era riuscita su ad377d4.
 
-Ripristino, ritorno ai piloti e chiusura richiedono conferma prima dello scarto.
-Il ripristino usa la baseline, non una rilettura del server, e conserva il blocco.
-Le conferme sono montate solo quando aperte; il modal sottostante evita di aprire
-un secondo dialog su Escape quando un altro dialog modale e' gia' presente.
-La navigazione con destinazione viene annullata e proposta prima della ripresa
-con goto o location.assign. I clic sono disabilitati durante l'uscita; un errore
-di goto conserva la bozza. Con riuso del componente, ripristino solo dopo successo
-e se la sessione e' ancora quella originale. Ricarica o chiusura senza destinazione
-usa la protezione browser tramite SvelteKit, non window.confirm.
+## Salvataggio UI implementato
 
-Il primo lint si fermava su Prettier nei quattro componenti. 2cf25fd separa la
-pubblicazione dello stile dai controlli successivi; il bot ceb12b1 formatta solo
-quei quattro file. Il successivo log dell'autore mostra Prettier riuscito e un
-errore ESLint svelte/no-navigation-without-resolve sulla chiamata goto(target.url).
-788e6f5 aggiunge soltanto due commenti al componente: provenienza da
-navigation.to.url.href e direttiva eslint-disable-next-line per quella chiamata
-gia' risolta. Nessuna esclusione globale o modifica della logica eseguibile.
+9769dd5 collega riepilogo e conferma unica al PUT; 7d449cb formatta i quattro
+componenti. admin-pilot-cards-save-controls.svelte prepara la proposta senza
+rete; Annulla, X, Escape e sfondo non inviano. Conferma e salva consuma la
+proposta e blocca prima del primo await: nessun secondo invio dalla stessa
+proposta. Sessione cambiata: nuovo riepilogo richiesto.
 
-format-review-ui.yml resta limitato al ramo fase 16 e ai quattro componenti.
-Usa npm ci e Prettier dal lockfile; puo' pubblicare il solo stile dopo write/check,
-poi esegue check, lint, test e build e stampa la SHA controllata. Mantiene controllo
-del ramo remoto e protezioni sui percorsi estranei. La CI ordinaria non cambia.
-Un commit del bot, da solo, non prova il successo dei controlli successivi.
+Durante conferme, PUT e rilettura, lo stato occupato raggiunge elenco piloti e
+impostazioni e blocca clic, ripristino, ritorno e chiusura ordinaria. La navigazione
+normale e' annullata; una chiusura forzata del browser non annulla una scrittura
+gia' inviata. Risposte di componenti dismessi/sessioni sostituite ignorate.
 
-## Ultima CI effettivamente letta
+Successo: nuova sessione dallo snapshot PUT e versioni server, senza GET.
+Errori: bozza conservata; 422 consente una nuova azione manuale. Altri errori
+bloccano nuovi invii: 401/403/404/409 come rifiuti/conflitti, gli altri come esiti
+incerti che potrebbero essere gia' applicati. Rileggi dal server e' esplicito e
+conferma lo scarto se ci sono operazioni; la bozza viene sostituita soltanto dopo
+una lettura utilizzabile. Lettura fallita: baseline, anteprima e registro conservati.
+Ripristinare localmente non sblocca un conflitto e non sostituisce tale rilettura.
 
-La lettura del 2026-10-23 sulla testa 788e6f57de3927c0fa774883f77f40b6dc005e87
-mostra la CI 40003767478 riuscita per Frontend (check, lint, test, build),
-job 120586341966, Backend (pytest), Migrazioni (database di test) e Documenti
-fase 16 dopo backend. Anche align-docs-pr 40003767471 risulta riuscito.
-Questo verifica la toolchain dell'integrazione e del fix ESLint, non un collaudo
-browser. Nessuna nuova esecuzione locale o conteggio complessivo di test/warning
-dai log dei singoli comandi viene dichiarato. I dettagli sono in
-PHASE_16_DRAFT_UI.md e PHASE_16_FORMATTING.md.
+## Ultima verifica e guasto documentale
 
-## Limiti, dati e prossimo passo
+CI 40012639610 sul codice formattato 7d449cb: Frontend (check, lint, test, build),
+job 120622516434, Backend (pytest) e Migrazioni (database di test) riusciti.
+Il job Documenti fase 16 dopo backend, 120623536970, e' invece fallito: il titolo
+era stato rinominato aggiungendo e bozza UI e non rispettava il startswith esatto.
+Non dichiarare questa CI interamente verde o il browser collaudato. Nessuna nuova
+esecuzione npm locale o conteggio complessivo di test/warning dai singoli log.
 
-Il prossimo incremento resta da approvare: riepilogo testuale, conferma unica e
-PUT dalla UI, gestione di errori/conflitti senza perdere la bozza, quindi live
-tramite client SSE condiviso. Nessuna PUT, autosalvataggio, polling o nuovo stream
-SSE e' gia' attivato nella schermata. Il blocco iniziale non e' un aggiornamento
-live della gara. Restano verifiche dedicate e collaudo browser di clic ripetuti,
-annullamento, Escape, chiusura e navigazione. Non dichiarare la fase completa.
+Questa correzione ripristina il titolo stabile e fa derivare la riga della tabella
+di PROJECT_STATUS dalla riga Stato sintetico fase 16 del sorgente. Mantiene
+validazione esatta del titolo, unicita' dello stato e marcatori; corregge anche
+il riconoscimento di marcatori invertiti adiacenti. Sette test Python eseguiti
+su fixture temporanee della trasformazione sono riusciti: aggiornamento dei
+dieci file, idempotenza, preservazione del testo esterno, rifiuto degli input
+invalidi e nessuna scrittura parziale. Non sono esecuzioni del workflow GitHub,
+dell'installazione dipendenze, di pytest o del push. Propagazione ancora da verificare.
 
-Dopo i controlli applicativi riusciti riallineare i documenti e verificarne la
-propagazione nei dieci documenti generali; gli allineamenti precedenti includono
-08f3443 ed e2fbdea. La propagazione di questo aggiornamento deve ancora essere
-verificata dopo il commit. Nessuna attesa di test applicativi per i soli docs,
-nessuna chiusura/riapertura abituale della PR.
+## Limiti e seguito
 
-Deck.cards resta TEXT con array JSON name/path/copies e percorsi relativi ai media,
-come confermato dall'autore il 2026-10-22. Nessuna conversione al vecchio esempio
-path/value, migrazione, modifica di setup/avvio o accesso al database reale.
+Restano integrazione live tramite client SSE condiviso e collaudo browser di
+annullamento, doppi clic, successo, 409, rete incerta, 422, rilettura fallita,
+Escape, chiusura/ritorno durante rete e risposte tardive. I test di client, piano
+e sessione non sono test DOM del nuovo flusso. Nessun polling, autosalvataggio
+o stream SSE aggiuntivo. Fase non completa e nessun merge.
+
+Dopo controlli applicativi riusciti, riallineare i documenti e verificare la
+propagazione nei dieci file generali, senza attendere altri test applicativi per
+i soli docs. format-review-ui.yml resta circoscritto ai quattro componenti di
+salvataggio, con npm ci, Prettier dal lockfile, SHA controllata, protezioni del
+ramo e dei percorsi estranei; un commit del bot non prova il verde globale.
+
+Deck.cards resta TEXT con JSON name/path/copies e percorsi relativi ai media,
+come confermato dall'autore il 2026-10-22. Nessuna conversione a path/value,
+migrazione, modifica di setup/avvio o accesso al database reale.
