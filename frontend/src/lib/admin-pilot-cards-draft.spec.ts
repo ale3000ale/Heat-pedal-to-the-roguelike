@@ -77,9 +77,9 @@ describe('bozza dei trasferimenti admin', () => {
 			{ source: 'game_deck' as const, path }
 		];
 		expect(planAdminCardTransfers(original, clicks).containers.game_deck.cards).toEqual([]);
-		expect(() => planAdminCardTransfers(original, [...clicks, clicks[0]])).toThrow(
-			AdminCardDraftError
-		);
+		expect(() => {
+			planAdminCardTransfers(original, [...clicks, clicks[0]]);
+		}).toThrow(AdminCardDraftError);
 		expect(original).toEqual(before);
 	});
 
@@ -87,9 +87,9 @@ describe('bozza dei trasferimenti admin', () => {
 		const original = snapshot();
 		original.containers[target] = { available: false, id: null, version: null, cards: [] };
 		const before = structuredClone(original);
-		expect(() => planAdminCardTransfers(original, [{ source, path }])).toThrow(
-			'Contenitore non disponibile'
-		);
+		expect(() => {
+			planAdminCardTransfers(original, [{ source, path }]);
+		}).toThrow('Contenitore non disponibile');
 		expect(original).toEqual(before);
 	});
 
@@ -101,14 +101,14 @@ describe('bozza dei trasferimenti admin', () => {
 			version: null,
 			cards: []
 		};
-		expect(() => planAdminCardTransfers(original, [{ source: 'sponsor_pool', path }])).toThrow(
-			AdminCardDraftError
-		);
+		expect(() => {
+			planAdminCardTransfers(original, [{ source: 'sponsor_pool', path }]);
+		}).toThrow(AdminCardDraftError);
 		original.read_only = true;
 		original.blocked_reason = 'Gara o revisione non ancora confermata';
-		expect(() => planAdminCardTransfers(original, [{ source: 'game_deck', path }])).toThrow(
-			original.blocked_reason
-		);
+		expect(() => {
+			planAdminCardTransfers(original, [{ source: 'game_deck', path }]);
+		}).toThrow(original.blocked_reason);
 	});
 
 	it.each(['assente', 'ambiguo'])('rifiuta il percorso sorgente %s', (kind) => {
@@ -118,9 +118,9 @@ describe('bozza dei trasferimenti admin', () => {
 		}
 		const before = structuredClone(original);
 		const selected = kind === 'assente' ? 'cards/missing.webp' : path;
-		expect(() =>
-			planAdminCardTransfers(original, [{ source: 'game_deck', path: selected }])
-		).toThrow('Carta sorgente assente o percorso ambiguo');
+		expect(() => {
+			planAdminCardTransfers(original, [{ source: 'game_deck', path: selected }]);
+		}).toThrow('Carta sorgente assente o percorso ambiguo');
 		expect(original).toEqual(before);
 	});
 
@@ -134,9 +134,9 @@ describe('bozza dei trasferimenti admin', () => {
 			copies: 3
 		});
 		original.containers.modification_pool.cards[0].path = 'cards/other.webp';
-		expect(() => planAdminCardTransfers(original, [{ source: 'game_deck', path }])).toThrow(
-			'Nome carta associato a immagini diverse'
-		);
+		expect(() => {
+			planAdminCardTransfers(original, [{ source: 'game_deck', path }]);
+		}).toThrow('Nome carta associato a immagini diverse');
 	});
 
 	it('aggiunge una riga nuova senza sostituire immagini o completare il mazzo', () => {
@@ -154,23 +154,27 @@ describe('bozza dei trasferimenti admin', () => {
 			{ name: 'Straße', path, copies: 1 },
 			{ name: 'STRASSE', path: 'cards/b.webp', copies: 1 }
 		];
-		expect(() => planAdminCardTransfers(duplicate, [])).toThrow(AdminCardDraftError);
+		expect(() => {
+			planAdminCardTransfers(duplicate, []);
+		}).toThrow(AdminCardDraftError);
 		const invalid = snapshot();
 		invalid.containers.game_deck.cards[0].copies = 0;
-		expect(() => planAdminCardTransfers(invalid, [])).toThrow(AdminCardDraftError);
+		expect(() => {
+			planAdminCardTransfers(invalid, []);
+		}).toThrow(AdminCardDraftError);
 		const overflow = snapshot();
 		overflow.containers.modification_pool.cards[0].copies = 999;
 		const before = structuredClone(overflow);
-		expect(() => planAdminCardTransfers(overflow, [{ source: 'game_deck', path }])).toThrow(
-			AdminCardDraftError
-		);
+		expect(() => {
+			planAdminCardTransfers(overflow, [{ source: 'game_deck', path }]);
+		}).toThrow(AdminCardDraftError);
 		expect(overflow).toEqual(before);
 	});
 
 	it('rifiuta sorgenti arbitrarie senza usare proprieta ereditate', () => {
-		expect(() =>
-			planAdminCardTransfers(snapshot(), [{ source: 'constructor' as AdminCardContainerName, path }])
-		).toThrow('Contenitore sorgente non valido');
+		expect(() => {
+			planAdminCardTransfers(snapshot(), [{ source: 'constructor' as AdminCardContainerName, path }]);
+		}).toThrow('Contenitore sorgente non valido');
 	});
 });
 
