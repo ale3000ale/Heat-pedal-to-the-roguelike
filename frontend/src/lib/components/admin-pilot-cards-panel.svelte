@@ -6,7 +6,6 @@
 	import type { AdminCardContainerName } from '$lib/admin-pilot-cards-draft';
 	import {
 		appendAdminCardDraftTransfer,
-		createAdminCardDraftSession,
 		resetAdminCardDraftSession,
 		type AdminCardDraftSession
 	} from '$lib/admin-pilot-cards-session';
