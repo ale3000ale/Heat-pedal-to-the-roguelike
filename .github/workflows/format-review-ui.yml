@@ -1,4 +1,4 @@
-name: Formatta integrazione live pannello admin
+name: Formatta riepilogo finale salvataggio admin
 
 on:
   push:
@@ -36,8 +36,8 @@ jobs:
         run: |
           set -euo pipefail
           files=(
-            src/lib/admin-pilot-cards-live.ts
-            src/lib/admin-pilot-cards-live.spec.ts
+            src/lib/admin-pilot-cards-save-plan.ts
+            src/lib/admin-pilot-cards-save-summary.spec.ts
             src/lib/components/admin-pilot-cards-panel.svelte
             src/lib/components/admin-pilot-cards-save-controls.svelte
           )
@@ -49,8 +49,8 @@ jobs:
           set -euo pipefail
           git diff --exit-code -- backend database heat.py frontend/package.json frontend/package-lock.json frontend/prettier.config.js .github/workflows
           files=(
-            frontend/src/lib/admin-pilot-cards-live.ts
-            frontend/src/lib/admin-pilot-cards-live.spec.ts
+            frontend/src/lib/admin-pilot-cards-save-plan.ts
+            frontend/src/lib/admin-pilot-cards-save-summary.spec.ts
             frontend/src/lib/components/admin-pilot-cards-panel.svelte
             frontend/src/lib/components/admin-pilot-cards-save-controls.svelte
           )
@@ -67,7 +67,7 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'style: formatta integrazione live pannello admin con il lockfile'
+          git commit -m 'style: formatta riepilogo finale salvataggio admin con il lockfile'
           git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory
       - name: Identifica il codice sottoposto ai controlli
         run: git rev-parse HEAD
