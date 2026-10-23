@@ -122,7 +122,9 @@
 			{#if !shopOnly && auth.isAdmin}
 				<div class="space-y-2 border-t pt-4">
 					<h3 class="text-sm font-semibold">Piloti</h3>
-					<Button size="sm" variant="outline" onclick={openPilots}>Visualizza piloti e carte</Button>
+					<Button size="sm" variant="outline" onclick={openPilots}>
+						Visualizza piloti e carte
+					</Button>
 				</div>
 			{/if}
 

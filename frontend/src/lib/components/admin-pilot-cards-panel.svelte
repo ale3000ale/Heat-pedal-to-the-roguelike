@@ -47,7 +47,9 @@
 		<div>
 			<h3 class="font-semibold">{data.pilot.name}</h3>
 			<p class="text-sm text-muted-foreground">Utente: {data.pilot.username}</p>
-			<p class="text-sm text-muted-foreground">Modalità consultazione: nessuna modifica alle carte.</p>
+			<p class="text-sm text-muted-foreground">
+				Modalità consultazione: nessuna modifica alle carte.
+			</p>
 		</div>
 		{#if data.read_only}
 			<p role="status" class="text-sm">{data.blocked_reason ?? 'Modifiche bloccate dal backend'}</p>
