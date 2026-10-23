@@ -4,11 +4,22 @@
 	import { fetchAdminPilotCards } from '$lib/admin-pilot-cards-api';
 	import { saveAdminPilotCards } from '$lib/admin-pilot-cards-save-api';
 	import { prepareAdminCardSave, type AdminCardSavePlan } from '$lib/admin-pilot-cards-save-plan';
-	import { blockAdminCardDraftSession, createAdminCardDraftSession, type AdminCardDraftSession } from '$lib/admin-pilot-cards-session';
+	import {
+		blockAdminCardDraftSession,
+		createAdminCardDraftSession,
+		type AdminCardDraftSession
+	} from '$lib/admin-pilot-cards-session';
 	import Modal from '$lib/components/modal.svelte';
 	import { Button } from '$lib/components/ui/button';
 
-	let { championshipId, pilotId, session, disabled = false, onchange, onbusychange }: {
+	let {
+		championshipId,
+		pilotId,
+		session,
+		disabled = false,
+		onchange,
+		onbusychange
+	}: {
 		championshipId: number;
 		pilotId: number;
 		session: AdminCardDraftSession;
@@ -16,7 +27,9 @@
 		onchange: (next: AdminCardDraftSession) => void;
 		onbusychange: (busy: boolean) => void;
 	} = $props();
-	let prepared = $state.raw<{ original: AdminCardDraftSession; plan: AdminCardSavePlan } | null>(null);
+	let prepared = $state.raw<{ original: AdminCardDraftSession; plan: AdminCardSavePlan } | null>(
+		null
+	);
 	let busy = $state(false);
 	let confirmSave = $state(false);
 	let confirmReload = $state(false);
@@ -26,7 +39,12 @@
 	let noticeSession = $state.raw<AdminCardDraftSession | null>(null);
 	let active = true;
 	const locked = $derived(disabled || busy || confirmSave || confirmReload);
-	const cannotSave = $derived(locked || session.blockedReason !== null || session.baseline.read_only || session.transfers.length === 0);
+	const cannotSave = $derived(
+		locked ||
+			session.blockedReason !== null ||
+			session.baseline.read_only ||
+			session.transfers.length === 0
+	);
 
 	function message(cause: unknown): string {
 		return cause instanceof Error ? cause.message : 'Operazione non riuscita';
@@ -51,7 +69,9 @@
 			prepared = { original: session, plan: prepareAdminCardSave(session) };
 			confirmSave = true;
 			onbusychange(true);
-		} catch (cause) { error = message(cause); }
+		} catch (cause) {
+			error = message(cause);
+		}
 	}
 
 	/**
@@ -62,7 +82,11 @@
 	async function submitSave() {
 		const proposal = prepared;
 		if (!proposal || busy || disabled) return;
-		if (session !== proposal.original || session.blockedReason !== null || session.baseline.read_only) {
+		if (
+			session !== proposal.original ||
+			session.blockedReason !== null ||
+			session.baseline.read_only
+		) {
 			cancelSave();
 			error = 'La bozza è cambiata: aprire nuovamente il riepilogo.';
 			return;
@@ -85,13 +109,17 @@
 			if (!active || session !== proposal.original) return;
 			error = message(cause);
 			if (!(cause instanceof ApiError && cause.status === 422)) {
-				const reason = cause instanceof ApiError && [401, 403, 404, 409].includes(cause.status)
-					? `Salvataggio bloccato: ${error}. Rileggere il server prima di un nuovo invio.`
-					: 'Esito del salvataggio non verificato. Il server potrebbe avere applicato le modifiche: rileggere prima di un nuovo invio.';
+				const reason =
+					cause instanceof ApiError && [401, 403, 404, 409].includes(cause.status)
+						? `Salvataggio bloccato: ${error}. Rileggere il server prima di un nuovo invio.`
+						: 'Esito del salvataggio non verificato. Il server potrebbe avere applicato le modifiche: rileggere prima di un nuovo invio.';
 				onchange(blockAdminCardDraftSession(proposal.original, reason));
 			}
 		} finally {
-			if (active) { busy = false; onbusychange(false); }
+			if (active) {
+				busy = false;
+				onbusychange(false);
+			}
 		}
 	}
 
@@ -100,7 +128,9 @@
 		if (session.transfers.length > 0) {
 			confirmReload = true;
 			onbusychange(true);
-		} else { void reload(); }
+		} else {
+			void reload();
+		}
 	}
 
 	/**
@@ -126,11 +156,17 @@
 		} catch (cause) {
 			if (active && session === original) error = message(cause);
 		} finally {
-			if (active) { busy = false; onbusychange(false); }
+			if (active) {
+				busy = false;
+				onbusychange(false);
+			}
 		}
 	}
 
-	onDestroy(() => { active = false; onbusychange(false); });
+	onDestroy(() => {
+		active = false;
+		onbusychange(false);
+	});
 </script>
 
 <div class="space-y-2" aria-busy={busy}>
@@ -145,7 +181,10 @@
 
 {#if confirmSave && prepared}
 	<Modal open title="Confermare il salvataggio?" onrequestclose={cancelSave}>
-		<p class="text-sm">Conferma queste operazioni per {prepared.plan.preview.pilot.name}. Nessun invio è stato ancora eseguito.</p>
+		<p class="text-sm">
+			Conferma queste operazioni per {prepared.plan.preview.pilot.name}. Nessun invio è stato ancora
+			eseguito.
+		</p>
 		<ol class="mt-3 list-decimal space-y-2 pl-5 text-sm">
 			{#each prepared.plan.summary as line, index (index)}<li>{line}</li>{/each}
 		</ol>
@@ -157,7 +196,10 @@
 {/if}
 {#if confirmReload}
 	<Modal open title="Scartare la bozza e rileggere?" onrequestclose={cancelReload}>
-		<p class="text-sm">Le operazioni locali saranno scartate solo se la lettura dal server riesce. La rilettura non invia modifiche.</p>
+		<p class="text-sm">
+			Le operazioni locali saranno scartate solo se la lettura dal server riesce. La rilettura non
+			invia modifiche.
+		</p>
 		<div class="mt-4 flex flex-wrap justify-end gap-2">
 			<Button variant="outline" onclick={cancelReload}>Annulla</Button>
 			<Button variant="destructive" disabled={busy} onclick={reload}>Scarta e rileggi</Button>

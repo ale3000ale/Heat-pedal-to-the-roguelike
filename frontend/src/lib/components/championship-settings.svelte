@@ -13,7 +13,14 @@
 	import type { Championship } from '$lib/types';
 
 	// shopOnly conserva le sole impostazioni del negozio.
-	let { championship, open = $bindable(false), shopOnly = false, onclosed, ondeleted, onshopchanged }: {
+	let {
+		championship,
+		open = $bindable(false),
+		shopOnly = false,
+		onclosed,
+		ondeleted,
+		onshopchanged
+	}: {
 		championship: { id: number; name: string; is_closed: boolean } | null;
 		open?: boolean;
 		shopOnly?: boolean;
@@ -32,14 +39,35 @@
 	let pilotsPending = $state(false);
 	let pilotsBusy = $state(false);
 	let confirmPilotsClose = $state(false);
-	$effect(() => { if (open) error = null; });
-	function message(e: unknown): string { return e instanceof Error ? e.message : 'Errore sconosciuto'; }
-	function openPacks() { open = false; packsOpen = true; }
-	function openHistory() { open = false; historyOpen = true; }
-	function openPool() { open = false; poolOpen = true; }
-	function openPilots() { if (!auth.isAdmin) return; open = false; pilotsOpen = true; }
-	function handlePilotsPending(value: boolean) { pilotsPending = value; }
-	function handlePilotsBusy(value: boolean) { pilotsBusy = value; }
+	$effect(() => {
+		if (open) error = null;
+	});
+	function message(e: unknown): string {
+		return e instanceof Error ? e.message : 'Errore sconosciuto';
+	}
+	function openPacks() {
+		open = false;
+		packsOpen = true;
+	}
+	function openHistory() {
+		open = false;
+		historyOpen = true;
+	}
+	function openPool() {
+		open = false;
+		poolOpen = true;
+	}
+	function openPilots() {
+		if (!auth.isAdmin) return;
+		open = false;
+		pilotsOpen = true;
+	}
+	function handlePilotsPending(value: boolean) {
+		pilotsPending = value;
+	}
+	function handlePilotsBusy(value: boolean) {
+		pilotsBusy = value;
+	}
 	function requestPilotsClose() {
 		if (pilotsBusy) return;
 		// La conferma superiore gestisce Escape senza aprirne un'altra.
@@ -47,46 +75,85 @@
 		if (pilotsPending) confirmPilotsClose = true;
 		else pilotsOpen = false;
 	}
-	function discardAndClosePilots() { if (pilotsBusy) return; pilotsOpen = false; pilotsPending = false; }
+	function discardAndClosePilots() {
+		if (pilotsBusy) return;
+		pilotsOpen = false;
+		pilotsPending = false;
+	}
 	async function closeChampionship() {
 		if (!championship) return;
-		error = null; busy = true;
+		error = null;
+		busy = true;
 		try {
-			const updated = await api<Championship>(`/championships/${championship.id}/close`, { method: 'POST' });
+			const updated = await api<Championship>(`/championships/${championship.id}/close`, {
+				method: 'POST'
+			});
 			await onclosed?.(updated);
-		} catch (e) { error = message(e); } finally { busy = false; }
+		} catch (e) {
+			error = message(e);
+		} finally {
+			busy = false;
+		}
 	}
 	async function deleteChampionship() {
 		if (!championship) return;
-		error = null; busy = true;
+		error = null;
+		busy = true;
 		try {
 			await api(`/championships/${championship.id}`, { method: 'DELETE' });
-			open = false; await ondeleted?.();
-		} catch (e) { error = message(e); } finally { busy = false; }
+			open = false;
+			await ondeleted?.();
+		} catch (e) {
+			error = message(e);
+		} finally {
+			busy = false;
+		}
 	}
 </script>
 
-<SettingsDialog bind:open title={shopOnly ? 'Impostazioni del negozio' : 'Impostazioni del campionato'}>
+<SettingsDialog
+	bind:open
+	title={shopOnly ? 'Impostazioni del negozio' : 'Impostazioni del campionato'}
+>
 	{#if championship}
 		<div class="space-y-4">
 			<p class="text-sm text-muted-foreground">{championship.name}</p>
 			{#if !shopOnly && !championship.is_closed}
-				<GoldRulesForm url={`/championships/${championship.id}/gold-rules`} title="Oro per gara" description="Oro dato a tutti gli iscritti dopo ogni gara, anche a chi non corre. Un totale negativo diventa 0. Le modifiche valgono dalla gara successiva." editable />
+				<GoldRulesForm
+					url={`/championships/${championship.id}/gold-rules`}
+					title="Oro per gara"
+					description="Oro dato a tutti gli iscritti dopo ogni gara, anche a chi non corre. Un totale negativo diventa 0. Le modifiche valgono dalla gara successiva."
+					editable
+				/>
 			{/if}
 			{#if !shopOnly && auth.isAdmin}
-				<div class="space-y-2 border-t pt-4"><h3 class="text-sm font-semibold">Piloti</h3><Button size="sm" variant="outline" onclick={openPilots}>Visualizza piloti e carte</Button></div>
+				<div class="space-y-2 border-t pt-4">
+					<h3 class="text-sm font-semibold">Piloti</h3>
+					<Button size="sm" variant="outline" onclick={openPilots}>Visualizza piloti e carte</Button
+					>
+				</div>
 			{/if}
 			<div class={shopOnly ? 'space-y-2' : 'space-y-2 border-t pt-4'}>
 				<h3 class="text-sm font-semibold">Negozio</h3>
-				<div class="flex flex-wrap gap-2"><Button size="sm" variant="outline" onclick={openPacks}>Pacchetti</Button><Button size="sm" variant="outline" onclick={openPool}>Pool completa</Button><Button size="sm" variant="outline" onclick={openHistory}>Storico</Button></div>
+				<div class="flex flex-wrap gap-2">
+					<Button size="sm" variant="outline" onclick={openPacks}>Pacchetti</Button><Button
+						size="sm"
+						variant="outline"
+						onclick={openPool}>Pool completa</Button
+					><Button size="sm" variant="outline" onclick={openHistory}>Storico</Button>
+				</div>
 			</div>
 			{#if !shopOnly}
 				<div class="space-y-2 border-t pt-4">
 					{#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
 					{#if championship.is_closed}
-						<Button variant="destructive" disabled={busy} onclick={() => (confirmDelete = true)}>Elimina campionato</Button>
+						<Button variant="destructive" disabled={busy} onclick={() => (confirmDelete = true)}
+							>Elimina campionato</Button
+						>
 					{:else}
-						<Button variant="destructive" disabled={busy} onclick={() => (confirmClose = true)}>Chiudi campionato</Button>
+						<Button variant="destructive" disabled={busy} onclick={() => (confirmClose = true)}
+							>Chiudi campionato</Button
+						>
 					{/if}
 				</div>
 			{/if}
@@ -94,10 +161,26 @@
 	{/if}
 </SettingsDialog>
 {#if championship}
-	<ConfirmDialog bind:open={confirmClose} title="Chiudere il campionato?" message={`Il campionato "${championship.name}" diventa di sola lettura e i piloti iscritti vengono reimpostati.`} confirmLabel="Chiudi campionato" onconfirm={closeChampionship} />
-	<ConfirmDialog bind:open={confirmDelete} title="Eliminare il campionato?" message={`Il campionato "${championship.name}" viene cancellato con tutto lo storico. L'azione non si può annullare.`} confirmLabel="Elimina campionato" onconfirm={deleteChampionship} />
+	<ConfirmDialog
+		bind:open={confirmClose}
+		title="Chiudere il campionato?"
+		message={`Il campionato "${championship.name}" diventa di sola lettura e i piloti iscritti vengono reimpostati.`}
+		confirmLabel="Chiudi campionato"
+		onconfirm={closeChampionship}
+	/>
+	<ConfirmDialog
+		bind:open={confirmDelete}
+		title="Eliminare il campionato?"
+		message={`Il campionato "${championship.name}" viene cancellato con tutto lo storico. L'azione non si può annullare.`}
+		confirmLabel="Elimina campionato"
+		onconfirm={deleteChampionship}
+	/>
 	<Modal bind:open={packsOpen} title="Pacchetti del negozio">
-		{#if packsOpen}<ChampionshipPacksManager championshipId={championship.id} closed={championship.is_closed} onchange={onshopchanged} />{/if}
+		{#if packsOpen}<ChampionshipPacksManager
+				championshipId={championship.id}
+				closed={championship.is_closed}
+				onchange={onshopchanged}
+			/>{/if}
 	</Modal>
 	<Modal bind:open={poolOpen} title="Pool completa del campionato">
 		{#if poolOpen}<ChampionshipPoolPanel championshipId={championship.id} />{/if}
@@ -106,13 +189,28 @@
 		{#if historyOpen}<ChampionshipHistoryPanel championshipId={championship.id} />{/if}
 	</Modal>
 	{#if auth.isAdmin}
-		<Modal bind:open={pilotsOpen} title={`Piloti — ${championship.name}`} wide onrequestclose={requestPilotsClose}>
+		<Modal
+			bind:open={pilotsOpen}
+			title={`Piloti — ${championship.name}`}
+			wide
+			onrequestclose={requestPilotsClose}
+		>
 			{#if pilotsOpen}
-				{#key championship.id}<AdminChampionshipPilots championshipId={championship.id} onpendingchange={handlePilotsPending} onbusychange={handlePilotsBusy} />{/key}
+				{#key championship.id}<AdminChampionshipPilots
+						championshipId={championship.id}
+						onpendingchange={handlePilotsPending}
+						onbusychange={handlePilotsBusy}
+					/>{/key}
 			{/if}
 		</Modal>
 		{#if confirmPilotsClose}
-			<ConfirmDialog bind:open={confirmPilotsClose} title="Chiudere le carte del pilota?" message="La bozza non è salvata. Chiudendo il pannello le operazioni locali verranno scartate." confirmLabel="Scarta e chiudi" onconfirm={discardAndClosePilots} />
+			<ConfirmDialog
+				bind:open={confirmPilotsClose}
+				title="Chiudere le carte del pilota?"
+				message="La bozza non è salvata. Chiudendo il pannello le operazioni locali verranno scartate."
+				confirmLabel="Scarta e chiudi"
+				onconfirm={discardAndClosePilots}
+			/>
 		{/if}
 	{/if}
 {/if}
