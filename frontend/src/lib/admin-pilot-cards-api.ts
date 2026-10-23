@@ -44,10 +44,7 @@ export async function fetchAdminPilotCards(
 		`/admin/championships/${championshipId}/pilots/${pilotId}/cards`,
 		{ fetch: doFetch }
 	);
-	if (
-		snapshot?.championship_id !== championshipId ||
-		snapshot?.pilot?.pilot_id !== pilotId
-	) {
+	if (snapshot?.championship_id !== championshipId || snapshot?.pilot?.pilot_id !== pilotId) {
 		throw new Error('La risposta delle carte non corrisponde al campionato e pilota richiesti');
 	}
 	return snapshot;
