@@ -97,3 +97,45 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  phase16-docs:
+    name: Documenti fase 16 dopo backend
+    needs: backend
+    if: github.event_name == 'pull_request' && github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'phase-16-admin-pilot-inventory'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: phase-16-docs
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Installa le dipendenze esistenti
+        run: python -m pip install -r backend/requirements.txt
+      - name: Esegui solo il riallineamento documentale approvato
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import subprocess
+          from pathlib import Path
+          import yaml
+
+          content = Path(".github/workflows/phase-16-docs-pr.yml").read_bytes()
+          blob = b"blob " + str(len(content)).encode() + b"\0" + content
+          if hashlib.sha1(blob).hexdigest() != "6858f05d89072cca488efeeb46166a2770383545":
+              raise RuntimeError("Workflow documentale diverso da quello approvato")
+          step = yaml.safe_load(content)["jobs"]["align-docs-pr"]["steps"][-1]
+          if step["name"] != "Riallinea i documenti dopo i test mirati":
+              raise RuntimeError("Passaggio documentale inatteso")
+          subprocess.run(["bash", "-e", "-o", "pipefail", "-c", step["run"]], check=True)
+          PY

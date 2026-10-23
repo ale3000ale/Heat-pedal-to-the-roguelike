@@ -14,7 +14,7 @@ from tests.test_race_review import CARD, play, scenario, undo
 def snapshot(factory):
     with factory() as db:
         events = list(db.scalars(select(EventLog.id).order_by(EventLog.id)))
-        plays = list(db.execute(select(CardPlay.id, CardPlay.status).order_by(CardPlay.id)).tuples())
+        plays = list(db.execute(select(CardPlay.id, CardPlay.status).order_by(CardPlay.id)))
         return events, plays
 
 

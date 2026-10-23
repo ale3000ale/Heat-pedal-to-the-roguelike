@@ -14,7 +14,7 @@ from tests.test_race_review import scenario, sponsor_inventory, sponsor_pool
 def snapshot(factory, champ, pilot):
     with factory() as db:
         event_ids = list(db.scalars(select(EventLog.id).order_by(EventLog.id)))
-        gifts = list(db.execute(select(CardGift.id, CardGift.pilot_id, CardGift.card_name).order_by(CardGift.id)).tuples())
+        gifts = list(db.execute(select(CardGift.id, CardGift.pilot_id, CardGift.card_name).order_by(CardGift.id)))
     return event_ids, gifts, sponsor_inventory(factory, pilot), sponsor_pool(factory, champ)
 
 

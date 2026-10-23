@@ -8,6 +8,7 @@ from app.db.models.race import Race, RaceResult
 from app.db.models.team import Team
 from app.security import hash_password
 from app.services.cards import CardEntry, dump_cards
+from tests.race_fixtures import seed_game_deck_from_inventory_card
 
 PASSWORD = "password123"
 BASE_CARDS = [CardEntry(name="Velocità 1", path="cards/starter/velocita-1.webp", copies=3)]
@@ -130,7 +131,12 @@ def test_purging_a_pilot_keeps_frozen_closed_championship_standings(
     for pilot_id in (p1, p2):
         r = player.post(f"/api/championships/{cid}/pilots", json={"pilot_id": pilot_id})
         assert r.status_code == 201
-    race_id = admin.post(f"/api/championships/{cid}/races").json()["id"]
+        seed_game_deck_from_inventory_card(
+            session_factory, pilot_id, path=BASE_CARDS[0].path, copies=15
+        )
+    response = admin.post(f"/api/championships/{cid}/races")
+    assert response.status_code == 201, response.text
+    race_id = response.json()["id"]
     r = admin.put(
         f"/api/championships/{cid}/races/{race_id}/results",
         json={"results": [{"pilot_id": p1}, {"pilot_id": p2}]},

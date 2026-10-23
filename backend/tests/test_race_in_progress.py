@@ -1,7 +1,8 @@
 from app.db.models import User
 from app.db.models.deck import DeckPrototype
 from app.security import hash_password
-from app.services.cards import CardEntry, dump_cards
+from app.services.cards import STARTER_INVENTORY, CardEntry, dump_cards
+from .race_fixtures import seed_game_deck_from_inventory_card
 
 PASSWORD = "password123"
 
@@ -76,6 +77,9 @@ def test_cannot_create_a_race_until_the_review_is_confirmed(make_client, session
     admin, player = setup_world(make_client, session_factory)
     championship_id = new_championship(admin, "Estate")
     pilot_id = enrolled_pilot(player, championship_id, "Ayrton")
+    seed_game_deck_from_inventory_card(
+        session_factory, pilot_id, path=STARTER_INVENTORY[0].path, copies=15
+    )
     first = admin.post(f"/api/championships/{championship_id}/races").json()
     finish_race(admin, championship_id, first["id"], pilot_id)
     assert admin.post(f"/api/championships/{championship_id}/races").status_code == 409
@@ -87,6 +91,9 @@ def test_can_create_a_race_after_the_previous_one_is_finished(make_client, sessi
     admin, player = setup_world(make_client, session_factory)
     championship_id = new_championship(admin, "Estate")
     pilot_id = enrolled_pilot(player, championship_id, "Ayrton")
+    seed_game_deck_from_inventory_card(
+        session_factory, pilot_id, path=STARTER_INVENTORY[0].path, copies=15
+    )
     first = admin.post(f"/api/championships/{championship_id}/races").json()
     finish_race(admin, championship_id, first["id"], pilot_id)
     confirm_review(admin, championship_id, first["id"])

@@ -1,8 +1,8 @@
-name: Formatta UI revisione
+name: Formatta riepilogo finale salvataggio admin
 
 on:
   push:
-    branches: [phase-14]
+    branches: [phase-16-admin-pilot-inventory]
     paths:
       - .github/workflows/format-review-ui.yml
 
@@ -10,18 +10,18 @@ permissions:
   contents: write
 
 concurrency:
-  group: format-review-ui-phase-14
+  group: format-admin-cards-phase-16
   cancel-in-progress: false
 
 jobs:
   format:
-    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.ref == 'refs/heads/phase-16-admin-pilot-inventory'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: phase-14
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -30,47 +30,51 @@ jobs:
       - name: Installa dal lockfile
         working-directory: frontend
         run: npm ci
-      - name: Formatta soltanto i quattro file segnalati
+      - name: Formatta soltanto i quattro file frontend approvati
         working-directory: frontend
         shell: bash
         run: |
           set -euo pipefail
           files=(
-            src/lib/components/race-review-panel.svelte
-            src/lib/components/review-incongruence-dialog.svelte
-            src/lib/components/review-pilot-inventory.svelte
-            src/lib/review-draft.spec.ts
+            src/lib/admin-pilot-cards-save-plan.ts
+            src/lib/admin-pilot-cards-save-summary.spec.ts
+            src/lib/components/admin-pilot-cards-panel.svelte
+            src/lib/components/admin-pilot-cards-save-controls.svelte
           )
           ./node_modules/.bin/prettier --write "${files[@]}"
           ./node_modules/.bin/prettier --check "${files[@]}"
-      - name: Pubblica solo la formattazione su phase-14
+      - name: Pubblica solo lo stile verificato da Prettier
         shell: bash
         run: |
           set -euo pipefail
+          git diff --exit-code -- backend database heat.py frontend/package.json frontend/package-lock.json frontend/prettier.config.js .github/workflows
           files=(
-            frontend/src/lib/components/race-review-panel.svelte
-            frontend/src/lib/components/review-incongruence-dialog.svelte
-            frontend/src/lib/components/review-pilot-inventory.svelte
-            frontend/src/lib/review-draft.spec.ts
+            frontend/src/lib/admin-pilot-cards-save-plan.ts
+            frontend/src/lib/admin-pilot-cards-save-summary.spec.ts
+            frontend/src/lib/components/admin-pilot-cards-panel.svelte
+            frontend/src/lib/components/admin-pilot-cards-save-controls.svelte
           )
           git add -- "${files[@]}"
+          git diff --cached --check
           if git diff --cached --quiet; then
             echo "Nessuna modifica di formattazione necessaria."
             exit 0
           fi
-          git fetch origin phase-14
-          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/phase-14)" ]; then
-            echo "Il ramo è cambiato durante la formattazione: nessun push eseguito."
+          git fetch origin phase-16-admin-pilot-inventory
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/phase-16-admin-pilot-inventory)" ]; then
+            echo "Il ramo e' cambiato: nessun push eseguito."
             exit 1
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m "Formatta UI revisione con Prettier del lockfile"
-          git push origin HEAD:refs/heads/phase-14
-      - name: Controllo dei tipi
+          git commit -m 'style: formatta riepilogo finale salvataggio admin con il lockfile'
+          git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory
+      - name: Identifica il codice sottoposto ai controlli
+        run: git rev-parse HEAD
+      - name: Controllo dei tipi sul codice formattato
         working-directory: frontend
         run: npm run check
-      - name: Lint e formattazione completi
+      - name: Lint e formattazione completi sul codice formattato
         working-directory: frontend
         run: npm run lint
       - name: Test frontend

@@ -1,0 +1,152 @@
+name: Riallinea documenti fase 16
+on:
+  push:
+    branches: [phase-16-admin-pilot-inventory]
+    paths: [.github/workflows/phase-16-docs.yml]
+permissions:
+  contents: read
+concurrency:
+  group: phase-16-docs
+  cancel-in-progress: false
+jobs:
+  align-docs:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installa le dipendenze esistenti senza modificarle
+        run: python -m pip install -r backend/requirements.txt
+      - name: Verifica il dominio prima del riallineamento
+        run: PYTHONPATH=backend python -m unittest discover -s backend/tests -p test_admin_card_transfers.py -v
+      - name: Riallinea i documenti conservando il testo storico
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          expected = {
+              "docs/PROJECT_SPEC.md": "f43c9641cf26e972870075801390224042012ae8",
+              "docs/PROJECT_STATUS.md": "a225290f93d15a5dafd3c5798219393fcee8039b",
+              "docs/PROJECT_NOTES.md": "0a6b96b39df70e68f1fd24312c22986b7d721bf6",
+              "docs/PHASE_16_SPEC.md": "a02d3ca67b5a81a79d136e44b18717384224bb7c",
+              "docs/PHASE_16_STATUS.md": "f7994236ec386fe83d25ee88080ec2aa1bff7cc6",
+          }
+          for name, sha in expected.items():
+              actual = subprocess.check_output(["git", "hash-object", name], text=True).strip()
+              if actual != sha:
+                  raise RuntimeError("Base documentale cambiata: " + name)
+
+          paths = [
+              "README.md", "docs/PROJECT_SPEC.md", "docs/PROJECT_STATUS.md",
+              "docs/PROJECT_NOTES.md", "docs/DATABASE.md", "docs/SETUP.md", "docs/SCRIPTS.md",
+              "docs/PHASE_16_SPEC.md", "docs/PHASE_16_STATUS.md", "docs/PHASE_16_ALIGNMENT.md",
+          ]
+          contents = {name: Path(name).read_text(encoding="utf-8") for name in paths}
+
+          def once(text, old, new):
+              if text.count(old) != 1:
+                  raise RuntimeError("Ancora non univoca: " + old)
+              return text.replace(old, new)
+
+          phase = contents["docs/PHASE_16_SPEC.md"]
+          phase = once(phase,
+              "Questa pubblicazione sottopone la specifica all'approvazione dell'autore prima\n dell'implementazione. Nessun codice applicativo o dato modificato.",
+              "Specifica approvata con f87a759. Primo incremento: dominio puro dei trasferimenti;\nAPI, persistenza e frontend ancora da implementare. Nessun dato reale modificato.")
+          phase = once(phase,
+              "Prima dell'implementazione riallineare PROJECT_SPEC.md/PROJECT_STATUS.md al perimetro\napprovato.",
+              "Specifica e stato generali riallineati al perimetro approvato in questo incremento.")
+          contents["docs/PHASE_16_SPEC.md"] = phase
+
+          name = "docs/PROJECT_SPEC.md"
+          text = contents[name]
+          headers = [line for line in text.splitlines() if line.startswith("> Ultimo aggiornamento:")]
+          if len(headers) != 1:
+              raise RuntimeError("Intestazione specifica diversa")
+          text = once(text, headers[0], "> Ultimo aggiornamento: 22 ottobre 2026. Fase 15 unita a main con PR 14 (6dcdc83). Fase 16 sul ramo dedicato, PR 15 in bozza: dominio trasferimenti, integrazione ancora da eseguire.")
+          heading = "## Fase 16 - gestione admin carte e avvio con mazzi da 15"
+          if heading in text:
+              raise RuntimeError("Fase 16 gia' consolidata")
+          marker = "## 1. Obiettivo e accesso"
+          if phase.count(marker) != 1:
+              raise RuntimeError("Specifica fase 16 diversa")
+          body = "\n".join("#" + line if line.startswith("## ") else line for line in phase[phase.index(marker):].splitlines())
+          contents[name] = text.rstrip() + "\n\n" + heading + "\n\nRequisiti approvati: contratto della fase, non funzionalita' gia' integrate.\nPer questo ambito prevalgono sui passaggi storici precedenti.\n\n" + body + "\n"
+
+          name = "docs/PROJECT_STATUS.md"
+          text = contents[name]
+          rows = [line for line in text.splitlines() if line.startswith("| 15 |")]
+          if len(rows) != 1 or any(line.startswith("| 16 |") for line in text.splitlines()):
+              raise RuntimeError("Tabella fasi diversa")
+          contents[name] = once(text, rows[0],
+              "| 15 | SSE, aggiornamenti live e correzioni lifecycle/canvas | Completata e unita a main con PR 14, merge 6dcdc83; limiti manuali accettati |\n"
+              "| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | Specifica approvata; primo modulo di dominio e 19 test unitari. API, transazioni, frontend e test integrati ancora da completare |")
+
+          name = "docs/PHASE_16_ALIGNMENT.md"
+          contents[name] = once(contents[name],
+              "Stato: riallineamento preparato, pubblicazione automatica ancora da verificare.",
+              "Stato: documenti riallineati in questo commit automatico; dominio puro aggiunto, integrazione ancora da eseguire.")
+
+          note = """
+          ## Stato corrente fase 16 - decisione formato e primo dominio (2026-10-22)
+
+          Questa sezione aggiorna lo stato corrente; le descrizioni precedenti conservano
+          la cronologia e non dichiarano nuovamente aperte le fasi gia' unite.
+          Fase 15 integrata in main con PR 14, merge 6dcdc83. Fase 16 solo su
+          phase-16-admin-pilot-inventory, PR 15 in bozza, senza merge autorizzato.
+
+          Alle 18:49 CEST l'autore conferma il contratto gia' usato dall'applicazione:
+          Deck.cards resta TEXT con array JSON di name, path e copies. Si mantengono i
+          percorsi correnti relativi ai media, inclusi cards/starter/velocita-1.webp;
+          nessuna conversione al precedente esempio path/value o a /images/cards.
+          Questa decisione aggiorna quel precedente requisito per la fase 16. Nessuna
+          migrazione, modifica del DB reale, nuovo scaffold o dipendenza introdotta.
+
+          backend/app/services/admin_card_transfers.py prepara una copia indipendente dei
+          cinque contenitori e applica una copia per clic nelle sole direzioni approvate.
+          Non modifica gli input neppure su errore; non espone endpoint e non salva dati.
+          Nessuna aggiunta pool/mazzo, nessuna doppia sottrazione. I nomi mantengono
+          l'identita' normalizzata esistente e le immagini non vengono sostituite.
+
+          backend/tests/test_admin_card_transfers.py: 19 test unitari, con cinque sottocasi
+          per le direzioni. Eseguiti con unittest nell'ambiente isolato dell'assistente
+          usando cards.py verificato contro il blob b329ece85fef6cc232ef322cb857108088ea5cf7;
+          esito 19/19 OK. Rieseguiti da questo workflow prima del commit documentale.
+          Non sono test transazionali/HTTP o di concorrenza, ne' collaudo browser.
+          La precedente CI 39815434564 era verde prima di questo incremento: non ne e'
+          una verifica. Rileggere la CI sul nuovo codice; nessun nuovo verde globale gia'
+          dichiarato. Setup, script d'avvio e schema DB restano invariati.
+
+          Da completare nel blocco backend approvato: rotte/DTO admin, iscrizione e username,
+          letture dei cinque Deck, versioni e salvataggio atomico senza retry automatici,
+          blocchi gara/revisione/chiusura, eventi privati e segnali senza carte nel payload,
+          coordinamento con move_card e create_race per il controllo esatto delle 15 copie.
+          Poi frontend, conferma testuale, live autorizzato e prove browser. Il dominio
+          puro non garantisce ancora queste integrazioni e non va presentato come funzione
+          utilizzabile. Nessun test, reset o migrazione sul database reale autorizzato.
+          """
+          for name in paths:
+              if "## Stato corrente fase 16 - decisione formato e primo dominio" in contents[name]:
+                  raise RuntimeError("Incremento gia' registrato: " + name)
+              contents[name] = contents[name].rstrip() + "\n\n" + note.strip() + "\n"
+          for name, text in contents.items():
+              Path(name).write_text(text, encoding="utf-8")
+          PY
+      - name: Verifica perimetro e pubblica solo documenti
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- frontend backend database heat.py
+          git add -- README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/PROJECT_NOTES.md docs/DATABASE.md docs/SETUP.md docs/SCRIPTS.md docs/PHASE_16_SPEC.md docs/PHASE_16_STATUS.md docs/PHASE_16_ALIGNMENT.md
+          git diff --cached --check
+          git diff --cached --stat
+          git fetch origin phase-16-admin-pilot-inventory
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-16-admin-pilot-inventory)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: riallinea fase 16 e contratto carte confermato'
+          git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory

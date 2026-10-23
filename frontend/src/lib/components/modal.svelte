@@ -1,11 +1,14 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { shouldCloseModal, type ModalCloseSource } from '$lib/modal-close';
 
 	// Con `closeOnOutside` falso la finestra si chiude solo con la X: il clic fuori e il
 	// tasto Esc non fanno nulla. Con `blur` lo sfondo è sfocato; con `wide` la finestra è
 	// più larga (serve all'apertura dei pacchetti); con `narrow` è stretta (serve al banner
 	// della carta ottenuta). Senza queste opzioni nulla cambia.
+	// Con onrequestclose la chiusura e' delegata: il chiamante modifica open solo
+	// dopo l'eventuale conferma, senza perdere automaticamente una bozza pendente.
 	let {
 		open = $bindable(false),
 		title,
@@ -13,6 +16,7 @@
 		blur = false,
 		wide = false,
 		narrow = false,
+		onrequestclose,
 		children
 	}: {
 		open?: boolean;
@@ -21,15 +25,16 @@
 		blur?: boolean;
 		wide?: boolean;
 		narrow?: boolean;
+		onrequestclose?: () => void;
 		children: Snippet;
 	} = $props();
 
-	function dismiss() {
-		if (closeOnOutside) open = false;
+	function requestClose(source: ModalCloseSource) {
+		if (shouldCloseModal(source, closeOnOutside, onrequestclose)) open = false;
 	}
 
 	function onkeydown(event: KeyboardEvent) {
-		if (open && event.key === 'Escape') dismiss();
+		if (open && event.key === 'Escape') requestClose('escape');
 	}
 </script>
 
@@ -42,7 +47,7 @@
 			class={`absolute inset-0 cursor-default ${blur ? 'bg-black/60 backdrop-blur-sm' : 'bg-black/50'}`}
 			aria-label="Chiudi"
 			tabindex={-1}
-			onclick={dismiss}
+			onclick={() => requestClose('outside')}
 		></button>
 		<div
 			role="dialog"
@@ -52,7 +57,12 @@
 		>
 			<div class="mb-3 flex items-center justify-between gap-3">
 				<h2 class="text-lg font-semibold">{title}</h2>
-				<Button size="sm" variant="outline" aria-label="Chiudi" onclick={() => (open = false)}>
+				<Button
+					size="sm"
+					variant="outline"
+					aria-label="Chiudi"
+					onclick={() => requestClose('button')}
+				>
 					✕
 				</Button>
 			</div>

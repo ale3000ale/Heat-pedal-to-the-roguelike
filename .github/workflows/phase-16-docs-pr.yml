@@ -1,0 +1,88 @@
+name: Riallinea documenti fase 16 dalla PR
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/phase-16-docs-pr.yml'
+      - 'docs/PHASE_16_ADMIN_SAVE_API.md'
+permissions:
+  contents: read
+concurrency:
+  group: phase-16-docs
+  cancel-in-progress: false
+jobs:
+  align-docs-pr:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'phase-16-admin-pilot-inventory'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Installa le dipendenze esistenti
+        run: python -m pip install -r backend/requirements.txt
+      - name: Verifica dominio, letture e salvataggio admin
+        run: PYTHONPATH=backend python -m pytest -q backend/tests/test_admin_card_transfers.py backend/tests/test_admin_pilot_cards_api.py backend/tests/test_admin_pilot_card_save.py
+      - name: Riallinea i documenti dopo i test mirati
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          paths = [
+              "README.md", "docs/PROJECT_SPEC.md", "docs/PROJECT_STATUS.md",
+              "docs/PROJECT_NOTES.md", "docs/DATABASE.md", "docs/SETUP.md", "docs/SCRIPTS.md",
+              "docs/PHASE_16_SPEC.md", "docs/PHASE_16_STATUS.md", "docs/PHASE_16_ALIGNMENT.md",
+          ]
+          source = Path("docs/PHASE_16_ADMIN_SAVE_API.md").read_text(encoding="utf-8")
+          if not source.startswith("# Fase 16 - Salvataggio admin atomico\n"):
+              raise RuntimeError("Documento di salvataggio inatteso")
+          status_prefix = "Stato sintetico fase 16: "
+          statuses = [line[len(status_prefix):].strip() for line in source.splitlines() if line.startswith(status_prefix)]
+          if len(statuses) != 1 or not statuses[0] or "|" in statuses[0]:
+              raise RuntimeError("Stato sintetico fase 16 assente, ambiguo o non valido")
+          start = "<!-- phase16-admin-save:start -->"
+          end = "<!-- phase16-admin-save:end -->"
+          body = "\n".join("#" + line if line.startswith("#") else line for line in source.splitlines())
+          block = start + "\n" + body.rstrip() + "\n\nTest mirati superati dal workflow prima di questo riallineamento; CI completa separata.\n" + end
+          contents = {}
+          for name in paths:
+              text = Path(name).read_text(encoding="utf-8")
+              if text.count(start) != text.count(end) or text.count(start) > 1:
+                  raise RuntimeError("Marcatori documentali incoerenti: " + name)
+              if start in text:
+                  begin, end_index = text.index(start), text.index(end)
+                  if begin >= end_index:
+                      raise RuntimeError("Marcatori invertiti: " + name)
+                  finish = end_index + len(end)
+                  text = text[:begin] + block + text[finish:]
+              else:
+                  text = text.rstrip() + "\n\n" + block + "\n"
+              if name == "docs/PROJECT_STATUS.md":
+                  rows = [line for line in text.splitlines() if line.startswith("| 16 |")]
+                  if len(rows) != 1:
+                      raise RuntimeError("Riga fase 16 non univoca")
+                  text = text.replace(rows[0], "| 16 | Gestione admin carte piloti e avvio con mazzi da 15 | " + statuses[0] + " |")
+                  text = text.replace("Ultimo aggiornamento: 2026-10-22", "Ultimo aggiornamento: 2026-10-23", 1)
+              contents[name] = text
+          for name, text in contents.items():
+              Path(name).write_text(text, encoding="utf-8")
+          PY
+          git diff --exit-code -- frontend backend database heat.py
+          git add -- README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/PROJECT_NOTES.md docs/DATABASE.md docs/SETUP.md docs/SCRIPTS.md docs/PHASE_16_SPEC.md docs/PHASE_16_STATUS.md docs/PHASE_16_ALIGNMENT.md
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Documenti gia' aggiornati"
+            exit 0
+          fi
+          git fetch origin phase-16-admin-pilot-inventory
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-16-admin-pilot-inventory)"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: riallinea fase 16 al salvataggio admin atomico'
+          git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory

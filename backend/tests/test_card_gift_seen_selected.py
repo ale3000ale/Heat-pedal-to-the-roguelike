@@ -5,6 +5,8 @@ from sqlalchemy import event, select
 from app.db.models import CardGift, Deck, EventLog, Pilot, User
 from app.schemas.card_gift_seen import GiftSeenSelection
 from app.services.card_gift_seen import mark_selected_gifts_seen
+from app.services.cards import STARTER_INVENTORY
+from tests.race_fixtures import seed_game_deck_from_inventory_card
 from tests.test_card_gifts import (
     enrolled_pilot, gift, give_sponsor_pool, login_judge, register_player,
     scenario, start_race, unseen,
@@ -72,6 +74,9 @@ def test_ids_outside_pilot_or_championship_are_ignored(make_client, session_fact
     other_champ = response.json()["id"]
     third_pilot = enrolled_pilot(player, other_champ, "Lauda")
     give_sponsor_pool(session_factory, other_champ, 1)
+    seed_game_deck_from_inventory_card(
+        session_factory, third_pilot, path=STARTER_INVENTORY[0].path, copies=15
+    )
     start_race(admin, other_champ)
     other_champ_gift = give(player, other_champ, third_pilot)
     assert selected(player, champ, pilot, [own, other_pilot_gift, other_champ_gift]).status_code == 204
