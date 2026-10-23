@@ -132,167 +132,182 @@ documentali non richiedono attesa della CI applicativa. Nessun merge implicito.
 ## Fase 16 - Salvataggio admin atomico
 
 Aggiornamento: 2026-10-23. Ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
-Stato sintetico fase 16: Backend, client PUT, piano e salvataggio UI implementati; controlli applicativi riusciti su 7d449cb; live e collaudo browser da completare; fase non conclusa.
+Stato sintetico fase 16: Perimetro funzionale implementato, incluso live e riepilogo effettivo; CI 40026443509 riuscita su 2366d1d; riscontro manuale complessivamente positivo dell'autore, senza protocollo caso per caso; riallineamento finale documentale; nessun merge autorizzato.
 
-L'intestazione H1 e la riga Stato sintetico fase 16 sono contratti del processo
-di riallineamento. Non rinominare il titolo senza aggiornare e verificare i suoi
-consumatori. Questo documento consolida le note precedenti, conservate in Git.
-Nessun merge, migrazione o prova sul database reale impliciti.
+L'intestazione H1 e la riga Stato sintetico fase 16 sono contratti del workflow.
+Il titolo deve restare esattamente quello corrente; la riga di stato e' unica e
+senza pipe. Questo documento consolida lo stato corrente; le note incrementali
+precedenti restano nello storico Git. Non costituisce merge o rilascio in main.
 
-### Contratto backend
+### Contratto backend e conservazione delle copie
 
-PUT /api/admin/championships/{championship_id}/pilots/{pilot_id}/cards riceve
-versions e transfers. versions include tutti i cinque contenitori, con id/version
-interi positivi; solo le due pool possono essere null. Ogni trasferimento contiene
-solo source/path e sposta una copia, con destinazione imposta dal dominio. Campi
-extra, destinazioni client e sostituzioni arbitrarie delle carte sono rifiutati.
+GET /api/admin/championships/{championship_id}/pilots restituisce iscritti visibili
+con nome e username. GET e PUT sul percorso
+/api/admin/championships/{championship_id}/pilots/{pilot_id}/cards leggono o
+salvano il contesto del pilota. Accesso solo admin; nessun diritto ampliato al
+giudice e nessuna modifica a utenti, team, ruoli, saldi o punteggi.
 
-Il backend ricontrolla admin, pilota visibile/iscritto, chiusura campionato, gara
-aperta e revisione non confermata nella transazione. Confronta id e versione
-anche dei contenitori non toccati. Pool assenti non create e non utilizzabili
-come sorgente o destinazione. Conflitto 409 senza retry automatico; movimento
-non applicabile 422. Commit unico Deck/eventi, rollback anche su errore eventi.
+Il PUT riceve versions di tutti i cinque contenitori e transfers con soli
+source/path. ID/version interi positivi; solo le due pool possono essere null.
+Campi extra, destinazioni client e sostituzioni arbitrarie sono rifiutati.
+Pool assente distinta da pool vuota, mai creata automaticamente. Riferimenti
+Deck incoerenti o JSON corrotto non diventano contenitori validi o vuoti.
 
-Il mazzo puo' restare incompleto tra le gare. Nessuna aggiunta pool/mazzo o
-sponsor/mazzo e nessuna doppia sottrazione. Solo differenze effettive cambiano
-versioni ed eventi. La risposta contiene snapshot e versioni server. Dopo
-variazioni: cards.changed pubblico vuoto e privato al proprietario con solo
+Ogni clic sposta una copia nelle sole direzioni approvate:
+- game_deck verso modification_pool;
+- modification_inventory verso modification_pool;
+- sponsor_inventory verso sponsor_pool;
+- modification_pool verso modification_inventory;
+- sponsor_pool verso sponsor_inventory.
+
+Nessun movimento diretto pool/mazzo, sponsor/mazzo o inventario/mazzo nella
+schermata admin. Una rimozione dal mazzo non sottrae anche dall'inventario.
+Il pianificatore clona gli input e rifiuta copie non valide, percorsi ambigui
+e nomi associati a immagini discordanti, senza mutazioni parziali su errore.
+
+Il backend ricontrolla ruolo, pilota visibile/iscritto, campionato chiuso, gara
+aperta, revisione non confermata e tutte le versioni nella transazione. 409 per
+conflitto, 422 per movimento non applicabile, senza retry automatici. Commit
+unico di Deck/eventi e rollback anche su errore eventi. Differenze effettive
+soltanto: versioni ed eventi non cambiano per un salvataggio senza differenze.
+Dopo commit: cards.changed pubblico vuoto e privato al proprietario con solo
 pilot_id, senza carte o notifiche regalo/tasto S.
 
-### Lock e avvio gara
+### Lock condiviso e avvio con mazzi da 15
 
 services/sqlite_write_lock.py e' condiviso da salvataggio admin, move_card e
-create_race prima delle letture autorevoli; invalida identita' ORM precedenti e
-rifiuta modifiche pendenti. La transazione nativa gia' aperta viene promossa con
-UPDATE senza righe, senza modificare carte/versioni. Il retry preesistente di
+create_race prima delle letture autorevoli. Invalida identita' ORM precedenti e
+rifiuta modifiche pendenti; promuove una transazione nativa gia' aperta tramite
+UPDATE senza righe, senza cambiare carte/versioni. Il retry preesistente di
 move_card resta limitato a StaleDataError; admin e avvio non ritentano i lock.
 
-create_race richiede esattamente 15 copie nel mazzo da gioco di ogni iscritto
-sotto lo stesso lock, non 15 nomi o il totale degli inventari. Include iscritti
-nascosti, senza nuovo minimo di iscritti. race_deck_snapshot.py riusa il dominio
-race_deck_readiness.py. Mazzo mancante o JSON corrotto non diventano validi.
+create_race richiede esattamente 15 copie nel mazzo da gioco di tutti gli
+iscritti, inclusi i nascosti, sotto lo stesso lock. Non 15 nomi o il totale degli
+inventari; nessun nuovo minimo di iscritti. race_deck_snapshot.py riusa il
+dominio race_deck_readiness.py. Mancanza mazzo o JSON corrotto non sono sanati.
+Tra le gare un mazzo puo' restare incompleto, anche dopo un salvataggio admin.
 
-Iscritto non pronto: niente nuova gara o race.started, rollback e 409 con nomi e
-conteggi, senza carte. BUSY/LOCKED diventano RaceStartConflictError e 409; altri
-errori SQL non mascherati. Restano chiusura e gara/revisione non confermata; la
-gestione preesistente delle revisioni scadute prima dell'avvio non cambia.
+Rifiuto di avvio: nessuna nuova gara o race.started, rollback e 409 con nomi e
+conteggi dei non pronti, senza carte. BUSY/LOCKED diventano RaceStartConflictError
+e 409; altri errori SQL non sono mascherati. Restano blocchi di chiusura e
+gara/revisione non confermata; gestione precedente delle revisioni scadute invariata.
 
-### Verifiche e incrementi precedenti
+### UI, richiesta e riepilogo effettivo
 
-La CI 39917281059 su 4514348 e align-docs-pr 39917281153 risultavano riusciti.
-L'autore aveva fornito prima della pulizia 748 passed, 14 warnings e 14 subtests
-passed. 4514348 rimuove Result.tuples() da due snapshot eventi mantenendo 27
-asserzioni verificate tramite AST. I warning successivi non sono stati contati
-dai log. La regressione iniziale di 72 failed/676 passed, poi un fallimento, e'
-stata corretta in fixture e aspettative senza saltare test o allentare il dominio.
-Dieci casi in test_race_start_readiness.py includono conteggi, JSON corrotto,
-admin/giudice, non iscritti, rollback eventi e lock simulato: non provano tutte
-le interazioni concorrenti reali o il browser.
+Nelle impostazioni campionato l'admin apre Piloti, vede nome/username e un
+pulsante Carte accessibile. Cinque sezioni apribili con immagini e quantita':
+mazzo N/15 per copie, due inventari distinti e due pool. Su mobile le aree
+restano in sequenza. Modal e CardTile riusati, senza nuovo scaffold o risorse.
 
-Client GET e tipi c01b486, correzione Prettier 822a85a e consultazione bb7f0f7,
-corretta in 89cab3d/72e4274, hanno riscontri frontend nelle CI 39976945581 e
-39986696961. Quattro test di conteggio coprono copie, vuoto e 14/16 senza
-correzioni artificiali, non interazioni Svelte.
+Il piano costruisce versions dalla baseline, anche per contenitori non toccati,
+e ricalcola la sequenza senza fidarsi di un'anteprima alterata. Percorsi entro
+255 code point, identita' nomi coerente con strip().casefold() del backend.
+Nessun arrotondamento di ID/version e nessuna destinazione/copertura di copie
+arbitraria nella richiesta. Tutti gli output sono indipendenti dalla sessione.
 
-934333c aggiunge il pianificatore: game_deck e modification_inventory verso
-modification_pool; sponsor_inventory verso sponsor_pool; modification_pool verso
-modification_inventory; sponsor_pool verso sponsor_inventory. Una copia per
-clic, input immutati anche su errore tardivo, ID/versioni invariati; percorsi
-ambigui e immagini discordanti rifiutati. admin-card-identity.ts conserva
-strip().casefold() con Unicode 15.0, senza NFC o rimozione accenti: confronto
-Node/Python su 1.112.064 scalari e nove casi composti, non un type-check.
-Prettier locale era indisponibile, con ENOTCACHED e comando globale assente.
-b54cc84 mantiene le aspettative e aggiunge commenti dei code point; f2dc492
-formatta il test. La lettura delle 19:21 della CI 39994183218 in coda e' storica,
-non un successo; successivamente la CI 39995224182 e' risultata riuscita.
+Salva in fondo a destra apre un modal solo testuale con pilota, username, nome
+carta, quantita', sorgente/destinazione e nuovo conteggio del mazzo. Il riepilogo
+accorpa copie e compensa i versi opposti inventario/pool della stessa carta,
+senza inventare un verso inverso verso il mazzo. Non cambia il registro PUT:
+il server riceve i clic originali validati in ordine. Nessuna proposta di PUT
+quando non restano variazioni effettive. Annulla, X, Escape e sfondo non inviano
+e conservano la bozza. Solo Conferma e salva consuma una proposta una volta.
 
-eedd729 aggiunge sessione e otto test: baseline, anteprima e registro separati,
-blocco senza perdita, ripristino locale che conserva il blocco. Nessun retry,
-rebase o scrittura automatici. d9ee662 aggiunge onrequestclose e politica modal
-con dodici casi parametrizzati; dodici scenari Node senza tipi erano riusciti
-prima della CI 39997899845. Senza callback resta la chiusura precedente; con
-callback nessun open=false automatico, X disponibile ed Escape/sfondo rispettano
-closeOnOutside. Non sono prove browser.
+Durante conferme e operazioni sono protetti clic, ripristino, ritorno, chiusura
+ordinaria e navigazione. Successo: nuova sessione da snapshot PUT e versioni
+server. Errori conservano la bozza; 422 consente azioni manuali, altri errori
+bloccano nuovi invii fino a rilettura. Esito di rete o risposta inutilizzabile
+non provano un rollback. Rileggi dal server e' esplicito: con bozza pendente
+richiede conferma e la sostituisce soltanto dopo risposta utilizzabile.
+Ripristina bozza e' locale e conserva i blocchi, non equivale a una rilettura.
+Il client controlla contesto e la creazione della sessione controlla carte:
+non e' una validazione runtime completa di ogni campo del DTO.
 
-### Bozza, client PUT e piano
+### Live e lifecycle
 
-c950510 collega le carte alla sessione: cinque sezioni con immagini, tre
-contenitori del pilota separati dalle due pool, mazzo N/15 per copie e pool
-assente distinta da vuota. Modal/CardTile riusati, nessuno scaffold, dipendenza
-o risorsa nuova. Le risposte tardive vengono ignorate, non annullate in rete.
-Ripristino, ritorno, chiusura e navigazione sono protetti prima dello scarto.
-Il ripristino usa la baseline e conserva il blocco, senza rileggere il server.
+Il pannello usa eventClient condiviso e riletture REST autorizzate tramite il
+coordinatore createRefreshCoalescer. Nessun secondo EventSource, polling o
+autosalvataggio. I segnali non trasferiscono carte e non autorizzano scritture.
+Eventi pertinenti di carte, iscrizioni, gara/revisione, resync e riapertura del
+trasporto invalidano il contesto; gli altri campionati sono filtrati. Lo stato
+della connessione non viene presentato come prova della freschezza dei dati.
 
-2cf25fd separa pubblicazione dello stile e controlli successivi; ceb12b1 formatta
-i quattro componenti. 788e6f5 aggiunge una sola eccezione ESLint alla chiamata
-goto che riusa navigation.to.url.href, senza modifica della logica o esclusione
-globale. La CI 40003767478 e align-docs-pr 40003767471 erano riusciti.
+Riletture accorpate e risultati obsoleti scartati. Una bozza non viene
+sovrascritta: aggiornamenti incompatibili la bloccano conservando i dati.
+Le conferme aperte sono distinte dalle richieste HTTP effettivamente in corso:
+un evento puo' invalidare la proposta prima dell'invio; durante PUT/GET viene
+rinviato, evitando di scartare il successo del proprio salvataggio. Una GET
+live puo' seguire un evento pendente dopo il PUT: non e' un retry della scrittura.
+Solo l'accettazione di uno snapshot server utilizzabile libera il blocco delle
+riletture, non un reset locale o un cambio di stato del trasporto.
 
-549e83e aggiunge tipi e trasporto PUT, f95c915 ne formatta il test. Il client
-verifica ID e contesto della risposta, non l'intero DTO runtime; propaga ApiError
-e segnala risposte inutilizzabili con AdminCardSaveResponseError. Nessun retry
-o GET automatica e nessuna interpretazione di errore rete come rollback certo.
-024d47a aggiunge il piano, formattato in ad377d4: tutte le versioni della baseline,
-trasferimenti source/path, anteprima ricalcolata e riepilogo ordinato per clic,
-non differenze nette. Pool assenti null, metadati incoerenti rifiutati e percorsi
-entro 255 code point. La CI frontend 40009944027 era riuscita su ad377d4.
+Cambio utente/ruolo, campionato, pilota o smontaggio invalidano il contesto;
+risposte e callback tardive non ripopolano un contesto successivo. I cleanup
+rimuovono i soli listener propri, senza chiudere lo stream condiviso. Una
+chiusura forzata del browser non annulla una scrittura gia' inviata.
 
-### Salvataggio UI implementato
+### Esiti finali verificati e collaudo dell'autore
 
-9769dd5 collega riepilogo e conferma unica al PUT; 7d449cb formatta i quattro
-componenti. admin-pilot-cards-save-controls.svelte prepara la proposta senza
-rete; Annulla, X, Escape e sfondo non inviano. Conferma e salva consuma la
-proposta e blocca prima del primo await: nessun secondo invio dalla stessa
-proposta. Sessione cambiata: nuovo riepilogo richiesto.
+Codice candidato: 2366d1de37cf1cf638b45c55313a3e31601eebff. CI 40026443509
+riuscita per Frontend (check, lint, test, build), job 120664599995, Backend
+(pytest), job 120664600371, Migrazioni (database di test), job 120664600375,
+e Documenti fase 16 dopo backend, job 120665715224. Non sono nuove esecuzioni
+locali. I conteggi complessivi di test e warning non sono stati letti dai log.
 
-Durante conferme, PUT e rilettura, lo stato occupato raggiunge elenco piloti e
-impostazioni e blocca clic, ripristino, ritorno e chiusura ordinaria. La navigazione
-normale e' annullata; una chiusura forzata del browser non annulla una scrittura
-gia' inviata. Risposte di componenti dismessi/sessioni sostituite ignorate.
+Dopo il via libera e la checklist in conversazione sul candidato 2366d1d,
+il 2026-10-23 alle 23:59 CEST l'autore riferisce: «sembra funzionare tutto».
+E' un riscontro manuale complessivamente positivo, non un verbale con esito
+per ogni caso. Non sono stati forniti browser/dispositivo, log o risultati
+individuali; non si marca automaticamente ogni voce OK. Non e' un collaudo
+browser eseguito dall'assistente ne' prova di tutte le condizioni concorrenti.
 
-Successo: nuova sessione dallo snapshot PUT e versioni server, senza GET.
-Errori: bozza conservata; 422 consente una nuova azione manuale. Altri errori
-bloccano nuovi invii: 401/403/404/409 come rifiuti/conflitti, gli altri come esiti
-incerti che potrebbero essere gia' applicati. Rileggi dal server e' esplicito e
-conferma lo scarto se ci sono operazioni; la bozza viene sostituita soltanto dopo
-una lettura utilizzabile. Lettura fallita: baseline, anteprima e registro conservati.
-Ripristinare localmente non sblocca un conflitto e non sostituisce tale rilettura.
+Restano non attestati singolarmente i casi avanzati della checklist: doppio
+invio, rete interrotta/esito incerto, conflitti tra sessioni, risposte tardive,
+permessi e scadenza durante rete, rollback/concorrenza reale e privacy dei
+payload. Le coperture automatiche e il riscontro qualitativo non vanno confusi.
 
-### Ultima verifica e guasto documentale
+### Tracciabilita' delle verifiche precedenti
 
-CI 40012639610 sul codice formattato 7d449cb: Frontend (check, lint, test, build),
-job 120622516434, Backend (pytest) e Migrazioni (database di test) riusciti.
-Il job Documenti fase 16 dopo backend, 120623536970, e' invece fallito: il titolo
-era stato rinominato aggiungendo e bozza UI e non rispettava il startswith esatto.
-Non dichiarare questa CI interamente verde o il browser collaudato. Nessuna nuova
-esecuzione npm locale o conteggio complessivo di test/warning dai singoli log.
+Storico: dominio 934333c; sessione eedd729; chiusura modal d9ee662; UI c950510;
+trasporto PUT 549e83e/f95c915; piano 024d47a/ad377d4; salvataggio 9769dd5/7d449cb;
+adattatore eventi ecbf684/e725ba4; riletture 914ee47; collegamento live
+fbcbd89/dc06e29; rimozione import 78661d8; prefer-const nei test 283c0ac;
+riepilogo effettivo e posizione Salva 6d1b7cd/2366d1d. I controlli finali
+sopra sostituiscono come stato corrente le letture incrementali in coda.
 
-Questa correzione ripristina il titolo stabile e fa derivare la riga della tabella
-di PROJECT_STATUS dalla riga Stato sintetico fase 16 del sorgente. Mantiene
-validazione esatta del titolo, unicita' dello stato e marcatori; corregge anche
-il riconoscimento di marcatori invertiti adiacenti. Sette test Python eseguiti
-su fixture temporanee della trasformazione sono riusciti: aggiornamento dei
-dieci file, idempotenza, preservazione del testo esterno, rifiuto degli input
-invalidi e nessuna scrittura parziale. Non sono esecuzioni del workflow GitHub,
-dell'installazione dipendenze, di pytest o del push. Propagazione ancora da verificare.
+Il precedente riepilogo dell'autore era 748 passed, 14 warnings e 14 subtests
+passed prima della pulizia 4514348; 27 asserzioni snapshot conservate tramite
+AST. La regressione 72 failed/676 passed, poi un fallimento, era stata corretta
+senza saltare test o allentare il dominio. Non sono i conteggi della CI finale.
+Dieci casi di readiness includevano lock simulato, non tutta la concorrenza reale.
 
-### Limiti e seguito
+Identita' Unicode 15.0 verificata con confronto Node/Python su 1.112.064 scalari
+e nove casi composti, senza NFC/rimozione accenti; non era type-check. Controlli
+Node senza tipi: dodici scenari politica modal, venticinque adattatore eventi
+e nove coordinatore riletture; non equivalgono a Vitest o browser. Sette test
+Python della trasformazione documentale su fixture temporanee erano riusciti,
+non il workflow GitHub completo. Le esecuzioni npm locali non sono inventate.
 
-Restano integrazione live tramite client SSE condiviso e collaudo browser di
-annullamento, doppi clic, successo, 409, rete incerta, 422, rilettura fallita,
-Escape, chiusura/ritorno durante rete e risposte tardive. I test di client, piano
-e sessione non sono test DOM del nuovo flusso. Nessun polling, autosalvataggio
-o stream SSE aggiuntivo. Fase non completa e nessun merge.
+### Riallineamento documentale e consegna
 
-Dopo controlli applicativi riusciti, riallineare i documenti e verificare la
-propagazione nei dieci file generali, senza attendere altri test applicativi per
-i soli docs. format-review-ui.yml resta circoscritto ai quattro componenti di
-salvataggio, con npm ci, Prettier dal lockfile, SHA controllata, protezioni del
-ramo e dei percorsi estranei; un commit del bot non prova il verde globale.
+Il titolo stabile e' stato ripristinato in f8a94e4; la tabella PROJECT_STATUS
+deriva dalla riga Stato sintetico fase 16, senza stato hardcoded su vecchi commit.
+Il pin CI aggiornato usa il blob 6858f05d89072cca488efeeb46166a2770383545 del
+workflow approvato. Restano controlli su titolo, stato unico e marcatori anche
+invertiti/adiacenti, protezioni di ramo e percorsi e nessun force-push.
+
+Questo commit aggiorna soltanto i documenti sorgente e dedicati, dopo codice e
+verifiche come richiesto dall'autore. La propagazione ai dieci documenti generali
+va verificata dopo la pubblicazione, senza attendere nuovi test applicativi
+per i soli docs. Il successo del job documentale sul codice precedente non
+dimostra gia' propagato questo nuovo testo. Nessun merge, rilascio o ZIP finale
+creato implicitamente; la PR resta in bozza.
 
 Deck.cards resta TEXT con JSON name/path/copies e percorsi relativi ai media,
-come confermato dall'autore il 2026-10-22. Nessuna conversione a path/value,
-migrazione, modifica di setup/avvio o accesso al database reale.
+come confermato il 2026-10-22. Nessuna conversione a path/value o /images/cards,
+migrazione, dipendenza, modifica di setup/avvio o accesso al database reale
+da parte dell'assistente. Perimetro funzionale fase 16 distinto dal resto
+delle istruzioni generali del progetto e da una consegna ZIP complessiva.
 
 Test mirati superati dal workflow prima di questo riallineamento; CI completa separata.
 <!-- phase16-admin-save:end -->
