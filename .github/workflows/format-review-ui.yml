@@ -1,4 +1,4 @@
-name: Formatta test e sessione carte admin
+name: Formatta protezione chiusura modal fase 16
 
 on:
   push:
@@ -36,9 +36,9 @@ jobs:
         run: |
           set -euo pipefail
           files=(
-            src/lib/admin-pilot-cards-draft.spec.ts
-            src/lib/admin-pilot-cards-session.ts
-            src/lib/admin-pilot-cards-session.spec.ts
+            src/lib/modal-close.ts
+            src/lib/modal-close.spec.ts
+            src/lib/components/modal.svelte
           )
           ./node_modules/.bin/prettier --write "${files[@]}"
           ./node_modules/.bin/prettier --check "${files[@]}"
@@ -60,9 +60,9 @@ jobs:
           set -euo pipefail
           git diff --exit-code -- backend database heat.py frontend/package.json frontend/package-lock.json frontend/prettier.config.js .github/workflows
           files=(
-            frontend/src/lib/admin-pilot-cards-draft.spec.ts
-            frontend/src/lib/admin-pilot-cards-session.ts
-            frontend/src/lib/admin-pilot-cards-session.spec.ts
+            frontend/src/lib/modal-close.ts
+            frontend/src/lib/modal-close.spec.ts
+            frontend/src/lib/components/modal.svelte
           )
           git add -- "${files[@]}"
           git diff --cached --check
@@ -77,5 +77,5 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'style: formatta test e sessione carte admin con il lockfile'
+          git commit -m 'style: formatta la protezione chiusura modal con il lockfile'
           git push origin HEAD:refs/heads/phase-16-admin-pilot-inventory
