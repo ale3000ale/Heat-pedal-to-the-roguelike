@@ -201,14 +201,38 @@ JSON corrotto, accesso admin/giudice, esclusione dei non iscritti, rollback even
 e traduzione di un lock occupato simulato. Non equivalgono a un collaudo browser
 o a una nuova prova reale di tutte le interazioni concorrenti avvio/admin/giocatore.
 
+### Primo frontend: client verificato e UI di consultazione
+
+I tipi e il client GET admin sono stati aggiunti in c01b486. La CI frontend si
+e' fermata inizialmente su Prettier; 822a85a corregge soltanto la formattazione
+della condizione. Il job Frontend (check, lint, test, build) 120493926882 della
+CI 39976945581 risulta riuscito ed e' stato letto il 2026-10-23. Nessuna nuova
+esecuzione npm locale e nessun collaudo browser dichiarati.
+
+Questo incremento aggiunge la UI di consultazione, ancora da verificare in CI
+e nel browser: Piloti nelle impostazioni campionato solo admin, nome e username,
+pulsante Carte con etichetta accessibile e cinque sezioni apribili con immagini.
+I tre contenitori del pilota restano separati dalle due pool. Il mazzo mostra
+N/15 contando copie; pool assente e pool vuota restano distinte. Modal e CardTile
+esistenti vengono riusati; nessun nuovo scaffold, dipendenza o copia di immagini.
+
+Le letture ignorano risposte tardive dopo cambio contesto o smontaggio del pannello;
+non annullano la richiesta di rete gia' inviata. Caricamento, errori e rilettura
+manuale sono espliciti. Nessun trasferimento, PUT, autosalvataggio, polling o
+nuovo stream SSE. Gli errori di permesso rimangono controllati dal backend.
+Quattro casi Vitest preparati verificano il conteggio delle copie senza mutazioni,
+contenitore vuoto e conteggi 14/16 non corretti artificialmente. Non sono test
+del rendering Svelte o di interazione browser e non sono ancora dichiarati PASS.
+
 ### Limiti, dati e prossimo passo
 
-Restano da implementare frontend admin, conferma testuale, protezione della bozza
-e collegamento live tramite il client SSE condiviso, poi verifiche dedicate e
-collaudo browser. Non dichiarare la fase 16 completa sulla sola CI del backend.
-Prima di nuove funzionalita', verificare la propagazione di questo stato nei dieci
-documenti gestiti dal processo esistente. Nessuna attesa CI applicativa per i soli
-commit documentali e nessuna chiusura/riapertura abituale della PR.
+Restano da verificare UI di consultazione e relativi controlli, poi implementare
+trasferimenti in bozza, conferma testuale, protezione della bozza e collegamento
+live tramite il client SSE condiviso, con verifiche dedicate e collaudo browser.
+Non dichiarare la fase 16 completa sulla sola CI del backend o del client GET.
+Verificare la propagazione di questo stato nei dieci documenti gestiti dal processo
+esistente. Nessuna attesa CI applicativa per i soli commit documentali e nessuna
+chiusura/riapertura abituale della PR.
 
 Deck.cards resta TEXT con array JSON name/path/copies e i percorsi correnti relativi
 ai media, come confermato dall'autore il 2026-10-22. Nessuna conversione al vecchio
