@@ -1,4 +1,8 @@
-import { AdminCardDraftError, planAdminCardTransfers, type AdminCardContainerName } from './admin-pilot-cards-draft';
+import {
+	AdminCardDraftError,
+	planAdminCardTransfers,
+	type AdminCardContainerName
+} from './admin-pilot-cards-draft';
 import type { AdminCardDraftSession } from './admin-pilot-cards-session';
 import type { AdminExpectedDeckVersion, AdminPilotCardsSave } from './admin-pilot-cards-save-types';
 import type { AdminDeckRead, AdminPilotCardsRead } from './admin-pilot-cards-types';
@@ -27,7 +31,14 @@ const directions: Record<AdminCardContainerName, string> = {
 function expectedVersion(deck: AdminDeckRead): AdminExpectedDeckVersion {
 	if (!deck.available) throw new AdminCardDraftError('Contenitore obbligatorio non disponibile');
 	const { id, version } = deck;
-	if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0 || typeof version !== 'number' || !Number.isSafeInteger(version) || version <= 0) {
+	if (
+		typeof id !== 'number' ||
+		!Number.isSafeInteger(id) ||
+		id <= 0 ||
+		typeof version !== 'number' ||
+		!Number.isSafeInteger(version) ||
+		version <= 0
+	) {
 		throw new AdminCardDraftError('ID o versione della baseline non validi');
 	}
 	return { id, version };
@@ -58,7 +69,9 @@ function expectedPoolVersion(deck: AdminDeckRead): AdminExpectedDeckVersion | nu
  */
 export function prepareAdminCardSave(session: AdminCardDraftSession): AdminCardSavePlan {
 	if (session.blockedReason !== null || session.baseline.read_only) {
-		throw new AdminCardDraftError(session.blockedReason ?? session.baseline.blocked_reason ?? 'Modifiche bloccate dal backend');
+		throw new AdminCardDraftError(
+			session.blockedReason ?? session.baseline.blocked_reason ?? 'Modifiche bloccate dal backend'
+		);
 	}
 	let preview = planAdminCardTransfers(session.baseline, []);
 	const decks = preview.containers;
@@ -72,12 +85,18 @@ export function prepareAdminCardSave(session: AdminCardDraftSession): AdminCardS
 	const transfers = session.transfers.map(({ source, path }) => ({ source, path }));
 	const summary: string[] = [];
 	for (const transfer of transfers) {
-		if (typeof transfer.path !== 'string' || Array.from(transfer.path).length < 1 || Array.from(transfer.path).length > 255) {
+		if (
+			typeof transfer.path !== 'string' ||
+			Array.from(transfer.path).length < 1 ||
+			Array.from(transfer.path).length > 255
+		) {
 			throw new AdminCardDraftError('Percorso della carta non valido');
 		}
 		// Il dominio valida anche la sorgente prima che venga usata per il riepilogo.
 		const next = planAdminCardTransfers(preview, [transfer]);
-		const card = preview.containers[transfer.source].cards.find((row) => row.path === transfer.path);
+		const card = preview.containers[transfer.source].cards.find(
+			(row) => row.path === transfer.path
+		);
 		if (!card) throw new AdminCardDraftError('Carta sorgente assente nel riepilogo');
 		summary.push(`1 copia di "${card.name}": ${directions[transfer.source]}.`);
 		preview = next;
