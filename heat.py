@@ -9,6 +9,8 @@ import sys
 import time
 from pathlib import Path
 
+from tools.production import normalize_origin, start_production
+
 ROOT = Path(__file__).resolve().parent
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
@@ -31,8 +33,8 @@ def fail(msg):
     raise SystemExit(f"\nERRORE: {msg}")
 
 
-def run(cmd, cwd, check=True):
-    result = subprocess.run([str(c) for c in cmd], cwd=cwd)
+def run(cmd, cwd, check=True, env=None):
+    result = subprocess.run([str(c) for c in cmd], cwd=cwd, env=env)
     if check and result.returncode != 0:
         fail(f"Comando fallito: {' '.join(str(c) for c in cmd)}")
     return result.returncode
@@ -50,7 +52,6 @@ def find_npm():
 
 
 def migrate():
-    # Idempotente: se il database è già aggiornato non fa nulla.
     if not VENV_PY.exists():
         fail("Ambiente non pronto. Scegli prima 'Setup'")
     info("Applico le migrazioni del database")
@@ -60,109 +61,102 @@ def migrate():
 def setup(skip_admin=False, skip_seed=False):
     if sys.version_info < MIN_PYTHON:
         fail(f"Serve Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} o superiore")
-
     if not VENV_PY.exists():
         info("Creo l'ambiente virtuale backend/.venv")
         run([sys.executable, "-m", "venv", VENV], ROOT)
     else:
-        info("Ambiente virtuale già presente")
-
+        info("Ambiente virtuale gia' presente")
     info("Installo le dipendenze Python")
     run([VENV_PY, "-m", "pip", "install", "--upgrade", "pip"], BACKEND)
     run([VENV_PY, "-m", "pip", "install", "-r", "requirements.txt"], BACKEND)
-
     migrate()
-
     if not skip_seed:
-        info("Popolo il prototipo del mazzo")
         run([VENV_PY, "-m", "app.scripts.seed_prototype"], BACKEND)
-
     if not skip_admin:
-        info("Creo l'utente admin")
         run([VENV_PY, "-m", "app.scripts.create_admin"], BACKEND)
-
     if has_frontend():
-        npm = find_npm()
-        info("Installo le dipendenze del frontend")
         lock = (FRONTEND / "package-lock.json").exists()
-        run([npm, "ci" if lock else "install"], FRONTEND)
+        run([find_npm(), "ci" if lock else "install"], FRONTEND)
     else:
-        info("Cartella frontend/ non ancora presente: salto")
-
+        info("Cartella frontend/ non presente: salto")
     info("Setup completato")
 
 
-def spawn(cmd, cwd):
+def spawn(cmd, cwd, env=None):
     cmd = [str(c) for c in cmd]
     if IS_WIN:
         return subprocess.Popen(
-            cmd, cwd=cwd, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+            cmd, cwd=cwd, env=env, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
         )
-    return subprocess.Popen(cmd, cwd=cwd, start_new_session=True)
+    return subprocess.Popen(cmd, cwd=cwd, env=env, start_new_session=True)
 
 
 def stop(proc):
+    """Arresta il gruppo figlio; attende 8 secondi prima del fallback forzato."""
     if proc.poll() is not None:
         return
-    if IS_WIN:
-        subprocess.run(
-            ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    else:
-        try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        except ProcessLookupError:
-            return
     try:
+        if IS_WIN:
+            proc.send_signal(signal.CTRL_BREAK_EVENT)
+        else:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         proc.wait(timeout=8)
-    except subprocess.TimeoutExpired:
-        if not IS_WIN:
+    except ProcessLookupError:
+        return
+    except (subprocess.TimeoutExpired, OSError):
+        if IS_WIN:
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"])
+        else:
             try:
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
             except ProcessLookupError:
                 pass
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            info(f"Impossibile confermare l'arresto del processo {proc.pid}")
 
 
-def start(backend_only=False):
+def start(backend_only=False, public_url=None):
+    env = os.environ.copy()
+    if public_url:
+        env["HEAT_PUBLIC_URL"] = normalize_origin(public_url)
     if not VENV_PY.exists():
         fail("Ambiente non pronto. Scegli prima 'Setup'")
-
-    # Dopo un git pull o un cambio di PC il database può essere indietro:
-    # lo aggiorniamo sempre prima di avviare il server.
+    # Comportamento storico dello sviluppo; production non chiama migrate().
     migrate()
-
     procs = []
     try:
-        info(f"Avvio il backend su http://{HOST}:{BACKEND_PORT}")
-        procs.append(
-            spawn(
-                [VENV_PY, "-m", "uvicorn", "app.main:app", "--reload",
-                 "--host", HOST, "--port", BACKEND_PORT],
-                BACKEND,
-            )
-        )
+        info(f"Avvio sviluppo su http://{HOST}:{FRONTEND_PORT}")
+        procs.append(spawn(
+            [VENV_PY, "-m", "uvicorn", "app.main:app", "--reload",
+             "--host", HOST, "--port", BACKEND_PORT], BACKEND
+        ))
         if has_frontend() and not backend_only:
             if not (FRONTEND / "node_modules").exists():
                 fail("Dipendenze frontend mancanti. Scegli prima 'Setup'")
-            info(f"Avvio il frontend su http://{HOST}:{FRONTEND_PORT}")
-            procs.append(
-                spawn(
-                    [find_npm(), "run", "dev", "--", "--host", HOST,
-                     "--port", FRONTEND_PORT, "--strictPort"],
-                    FRONTEND,
-                )
-            )
-        info("Tutto avviato. Premi Ctrl+C per fermare")
+            procs.append(spawn(
+                [find_npm(), "run", "dev", "--", "--host", HOST,
+                 "--port", FRONTEND_PORT, "--strictPort"], FRONTEND, env=env
+            ))
+        info("Sviluppo avviato. Premi Ctrl+C per fermare")
         while all(p.poll() is None for p in procs):
             time.sleep(0.5)
-        info("Un processo si è fermato: chiudo tutto")
+        fail("Un processo di sviluppo si e' fermato")
     except KeyboardInterrupt:
         info("Arresto in corso")
     finally:
-        for p in procs:
-            stop(p)
+        for proc in reversed(procs):
+            stop(proc)
+
+
+def production(public_url=None):
+    """Avvia build Node e FastAPI senza reload o migrazioni automatiche."""
+    start_production(ROOT, VENV_PY, public_url, info, run, spawn, stop)
+
+
+def production_menu():
+    production(input("URL pubblico HTTPS (Invio: solo locale): ").strip() or None)
 
 
 def run_tests():
@@ -172,23 +166,21 @@ def run_tests():
 
 
 def run_checks():
-    # format, check, lint e test del frontend, tramite tools/check-frontend.mjs.
     script = TOOLS / "check-frontend.mjs"
-    if not script.exists():
-        fail("tools/check-frontend.mjs non trovato")
     node = shutil.which("node")
-    if not node:
-        fail("node non trovato. Installa Node.js da https://nodejs.org")
+    if not script.exists() or not node:
+        fail("Servono node e tools/check-frontend.mjs")
     run([node, script], ROOT, check=False)
 
 
 MENU = [
     ("Setup (installa tutto)", lambda: setup()),
     ("Aggiorna il database (migrazioni)", migrate),
-    ("Avvia backend e frontend", lambda: start()),
-    ("Avvia solo il backend", lambda: start(backend_only=True)),
+    ("Avvia sviluppo backend e frontend", lambda: start()),
+    ("Avvia solo il backend di sviluppo", lambda: start(backend_only=True)),
     ("Esegui i test del backend", run_tests),
     ("Controlli del frontend (format, check, lint, test)", run_checks),
+    ("Avvio operativo (build, senza migrazioni automatiche)", production_menu),
 ]
 
 
@@ -205,7 +197,7 @@ def menu():
         if choice.isdigit() and 1 <= int(choice) <= len(MENU):
             try:
                 MENU[int(choice) - 1][1]()
-            except SystemExit as exc:
+            except (SystemExit, ValueError) as exc:
                 print(exc)
         else:
             print("Scelta non valida")
@@ -219,23 +211,30 @@ def main():
     p_setup.add_argument("--skip-seed", action="store_true")
     p_start = sub.add_parser("start")
     p_start.add_argument("--backend-only", action="store_true")
+    p_start.add_argument("--public-url")
+    p_production = sub.add_parser("production", help="Build e avvio operativo")
+    p_production.add_argument("--public-url", help="Origine HTTPS del tunnel")
     sub.add_parser("migrate")
     sub.add_parser("test")
     sub.add_parser("check")
     args = parser.parse_args()
-
-    if args.command == "setup":
-        setup(args.skip_admin, args.skip_seed)
-    elif args.command == "start":
-        start(args.backend_only)
-    elif args.command == "migrate":
-        migrate()
-    elif args.command == "test":
-        run_tests()
-    elif args.command == "check":
-        run_checks()
-    else:
-        menu()
+    try:
+        if args.command == "setup":
+            setup(args.skip_admin, args.skip_seed)
+        elif args.command == "start":
+            start(args.backend_only, args.public_url)
+        elif args.command == "production":
+            production(args.public_url)
+        elif args.command == "migrate":
+            migrate()
+        elif args.command == "test":
+            run_tests()
+        elif args.command == "check":
+            run_checks()
+        else:
+            menu()
+    except ValueError as exc:
+        parser.error(str(exc))
 
 
 if __name__ == "__main__":

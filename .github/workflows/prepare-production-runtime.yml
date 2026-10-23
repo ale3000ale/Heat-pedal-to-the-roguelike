@@ -1,81 +1,28 @@
-name: Prepare production runtime
+name: Validate prepared production runtime
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/prepare-production-runtime.yml
 
 permissions:
   contents: read
 
-concurrency:
-  group: prepare-production-runtime
-  cancel-in-progress: false
-
 jobs:
-  prepare:
-    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.ref == 'refs/heads/main'
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Install stable adapter and generate lockfile with npm
+      - name: Validate committed dependencies without updates or pushes
         working-directory: frontend
-        shell: bash
         run: |
-          set -euo pipefail
-          version=$(npm view @sveltejs/adapter-node dist-tags.latest)
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Refusing non-stable adapter version: $version" >&2
-            exit 1
-          fi
-          npm install --save-dev --save-exact "@sveltejs/adapter-node@$version"
           npm ci
-      - name: Check types, lint, tests and existing build
-        working-directory: frontend
-        shell: bash
-        run: |
-          set -euo pipefail
+          npm ls @sveltejs/adapter-node @sveltejs/kit
           npm run check
           npm run lint
           npm test
           npm run build
-      - name: Publish only the two dependency files without overwriting newer work
-        shell: bash
-        env:
-          EXPECTED_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          unexpected=$(git diff --name-only -- . ':!frontend/package.json' ':!frontend/package-lock.json')
-          if [ -n "$unexpected" ]; then
-            echo "Unexpected tracked changes:" >&2
-            printf '%s\n' "$unexpected" >&2
-            exit 1
-          fi
-          git diff --check
-          git fetch origin main
-          if [ "$(git rev-parse origin/main)" != "$EXPECTED_SHA" ]; then
-            echo "main changed during preparation; refusing publication. Rerun on the latest main." >&2
-            exit 1
-          fi
-          git add -- frontend/package.json frontend/package-lock.json
-          if git diff --cached --quiet; then
-            echo "Dependency already aligned; no commit needed."
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m "build: add stable adapter-node with npm-generated lockfile"
-          git push origin HEAD:refs/heads/main
-          printf '%s\n' 'Dependency preparation passed. Production command and production routing are not implemented by this workflow.' >> "$GITHUB_STEP_SUMMARY"
