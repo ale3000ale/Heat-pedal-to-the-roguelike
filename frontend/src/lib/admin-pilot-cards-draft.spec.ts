@@ -173,7 +173,9 @@ describe('bozza dei trasferimenti admin', () => {
 
 	it('rifiuta sorgenti arbitrarie senza usare proprieta ereditate', () => {
 		expect(() => {
-			planAdminCardTransfers(snapshot(), [{ source: 'constructor' as AdminCardContainerName, path }]);
+			planAdminCardTransfers(snapshot(), [
+				{ source: 'constructor' as AdminCardContainerName, path }
+			]);
 		}).toThrow('Contenitore sorgente non valido');
 	});
 });
