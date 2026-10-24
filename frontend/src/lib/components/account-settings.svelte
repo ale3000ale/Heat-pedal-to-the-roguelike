@@ -103,7 +103,9 @@
 			<p id="account-password-help" class="text-sm text-muted-foreground">Da 8 a 128 caratteri.</p>
 		</div>
 		<div class="space-y-2">
-			<label for="account-confirm-password" class="text-sm font-medium">Conferma nuova password</label>
+			<label for="account-confirm-password" class="text-sm font-medium"
+				>Conferma nuova password</label
+			>
 			<Input
 				id="account-confirm-password"
 				type="password"

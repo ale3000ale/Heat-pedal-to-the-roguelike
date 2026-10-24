@@ -57,3 +57,16 @@ Verifica osservata: Production runtime checks 40047553032, job runtime 120733397
 
 Guida operativa e limiti: [Produzione Wi-Fi/LAN](../docs/PRODUCTION_LAN.md).
 <!-- production-lan-current:end -->
+
+<!-- account-password-current:start -->
+
+## Impostazioni account e cambio password - 24 ottobre 2026
+
+Su main: clic sul proprio nome apre Impostazioni account. Password attuale e doppio inserimento della nuova; nuova password di 8-128 caratteri, validata anche sul server. La sessione corrente resta attiva con token e scadenza invariati; le altre sessioni dello stesso account vengono revocate. Hash e revoche sono nella stessa transazione con rollback su errore. Gli altri account non cambiano.
+
+Endpoint POST /api/auth/change-password, autenticato, successo 204. Nessuna migrazione o dipendenza nuova. Nessuna modifica al DB reale eseguita dall assistente. Durante l invio niente doppio invio o chiusura ordinaria; campi svuotati dopo la richiesta e alla chiusura. Errori di rete: esito incerto e nessun retry automatico. SSE riusa il controllo periodico delle sessioni.
+
+Riallineamento dopo pytest backend, tipi, lint, test frontend e build riusciti nel runner: run 40114589745, checkout 97653418434af55ff904d36ab75d80fb0e8fe365, formattazione circoscritta applicata prima delle verifiche. Nessun conteggio inventato, test locale o collaudo browser attestato.
+
+Dettagli, limiti e prove: [Impostazioni account](../docs/ACCOUNT_SETTINGS.md).
+<!-- account-password-current:end -->

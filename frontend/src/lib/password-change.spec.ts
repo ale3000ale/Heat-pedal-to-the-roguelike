@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from './api';
 import { changePassword } from './password-change-api';
-import { passwordChangeError, validatePasswordChange, type PasswordChange } from './password-change';
+import {
+	passwordChangeError,
+	validatePasswordChange,
+	type PasswordChange
+} from './password-change';
 
 const valid: PasswordChange = {
 	current_password: 'old-password',
@@ -15,7 +19,11 @@ describe('password change', () => {
 	it('accepts matching passwords without trimming spaces', () => {
 		expect(validatePasswordChange(valid)).toBeNull();
 		expect(
-			validatePasswordChange({ ...valid, new_password: ' new-password ', confirm_password: ' new-password ' })
+			validatePasswordChange({
+				...valid,
+				new_password: ' new-password ',
+				confirm_password: ' new-password '
+			})
 		).toBeNull();
 		expect(validatePasswordChange({ ...valid, confirm_password: 'new-password ' })).not.toBeNull();
 	});
@@ -27,14 +35,19 @@ describe('password change', () => {
 			{ ...valid, new_password: 'short', confirm_password: 'short' },
 			{ ...valid, new_password: 'x'.repeat(129), confirm_password: 'x'.repeat(129) },
 			{ ...valid, confirm_password: '' }
-		]) expect(validatePasswordChange(data)).not.toBeNull();
+		])
+			expect(validatePasswordChange(data)).not.toBeNull();
 	});
 
 	it('counts Unicode code points rather than UTF-16 units', () => {
 		const password = '🔐'.repeat(8);
-		expect(validatePasswordChange({ ...valid, new_password: password, confirm_password: password })).toBeNull();
+		expect(
+			validatePasswordChange({ ...valid, new_password: password, confirm_password: password })
+		).toBeNull();
 		const tooShort = '🔐'.repeat(4);
-		expect(validatePasswordChange({ ...valid, new_password: tooShort, confirm_password: tooShort })).not.toBeNull();
+		expect(
+			validatePasswordChange({ ...valid, new_password: tooShort, confirm_password: tooShort })
+		).not.toBeNull();
 	});
 
 	it('sends only the three approved fields with the current cookie', async () => {
@@ -61,13 +74,19 @@ describe('password change', () => {
 		vi.stubGlobal('fetch', fetch);
 		await expect(changePassword(valid)).rejects.toBeInstanceOf(ApiError);
 		expect(fetch).toHaveBeenCalledTimes(1);
-		expect(passwordChangeError(new ApiError(0, valid.new_password))).toContain('Esito non confermato');
+		expect(passwordChangeError(new ApiError(0, valid.new_password))).toContain(
+			'Esito non confermato'
+		);
 	});
 
 	it('uses safe messages for API errors without echoing secrets', () => {
 		for (const code of [0, 401, 403, 409, 422, 500]) {
-			expect(passwordChangeError(new ApiError(code, valid.new_password))).not.toContain(valid.new_password);
+			expect(passwordChangeError(new ApiError(code, valid.new_password))).not.toContain(
+				valid.new_password
+			);
 		}
-		expect(passwordChangeError(new ApiError(403, 'ignored'))).toBe('Password attuale non corretta.');
+		expect(passwordChangeError(new ApiError(403, 'ignored'))).toBe(
+			'Password attuale non corretta.'
+		);
 	});
 });
