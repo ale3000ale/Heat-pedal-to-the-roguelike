@@ -73,8 +73,10 @@ test('gateway restricts hosts and origins, preserves cookies, media and SSE', as
 		assert.equal(login.status, 200);
 		assert.equal(JSON.parse(login.body).proto, 'https');
 		assert.equal(login.headers['set-cookie'].length, 2);
-		assert.equal(JSON.parse((await request(port, '/media/cards/a.webp', host)).body).url,
-			'/media/cards/a.webp');
+		assert.equal(
+			JSON.parse((await request(port, '/media/cards/a.webp', host)).body).url,
+			'/media/cards/a.webp'
+		);
 		const stream = await request(port, '/api/events/stream', host);
 		assert.equal(stream.headers['content-type'], 'text/event-stream');
 		assert.equal(stream.body, 'data: first\n\ndata: last\n\n');
