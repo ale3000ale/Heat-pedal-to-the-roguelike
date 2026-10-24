@@ -8,8 +8,10 @@
 	import { auth } from '$lib/auth.svelte';
 	import { eventClient } from '$lib/events/event-client';
 	import { Button } from '$lib/components/ui/button';
+	import AccountSettings from '$lib/components/account-settings.svelte';
 
 	let { children } = $props();
+	let settingsOpen = $state(false);
 
 	// Pagine visibili anche senza sessione.
 	const publicPaths = ['/login', '/register'];
@@ -43,6 +45,12 @@
 	$effect(() => {
 		void page.url.pathname;
 		adminMenuOpen = false;
+		settingsOpen = false;
+	});
+
+	$effect(() => {
+		void auth.user?.id;
+		settingsOpen = false;
 	});
 
 	function closeAdminMenu(event: MouseEvent) {
@@ -139,17 +147,29 @@
 						{/if}
 					</div>
 					<div class="flex items-center gap-3 text-sm">
-						<span class="text-muted-foreground">
+						<button
+							type="button"
+							class="text-muted-foreground hover:text-foreground"
+							aria-label={`Impostazioni account di ${auth.user.username}`}
+							aria-haspopup="dialog"
+							aria-expanded={settingsOpen}
+							onclick={() => (settingsOpen = true)}
+						>
 							{auth.user.username}{auth.isAdmin
 								? ' · admin'
 								: auth.canManageRaces
 									? ' · giudice'
 									: ''}
-						</span>
+						</button>
 						<Button variant="outline" size="sm" onclick={logout}>Esci</Button>
 					</div>
 				</nav>
 			</header>
+			{#if settingsOpen}
+				{#key auth.user.id}
+					<AccountSettings bind:open={settingsOpen} userId={auth.user.id} />
+				{/key}
+			{/if}
 		{/if}
 
 		<!-- Le pagine protette non compaiono nemmeno per un istante senza sessione -->
