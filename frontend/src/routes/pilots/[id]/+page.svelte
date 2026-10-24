@@ -7,7 +7,6 @@
 	import type { PilotDetail } from '$lib/types';
 	import CardTile from '$lib/components/CardTile.svelte';
 	import InventorySection from '$lib/components/inventory-section.svelte';
-	import * as Card from '$lib/components/ui/card';
 	import RacingIcon from '$lib/components/racing-icon.svelte';
 
 	const MAX_GAME_DECK = 15;

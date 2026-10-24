@@ -13,7 +13,6 @@
 	import type { CardGift } from '$lib/card-play-types';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
 	import type { Race, Standing } from '$lib/race-types';
-	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 	import EnrollPilotDialog from '$lib/components/enroll-pilot-dialog.svelte';

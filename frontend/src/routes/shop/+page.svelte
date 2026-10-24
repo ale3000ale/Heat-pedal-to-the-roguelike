@@ -4,7 +4,6 @@
 	import { fetchMyShops, fetchShop } from '$lib/shop-api';
 	import { shopSelection } from '$lib/shop-selection.svelte';
 	import type { ShopEntry, ShopPilot } from '$lib/shop-types';
-	import * as Card from '$lib/components/ui/card';
 	import RacingIcon from '$lib/components/racing-icon.svelte';
 	import { Button } from '$lib/components/ui/button';
 

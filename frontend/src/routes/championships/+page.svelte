@@ -5,7 +5,6 @@
 	import { auth } from '$lib/auth.svelte';
 	import { groupChampionships, initiallyOpenGroup, type GroupKey } from '$lib/championship-groups';
 	import type { Championship, Pilot } from '$lib/types';
-	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
 	import NewChampionshipDialog from '$lib/components/new-championship-dialog.svelte';
