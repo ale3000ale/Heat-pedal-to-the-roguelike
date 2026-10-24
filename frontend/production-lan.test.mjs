@@ -34,10 +34,18 @@ test('LAN validation and bind selection reject public HTTP and noncanonical IPv4
 	}
 	assert.equal(gatewayHost('https://heat.loca.lt'), '127.0.0.1');
 	assert.equal(gatewayHost('http://127.0.0.1:5173'), '127.0.0.1');
-	for (const value of ['http://8.8.8.8:5173', 'http://169.254.1.2:5173',
-		'http://172.32.0.1:5173', 'http://192.168.1.2', 'http://0.0.0.0:5173',
-		'http://192.168.01.2:5173', 'http://0xc0a80102:5173',
-		'https://x/a', 'https://u:p@x', 'https://x#']) {
+	for (const value of [
+		'http://8.8.8.8:5173',
+		'http://169.254.1.2:5173',
+		'http://172.32.0.1:5173',
+		'http://192.168.1.2',
+		'http://0.0.0.0:5173',
+		'http://192.168.01.2:5173',
+		'http://0xc0a80102:5173',
+		'https://x/a',
+		'https://u:p@x',
+		'https://x#'
+	]) {
 		assert.throws(() => validateOrigin(value), value);
 	}
 });
@@ -52,34 +60,61 @@ for (const origin of ['https://heat.loca.lt', 'http://192.168.1.50:5173']) {
 				setTimeout(() => res.end('data: last\n\n'), 10);
 			} else {
 				res.setHeader('Set-Cookie', ['a=1; HttpOnly', 'b=2; SameSite=Lax']);
-				res.end(JSON.stringify({ url: req.url, proto: req.headers['x-forwarded-proto'],
-					host: req.headers['x-forwarded-host'], cookie: req.headers.cookie }));
+				res.end(
+					JSON.stringify({
+						url: req.url,
+						proto: req.headers['x-forwarded-proto'],
+						host: req.headers['x-forwarded-host'],
+						cookie: req.headers.cookie
+					})
+				);
 			}
 		});
 		const backendPort = await listen(backend);
-		const gateway = createHeatServer({ origin, backendPort, readyToken: 'test-token',
-			handler: (req, res) => res.end('frontend') });
+		const gateway = createHeatServer({
+			origin,
+			backendPort,
+			readyToken: 'test-token',
+			handler: (req, res) => res.end('frontend')
+		});
 		const port = await listen(gateway);
 		const host = { host: url.host };
 		try {
 			assert.equal((await request(port, '/', { host: 'evil.test' })).status, 421);
 			assert.equal((await request(port, '/api/login', host, 'POST')).status, 403);
-			assert.equal((await request(port, '/api/login', { ...host, origin: 'http://evil.test' }, 'POST')).status, 403);
+			assert.equal(
+				(await request(port, '/api/login', { ...host, origin: 'http://evil.test' }, 'POST')).status,
+				403
+			);
 			assert.equal((await request(port, '//evil.test', host)).status, 400);
 			assert.equal((await request(port, '/', host)).body, 'frontend');
-			const login = await request(port, '/api/login', { ...host, origin,
-				cookie: 'heat_session=example', 'x-forwarded-proto': 'evil',
-				'x-forwarded-host': 'evil.test' }, 'POST');
+			const login = await request(
+				port,
+				'/api/login',
+				{
+					...host,
+					origin,
+					cookie: 'heat_session=example',
+					'x-forwarded-proto': 'evil',
+					'x-forwarded-host': 'evil.test'
+				},
+				'POST'
+			);
 			assert.equal(login.status, 200);
 			assert.equal(JSON.parse(login.body).proto, url.protocol.slice(0, -1));
 			assert.equal(JSON.parse(login.body).host, url.host);
 			assert.equal(JSON.parse(login.body).cookie, 'heat_session=example');
 			assert.equal(login.headers['set-cookie'].length, 2);
-			assert.equal(JSON.parse((await request(port, '/media/cards/a.webp', host)).body).url, '/media/cards/a.webp');
+			assert.equal(
+				JSON.parse((await request(port, '/media/cards/a.webp', host)).body).url,
+				'/media/cards/a.webp'
+			);
 			const stream = await request(port, '/api/events/stream', host);
 			assert.equal(stream.headers['content-type'], 'text/event-stream');
 			assert.equal(stream.body, 'data: first\n\ndata: last\n\n');
-			assert.deepEqual(JSON.parse((await request(port, '/__heat_ready', host)).body), { token: 'test-token' });
+			assert.deepEqual(JSON.parse((await request(port, '/__heat_ready', host)).body), {
+				token: 'test-token'
+			});
 		} finally {
 			await close(gateway);
 			await close(backend);

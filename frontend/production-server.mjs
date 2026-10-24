@@ -4,8 +4,15 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const hopHeaders = [
-	'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization',
-	'proxy-connection', 'te', 'trailer', 'transfer-encoding', 'upgrade'
+	'connection',
+	'keep-alive',
+	'proxy-authenticate',
+	'proxy-authorization',
+	'proxy-connection',
+	'te',
+	'trailer',
+	'transfer-encoding',
+	'upgrade'
 ];
 
 /** Return true only for canonical RFC1918 IPv4 literals; no DNS resolution. */
@@ -19,7 +26,8 @@ export function isLanIPv4(host) {
 function endToEnd(headers) {
 	const result = { ...headers };
 	const nominated = String(headers.connection ?? '')
-		.split(',').map((name) => name.trim().toLowerCase());
+		.split(',')
+		.map((name) => name.trim().toLowerCase());
 	for (const name of [...hopHeaders, ...nominated]) delete result[name];
 	return result;
 }
@@ -33,7 +41,10 @@ export function validateOrigin(value) {
 	}
 	const local = ['127.0.0.1', 'localhost'].includes(url.hostname);
 	const lan = isLanIPv4(url.hostname);
-	if (url.protocol !== 'https:' && !(url.protocol === 'http:' && (local || lan) && url.port === '5173')) {
+	if (
+		url.protocol !== 'https:' &&
+		!(url.protocol === 'http:' && (local || lan) && url.port === '5173')
+	) {
 		throw new Error('HTTP requires loopback or private IPv4 on port 5173');
 	}
 	// WHATWG URL accepts abbreviated/numeric IPv4; require the canonical spelling.
@@ -66,7 +77,10 @@ export function createHeatServer({ origin, handler, backendPort = 8000, readyTok
 			res.writeHead(400).end('Invalid request path');
 			return;
 		}
-		if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && req.headers.origin !== publicUrl.origin) {
+		if (
+			!['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
+			req.headers.origin !== publicUrl.origin
+		) {
 			res.writeHead(403).end('Origin not allowed');
 			return;
 		}
@@ -90,10 +104,12 @@ export function createHeatServer({ origin, handler, backendPort = 8000, readyTok
 			for (const name of Object.keys(req.headers)) {
 				if (name.startsWith('x-forwarded-') || name === 'forwarded') delete req.headers[name];
 			}
-			Promise.resolve().then(() => handler(req, res)).catch(() => {
-				if (!res.headersSent) res.writeHead(500).end('Frontend error');
-				else res.destroy();
-			});
+			Promise.resolve()
+				.then(() => handler(req, res))
+				.catch(() => {
+					if (!res.headersSent) res.writeHead(500).end('Frontend error');
+					else res.destroy();
+				});
 			return;
 		}
 		const headers = endToEnd(req.headers);
