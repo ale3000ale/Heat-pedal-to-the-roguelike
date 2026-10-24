@@ -232,21 +232,22 @@
 							<div class="absolute inset-0 bg-gradient-to-r from-[#171c28] via-[#171c28]/90 to-transparent"></div>
 						</div>
 						<div class="relative z-10 px-5 py-4 flex items-center justify-between">
-						<div class="flex items-center gap-2.5">
-							<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-amber-400">
-								<RacingIcon name="wrenches" size="sm" />
-							</div>
-							<div>
-								<h2 class="font-racing text-2xl font-bold uppercase tracking-wide text-white">
-									Inventario Ricambi & Modifiche
-								</h2>
-								<p class="text-xs text-muted-foreground">
-									{#if locked}
-										Mazzo bloccato per gara in corso.
-									{:else}
-										Clicca una carta modifica per caricarla nel mazzo di gara.
-									{/if}
-								</p>
+							<div class="flex items-center gap-2.5">
+								<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-amber-400">
+									<RacingIcon name="wrenches" size="sm" />
+								</div>
+								<div>
+									<h2 class="font-racing text-2xl font-bold uppercase tracking-wide text-white">
+										Inventario Ricambi & Modifiche
+									</h2>
+									<p class="text-xs text-muted-foreground">
+										{#if locked}
+											Mazzo bloccato per gara in corso.
+										{:else}
+											Clicca una carta modifica per caricarla nel mazzo di gara.
+										{/if}
+									</p>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -272,7 +273,7 @@
 
 						<div class="border-t border-white/10 pt-5">
 							<InventorySection title="Carte Sponsor (Riservate per la Gara)" count={total(pilot.sponsor_inventory)}>
-								{#if pilot.sponsor_inventory.length === 0}
+								{#if pilot.sponsor_inventory.index?.length === 0 || pilot.sponsor_inventory.length === 0}
 									<p class="text-xs text-muted-foreground italic py-3">Nessuna carta sponsor ottenuta.</p>
 								{:else}
 									<div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2.5">
