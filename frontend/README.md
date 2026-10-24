@@ -42,6 +42,7 @@ You can preview the production build with `npm run preview`.
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
 <!-- production-lan-current:start -->
+
 ## Produzione Wi-Fi/LAN - aggiornamento corrente del 24 ottobre 2026
 
 Per la produzione prevale questa sezione sulle indicazioni storiche relative al solo loopback o al tunnel. Funzionalita sul ramo production-lan, PR #16 in bozza, senza merge in main.
