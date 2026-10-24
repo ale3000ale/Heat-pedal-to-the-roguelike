@@ -99,10 +99,13 @@
 			{#if sectionOpen}
 				<form class="space-y-4" onsubmit={submit} aria-busy={pending}>
 					<p class="text-sm text-muted-foreground">
-						Resterai connesso in questa sessione. Le altre sessioni del tuo account verranno disconnesse.
+						Resterai connesso in questa sessione. Le altre sessioni del tuo account verranno
+						disconnesse.
 					</p>
 					<div class="space-y-2">
-						<label for="account-current-password" class="text-sm font-medium">Password attuale</label>
+						<label for="account-current-password" class="text-sm font-medium"
+							>Password attuale</label
+						>
 						<PasswordInput
 							id="account-current-password"
 							label="password attuale"
@@ -123,10 +126,14 @@
 							describedBy="account-password-help"
 							required
 						/>
-						<p id="account-password-help" class="text-sm text-muted-foreground">Da 8 a 128 caratteri.</p>
+						<p id="account-password-help" class="text-sm text-muted-foreground">
+							Da 8 a 128 caratteri.
+						</p>
 					</div>
 					<div class="space-y-2">
-						<label for="account-confirm-password" class="text-sm font-medium">Conferma nuova password</label>
+						<label for="account-confirm-password" class="text-sm font-medium"
+							>Conferma nuova password</label
+						>
 						<PasswordInput
 							id="account-confirm-password"
 							label="conferma nuova password"

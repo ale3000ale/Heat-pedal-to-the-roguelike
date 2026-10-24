@@ -17,3 +17,13 @@ Nessuna migrazione, nuova dipendenza o modifica di schema. La funzione modifica 
 Verifiche eseguite sul runner prima di questo riallineamento: pytest backend, check frontend, lint, test frontend e build. Esecuzione 40114589745, checkout 97653418434af55ff904d36ab75d80fb0e8fe365, con formattazione limitata ai cinque file frontend prima dei controlli. Il checkout identifica l avvio della run; il successivo commit contiene i file formattati effettivamente verificati. Nessun conteggio complessivo o warning viene inventato. Non e un collaudo manuale browser, di rete, di concorrenza reale o una prova di tutte le condizioni di login simultaneo. Nessun test locale eseguito dall assistente.
 
 Test aggiunti: backend/tests/test_password_change.py e frontend/src/lib/password-change.spec.ts. Il backend copre ruoli, password attuale, conferma/lunghezze/campi extra, sessione conservata, altre sessioni revocate, account estranei, hash, login vecchio/nuovo, sessione scaduta/revocata, rollback simulato ed esclusione delle sessioni revocate dal polling SSE. Il frontend copre validazione, Unicode, payload, cookie, errori e assenza di retry; non costituisce test DOM del modal.
+
+<!-- account-password-ui-current:start -->
+## Aggiornamento grafico impostazioni e login - 24 ottobre 2026
+
+Nel modal Impostazioni account la sezione Cambio password e a scomparsa e inizialmente chiusa a ogni nuova apertura. La chiusura della sezione svuota i campi. In login e nei tre campi del cambio password e disponibile Mostra/Nascondi, indipendente per ogni campo e nascosto inizialmente. La visibilita non viene salvata; il componente dedicato password-input.svelte e riusato nei due contesti. Durante le richieste i controlli relativi sono disabilitati. Backend, API, database e comportamento di revoca delle altre sessioni restano invariati.
+
+Il fallimento Prettier su account-settings.svelte e stato affrontato applicando il formatter del lockfile solo a quel componente. Prima di questo riallineamento sono riusciti sul runner: npm run check, npm run lint, npm test e npm run build. Run 40124870171, checkout fc8d1f301a9350c555e4c4f2ab0d8ff6a7bb89ae, con componente formattato prima delle verifiche. Il successivo commit pubblica quello stile e questi documenti; non e una nuova esecuzione della CI sul commit risultante. Nessun test locale o conteggio inventato.
+
+I test password-ui.spec.ts presenti nel candidato sono controlli di rendering server, non prove interattive di clic, tastiera o browser. Restano da verificare manualmente espansione/richiusura, reset alla riapertura e Mostra/Nascondi nei quattro campi. Nessuna migrazione, nuova dipendenza, modifica al lockfile o operazione sul DB reale.
+<!-- account-password-ui-current:end -->
