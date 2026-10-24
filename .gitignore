@@ -43,3 +43,5 @@ cookies.txt
 
 #images
 backend/media/cards/uploads/*
+
+frontend/build/
