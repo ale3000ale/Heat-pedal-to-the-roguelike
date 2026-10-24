@@ -55,7 +55,11 @@
 	});
 
 	function formatDate(value: string): string {
-		return new Date(value).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+		return new Date(value).toLocaleDateString('it-IT', {
+			day: '2-digit',
+			month: 'short',
+			year: 'numeric'
+		});
 	}
 
 	function openSettings(championship: Championship) {
@@ -78,15 +82,21 @@
 			{#each items as c (c.id)}
 				<div class="group relative">
 					<a href={resolve('/championships/[id]', { id: String(c.id) })} class="block">
-						<div class="overflow-hidden rounded-2xl border border-white/10 bg-[#141824] p-5 shadow-lg heat-card-hover curb-left transition-all">
+						<div
+							class="heat-card-hover curb-left overflow-hidden rounded-2xl border border-white/10 bg-[#141824] p-5 shadow-lg transition-all"
+						>
 							<div class="flex items-start justify-between gap-4">
 								<div>
-									<div class="flex items-center gap-2 mb-1.5">
-										<span class="font-racing text-xs uppercase tracking-wider text-amber-400 font-bold">
+									<div class="mb-1.5 flex items-center gap-2">
+										<span
+											class="font-racing text-xs font-bold tracking-wider text-amber-400 uppercase"
+										>
 											Gran Premio #{c.id}
 										</span>
 									</div>
-									<h3 class="font-racing text-2xl font-bold uppercase tracking-wide text-white group-hover:text-heat transition-colors">
+									<h3
+										class="group-hover:text-heat font-racing text-2xl font-bold tracking-wide text-white uppercase transition-colors"
+									>
 										{c.name}
 									</h3>
 									<div class="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
@@ -94,13 +104,18 @@
 											<RacingIcon name="stopwatch" size="xs" />
 											{formatDate(c.date)}
 										</span>
-										<span class="inline-flex items-center gap-1 rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-foreground border border-white/10">
+										<span
+											class="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-semibold text-foreground"
+										>
 											<RacingIcon name="helmet" size="xs" />
-											{c.pilots_count} {c.pilots_count === 1 ? 'pilota iscritto' : 'piloti iscritti'}
+											{c.pilots_count}
+											{c.pilots_count === 1 ? 'pilota iscritto' : 'piloti iscritti'}
 										</span>
 									</div>
 								</div>
-								<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+								<div
+									class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white"
+								>
 									<RacingIcon name="flags" size="sm" />
 								</div>
 							</div>
@@ -108,7 +123,7 @@
 					</a>
 					{#if auth.isAdmin}
 						<Button
-							class="absolute top-3.5 right-3.5 h-8 w-8 rounded-lg border-white/10 bg-[#0e121a]/90 text-muted-foreground hover:border-amber-400 hover:text-amber-400 p-0 shadow-md backdrop-blur"
+							class="absolute top-3.5 right-3.5 h-8 w-8 rounded-lg border-white/10 bg-[#0e121a]/90 p-0 text-muted-foreground shadow-md backdrop-blur hover:border-amber-400 hover:text-amber-400"
 							size="sm"
 							variant="outline"
 							aria-label={`Impostazioni di ${c.name}`}
@@ -123,19 +138,33 @@
 	{/if}
 {/snippet}
 
-{#snippet section(key: GroupKey, title: string, items: Championship[], iconName: 'helmet' | 'flags' | 'trophy')}
-	<details class="overflow-hidden rounded-2xl border border-white/10 bg-[#10141e] shadow-xl group/det" bind:open={openGroups[key]}>
-		<summary class="flex cursor-pointer items-center justify-between bg-[#151926] px-5 py-4 font-racing text-xl font-bold uppercase tracking-wider text-white select-none hover:bg-white/5 transition-colors">
+{#snippet section(
+	key: GroupKey,
+	title: string,
+	items: Championship[],
+	iconName: 'helmet' | 'flags' | 'trophy'
+)}
+	<details
+		class="group/det overflow-hidden rounded-2xl border border-white/10 bg-[#10141e] shadow-xl"
+		bind:open={openGroups[key]}
+	>
+		<summary
+			class="flex cursor-pointer items-center justify-between bg-[#151926] px-5 py-4 font-racing text-xl font-bold tracking-wider text-white uppercase transition-colors select-none hover:bg-white/5"
+		>
 			<div class="flex items-center gap-3">
 				<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 text-primary">
 					<RacingIcon name={iconName} size="sm" />
 				</div>
 				<span>{title}</span>
-				<span class="rounded-full bg-white/10 px-2 py-0.5 font-sans text-xs font-bold text-muted-foreground">
+				<span
+					class="rounded-full bg-white/10 px-2 py-0.5 font-sans text-xs font-bold text-muted-foreground"
+				>
 					{items.length}
 				</span>
 			</div>
-			<span class="text-xs text-muted-foreground transition-transform group-open/det:rotate-180">▼</span>
+			<span class="text-xs text-muted-foreground transition-transform group-open/det:rotate-180"
+				>▼</span
+			>
 		</summary>
 		<div class="p-5">
 			{@render list(items, emptyMessages[key])}
@@ -145,26 +174,34 @@
 
 <main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
 	<!-- Page Header Banner -->
-	<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-xl mb-2">
+	<div class="relative mb-2 overflow-hidden rounded-2xl border border-white/10 shadow-xl">
 		<!-- Board game photo background -->
 		<div class="absolute inset-0 z-0">
 			<img
 				src="/images/heat-corner.jpg"
 				alt="Heat board game corner"
-				class="w-full h-full object-cover object-center opacity-20"
+				class="h-full w-full object-cover object-center opacity-20"
 			/>
-			<div class="absolute inset-0 bg-gradient-to-r from-[#10141e] via-[#10141e]/90 to-[#10141e]/60"></div>
+			<div
+				class="absolute inset-0 bg-gradient-to-r from-[#10141e] via-[#10141e]/90 to-[#10141e]/60"
+			></div>
 		</div>
-		<div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-5">
+		<div
+			class="relative z-10 flex flex-col justify-between gap-4 px-6 py-5 sm:flex-row sm:items-center"
+		>
 			<div class="flex items-center gap-3">
-				<div class="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 shadow-lg gold-glow">
+				<div
+					class="gold-glow flex h-11 w-11 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/20 text-amber-400 shadow-lg"
+				>
 					<RacingIcon name="trophy" size="lg" />
 				</div>
 				<div>
-					<h1 class="font-racing text-3xl sm:text-4xl font-black uppercase italic tracking-wide text-white">
+					<h1
+						class="font-racing text-3xl font-black tracking-wide text-white uppercase italic sm:text-4xl"
+					>
 						CAMPIONATI GRAND PRIX
 					</h1>
-					<p class="text-xs text-muted-foreground uppercase tracking-widest mt-0.5">
+					<p class="mt-0.5 text-xs tracking-widest text-muted-foreground uppercase">
 						Classifiche generali, gare in circuito e albi d'oro
 					</p>
 				</div>
@@ -173,7 +210,7 @@
 			{#if auth.isAdmin}
 				<Button
 					size="sm"
-					class="bg-primary hover:bg-accent text-white font-racing text-base font-bold uppercase tracking-wider px-5 h-10 heat-glow transition-all"
+					class="heat-glow h-10 bg-primary px-5 font-racing text-base font-bold tracking-wider text-white uppercase transition-all hover:bg-accent"
 					aria-label="Nuovo campionato"
 					onclick={() => (newOpen = true)}
 				>
@@ -185,14 +222,19 @@
 	</div>
 
 	{#if error}
-		<div class="rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-red-300 flex items-center gap-2" role="alert">
+		<div
+			class="flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-red-300"
+			role="alert"
+		>
 			<RacingIcon name="flame" size="xs" />
 			<span>{error}</span>
 		</div>
 	{:else if !loaded}
 		<div class="flex items-center justify-center p-12 text-muted-foreground">
-			<RacingIcon name="speedometer" size="lg" class="animate-spin mr-3 text-primary" />
-			<span class="font-racing text-lg uppercase tracking-wider">Accesso alla griglia di partenza…</span>
+			<RacingIcon name="speedometer" size="lg" class="mr-3 animate-spin text-primary" />
+			<span class="font-racing text-lg tracking-wider uppercase"
+				>Accesso alla griglia di partenza…</span
+			>
 		</div>
 	{:else}
 		<div class="space-y-5">

@@ -85,7 +85,7 @@
 	body {
 		@apply bg-background text-foreground;
 		background-color: #0b0d13;
-		background-image: 
+		background-image:
 			radial-gradient(circle at 50% 0%, rgba(230, 57, 38, 0.12) 0%, transparent 55%),
 			radial-gradient(circle at 90% 100%, rgba(245, 158, 11, 0.06) 0%, transparent 40%);
 		background-attachment: fixed;
@@ -94,7 +94,12 @@
 	html {
 		font-family: var(--font-sans);
 	}
-	h1, h2, h3, h4, h5, h6 {
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
 		font-family: var(--font-racing);
 		letter-spacing: 0.02em;
 	}
@@ -112,13 +117,25 @@
 
 /* Track Kerb / Curb strips */
 .curb-bar {
-	background: repeating-linear-gradient(135deg, #e63926 0, #e63926 10px, #ffffff 10px, #ffffff 20px);
+	background: repeating-linear-gradient(
+		135deg,
+		#e63926 0,
+		#e63926 10px,
+		#ffffff 10px,
+		#ffffff 20px
+	);
 	height: 4px;
 	width: 100%;
 }
 
 .curb-bar-thick {
-	background: repeating-linear-gradient(135deg, #e63926 0, #e63926 12px, #ffffff 12px, #ffffff 24px);
+	background: repeating-linear-gradient(
+		135deg,
+		#e63926 0,
+		#e63926 12px,
+		#ffffff 12px,
+		#ffffff 24px
+	);
 	height: 6px;
 	width: 100%;
 }
@@ -133,7 +150,13 @@
 	left: 0;
 	right: 0;
 	height: 4px;
-	background: repeating-linear-gradient(135deg, #e63926 0, #e63926 10px, #ffffff 10px, #ffffff 20px);
+	background: repeating-linear-gradient(
+		135deg,
+		#e63926 0,
+		#e63926 10px,
+		#ffffff 10px,
+		#ffffff 20px
+	);
 	border-top-left-radius: inherit;
 	border-top-right-radius: inherit;
 	pointer-events: none;
@@ -179,12 +202,17 @@
 
 /* Card hover lift & heat glow */
 .heat-card-hover {
-	transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease;
+	transition:
+		transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+		box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+		border-color 0.22s ease;
 }
 
 .heat-card-hover:hover {
 	transform: translateY(-3px);
-	box-shadow: 0 14px 28px -6px rgba(230, 57, 38, 0.22), 0 0 0 1px rgba(230, 57, 38, 0.4);
+	box-shadow:
+		0 14px 28px -6px rgba(230, 57, 38, 0.22),
+		0 0 0 1px rgba(230, 57, 38, 0.4);
 	border-color: rgba(230, 57, 38, 0.5);
 }
 
@@ -207,7 +235,7 @@
 	font-family: var(--font-racing);
 	font-weight: 900;
 	border: 2px solid #e63926;
-	box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* Racing stripe background accent */
