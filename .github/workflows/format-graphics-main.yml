@@ -1,0 +1,177 @@
+name: Formatta grafica su main e verifica frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/format-graphics-main.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: format-graphics-main
+  cancel-in-progress: false
+
+jobs:
+  format-and-verify:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - name: Verifica main autorizzato dopo merge PR 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = '7bed909eb79c51332f0a8762fe08d900ed0b5b63'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Installa esclusivamente dal lockfile esistente
+        working-directory: frontend
+        run: npm ci
+      - name: Formatta e pubblica soltanto i tredici file segnalati
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            'frontend/src/lib/components/CardTile.svelte'
+            'frontend/src/lib/components/inventory-section.svelte'
+            'frontend/src/lib/components/racing-icon.svelte'
+            'frontend/src/routes/+layout.svelte'
+            'frontend/src/routes/+page.svelte'
+            'frontend/src/routes/championships/[id]/+page.svelte'
+            'frontend/src/routes/championships/+page.svelte'
+            'frontend/src/routes/layout.css'
+            'frontend/src/routes/login/+page.svelte'
+            'frontend/src/routes/pilots/[id]/+page.svelte'
+            'frontend/src/routes/register/+page.svelte'
+            'frontend/src/routes/shop/+page.svelte'
+            'frontend/src/routes/team/+page.svelte'
+          )
+          relative=()
+          for path in "${files[@]}"; do
+            test -f "$path"
+            relative+=("${path#frontend/}")
+          done
+          (
+            cd frontend
+            ./node_modules/.bin/prettier --write "${relative[@]}"
+            ./node_modules/.bin/prettier --check "${relative[@]}"
+          )
+          while IFS= read -r path; do
+            found=0
+            for item in "${files[@]}"; do
+              if [ "$path" = "$item" ]; then found=1; break; fi
+            done
+            if [ "$found" != 1 ]; then echo "Modifica inattesa: $path"; exit 1; fi
+          done < <(git diff --name-only)
+          git add -- "${files[@]}"
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica di formattazione necessaria"
+          else
+            git fetch origin main
+            if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+              echo "main e cambiato: nessun push eseguito"
+              exit 1
+            fi
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'style(graphics): formatta i tredici file frontend con Prettier dal lockfile'
+            git push origin HEAD:refs/heads/main
+          fi
+          git rev-parse HEAD
+      - name: Controllo dei tipi sul codice formattato
+        working-directory: frontend
+        run: npm run check
+      - name: Prettier ed ESLint completi senza esclusioni
+        working-directory: frontend
+        run: npm run lint
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Riallinea documenti soltanto dopo tutti i controlli riusciti
+        env:
+          VERIFIED_RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export VERIFIED_CODE_SHA="$(git rev-parse HEAD)"
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const run = process.env.VERIFIED_RUN_ID;
+          const sha = process.env.VERIFIED_CODE_SHA;
+          if (!/^\d+$/.test(run) || !/^[0-9a-f]{40}$/.test(sha)) throw new Error('Identificativi CI non validi');
+          const paths = [
+            'README.md', 'docs/PROJECT_SPEC.md', 'docs/PROJECT_STATUS.md',
+            'docs/SETUP.md', 'docs/DATABASE.md', 'docs/SCRIPTS.md',
+            'docs/PROJECT_NOTES.md', 'docs/FRONTEND_AUTH.md', 'frontend/README.md'
+          ];
+          const start = '<!-- graphics-main-format:start -->';
+          const end = '<!-- graphics-main-format:end -->';
+          const block = [
+            start,
+            '## Grafica integrata e formattazione frontend su main',
+            '',
+            'La PR #17 graphics-overhaul e stata unita dall autore nel commit 7bed909eb79c51332f0a8762fe08d900ed0b5b63. Il successivo intervento applica esclusivamente Prettier dal lockfile ai tredici file segnalati: CardTile, inventory-section, racing-icon, layout e home, dettaglio/elenco campionati, layout.css, login, dettaglio pilota, registrazione, negozio e team.',
+            '',
+            'Nessuna modifica alle regole di gioco, API, backend, schema o dati reali. Nessuna nuova dipendenza, aggiornamento lockfile, esclusione lint o modifica alle regole Prettier/ESLint. Il commit di sola formattazione viene pubblicato prima dei controlli completi: un suo successo non implica da solo che lint, tipi, test o build siano riusciti.',
+            '',
+            `Questo riallineamento viene eseguito solo dopo npm run check, npm run lint, npm test e npm run build riusciti sul codice ${sha}, nella run ${run}. Il successivo commit documentale non e una nuova esecuzione della CI. Nessun test locale, collaudo browser o conteggio complessivo inventato. Un eventuale errore ESLint distinto deve essere corretto esplicitamente, non ignorato.`,
+            end
+          ].join('\n');
+          const updates = paths.map(path => {
+            const old = fs.readFileSync(path, 'utf8');
+            const starts = old.split(start).length - 1;
+            const ends = old.split(end).length - 1;
+            if (starts !== ends || starts > 1 || (starts && old.indexOf(start) > old.indexOf(end))) throw new Error(`Marcatori non validi: ${path}`);
+            return [path, starts
+              ? old.slice(0, old.indexOf(start)) + block + old.slice(old.indexOf(end) + end.length)
+              : old.trimEnd() + '\n\n' + block + '\n'];
+          });
+          for (const [path, value] of updates) fs.writeFileSync(path, value);
+          JS
+      - name: Formatta il solo README frontend aggiornato e ricontrolla lint
+        working-directory: frontend
+        run: |
+          ./node_modules/.bin/prettier --write README.md
+          npm run lint
+      - name: Pubblica esclusivamente i documenti riallineati senza force push
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/SETUP.md
+            docs/DATABASE.md docs/SCRIPTS.md docs/PROJECT_NOTES.md
+            docs/FRONTEND_AUTH.md frontend/README.md
+          )
+          while IFS= read -r path; do
+            found=0
+            for item in "${files[@]}"; do
+              if [ "$path" = "$item" ]; then found=1; break; fi
+            done
+            if [ "$found" != 1 ]; then echo "Modifica inattesa: $path"; exit 1; fi
+          done < <(git diff --name-only)
+          git add -- "${files[@]}"
+          git diff --cached --check
+          if git diff --cached --quiet; then echo "Documenti gia allineati"; exit 0; fi
+          git fetch origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "main e cambiato: nessun push eseguito"
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs(graphics): riallinea dopo controlli frontend sul codice formattato'
+          git push origin HEAD:refs/heads/main
+          git rev-parse HEAD
