@@ -6,9 +6,10 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { resolve } from '$app/paths';
+	import RacingIcon from '$lib/components/racing-icon.svelte';
 
 	const selectClass =
-		'h-8 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
+		'h-9 rounded-lg border border-white/10 bg-[#0e121a] px-3 text-xs text-foreground focus:border-primary focus:outline-none disabled:opacity-50';
 
 	// Piloti per richiesta: coincide con il massimo accettato dal backend.
 	const PILOTS_PAGE = 100;
@@ -131,164 +132,274 @@
 	}
 </script>
 
-<svelte:head><title>Team e piloti - Heat</title></svelte:head>
+<svelte:head><title>Scuderie e Piloti — Heat</title></svelte:head>
 
 {#snippet nameCell(kind: 'team' | 'pilot', id: number, name: string)}
 	{#if editing && editing.kind === kind && editing.id === id}
 		<form onsubmit={saveEdit} class="flex flex-1 items-center gap-2">
-			<Input bind:value={editing.name} required class="h-8" />
-			<Button type="submit" size="sm" disabled={busy}>Salva</Button>
-			<Button type="button" size="sm" variant="ghost" onclick={() => (editing = null)}>
+			<Input bind:value={editing.name} required class="h-8 rounded border-white/20 bg-[#0d1017] text-white" />
+			<Button type="submit" size="sm" class="bg-primary text-white font-racing uppercase tracking-wider text-xs" disabled={busy}>Salva</Button>
+			<Button type="button" size="sm" variant="ghost" class="text-xs text-muted-foreground hover:text-white" onclick={() => (editing = null)}>
 				Annulla
 			</Button>
 		</form>
 	{:else}
-		<span class="flex-1 font-medium">{name}</span>
-		<Button size="sm" variant="ghost" onclick={() => (editing = { kind, id, name })}>
-			Rinomina
-		</Button>
+		<div class="flex items-center gap-2">
+			<span class="font-bold text-foreground text-base tracking-wide">{name}</span>
+			<Button size="sm" variant="ghost" class="h-7 text-xs text-muted-foreground hover:text-foreground" onclick={() => (editing = { kind, id, name })}>
+				Rinomina
+			</Button>
+		</div>
 	{/if}
 {/snippet}
 
 {#snippet pilotRow(p: Pilot)}
-	<li class="flex flex-wrap items-center gap-2 py-2">
-		{@render nameCell('pilot', p.id, p.name)}
-		{#if p.championship}
-			<span class="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-				{p.championship.name}
+	<li class="flex flex-wrap items-center justify-between gap-3 py-3 px-4 rounded-xl bg-[#121622] border border-white/5 hover:border-white/15 transition-all">
+		<div class="flex items-center gap-3 min-w-[200px]">
+			<!-- Racing Roundel Number -->
+			<div class="racing-roundel h-8 w-8 text-xs shrink-0 shadow-md">
+				#{p.id}
+			</div>
+
+			<div class="flex flex-col">
+				{@render nameCell('pilot', p.id, p.name)}
+				{#if p.championship}
+					<span class="inline-flex items-center gap-1 text-[11px] text-amber-400 mt-0.5">
+						<RacingIcon name="trophy" size="xs" />
+						{p.championship.name}
+					</span>
+				{/if}
+			</div>
+		</div>
+
+		<!-- Telemetry badges (Gold, Sponsor, Points) -->
+		<div class="flex flex-wrap items-center gap-2">
+			<span class="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-400 border border-amber-500/20">
+				<RacingIcon name="trophy" size="xs" />
+				{p.gold} Gold
 			</span>
-		{/if}
-		<span class="text-xs text-muted-foreground">
-			Gold {p.gold} · Sponsor {p.sponsor} · Punti {p.point}
-		</span>
-		<a
-			href={resolve('/pilots/[id]', { id: String(p.id) })}
-			class="text-sm text-muted-foreground underline hover:text-foreground"
-		>
-			Mazzi
-		</a>
-		<select
-			class={selectClass}
-			value={p.team_id === null ? '' : String(p.team_id)}
-			onchange={(e) => changeTeam(p, e.currentTarget.value)}
-			disabled={busy}
-			aria-label="Team di {p.name}"
-		>
-			<option value="">Nessun team</option>
-			{#each teams as t (t.id)}
-				<option value={String(t.id)}>{t.name}</option>
-			{/each}
-		</select>
-		<Button
-			size="sm"
-			variant="ghost"
-			class="text-destructive"
-			disabled={busy}
-			onclick={() => removePilot(p)}
-		>
-			Elimina
-		</Button>
+			<span class="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2.5 py-1 text-xs font-bold text-sky-400 border border-sky-500/20">
+				<RacingIcon name="spark_plug" size="xs" />
+				{p.sponsor} Sponsor
+			</span>
+			<span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
+				<RacingIcon name="flags" size="xs" />
+				{p.point} Punti
+			</span>
+		</div>
+
+		<!-- Action buttons & Team select -->
+		<div class="flex items-center gap-2.5">
+			<a
+				href={resolve('/pilots/[id]', { id: String(p.id) })}
+				class="inline-flex items-center gap-1.5 rounded-lg bg-primary/20 hover:bg-primary text-white border border-primary/40 px-3 py-1.5 text-xs font-racing uppercase tracking-wider font-bold transition-all shadow-sm"
+			>
+				<RacingIcon name="speedometer" size="xs" />
+				<span>Mazzi & Carte</span>
+			</a>
+
+			<select
+				class={selectClass}
+				value={p.team_id === null ? '' : String(p.team_id)}
+				onchange={(e) => changeTeam(p, e.currentTarget.value)}
+				disabled={busy}
+				aria-label="Team di {p.name}"
+			>
+				<option value="">Nessuna Scuderia</option>
+				{#each teams as t (t.id)}
+					<option value={String(t.id)}>{t.name}</option>
+				{/each}
+			</select>
+
+			<Button
+				size="sm"
+				variant="ghost"
+				class="h-8 text-xs text-destructive hover:bg-destructive/20 hover:text-white"
+				disabled={busy}
+				onclick={() => removePilot(p)}
+			>
+				Elimina
+			</Button>
+		</div>
 	</li>
 {/snippet}
 
-<main class="mx-auto max-w-5xl space-y-6 p-6">
-	<h1 class="text-2xl font-bold">Team e piloti</h1>
+<main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+	<!-- Page Header Banner -->
+	<div class="relative overflow-hidden rounded-2xl border border-white/10 shadow-xl mb-2">
+		<!-- Actual board game photo background -->
+		<div class="absolute inset-0 z-0">
+			<img
+				src="/images/heat-cars.jpg"
+				alt="Heat miniature griglia di partenza"
+				class="w-full h-full object-cover object-center opacity-20"
+			/>
+			<div class="absolute inset-0 bg-gradient-to-r from-[#10141e] via-[#10141e]/85 to-[#10141e]/50"></div>
+		</div>
+		<div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-5">
+			<div>
+				<div class="flex items-center gap-3">
+					<div class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/20 border border-primary/30 text-primary shadow-lg">
+						<RacingIcon name="helmet" size="lg" />
+					</div>
+					<div>
+						<h1 class="font-racing text-3xl sm:text-4xl font-black uppercase italic tracking-wide text-white">
+							SCUDERIE E PILOTI
+						</h1>
+						<p class="text-xs text-muted-foreground uppercase tracking-widest mt-0.5">
+							Gestione del Garage, contratti e mazzi di partenza
+						</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Quick Search Input -->
+			<div class="w-full sm:w-72">
+				<Input
+					type="search"
+					bind:value={search}
+					oninput={onSearchInput}
+					maxlength={40}
+					placeholder="Cerca pilota per nome…"
+					aria-label="Cerca un pilota per nome"
+					class="h-10 rounded-xl border-white/10 bg-[#121622]/80 backdrop-blur px-4 text-xs text-white placeholder:text-muted-foreground/40 focus:border-primary"
+				/>
+			</div>
+		</div>
+	</div>
 
 	{#if error}
-		<p class="text-sm text-destructive" role="alert">{error}</p>
+		<div class="rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-red-300 flex items-center gap-2" role="alert">
+			<RacingIcon name="flame" size="xs" />
+			<span>{error}</span>
+		</div>
 	{/if}
 
 	{#if !loaded}
-		<p class="text-muted-foreground">Caricamento…</p>
+		<div class="flex items-center justify-center p-12 text-muted-foreground">
+			<RacingIcon name="speedometer" size="lg" class="animate-spin mr-3 text-primary" />
+			<span class="font-racing text-lg uppercase tracking-wider">Accesso ai box in corso…</span>
+		</div>
 	{:else}
-		<div class="grid gap-4 sm:grid-cols-2">
-			<Card.Root>
-				<Card.Header><Card.Title>Nuovo team</Card.Title></Card.Header>
-				<Card.Content>
-					<form onsubmit={createTeam} class="flex gap-2">
-						<Input bind:value={newTeam} placeholder="Nome del team" required />
-						<Button type="submit" disabled={busy}>Crea</Button>
-					</form>
-				</Card.Content>
-			</Card.Root>
+		<!-- Creation Cards (Toolboxes) -->
+		<div class="grid gap-6 sm:grid-cols-2">
+			<!-- Create Team Card -->
+			<div class="overflow-hidden rounded-2xl border border-white/10 bg-[#141824] p-5 shadow-xl curb-left">
+				<div class="flex items-center gap-2 mb-3">
+					<RacingIcon name="wrenches" size="sm" class="text-primary" />
+					<h3 class="font-racing text-xl font-bold uppercase tracking-wider text-white">Nuova Scuderia</h3>
+				</div>
+				<form onsubmit={createTeam} class="flex gap-2.5">
+					<Input
+						bind:value={newTeam}
+						placeholder="es. Scuderia Ferrari, Lotus..."
+						required
+						class="h-10 rounded-lg border-white/10 bg-[#0d1017] px-3 text-xs text-white placeholder:text-muted-foreground/40 focus:border-primary"
+					/>
+					<Button type="submit" disabled={busy} class="h-10 bg-primary hover:bg-accent text-white font-racing uppercase tracking-wider font-bold px-5">
+						Crea
+					</Button>
+				</form>
+			</div>
 
-			<Card.Root>
-				<Card.Header><Card.Title>Nuovo pilota</Card.Title></Card.Header>
-				<Card.Content>
-					<form onsubmit={createPilot} class="flex flex-wrap gap-2">
-						<Input bind:value={newPilot} placeholder="Nome del pilota" required class="flex-1" />
-						<select
-							class={selectClass}
-							bind:value={newPilotTeam}
-							aria-label="Team del nuovo pilota"
-						>
-							<option value="">Nessun team</option>
-							{#each teams as t (t.id)}
-								<option value={String(t.id)}>{t.name}</option>
-							{/each}
-						</select>
-						<Button type="submit" disabled={busy}>Crea</Button>
-					</form>
-				</Card.Content>
-			</Card.Root>
+			<!-- Create Pilot Card -->
+			<div class="overflow-hidden rounded-2xl border border-white/10 bg-[#141824] p-5 shadow-xl curb-left">
+				<div class="flex items-center gap-2 mb-3">
+					<RacingIcon name="helmet" size="sm" class="text-amber-400" />
+					<h3 class="font-racing text-xl font-bold uppercase tracking-wider text-white">Nuovo Pilota</h3>
+				</div>
+				<form onsubmit={createPilot} class="flex flex-wrap gap-2.5">
+					<Input
+						bind:value={newPilot}
+						placeholder="Nome del pilota"
+						required
+						class="h-10 flex-1 rounded-lg border-white/10 bg-[#0d1017] px-3 text-xs text-white placeholder:text-muted-foreground/40 focus:border-primary"
+					/>
+					<select
+						class="{selectClass} h-10"
+						bind:value={newPilotTeam}
+						aria-label="Team del nuovo pilota"
+					>
+						<option value="">Nessuna Scuderia</option>
+						{#each teams as t (t.id)}
+							<option value={String(t.id)}>{t.name}</option>
+						{/each}
+					</select>
+					<Button type="submit" disabled={busy} class="h-10 bg-amber-500 hover:bg-amber-600 text-white font-racing uppercase tracking-wider font-bold px-5">
+						Iscrivi
+					</Button>
+				</form>
+			</div>
 		</div>
 
-		<Input
-			type="search"
-			bind:value={search}
-			oninput={onSearchInput}
-			maxlength={40}
-			placeholder="Cerca un pilota per nome"
-			aria-label="Cerca un pilota per nome"
-		/>
-
+		<!-- Team Groups -->
 		{#each groups as group (group.team.id)}
-			<Card.Root>
-				<Card.Header>
-					<div class="flex flex-wrap items-center gap-2">
+			<div class="overflow-hidden rounded-2xl border border-white/10 bg-[#10141e] shadow-xl">
+				<div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#151926] px-5 py-3.5">
+					<div class="flex items-center gap-3">
+						<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 text-primary">
+							<RacingIcon name="car" size="sm" />
+						</div>
 						{@render nameCell('team', group.team.id, group.team.name)}
-						<Button
-							size="sm"
-							variant="ghost"
-							class="text-destructive"
-							disabled={busy}
-							onclick={() => removeTeam(group.team)}
-						>
-							Elimina team
-						</Button>
 					</div>
-				</Card.Header>
-				<Card.Content>
+					<Button
+						size="sm"
+						variant="ghost"
+						class="h-8 text-xs text-destructive hover:bg-destructive/20 hover:text-white"
+						disabled={busy}
+						onclick={() => removeTeam(group.team)}
+					>
+						Elimina Scuderia
+					</Button>
+				</div>
+				<div class="p-4 sm:p-5">
 					{#if group.pilots.length === 0}
-						<p class="text-sm text-muted-foreground">Nessun pilota in questo team.</p>
+						<p class="py-4 text-center text-xs text-muted-foreground italic">Nessun pilota assegnato a questa scuderia.</p>
 					{:else}
-						<ul class="divide-y">
+						<ul class="space-y-2.5">
 							{#each group.pilots as p (p.id)}
 								{@render pilotRow(p)}
 							{/each}
 						</ul>
 					{/if}
-				</Card.Content>
-			</Card.Root>
+				</div>
+			</div>
 		{/each}
 
+		<!-- Free Pilots (Piloti senza team) -->
 		{#if freePilots.length > 0}
-			<Card.Root>
-				<Card.Header><Card.Title>Piloti senza team</Card.Title></Card.Header>
-				<Card.Content>
-					<ul class="divide-y">
+			<div class="overflow-hidden rounded-2xl border border-white/10 bg-[#10141e] shadow-xl">
+				<div class="border-b border-white/10 bg-[#151926] px-5 py-3.5 flex items-center gap-2">
+					<RacingIcon name="flags" size="sm" class="text-amber-400" />
+					<h3 class="font-racing text-xl font-bold uppercase tracking-wider text-white">Piloti Indipendenti / Senza Scuderia</h3>
+				</div>
+				<div class="p-4 sm:p-5">
+					<ul class="space-y-2.5">
 						{#each freePilots as p (p.id)}
 							{@render pilotRow(p)}
 						{/each}
 					</ul>
-				</Card.Content>
-			</Card.Root>
+				</div>
+			</div>
 		{/if}
 
 		{#if searching && pilots.length === 0}
-			<p class="text-muted-foreground">Nessun pilota corrisponde alla ricerca.</p>
+			<div class="rounded-2xl border border-white/10 bg-[#121622] p-10 text-center text-muted-foreground">
+				<RacingIcon name="speedometer" size="xl" class="mx-auto mb-2 opacity-40" />
+				<p class="font-racing text-xl uppercase tracking-wider text-white">Nessun pilota trovato</p>
+				<p class="text-xs text-muted-foreground mt-1">Nessun pilota corrisponde alla ricerca inserita.</p>
+			</div>
 		{:else if teams.length === 0 && pilots.length === 0}
-			<p class="text-muted-foreground">Non hai ancora né team né piloti: creane uno qui sopra.</p>
+			<!-- High impact Empty State -->
+			<div class="rounded-2xl border border-dashed border-white/20 bg-[#10141e] p-10 text-center">
+				<div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/20 text-primary heat-glow">
+					<RacingIcon name="car" size="xl" />
+				</div>
+				<h3 class="font-racing text-2xl font-bold uppercase tracking-wider text-white">La griglia di partenza è vuota</h3>
+				<p class="mt-2 text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
+					Non hai ancora registrato scuderie né piloti. Usa i moduli qui sopra per fondare il tuo primo team e scendere in pista!
+				</p>
+			</div>
 		{/if}
 	{/if}
 </main>

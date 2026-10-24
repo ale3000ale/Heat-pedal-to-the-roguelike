@@ -21,6 +21,7 @@
 	import PilotPickerDialog from '$lib/components/pilot-picker-dialog.svelte';
 	import PilotCardPlays from '$lib/components/pilot-card-plays.svelte';
 	import CardGiftPopup from '$lib/components/card-gift-popup.svelte';
+	import RacingIcon from '$lib/components/racing-icon.svelte';
 
 	const RACE_UNFINISHED_MESSAGE =
 		"C'è una gara non conclusa (in corso o in revisione): va conclusa prima di crearne un'altra.";
@@ -204,104 +205,217 @@
 
 <svelte:head><title>{championship ? championship.name : 'Campionato'} - Heat</title></svelte:head>
 
-<main class="mx-auto max-w-5xl space-y-6 p-6">
-	<a href={resolve('/championships')} class="text-sm text-muted-foreground hover:text-foreground">
-		← Campionati
-	</a>
+<main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+	<div class="flex items-center gap-2 text-xs font-racing uppercase tracking-wider text-muted-foreground">
+		<a href={resolve('/championships')} class="inline-flex items-center gap-1 hover:text-white transition-colors">
+			<span>←</span>
+			<span>Tutti i Campionati</span>
+		</a>
+		<span>/</span>
+		<span class="text-white font-bold">{championship ? championship.name : 'Dettagli'}</span>
+	</div>
 
 	{#if liveError}
-		<p class="text-sm text-destructive" role="alert">Aggiornamento non riuscito: {liveError}</p>
+		<div class="rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-red-300 flex items-center gap-2" role="alert">
+			<RacingIcon name="flame" size="xs" />
+			<span>Aggiornamento non riuscito: {liveError}</span>
+		</div>
 	{/if}
 
 	{#if error}
-		<p class="text-sm text-destructive" role="alert">{error}</p>
+		<div class="rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-red-300 flex items-center gap-2" role="alert">
+			<RacingIcon name="flame" size="xs" />
+			<span>{error}</span>
+		</div>
 	{:else if !championship}
-		<p class="text-muted-foreground">Caricamento…</p>
+		<div class="flex items-center justify-center p-12 text-muted-foreground">
+			<RacingIcon name="speedometer" size="lg" class="animate-spin mr-3 text-primary" />
+			<span class="font-racing text-lg uppercase tracking-wider">Accesso alla telemetria del campionato…</span>
+		</div>
 	{:else}
-		<div class="flex items-start justify-between gap-3">
-			<div>
-				<h1 class="text-2xl font-bold">{championship.name}</h1>
-				<p class="text-sm text-muted-foreground">
-					{new Date(championship.date).toLocaleDateString('it-IT')} ·
-					{championship.is_closed ? 'Chiuso' : 'Attivo'}
-				</p>
+		<!-- Championship Header Banner with board game background -->
+		<div class="relative overflow-hidden rounded-2xl border border-white/10 bg-[#121622] shadow-xl">
+			<!-- Board game photo background (right side) -->
+			<div class="absolute inset-0 z-0">
+				<img
+					src="/images/heat-corner.jpg"
+					alt="Heat miniature in curva"
+					class="w-full h-full object-cover object-center opacity-15"
+				/>
+				<div class="absolute inset-0 bg-gradient-to-r from-[#121622] via-[#121622]/90 to-[#121622]/50"></div>
 			</div>
-			<div class="flex items-center gap-2">
-				{#if showEnroll}
-					<Button size="sm" variant="outline" onclick={() => (enrollOpen = true)}>
-						Iscrivi un pilota
-					</Button>
-				{/if}
-				{#if deckMode !== 'hidden'}
-					<Button size="sm" variant="outline" onclick={openDeck}>Vedi mazzo</Button>
-				{/if}
-				<!-- Campionato chiuso: il negozio si apre in sola lettura, solo per l'admin -->
-				{#if !championship.is_closed || auth.isAdmin}
-					<a
-						href={resolve('/championships/[id]/shop', { id: String(championship.id) })}
-						class="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent"
-					>
-						Negozio
-					</a>
-				{/if}
-				{#if auth.isAdmin}
-					<Button
-						size="sm"
-						variant="outline"
-						aria-label="Impostazioni del campionato"
-						onclick={() => (settingsOpen = true)}
-					>
-						⚙
-					</Button>
-				{/if}
+			<div class="curb-bar relative z-10" role="presentation"></div>
+			<div class="relative z-10 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+				<div>
+					<div class="flex items-center gap-2.5 mb-2">
+						{#if championship.is_closed}
+							<span class="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-muted-foreground border border-white/10">
+								<RacingIcon name="flags" size="xs" />
+								Campionato Chiuso
+							</span>
+						{:else}
+							<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-emerald-400 border border-emerald-500/30">
+								<span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+								Campionato Attivo
+							</span>
+						{/if}
+						<span class="text-xs text-muted-foreground">
+							{new Date(championship.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' })}
+						</span>
+					</div>
+
+					<h1 class="font-racing text-3xl sm:text-4xl font-black uppercase italic tracking-wide text-white">
+						{championship.name}
+					</h1>
+					<p class="text-xs text-muted-foreground uppercase tracking-widest mt-1">
+						{championship.pilots_count} {championship.pilots_count === 1 ? 'pilota iscritto' : 'piloti iscritti'} · {races.length} gare
+					</p>
+				</div>
+
+				<div class="flex flex-wrap items-center gap-2.5">
+					{#if showEnroll}
+						<Button size="sm" class="bg-primary hover:bg-accent text-white font-racing uppercase tracking-wider font-bold h-9 heat-glow" onclick={() => (enrollOpen = true)}>
+							<RacingIcon name="helmet" size="xs" class="mr-1.5" />
+							Iscrivi un pilota
+						</Button>
+					{/if}
+					{#if deckMode !== 'hidden'}
+						<Button size="sm" variant="outline" class="border-white/15 bg-white/5 hover:bg-white/10 text-white font-racing uppercase tracking-wider font-bold h-9" onclick={openDeck}>
+							<RacingIcon name="speedometer" size="xs" class="mr-1.5" />
+							Vedi mazzo
+						</Button>
+					{/if}
+					{#if !championship.is_closed || auth.isAdmin}
+						<a
+							href={resolve('/championships/[id]/shop', { id: String(championship.id) })}
+							class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 text-xs font-racing uppercase tracking-wider font-bold text-sky-400 hover:bg-sky-500/20 transition-colors"
+						>
+							<RacingIcon name="tires" size="xs" />
+							<span>Negozio</span>
+						</a>
+					{/if}
+					{#if auth.isAdmin}
+						<Button
+							size="sm"
+							variant="outline"
+							class="h-9 w-9 rounded-lg border-white/15 bg-white/5 text-muted-foreground hover:border-amber-400 hover:text-amber-400 p-0"
+							aria-label="Impostazioni del campionato"
+							onclick={() => (settingsOpen = true)}
+						>
+							<RacingIcon name="wrenches" size="xs" />
+						</Button>
+					{/if}
+				</div>
 			</div>
 		</div>
 
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Classifica</Card.Title>
-				<Card.Description>{championship.pilots_count} piloti iscritti</Card.Description>
-			</Card.Header>
-			<Card.Content>
+		<!-- Grand Prix Leaderboard / Classifica Ufficiale -->
+		<div class="overflow-hidden rounded-2xl border border-white/10 bg-[#121622] shadow-xl">
+			<div class="border-b border-white/10 bg-[#171c28] px-5 py-4 flex items-center justify-between">
+				<div class="flex items-center gap-2.5">
+					<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400">
+						<RacingIcon name="trophy" size="sm" />
+					</div>
+					<div>
+						<h2 class="font-racing text-2xl font-bold uppercase tracking-wide text-white">
+							Classifica Generale Piloti
+						</h2>
+						<p class="text-xs text-muted-foreground mt-0.5">Punteggio cumulativo delle gare disputate</p>
+					</div>
+				</div>
+				<span class="font-racing text-xs uppercase tracking-wider text-muted-foreground">
+					{standings.length} Piloti
+				</span>
+			</div>
+
+			<div class="p-4 sm:p-5">
 				{#if standings.length === 0}
-					<p class="text-sm text-muted-foreground">Nessun pilota iscritto.</p>
+					<p class="py-8 text-center text-xs text-muted-foreground italic">Nessun pilota ancora iscritto alla griglia di partenza.</p>
 				{:else}
-					<ol class="divide-y">
+					<ol class="space-y-2">
 						{#each standings as row, index (standingKey(row, index))}
-							<li class="flex flex-wrap items-center gap-3 py-2">
-								<span class="w-6 text-right text-sm text-muted-foreground">{row.rank}</span>
-								<span class="flex-1 font-medium">
-									{row.pilot_name}
-									{#if row.pilot_id !== null && myIds.has(row.pilot_id)}
-										<span class="ml-2 text-xs text-muted-foreground">(tuo)</span>
+							{@const isFirst = row.rank === 1}
+							{@const isSecond = row.rank === 2}
+							{@const isThird = row.rank === 3}
+							{@const isMine = row.pilot_id !== null && myIds.has(row.pilot_id)}
+							<li class="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3.5 transition-all {isFirst ? 'bg-amber-500/10 border-amber-500/40 shadow-sm' : isMine ? 'bg-primary/10 border-primary/30' : 'bg-[#161a26] border-white/5 hover:border-white/15'}">
+								<div class="flex items-center gap-3.5">
+									<!-- Position badge -->
+									{#if isFirst}
+										<div class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-black font-racing font-black text-sm shadow-md gold-glow">
+											<RacingIcon name="trophy" size="xs" />
+										</div>
+									{:else if isSecond}
+										<div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-300 text-black font-racing font-black text-sm shadow-md">
+											<RacingIcon name="laurel" size="xs" />
+										</div>
+									{:else if isThird}
+										<div class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-800 text-amber-100 font-racing font-black text-sm shadow-md">
+											3
+										</div>
+									{:else}
+										<div class="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 border border-white/10 text-muted-foreground font-racing font-bold text-xs">
+											{row.rank}
+										</div>
 									{/if}
-								</span>
-								<span class="text-xs text-muted-foreground">
-									{row.races_played}
-									{row.races_played === 1 ? 'gara' : 'gare'}
-								</span>
-								<span class="w-20 text-right text-sm">{row.points} punti</span>
-								{#if canGift && row.pilot_id !== null}
-									<PilotGiftButton
-										championshipId={championship.id}
-										pilot={{ id: row.pilot_id, name: row.pilot_name }}
-										showName={false}
-									/>
-								{/if}
+
+									<!-- Pilot Name -->
+									<div class="flex items-center gap-2">
+										<span class="font-bold text-white text-base tracking-wide {isFirst ? 'text-amber-300 font-black' : ''}">
+											{row.pilot_name}
+										</span>
+										{#if isMine}
+											<span class="rounded bg-primary/25 px-1.5 py-0.5 text-[10px] font-racing uppercase tracking-wider font-bold text-primary border border-primary/30">
+												Tuo Pilota
+											</span>
+										{/if}
+									</div>
+								</div>
+
+								<!-- Stats & Points -->
+								<div class="flex items-center gap-4">
+									<span class="text-xs text-muted-foreground">
+										{row.races_played} {row.races_played === 1 ? 'gara' : 'gare'}
+									</span>
+
+									<div class="min-w-[80px] text-right">
+										<span class="font-racing text-2xl font-black italic tracking-wide {isFirst ? 'text-amber-400' : 'text-white'}">
+											{row.points}
+										</span>
+										<span class="text-[10px] uppercase font-bold text-muted-foreground ml-0.5">PTS</span>
+									</div>
+
+									{#if canGift && row.pilot_id !== null}
+										<PilotGiftButton
+											championshipId={championship.id}
+											pilot={{ id: row.pilot_id, name: row.pilot_name }}
+											showName={false}
+										/>
+									{/if}
+								</div>
 							</li>
 						{/each}
 					</ol>
 				{/if}
-			</Card.Content>
-		</Card.Root>
+			</div>
+		</div>
 
 		{#if raceInProgress && !championship.is_closed && enrolled.length > 0}
-			<Card.Root>
-				<Card.Header>
-					<Card.Title>Le tue carte sponsor</Card.Title>
-					<Card.Description>Gioca le carte dei tuoi piloti nella gara in corso.</Card.Description>
-				</Card.Header>
-				<Card.Content class="space-y-3">
+			<div class="overflow-hidden rounded-2xl border border-primary/30 bg-[#121622] shadow-xl curb-top">
+				<div class="border-b border-white/10 bg-[#191522] px-5 py-4 flex items-center justify-between">
+					<div class="flex items-center gap-2.5">
+						<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 text-primary">
+							<RacingIcon name="flame" size="sm" />
+						</div>
+						<div>
+							<h2 class="font-racing text-2xl font-bold uppercase tracking-wide text-white">
+								Le Tue Carte Sponsor in Gara
+							</h2>
+							<p class="text-xs text-muted-foreground mt-0.5">Gioca le carte dei tuoi piloti nella gara attualmente in corso</p>
+						</div>
+					</div>
+				</div>
+				<div class="p-5 space-y-3">
 					{#each enrolled as p (p.id)}
 						<PilotCardPlays
 							championshipId={championship.id}
@@ -310,57 +424,87 @@
 							refreshKey={giftTick}
 						/>
 					{/each}
-				</Card.Content>
-			</Card.Root>
+				</div>
+			</div>
 		{/if}
 
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Gare</Card.Title>
-				<Card.Description>{races.length} gare in calendario</Card.Description>
-			</Card.Header>
-			<Card.Content>
+		<!-- Races Section -->
+		<div class="overflow-hidden rounded-2xl border border-white/10 bg-[#121622] shadow-xl">
+			<div class="border-b border-white/10 bg-[#171c28] px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+				<div class="flex items-center gap-2.5">
+					<div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 text-primary">
+						<RacingIcon name="flags" size="sm" />
+					</div>
+					<div>
+						<h2 class="font-racing text-2xl font-bold uppercase tracking-wide text-white">
+							Gare in Calendario
+						</h2>
+						<p class="text-xs text-muted-foreground mt-0.5">{races.length} gare disputate o programmate</p>
+					</div>
+				</div>
+
 				{#if auth.canManageRaces && !championship.is_closed}
-					<div class="mb-4">
-						<Button
-							size="sm"
-							onclick={createRace}
-							disabled={busy}
-							aria-disabled={raceUnfinished}
-							class={raceUnfinished ? 'opacity-50' : ''}
-						>
-							Nuova gara
-						</Button>
-						{#if raceError}
-							<p class="mt-3 text-sm text-destructive" role="alert">{raceError}</p>
-						{/if}
+					<Button
+						size="sm"
+						onclick={createRace}
+						disabled={busy}
+						aria-disabled={raceUnfinished}
+						class="bg-primary hover:bg-accent text-white font-racing uppercase tracking-wider font-bold h-9 heat-glow {raceUnfinished ? 'opacity-50 cursor-not-allowed' : ''}"
+					>
+						<RacingIcon name="flags" size="xs" class="mr-1.5" />
+						Nuova Gara
+					</Button>
+				{/if}
+			</div>
+
+			<div class="p-4 sm:p-5">
+				{#if raceError}
+					<div class="mb-4 rounded-lg border border-destructive/40 bg-destructive/15 p-2.5 text-xs text-red-300" role="alert">
+						{raceError}
 					</div>
 				{/if}
+
 				{#if races.length === 0}
-					<p class="text-sm text-muted-foreground">Nessuna gara ancora disputata.</p>
+					<p class="py-8 text-center text-xs text-muted-foreground italic">Nessuna gara ancora disputata in questo campionato.</p>
 				{:else}
-					<ul class="divide-y">
+					<ul class="space-y-2.5">
 						{#each sortedRaces as race (race.id)}
+							{@const statusInfo = raceStatusView(race.status)}
 							<li>
 								<a
 									href={resolve('/championships/[id]/races/[raceId]', {
 										id: String(championship.id),
 										raceId: String(race.id)
 									})}
-									class="flex items-center gap-3 py-2 hover:bg-accent"
+									class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/5 bg-[#161a26] p-4 hover:border-primary/40 hover:bg-[#1b2030] transition-all group"
 								>
-									<span class="flex-1 font-medium">Gara {race.number}</span>
-									<span class="text-sm text-muted-foreground">{raceDate(race.date)}</span>
-									<span class={`text-sm font-medium ${raceStatusView(race.status).class}`}>
-										{raceStatusView(race.status).label}
-									</span>
+									<div class="flex items-center gap-3.5">
+										<div class="racing-roundel h-8 w-8 text-xs font-black">
+											{race.number}
+										</div>
+										<div>
+											<span class="font-bold text-white text-base tracking-wide group-hover:text-heat transition-colors">
+												Gran Premio - Gara #{race.number}
+											</span>
+											<span class="block text-xs text-muted-foreground mt-0.5">
+												{raceDate(race.date)}
+											</span>
+										</div>
+									</div>
+
+									<div class="flex items-center gap-3">
+										<span class="rounded-full px-3 py-1 text-xs font-racing uppercase tracking-wider font-bold border {statusInfo.class}">
+											{statusInfo.label}
+										</span>
+										<span class="text-xs font-bold text-primary group-hover:translate-x-1 transition-transform">→</span>
+									</div>
 								</a>
 							</li>
 						{/each}
 					</ul>
 				{/if}
-			</Card.Content>
-		</Card.Root>
+			</div>
+		</div>
 
 		{#if auth.isAdmin}
 			<ChampionshipSettings

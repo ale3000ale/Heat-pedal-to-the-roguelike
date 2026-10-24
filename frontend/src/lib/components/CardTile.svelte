@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { CardEntry } from '$lib/types';
+	import RacingIcon from '$lib/components/racing-icon.svelte';
 
 	// Se `onclick` è passato la carta diventa un pulsante (usato per spostarla tra i mazzi).
 	// Con `compact` la carta è più piccola: il nome sta sotto e le copie sopra l'immagine.
@@ -16,36 +17,54 @@
 		compact?: boolean;
 		title?: string;
 	} = $props();
+
+	let imgError = $state(false);
 </script>
 
 {#snippet content()}
 	{#if compact}
-		<span class="relative block">
-			<img
-				src="/media/{card.path}"
-				alt={card.name}
-				loading="lazy"
-				class="aspect-[2/3] w-full object-cover"
-			/>
+		<span class="relative block overflow-hidden rounded-t-lg bg-[#0e111a]">
+			{#if !imgError}
+				<img
+					src="/media/{card.path}"
+					alt={card.name}
+					onerror={() => (imgError = true)}
+					class="aspect-[2/3] w-full object-cover transition-transform duration-300 group-hover:scale-105"
+				/>
+			{:else}
+				<div class="aspect-[2/3] w-full flex flex-col items-center justify-center bg-[#151926] p-2 text-center">
+					<RacingIcon name="speedometer" size="md" class="text-amber-400 mb-1" />
+					<span class="font-racing text-[10px] uppercase font-bold text-white line-clamp-2">{card.name}</span>
+				</div>
+			{/if}
 			<span
-				class="absolute top-1 right-1 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground"
+				class="absolute top-1.5 right-1.5 rounded-full bg-gradient-to-r from-red-600 to-amber-500 px-1.5 py-0.5 text-[10px] font-racing font-bold text-white shadow-md border border-white/20"
 				{title}
 			>
 				×{card.copies}
 			</span>
 		</span>
-		<span class="block truncate px-1 py-0.5 text-[10px] font-medium">{card.name}</span>
+		<span class="block truncate px-1.5 py-1 text-[11px] font-medium text-white/90 bg-[#121622]">{card.name}</span>
 	{:else}
-		<img
-			src="/media/{card.path}"
-			alt={card.name}
-			loading="lazy"
-			class="aspect-[2/3] w-full object-cover"
-		/>
-		<span class="flex items-center justify-between gap-2 px-2 py-1.5 text-sm">
-			<span class="truncate font-medium">{card.name}</span>
+		<div class="relative overflow-hidden rounded-t-lg bg-[#0e111a]">
+			{#if !imgError}
+				<img
+					src="/media/{card.path}"
+					alt={card.name}
+					onerror={() => (imgError = true)}
+					class="aspect-[2/3] w-full object-cover transition-transform duration-300 group-hover:scale-105"
+				/>
+			{:else}
+				<div class="aspect-[2/3] w-full flex flex-col items-center justify-center bg-[#151926] p-4 text-center">
+					<RacingIcon name="speedometer" size="lg" class="text-amber-400 mb-2" />
+					<span class="font-racing text-xs uppercase font-bold text-white">{card.name}</span>
+				</div>
+			{/if}
+		</div>
+		<span class="flex items-center justify-between gap-2 px-2.5 py-2 text-xs bg-[#121622]">
+			<span class="truncate font-bold text-white tracking-wide">{card.name}</span>
 			<span
-				class="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground"
+				class="rounded-full bg-gradient-to-r from-red-600 to-amber-500 px-2 py-0.5 text-xs font-racing font-black text-white shadow-md border border-white/20"
 				{title}
 			>
 				×{card.copies}
@@ -59,12 +78,12 @@
 		type="button"
 		{onclick}
 		{disabled}
-		class="block w-full overflow-hidden rounded-lg border bg-card text-left transition enabled:hover:ring-2 enabled:hover:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+		class="group block w-full overflow-hidden rounded-xl border border-white/10 bg-[#161a26] text-left transition-all duration-200 enabled:hover:-translate-y-1 enabled:hover:border-primary/60 enabled:hover:shadow-lg enabled:hover:shadow-primary/25 disabled:cursor-not-allowed disabled:opacity-50"
 	>
 		{@render content()}
 	</button>
 {:else}
-	<div class="overflow-hidden rounded-lg border bg-card">
+	<div class="group overflow-hidden rounded-xl border border-white/10 bg-[#161a26] transition-all duration-200 hover:border-white/20">
 		{@render content()}
 	</div>
 {/if}
