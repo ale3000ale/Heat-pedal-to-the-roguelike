@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import PasswordInput from '$lib/components/password-input.svelte';
 
 	let username = $state('');
 	let password = $state('');
@@ -20,6 +21,7 @@
 	// Invia le credenziali; se sono sbagliate mostra il messaggio del backend.
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
+		if (busy) return;
 		error = null;
 		busy = true;
 		try {
@@ -49,11 +51,12 @@
 
 				<div class="flex flex-col gap-2">
 					<Label for="password">Password</Label>
-					<Input
+					<PasswordInput
 						id="password"
-						type="password"
+						label="password"
 						bind:value={password}
 						autocomplete="current-password"
+						disabled={busy}
 						required
 					/>
 				</div>
