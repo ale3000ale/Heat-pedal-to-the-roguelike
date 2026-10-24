@@ -151,12 +151,17 @@ def start(backend_only=False, public_url=None):
 
 
 def production(public_url=None):
-    """Avvia build Node e FastAPI senza reload o migrazioni automatiche."""
+    """Avvia produzione LAN; public_url imposta un'origine esplicita facoltativa.
+
+    Senza URL seleziona l'IPv4 LAN del PC. Non installa dipendenze e non
+    applica migrazioni; gli errori di avvio risalgono al menu o alla CLI.
+    """
     start_production(ROOT, VENV_PY, public_url, info, run, spawn, stop)
 
 
 def production_menu():
-    production(input("URL pubblico HTTPS (Invio: solo locale): ").strip() or None)
+    """Avvia la selezione LAN senza richiedere servizi o URL di tunnel."""
+    production()
 
 
 def run_tests():
@@ -180,7 +185,7 @@ MENU = [
     ("Avvia solo il backend di sviluppo", lambda: start(backend_only=True)),
     ("Esegui i test del backend", run_tests),
     ("Controlli del frontend (format, check, lint, test)", run_checks),
-    ("Avvio operativo (build, senza migrazioni automatiche)", production_menu),
+    ("Produzione Wi-Fi/LAN (build, senza migrazioni automatiche)", production_menu),
 ]
 
 
@@ -197,7 +202,7 @@ def menu():
         if choice.isdigit() and 1 <= int(choice) <= len(MENU):
             try:
                 MENU[int(choice) - 1][1]()
-            except (SystemExit, ValueError) as exc:
+            except (SystemExit, ValueError, RuntimeError, OSError) as exc:
                 print(exc)
         else:
             print("Scelta non valida")
@@ -212,8 +217,11 @@ def main():
     p_start = sub.add_parser("start")
     p_start.add_argument("--backend-only", action="store_true")
     p_start.add_argument("--public-url")
-    p_production = sub.add_parser("production", help="Build e avvio operativo")
-    p_production.add_argument("--public-url", help="Origine HTTPS del tunnel")
+    p_production = sub.add_parser("production", help="Build e avvio sulla rete Wi-Fi/LAN")
+    p_production.add_argument(
+        "--public-url",
+        help="Origine esplicita: HTTP IPv4 privato:5173, loopback:5173 o HTTPS; ometti per selezionare la LAN",
+    )
     sub.add_parser("migrate")
     sub.add_parser("test")
     sub.add_parser("check")
@@ -235,6 +243,8 @@ def main():
             menu()
     except ValueError as exc:
         parser.error(str(exc))
+    except (RuntimeError, OSError) as exc:
+        fail(str(exc))
 
 
 if __name__ == "__main__":

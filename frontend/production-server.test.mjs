@@ -12,15 +12,12 @@ async function listen(server) {
 
 function request(port, path, headers = {}, method = 'GET') {
 	return new Promise((resolve, reject) => {
-		const req = http.request(
-			{ hostname: '127.0.0.1', port, path, method, headers },
-			(res) => {
-				let body = '';
-				res.setEncoding('utf8');
-				res.on('data', (chunk) => (body += chunk));
-				res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body }));
-			}
-		);
+		const req = http.request({ hostname: '127.0.0.1', port, path, method, headers }, (res) => {
+			let body = '';
+			res.setEncoding('utf8');
+			res.on('data', (chunk) => (body += chunk));
+			res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body }));
+		});
 		req.on('error', reject);
 		req.end();
 	});

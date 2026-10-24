@@ -1,0 +1,122 @@
+name: Allinea documenti produzione LAN dopo runtime verificato
+
+on:
+  push:
+    branches: [production-lan]
+    paths:
+      - .github/workflows/align-production-lan-docs.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: align-production-lan-docs
+  cancel-in-progress: false
+
+jobs:
+  align:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.ref == 'refs/heads/production-lan'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERIFIED_CODE_SHA: 09a9aa594bd75650fe0af0556b67b64f2c0dcc15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - name: Verifica parent e successo del workflow runtime sul codice candidato
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const expected = process.env.VERIFIED_CODE_SHA;
+            const { data: commit } = await github.rest.repos.getCommit({
+              owner: context.repo.owner, repo: context.repo.repo, ref: context.sha
+            });
+            if (commit.parents.length !== 1 || commit.parents[0].sha !== expected) {
+              throw new Error('Il commit documentale non segue il codice verificato: interrompo');
+            }
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner, repo: context.repo.repo,
+              workflow_id: 'production-runtime.yml', head_sha: expected,
+              status: 'success', per_page: 100
+            });
+            const run = data.workflow_runs.find(run =>
+              run.id === 40047553032 && run.head_sha === expected &&
+              run.head_branch === 'production-lan' && run.conclusion === 'success'
+            );
+            if (!run) throw new Error('Successo runtime atteso non confermato dalle API');
+            core.info(`Runtime verificato: ${run.id} su ${expected}`);
+      - name: Riallinea solo gli otto documenti generali preservando il testo esistente
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs');
+            const targets = [
+              ['README.md', 'docs/PRODUCTION_LAN.md'],
+              ['docs/PROJECT_SPEC.md', 'PRODUCTION_LAN.md'],
+              ['docs/PROJECT_STATUS.md', 'PRODUCTION_LAN.md'],
+              ['docs/SETUP.md', 'PRODUCTION_LAN.md'],
+              ['docs/SCRIPTS.md', 'PRODUCTION_LAN.md'],
+              ['docs/DATABASE.md', 'PRODUCTION_LAN.md'],
+              ['docs/PROJECT_NOTES.md', 'PRODUCTION_LAN.md'],
+              ['frontend/README.md', '../docs/PRODUCTION_LAN.md']
+            ];
+            const start = '<!-- production-lan-current:start -->';
+            const end = '<!-- production-lan-current:end -->';
+            const updates = targets.map(([path, guide]) => {
+              const original = fs.readFileSync(path, 'utf8');
+              const starts = original.split(start).length - 1;
+              const ends = original.split(end).length - 1;
+              if (starts !== ends || starts > 1 || (starts && original.indexOf(start) > original.indexOf(end))) {
+                throw new Error(`Marcatori documentali non validi: ${path}`);
+              }
+              const block = [
+                start,
+                '## Produzione Wi-Fi/LAN - aggiornamento corrente del 24 ottobre 2026',
+                '',
+                'Per la produzione prevale questa sezione sulle indicazioni storiche relative al solo loopback o al tunnel. Funzionalita sul ramo production-lan, PR #16 in bozza, senza merge in main.',
+                '',
+                'Dalla radice: python heat.py production, oppure voce 7 del menu. Senza URL esplicito seleziona l IPv4 privato del PC e mostra l indirizzo da usare anche sugli altri dispositivi della LAN. Nessun tunnel o client aggiuntivo richiesto. --public-url resta facoltativo per un origine esplicita, incluso il solo loopback.',
+                '',
+                'Gateway sul solo IPv4 scelto:5173, backend su 127.0.0.1:8000 con un worker. API, immagini e SSE passano dal gateway; controlli Host/Origin mantenuti. HTTP solo su rete fidata: traffico non cifrato. Nessuna modifica automatica a firewall o router. PC acceso e dispositivi reciprocamente raggiungibili necessari.',
+                '',
+                'Production non installa dipendenze, non crea DB e non applica migrazioni: verifica soltanto le revisioni in lettura. Il comportamento storico di setup/start/migrate resta invariato. Nessuna modifica a schema, dati reali, formato carte, risorse, dipendenze o lockfile.',
+                '',
+                'Verifica osservata: Production runtime checks 40047553032, job runtime 120733397223, success sul codice formattato 09a9aa594bd75650fe0af0556b67b64f2c0dcc15. Include test launcher/LAN/gateway, tipi, frontend, build, smoke test e lint. Non e una nuova attestazione di tutti i job della CI generale, ne un collaudo Wi-Fi/browser. Conteggi e warning non letti dai log. Nessun nuovo test locale per questo riallineamento; nessun merge o ZIP finale implicito.',
+                '',
+                `Guida operativa e limiti: [Produzione Wi-Fi/LAN](${guide}).`,
+                end
+              ].join('\n');
+              const updated = starts
+                ? original.slice(0, original.indexOf(start)) + block + original.slice(original.indexOf(end) + end.length)
+                : original.trimEnd() + '\n\n' + block + '\n';
+              return [path, updated];
+            });
+            for (const [path, updated] of updates) fs.writeFileSync(path, updated, 'utf8');
+      - name: Pubblica soltanto il riallineamento documentale
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r path; do
+            case "$path" in
+              README.md|docs/PROJECT_SPEC.md|docs/PROJECT_STATUS.md|docs/SETUP.md|docs/SCRIPTS.md|docs/DATABASE.md|docs/PROJECT_NOTES.md|frontend/README.md) ;;
+              *) echo "Modifica inattesa: $path"; exit 1 ;;
+            esac
+          done < <(git diff --name-only)
+          git add -- README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/SETUP.md docs/SCRIPTS.md docs/DATABASE.md docs/PROJECT_NOTES.md frontend/README.md
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Documenti gia allineati."
+            exit 0
+          fi
+          git fetch origin production-lan
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/production-lan)" ]; then
+            echo "Ramo cambiato: nessun push eseguito."
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: allinea documenti generali alla produzione LAN verificata'
+          git push origin HEAD:refs/heads/production-lan

@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { isIP } from 'node:net';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,7 +15,14 @@ const hopHeaders = [
 	'upgrade'
 ];
 
-/** Copy end-to-end headers, removing connection-nominated and hop-by-hop fields. */
+/** Return true only for canonical RFC1918 IPv4 literals; no DNS resolution. */
+export function isLanIPv4(host) {
+	if (isIP(host) !== 4) return false;
+	const [a, b] = host.split('.').map(Number);
+	return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}
+
+/** Remove hop-by-hop and connection-nominated headers before proxying. */
 function endToEnd(headers) {
 	const result = { ...headers };
 	const nominated = String(headers.connection ?? '')
@@ -24,23 +32,38 @@ function endToEnd(headers) {
 	return result;
 }
 
-/** Validate an explicit origin; throws for credentials, paths or public plain HTTP. */
+/** Return a validated URL; reject paths, credentials and public plain HTTP. */
 export function validateOrigin(value) {
 	if (!value || /[\s\\?#@]/.test(value)) throw new Error('Invalid HEAT_PUBLIC_URL');
 	const url = new URL(value);
 	if (url.pathname !== '/' || url.username || url.password) {
 		throw new Error('Specify an origin without path or credentials');
 	}
-	const local = ['127.0.0.1', 'localhost'].includes(url.hostname) && url.port === '5173';
-	if (url.protocol !== 'https:' && !(url.protocol === 'http:' && local)) {
-		throw new Error('Public origin requires HTTPS');
+	const local = ['127.0.0.1', 'localhost'].includes(url.hostname);
+	const lan = isLanIPv4(url.hostname);
+	if (
+		url.protocol !== 'https:' &&
+		!(url.protocol === 'http:' && (local || lan) && url.port === '5173')
+	) {
+		throw new Error('HTTP requires loopback or private IPv4 on port 5173');
+	}
+	// WHATWG URL accepts abbreviated/numeric IPv4; require the canonical spelling.
+	if (url.protocol === 'http:' && value.replace(/\/$/, '') !== url.origin) {
+		throw new Error('HTTP origin must use a canonical host and port');
 	}
 	return url;
 }
 
-/** Create the loopback gateway. handler is the adapter-node middleware; no DNS targets from input. */
+/** Return the sole listening IPv4: selected LAN address or loopback for HTTPS. */
+export function gatewayHost(origin) {
+	const url = validateOrigin(origin);
+	return url.protocol === 'http:' && isLanIPv4(url.hostname) ? url.hostname : '127.0.0.1';
+}
+
+/** Create gateway with exact Host/Origin checks and a fixed loopback upstream. */
 export function createHeatServer({ origin, handler, backendPort = 8000, readyToken = '' }) {
 	const publicUrl = validateOrigin(origin);
+	const bindHost = gatewayHost(origin);
 	const allowed = new Set([publicUrl.host, '127.0.0.1:5173', 'localhost:5173']);
 	return http.createServer((req, res) => {
 		res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -54,14 +77,20 @@ export function createHeatServer({ origin, handler, backendPort = 8000, readyTok
 			res.writeHead(400).end('Invalid request path');
 			return;
 		}
-		if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-			if (req.headers.origin !== publicUrl.origin) {
-				res.writeHead(403).end('Origin not allowed');
-				return;
-			}
+		if (
+			!['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
+			req.headers.origin !== publicUrl.origin
+		) {
+			res.writeHead(403).end('Origin not allowed');
+			return;
 		}
 		const pathname = path.split('?')[0];
-		if (pathname === '/__heat_ready' && req.method === 'GET') {
+		if (pathname === '/__heat_ready') {
+			const peer = req.socket.remoteAddress?.replace(/^::ffff:/, '');
+			if (req.method !== 'GET' || !['127.0.0.1', '::1', bindHost].includes(peer)) {
+				res.writeHead(403).end('Readiness is local only');
+				return;
+			}
 			res.setHeader('Cache-Control', 'no-store');
 			res.setHeader('Content-Type', 'application/json');
 			res.end(JSON.stringify({ token: readyToken }));
@@ -75,10 +104,12 @@ export function createHeatServer({ origin, handler, backendPort = 8000, readyTok
 			for (const name of Object.keys(req.headers)) {
 				if (name.startsWith('x-forwarded-') || name === 'forwarded') delete req.headers[name];
 			}
-			Promise.resolve(handler(req, res)).catch(() => {
-				if (!res.headersSent) res.writeHead(500).end('Frontend error');
-				else res.destroy();
-			});
+			Promise.resolve()
+				.then(() => handler(req, res))
+				.catch(() => {
+					if (!res.headersSent) res.writeHead(500).end('Frontend error');
+					else res.destroy();
+				});
 			return;
 		}
 		const headers = endToEnd(req.headers);
@@ -97,7 +128,7 @@ export function createHeatServer({ origin, handler, backendPort = 8000, readyTok
 				response.pipe(res);
 			}
 		);
-		// SSE remains streamed and has no inactivity timeout; no buffering or retries.
+		// Preserve SSE streaming without buffering, inactivity timeout or retries.
 		if (!pathname.startsWith('/api/events')) {
 			upstream.setTimeout(30000, () => upstream.destroy(new Error('Backend timeout')));
 		}
@@ -120,7 +151,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 		console.error(error);
 		process.exitCode = 1;
 	});
-	server.listen(5173, '127.0.0.1', () => console.log(`Heat gateway: ${origin}`));
+	server.listen(5173, gatewayHost(origin), () => console.log(`Heat gateway: ${origin}`));
 	const shutdown = () => {
 		server.close(() => process.exit(0));
 		setTimeout(() => {

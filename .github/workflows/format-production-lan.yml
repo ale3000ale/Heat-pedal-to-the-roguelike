@@ -1,0 +1,94 @@
+name: Formatta e verifica gateway produzione LAN
+
+on:
+  push:
+    branches: [production-lan]
+    paths:
+      - .github/workflows/format-production-lan.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: format-production-lan
+  cancel-in-progress: false
+
+jobs:
+  format-and-check:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.ref == 'refs/heads/production-lan'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Installa dipendenze frontend dal lockfile
+        working-directory: frontend
+        run: npm ci
+      - name: Formatta solo i tre file approvati
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(production-lan.test.mjs production-server.mjs production-server.test.mjs)
+          ./node_modules/.bin/prettier --write "${files[@]}"
+          ./node_modules/.bin/prettier --check "${files[@]}"
+      - name: Pubblica soltanto la formattazione sul ramo LAN
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r path; do
+            case "$path" in
+              frontend/production-lan.test.mjs|frontend/production-server.mjs|frontend/production-server.test.mjs) ;;
+              *) echo "Modifica inattesa: $path"; exit 1 ;;
+            esac
+          done < <(git diff --name-only)
+          git add -- frontend/production-lan.test.mjs frontend/production-server.mjs frontend/production-server.test.mjs
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Nessuna modifica di formattazione necessaria."
+          else
+            git fetch origin production-lan
+            if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/production-lan)" ]; then
+              echo "Il ramo e cambiato: nessun push eseguito."
+              exit 1
+            fi
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'style(production): formatta i tre file gateway con Prettier dal lockfile'
+            git push origin HEAD:refs/heads/production-lan
+          fi
+      - name: Identifica il commit verificato
+        run: git rev-parse HEAD
+      - name: Test launcher e LAN senza accesso al DB reale
+        run: python -m unittest tools.test_lan tools.test_production tools.test_production_lan -v
+      - name: Help produzione
+        run: python heat.py production --help
+      - name: Controllo dei tipi
+        working-directory: frontend
+        run: npm run check
+      - name: Lint e formattazione completi
+        working-directory: frontend
+        run: npm run lint
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+      - name: Test gateway e proxy LAN
+        working-directory: frontend
+        run: node --test production-server.test.mjs production-lan.test.mjs
+      - name: Build standalone
+        working-directory: frontend
+        run: npm run build
+      - name: Smoke test della build reale
+        working-directory: frontend
+        env:
+          HEAT_BUILD_SMOKE: '1'
+        run: node --test production-server.test.mjs
