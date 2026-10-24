@@ -273,7 +273,7 @@
 
 						<div class="border-t border-white/10 pt-5">
 							<InventorySection title="Carte Sponsor (Riservate per la Gara)" count={total(pilot.sponsor_inventory)}>
-								{#if pilot.sponsor_inventory.index?.length === 0 || pilot.sponsor_inventory.length === 0}
+								{#if pilot.sponsor_inventory.length === 0}
 									<p class="text-xs text-muted-foreground italic py-3">Nessuna carta sponsor ottenuta.</p>
 								{:else}
 									<div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2.5">
