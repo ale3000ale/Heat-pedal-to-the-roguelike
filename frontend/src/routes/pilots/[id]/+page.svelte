@@ -71,7 +71,7 @@
 <main class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
 	<button
 		type="button"
-		class="inline-flex items-center gap-1.5 text-xs font-racing uppercase tracking-wider text-muted-foreground hover:text-white transition-colors"
+		class="inline-flex items-center gap-1.5 font-racing text-xs tracking-wider text-muted-foreground uppercase transition-colors hover:text-white"
 		onclick={goBack}
 	>
 		<span>←</span>
@@ -80,28 +80,35 @@
 
 	{#if !pilot}
 		{#if error}
-			<div class="rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-red-300 flex items-center gap-2" role="alert">
+			<div
+				class="flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-red-300"
+				role="alert"
+			>
 				<RacingIcon name="flame" size="xs" />
 				<span>{error}</span>
 			</div>
 		{:else}
 			<div class="flex items-center justify-center p-12 text-muted-foreground">
-				<RacingIcon name="speedometer" size="lg" class="animate-spin mr-3 text-primary" />
-				<span class="font-racing text-lg uppercase tracking-wider">Caricamento scheda pilota e mazzi…</span>
+				<RacingIcon name="speedometer" size="lg" class="mr-3 animate-spin text-primary" />
+				<span class="font-racing text-lg tracking-wider uppercase"
+					>Caricamento scheda pilota e mazzi…</span
+				>
 			</div>
 		{/if}
 	{:else}
 		<!-- Pilot Header Banner -->
 		<div class="overflow-hidden rounded-2xl border border-white/10 bg-[#121622] shadow-xl">
 			<div class="curb-bar" role="presentation"></div>
-			<div class="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+			<div class="flex flex-col justify-between gap-6 p-6 md:flex-row md:items-center">
 				<div class="flex items-center gap-4">
-					<div class="racing-roundel h-12 w-12 text-lg font-black shrink-0 shadow-lg">
+					<div class="racing-roundel h-12 w-12 shrink-0 text-lg font-black shadow-lg">
 						#{pilot.id}
 					</div>
 					<div>
-						<div class="flex items-center gap-2 mb-1">
-							<span class="font-racing text-xs uppercase tracking-wider text-muted-foreground font-bold">
+						<div class="mb-1 flex items-center gap-2">
+							<span
+								class="font-racing text-xs font-bold tracking-wider text-muted-foreground uppercase"
+							>
 								Scheda Tecnica Pilota
 							</span>
 							{#if pilot.championship}
@@ -116,21 +123,29 @@
 							{/if}
 						</div>
 
-						<h1 class="font-racing text-3xl sm:text-4xl font-black uppercase italic tracking-wide text-white">
+						<h1
+							class="font-racing text-3xl font-black tracking-wide text-white uppercase italic sm:text-4xl"
+						>
 							{pilot.name}
 						</h1>
 
 						<!-- Telemetry Badges -->
 						<div class="mt-2.5 flex flex-wrap items-center gap-2.5">
-							<span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400 border border-amber-500/20">
+							<span
+								class="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-400"
+							>
 								<RacingIcon name="trophy" size="xs" />
 								{pilot.gold} Gold Accumulato
 							</span>
-							<span class="inline-flex items-center gap-1.5 rounded-full bg-sky-500/10 px-3 py-1 text-xs font-bold text-sky-400 border border-sky-500/20">
+							<span
+								class="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-bold text-sky-400"
+							>
 								<RacingIcon name="spark_plug" size="xs" />
 								{pilot.sponsor} Sponsor
 							</span>
-							<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/20">
+							<span
+								class="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400"
+							>
 								<RacingIcon name="flags" size="xs" />
 								{pilot.point} Punti Stagione
 							</span>
@@ -140,13 +155,18 @@
 
 				<!-- Quick deck status HUD -->
 				<div class="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0e121a] p-4">
-					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 text-primary">
+					<div
+						class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20 text-primary"
+					>
 						<RacingIcon name="gear" size="md" />
 					</div>
 					<div>
-						<span class="block text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Capienza Mazzo</span>
+						<span class="block text-[10px] font-bold tracking-wider text-muted-foreground uppercase"
+							>Capienza Mazzo</span
+						>
 						<span class="font-racing text-2xl font-black {full ? 'text-amber-400' : 'text-white'}">
-							{gameTotal} <span class="text-sm font-normal text-muted-foreground">/ {MAX_GAME_DECK} CARTE</span>
+							{gameTotal}
+							<span class="text-sm font-normal text-muted-foreground">/ {MAX_GAME_DECK} CARTE</span>
 						</span>
 					</div>
 				</div>
@@ -154,17 +174,28 @@
 		</div>
 
 		{#if locked}
-			<div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200 flex items-center gap-3" role="status">
+			<div
+				class="flex items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200"
+				role="status"
+			>
 				<RacingIcon name="flags" size="md" />
 				<div>
-					<span class="font-bold uppercase tracking-wider block font-racing text-sm text-amber-400">Mazzo in Sola Lettura</span>
-					<span>C'è una gara in corso o in attesa di revisione: potrai modificare la configurazione del mazzo dopo la conferma ufficiale.</span>
+					<span class="block font-racing text-sm font-bold tracking-wider text-amber-400 uppercase"
+						>Mazzo in Sola Lettura</span
+					>
+					<span
+						>C'è una gara in corso o in attesa di revisione: potrai modificare la configurazione del
+						mazzo dopo la conferma ufficiale.</span
+					>
 				</div>
 			</div>
 		{/if}
 
 		{#if error}
-			<div class="rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-red-300 flex items-center gap-2" role="alert">
+			<div
+				class="flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/15 p-3 text-xs text-red-300"
+				role="alert"
+			>
 				<RacingIcon name="flame" size="xs" />
 				<span>{error}</span>
 			</div>
@@ -174,14 +205,20 @@
 		<div class="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)] lg:items-start">
 			<!-- Game Deck (Pinned on desktop right, top on mobile) -->
 			<div class="lg:sticky lg:top-18 lg:order-2 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
-				<div class="overflow-hidden rounded-2xl border border-primary/30 bg-[#121622] shadow-xl curb-top">
-					<div class="border-b border-white/10 bg-[#191522] px-5 py-4 flex items-center justify-between">
+				<div
+					class="curb-top overflow-hidden rounded-2xl border border-primary/30 bg-[#121622] shadow-xl"
+				>
+					<div
+						class="flex items-center justify-between border-b border-white/10 bg-[#191522] px-5 py-4"
+					>
 						<div class="flex items-center gap-2.5">
-							<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 text-primary">
+							<div
+								class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 text-primary"
+							>
 								<RacingIcon name="speedometer" size="sm" />
 							</div>
 							<div>
-								<h2 class="font-racing text-2xl font-bold uppercase tracking-wide text-white">
+								<h2 class="font-racing text-2xl font-bold tracking-wide text-white uppercase">
 									Mazzo da Gara
 								</h2>
 								<p class="text-xs text-muted-foreground">
@@ -199,10 +236,11 @@
 					<div class="p-4 sm:p-5">
 						{#if pilot.game_deck.length === 0}
 							<div class="py-8 text-center text-xs text-muted-foreground italic">
-								Il mazzo da gara è vuoto. Clicca sulle carte dell'inventario per caricarle nel motore!
+								Il mazzo da gara è vuoto. Clicca sulle carte dell'inventario per caricarle nel
+								motore!
 							</div>
 						{:else}
-							<div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+							<div class="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
 								{#each pilot.game_deck as card (card.path)}
 									<CardTile
 										{card}
@@ -221,23 +259,27 @@
 			<!-- Inventory Section (Left) -->
 			<div class="lg:order-1">
 				<div class="overflow-hidden rounded-2xl border border-white/10 bg-[#121622] shadow-xl">
-					<div class="relative border-b border-white/10 bg-[#171c28] overflow-hidden">
+					<div class="relative overflow-hidden border-b border-white/10 bg-[#171c28]">
 						<!-- Dashboard/cards photo background -->
 						<div class="absolute inset-0 z-0">
 							<img
 								src="/images/heat-dashboard.webp"
 								alt="Heat dashboard con carte"
-								class="w-full h-full object-cover object-top opacity-15"
+								class="h-full w-full object-cover object-top opacity-15"
 							/>
-							<div class="absolute inset-0 bg-gradient-to-r from-[#171c28] via-[#171c28]/90 to-transparent"></div>
+							<div
+								class="absolute inset-0 bg-gradient-to-r from-[#171c28] via-[#171c28]/90 to-transparent"
+							></div>
 						</div>
-						<div class="relative z-10 px-5 py-4 flex items-center justify-between">
+						<div class="relative z-10 flex items-center justify-between px-5 py-4">
 							<div class="flex items-center gap-2.5">
-								<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-amber-400">
+								<div
+									class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-amber-400"
+								>
 									<RacingIcon name="wrenches" size="sm" />
 								</div>
 								<div>
-									<h2 class="font-racing text-2xl font-bold uppercase tracking-wide text-white">
+									<h2 class="font-racing text-2xl font-bold tracking-wide text-white uppercase">
 										Inventario Ricambi & Modifiche
 									</h2>
 									<p class="text-xs text-muted-foreground">
@@ -252,12 +294,14 @@
 						</div>
 					</div>
 
-					<div class="p-4 sm:p-5 space-y-6">
+					<div class="space-y-6 p-4 sm:p-5">
 						<InventorySection title="Carte Modifica" count={total(pilot.inventory)}>
 							{#if pilot.inventory.length === 0}
-								<p class="text-xs text-muted-foreground italic py-3">Nessuna carta modifica disponibile.</p>
+								<p class="py-3 text-xs text-muted-foreground italic">
+									Nessuna carta modifica disponibile.
+								</p>
 							{:else}
-								<div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2.5">
+								<div class="grid grid-cols-3 gap-2.5 sm:grid-cols-5 md:grid-cols-6">
 									{#each pilot.inventory as card (card.path)}
 										<CardTile
 											{card}
@@ -272,11 +316,16 @@
 						</InventorySection>
 
 						<div class="border-t border-white/10 pt-5">
-							<InventorySection title="Carte Sponsor (Riservate per la Gara)" count={total(pilot.sponsor_inventory)}>
+							<InventorySection
+								title="Carte Sponsor (Riservate per la Gara)"
+								count={total(pilot.sponsor_inventory)}
+							>
 								{#if pilot.sponsor_inventory.length === 0}
-									<p class="text-xs text-muted-foreground italic py-3">Nessuna carta sponsor ottenuta.</p>
+									<p class="py-3 text-xs text-muted-foreground italic">
+										Nessuna carta sponsor ottenuta.
+									</p>
 								{:else}
-									<div class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2.5">
+									<div class="grid grid-cols-3 gap-2.5 sm:grid-cols-5 md:grid-cols-6">
 										{#each pilot.sponsor_inventory as card (card.path)}
 											<CardTile {card} compact title="Copie in inventario" />
 										{/each}

@@ -5,17 +5,24 @@
 	let { title, count, children }: { title: string; count: number; children: Snippet } = $props();
 </script>
 
-<details class="group rounded-xl border border-white/10 bg-[#141824] overflow-hidden" open>
-	<summary class="flex cursor-pointer items-center justify-between px-4 py-3 font-racing font-bold uppercase tracking-wider text-sm text-white select-none hover:bg-white/5 transition-colors">
+<details class="group overflow-hidden rounded-xl border border-white/10 bg-[#141824]" open>
+	<summary
+		class="flex cursor-pointer items-center justify-between px-4 py-3 font-racing text-sm font-bold tracking-wider text-white uppercase transition-colors select-none hover:bg-white/5"
+	>
 		<div class="flex items-center gap-2">
 			<span>{title}</span>
-			<span class="rounded-full bg-primary/20 border border-primary/30 px-2 py-0.5 text-xs font-racing font-black text-primary">
+			<span
+				class="rounded-full border border-primary/30 bg-primary/20 px-2 py-0.5 font-racing text-xs font-black text-primary"
+			>
 				{count}
 			</span>
 		</div>
-		<span aria-hidden="true" class="text-xs text-muted-foreground transition-transform group-open:rotate-180">▼</span>
+		<span
+			aria-hidden="true"
+			class="text-xs text-muted-foreground transition-transform group-open:rotate-180">▼</span
+		>
 	</summary>
-	<div class="px-4 pb-4 pt-2">
+	<div class="px-4 pt-2 pb-4">
 		{@render children()}
 	</div>
 </details>
