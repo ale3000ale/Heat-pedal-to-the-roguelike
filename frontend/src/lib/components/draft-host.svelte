@@ -16,11 +16,20 @@
 	let notice = $state.raw<{ key: string; values: DraftHostCompletion[] } | null>(null);
 	const contextKey = $derived(auth.sessionKey);
 	const current = $derived(contextKey !== null && $host.contextKey === contextKey);
-	const ordered = $derived(current ? reconcileDraftQueue(queueKey === contextKey ? queue : empty, $host.entries) : empty);
+	const ordered = $derived(
+		current ? reconcileDraftQueue(queueKey === contextKey ? queue : empty, $host.entries) : empty
+	);
 	const selected = $derived(current ? selectDraftEntry(ordered, $host.entries) : null);
 	const blocking = $derived(selected !== null);
 	const busy = $derived($host.busy || $host.entries.some((entry) => entry.store.busy));
-	const problem = $derived(current ? $host.error ?? $host.entries.map((entry) => entry.store.state).find((root) => root.status === 'blocked')?.error ?? null : null);
+	const problem = $derived(
+		current
+			? ($host.error ??
+					$host.entries.map((entry) => entry.store.state).find((root) => root.status === 'blocked')
+						?.error ??
+					null)
+			: null
+	);
 
 	// Le pre-effect precedono il cleanup DOM di DraftFlow, che dismette il suo store.
 	// Gli esiti vengono quindi copiati nel registro prima che quello snapshot scompaia.
@@ -80,15 +89,26 @@
 </div>
 
 {#snippet recoveryNotice()}
-	<aside class="fixed top-3 right-3 left-3 z-[70] mx-auto max-w-xl rounded-lg border border-destructive bg-background p-3 shadow-lg" aria-label="Recupero preparazioni">
+	<aside
+		class="fixed top-3 right-3 left-3 z-[70] mx-auto max-w-xl rounded-lg border border-destructive bg-background p-3 shadow-lg"
+		aria-label="Recupero preparazioni"
+	>
 		<p role="alert" class="mb-2 text-sm">{problem}</p>
-		<Button type="button" variant="outline" disabled={busy} onclick={reload}>Rileggi preparazioni</Button>
+		<Button type="button" variant="outline" disabled={busy} onclick={reload}
+			>Rileggi preparazioni</Button
+		>
 	</aside>
 {/snippet}
 
 {#if selected}
 	{#key selected.store}
-		<section data-draft-host-dialog tabindex="-1" aria-label="Flusso di preparazione gara" class="relative z-[60] outline-none" use:draftHostFocus>
+		<section
+			data-draft-host-dialog
+			tabindex="-1"
+			aria-label="Flusso di preparazione gara"
+			class="relative z-[60] outline-none"
+			use:draftHostFocus
+		>
 			{#if problem}{@render recoveryNotice()}{/if}
 			<DraftFlow store={selected.store} />
 		</section>
@@ -98,9 +118,16 @@
 {/if}
 
 {#if !blocking && notice && notice.key === contextKey}
-	<div role="status" class="fixed right-3 bottom-3 left-3 z-40 mx-auto max-w-xl rounded-lg border bg-background p-3 text-sm shadow-lg">
+	<div
+		role="status"
+		class="fixed right-3 bottom-3 left-3 z-40 mx-auto max-w-xl rounded-lg border bg-background p-3 text-sm shadow-lg"
+	>
 		{#each notice.values as result (result.draftId)}
-			<p>{result.kind === 'race' ? `Gara ${result.raceId} creata per il campionato ${result.championshipId}.` : `Preparazione del campionato ${result.championshipId} annullata.`}</p>
+			<p>
+				{result.kind === 'race'
+					? `Gara ${result.raceId} creata per il campionato ${result.championshipId}.`
+					: `Preparazione del campionato ${result.championshipId} annullata.`}
+			</p>
 		{/each}
 	</div>
 {/if}

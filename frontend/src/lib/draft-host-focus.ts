@@ -9,14 +9,22 @@ export function draftHostFocus(node: HTMLElement): { destroy: () => void } {
 	const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 	let alive = true;
 	let moving = false;
-	const controls = () => [...node.querySelectorAll<HTMLElement>(SELECTOR)].filter((element) =>
-		element.tabIndex >= 0 && !element.matches(':disabled') && !element.closest('[inert]') && element.getClientRects().length > 0
-	);
+	const controls = () =>
+		[...node.querySelectorAll<HTMLElement>(SELECTOR)].filter(
+			(element) =>
+				element.tabIndex >= 0 &&
+				!element.matches(':disabled') &&
+				!element.closest('[inert]') &&
+				element.getClientRects().length > 0
+		);
 	function focusFirst(): void {
 		if (!alive || !node.isConnected || moving) return;
 		moving = true;
-		try { (controls()[0] ?? node).focus(); }
-		finally { moving = false; }
+		try {
+			(controls()[0] ?? node).focus();
+		} finally {
+			moving = false;
+		}
 	}
 	function containFocus(event: FocusEvent): void {
 		if (!(event.target instanceof Node) || !node.contains(event.target)) focusFirst();
@@ -26,11 +34,14 @@ export function draftHostFocus(node: HTMLElement): { destroy: () => void } {
 		const items = controls();
 		const index = items.indexOf(document.activeElement as HTMLElement);
 		if (items.length === 0) {
-			event.preventDefault(); node.focus();
+			event.preventDefault();
+			node.focus();
 		} else if (event.shiftKey && index <= 0) {
-			event.preventDefault(); items[items.length - 1].focus();
+			event.preventDefault();
+			items[items.length - 1].focus();
 		} else if (!event.shiftKey && (index < 0 || index === items.length - 1)) {
-			event.preventDefault(); items[0].focus();
+			event.preventDefault();
+			items[0].focus();
 		}
 	}
 	node.addEventListener('keydown', trapTab);
@@ -44,8 +55,12 @@ export function draftHostFocus(node: HTMLElement): { destroy: () => void } {
 			// Attende la rimozione di inert; non sottrae focus a un altro draft accodato.
 			queueMicrotask(() => {
 				const current = document.activeElement;
-				if (previous?.isConnected && !previous.closest('[inert]') &&
-					(current === document.body || current === null || node.contains(current))) previous.focus();
+				if (
+					previous?.isConnected &&
+					!previous.closest('[inert]') &&
+					(current === document.body || current === null || node.contains(current))
+				)
+					previous.focus();
 			});
 		}
 	};

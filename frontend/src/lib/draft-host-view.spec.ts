@@ -6,12 +6,28 @@ import { DraftStore } from './stores/draft.svelte';
 
 async function entry(id: number, patch: Partial<DraftRead> = {}): Promise<DraftHostEntry> {
 	const dto: DraftRead = {
-		id, championship_id: id + 10, version: 2, phase: 'attendance', first_race: true,
-		can_manage: true, my_pilot_ids: [11], participants: [{ pilot_id: 11, name: 'Anna', present: true }],
-		order: [], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null,
+		id,
+		championship_id: id + 10,
+		version: 2,
+		phase: 'attendance',
+		first_race: true,
+		can_manage: true,
+		my_pilot_ids: [11],
+		participants: [{ pilot_id: 11, name: 'Anna', present: true }],
+		order: [],
+		cards: [],
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: null,
 		...patch
 	};
-	const store = new DraftStore({ draftId: id, getContext: () => 'auth-1:judge:9', read: async () => dto, send: async () => undefined });
+	const store = new DraftStore({
+		draftId: id,
+		getContext: () => 'auth-1:judge:9',
+		read: async () => dto,
+		send: async () => undefined
+	});
 	await store.refresh();
 	return { id, championshipId: dto.championship_id, store };
 }
@@ -41,7 +57,11 @@ describe('coda locale host draft', () => {
 
 	it('mostra picking/decks solo con propri presenti, senza dedurre la fine da READY', async () => {
 		const present = await entry(1, { can_manage: false, phase: 'decks', ready: [11] });
-		const absent = await entry(2, { can_manage: false, phase: 'picking', participants: [{ pilot_id: 11, name: 'Anna', present: false }] });
+		const absent = await entry(2, {
+			can_manage: false,
+			phase: 'picking',
+			participants: [{ pilot_id: 11, name: 'Anna', present: false }]
+		});
 		const other = await entry(3, { can_manage: false, phase: 'picking', my_pilot_ids: [] });
 		expect(reconcileDraftQueue([], [absent, other, present])).toEqual([present.store]);
 	});
