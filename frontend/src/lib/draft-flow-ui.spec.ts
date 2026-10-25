@@ -46,7 +46,38 @@ async function setup(phase: DraftPhase = 'attendance') {
 	return { store, read, send };
 }
 
+/** Verifica il nome dell'attributo nel tag SSR dopo aver escluso i valori quotati.
+ * Le classi disabled:* e gli attributi aria-disabled/data-disabled non lo sostituiscono.
+ * Anche disabled="false" e presente come attributo booleano HTML.
+ */
+function hasDisabledAttribute(tag: string): boolean {
+	const attributes = tag.replace(/"[^"]*"|'[^']*'/g, '""');
+	return /\sdisabled(?=\s|=|\/?>)/.test(attributes);
+}
+
+function closeButtonTag(body: string): string {
+	const tag = body
+		.match(/<button\b[^>]*>/g)
+		?.find((button) => button.includes('aria-label="Chiudi"') && !button.includes('tabindex="-1"'));
+	if (!tag) throw new Error('Pulsante X del modal assente nel rendering SSR');
+	return tag;
+}
+
 const children = createRawSnippet(() => ({ render: () => '<p>Contenuto di prova</p>' }));
+
+describe('attributo disabled nei tag SSR', () => {
+	it.each([
+		['<button class="disabled:opacity-50 disabled:pointer-events-none">', false],
+		["<button class='disabled:opacity-50'>", false],
+		['<button aria-disabled="true" data-disabled="true">', false],
+		['<button data-label="disabled adesso">', false],
+		['<button disabled>', true],
+		['<button disabled="">', true],
+		['<button disabled="false">', true]
+	] as const)('riconosce %s senza leggere le classi', (tag, expected) => {
+		expect(hasDisabledAttribute(tag)).toBe(expected);
+	});
+});
 
 // Casi SSR: non provano clic, effetti client, mantenimento del focus o navigazione.
 describe('composizione draft', () => {
@@ -74,12 +105,8 @@ describe('composizione draft', () => {
 		const { store } = await setup();
 		const normal = render(DraftModal, { props: { store, children } }).body;
 		const busy = render(DraftModal, { props: { store, children, externalBusy: true } }).body;
-		const closeButton = (body: string) =>
-			body
-				.match(/<button\b[^>]*>/g)
-				?.find((tag) => tag.includes('aria-label="Chiudi"') && !tag.includes('tabindex="-1"'));
-		expect(closeButton(normal)).not.toContain('disabled');
-		expect(closeButton(busy)).toContain('disabled');
+		expect(hasDisabledAttribute(closeButtonTag(normal))).toBe(false);
+		expect(hasDisabledAttribute(closeButtonTag(busy))).toBe(true);
 	});
 
 	it('blocca anche il pulsante di rilettura durante una operazione esterna', async () => {
@@ -90,7 +117,8 @@ describe('composizione draft', () => {
 		const reload = body
 			.match(/<button\b[^>]*>[\s\S]*?<\/button>/g)
 			?.find((button) => button.includes('Rileggi dal server'));
-		expect(reload).toMatch(/<button[^>]*disabled/);
+		const tag = reload?.match(/^<button\b[^>]*>/)?.[0] ?? '';
+		expect(hasDisabledAttribute(tag)).toBe(true);
 	});
 
 	it('non mostra piu il modal dopo la dismissione del controller', async () => {
