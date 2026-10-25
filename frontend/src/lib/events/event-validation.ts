@@ -55,7 +55,8 @@ export function parseStreamEvent(type: string, raw: unknown, id: string): Stream
 		// Il segnale privato backend contiene solo l'ID, mai carte o snapshot.
 		if (
 			domainType === 'draft.changed' &&
-			(data.pilot_id !== null || Object.keys(data.payload).length !== 1 ||
+			(data.pilot_id !== null ||
+				Object.keys(data.payload).length !== 1 ||
 				!positive(data.payload.preparation_id))
 		)
 			return null;

@@ -7,13 +7,28 @@ import type { Listener, StreamEvent } from './events/event-types';
 import type { DraftRead } from './draft-types';
 
 function dto(): DraftRead {
-	return { id: 1, championship_id: 7, version: 2, phase: 'attendance', first_race: true,
-		can_manage: true, my_pilot_ids: [11], participants: [{ pilot_id: 11, name: 'Anna', present: true }],
-		order: [], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null };
+	return {
+		id: 1,
+		championship_id: 7,
+		version: 2,
+		phase: 'attendance',
+		first_race: true,
+		can_manage: true,
+		my_pilot_ids: [11],
+		participants: [{ pilot_id: 11, name: 'Anna', present: true }],
+		order: [],
+		cards: [],
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: null
+	};
 }
 function deferred<T>() {
 	let resolve!: (value: T) => void;
-	const promise = new Promise<T>((done) => { resolve = done; });
+	const promise = new Promise<T>((done) => {
+		resolve = done;
+	});
 	return { promise, resolve };
 }
 const cleanups: (() => void)[] = [];
@@ -24,17 +39,52 @@ function setup(initial?: Promise<unknown>, initiallyBusy = false) {
 	const stop = vi.fn();
 	const list = vi.fn<NonNullable<DraftHostOptions['list']>>().mockResolvedValue([dto()]);
 	if (initial) list.mockReturnValueOnce(initial);
-	const host = createDraftHost({ getContext: () => key ? { key, userId: 9, role: 'judge' } : null, list });
-	const client: Pick<EventClient, 'subscribe'> = { subscribe(run) { listener = run; return stop; } };
+	const host = createDraftHost({
+		getContext: () => (key ? { key, userId: 9, role: 'judge' } : null),
+		list
+	});
+	const client: Pick<EventClient, 'subscribe'> = {
+		subscribe(run) {
+			listener = run;
+			return stop;
+		}
+	};
 	const onError = vi.fn();
-	const live = startDraftLive({ host, getContextKey: () => key, isBusy: () => detailsBusy, client, onError });
-	cleanups.push(() => { live.dispose(); host.dispose(); });
-	return { host, live, list, stop, onError,
-		emit(event: StreamEvent) { void listener?.(event); },
-		setKey(value: string | null) { key = value; },
-		setBusy(value: boolean) { detailsBusy = value; } };
+	const live = startDraftLive({
+		host,
+		getContextKey: () => key,
+		isBusy: () => detailsBusy,
+		client,
+		onError
+	});
+	cleanups.push(() => {
+		live.dispose();
+		host.dispose();
+	});
+	return {
+		host,
+		live,
+		list,
+		stop,
+		onError,
+		emit(event: StreamEvent) {
+			void listener?.(event);
+		},
+		setKey(value: string | null) {
+			key = value;
+		},
+		setBusy(value: boolean) {
+			detailsBusy = value;
+		}
+	};
 }
-const changed: StreamEvent = { type: 'draft.changed', id: '1', championshipId: 7, pilotId: null, payload: { preparation_id: 1 } };
+const changed: StreamEvent = {
+	type: 'draft.changed',
+	id: '1',
+	championshipId: 7,
+	pilotId: null,
+	payload: { preparation_id: 1 }
+};
 afterEach(() => {
 	for (const cleanup of cleanups.splice(0)) cleanup();
 	vi.unstubAllGlobals();
@@ -74,9 +124,18 @@ describe('sincronizzazione registro draft', () => {
 		env.emit(changed);
 		await env.live.wake();
 		expect(env.list).toHaveBeenCalledTimes(1);
-		const updated = { ...dto(), version: 3, participants: [{ pilot_id: 11, name: 'Anna', present: false }] };
+		const updated = {
+			...dto(),
+			version: 3,
+			participants: [{ pilot_id: 11, name: 'Anna', present: false }]
+		};
 		env.list.mockResolvedValue([updated]);
-		pending.resolve(new Response(JSON.stringify(updated), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+		pending.resolve(
+			new Response(JSON.stringify(updated), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			})
+		);
 		expect(await command).toBe(true);
 		await env.live.wake();
 		expect(env.list).toHaveBeenCalledTimes(2);

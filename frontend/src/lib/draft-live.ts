@@ -33,17 +33,27 @@ export function startDraftLive(options: DraftLiveOptions) {
 	}
 	function alive(): boolean {
 		if (disposed) return false;
-		if (options.getContextKey() !== key) { dispose(); return false; }
+		if (options.getContextKey() !== key) {
+			dispose();
+			return false;
+		}
 		return true;
 	}
 	function blocked(): boolean {
 		const state = options.host.getState();
-		return state.status === 'disposed' || state.busy ||
-			state.entries.some((entry) => entry.store.busy) || (options.isBusy?.() ?? false);
+		return (
+			state.status === 'disposed' ||
+			state.busy ||
+			state.entries.some((entry) => entry.store.busy) ||
+			(options.isBusy?.() ?? false)
+		);
 	}
 	function report(cause: unknown): void {
-		try { options.onError(cause); }
-		catch (error) { console.error('Errore nel gestore live draft', error); }
+		try {
+			options.onError(cause);
+		} catch (error) {
+			console.error('Errore nel gestore live draft', error);
+		}
 	}
 	async function drain(): Promise<void> {
 		while (alive() && dirty && !blocked()) {
@@ -51,18 +61,26 @@ export function startDraftLive(options: DraftLiveOptions) {
 			const applied = await options.host.refresh();
 			if (!alive()) return;
 			if (applied) await options.afterRefresh?.();
-			else if (blocked()) { dirty = true; return; }
+			else if (blocked()) {
+				dirty = true;
+				return;
+			}
 		}
 	}
 	function wake(): Promise<void> {
 		if (!alive() || !dirty || running || blocked()) return running ?? Promise.resolve();
-		running = drain().catch((cause) => {
-			if (alive()) { dirty = false; report(cause); }
-		}).finally(() => {
-			running = null;
-			// Copre anche un wake arrivato prima del finally dell'operazione precedente.
-			if (alive() && dirty && !blocked()) void wake();
-		});
+		running = drain()
+			.catch((cause) => {
+				if (alive()) {
+					dirty = false;
+					report(cause);
+				}
+			})
+			.finally(() => {
+				running = null;
+				// Copre anche un wake arrivato prima del finally dell'operazione precedente.
+				if (alive() && dirty && !blocked()) void wake();
+			});
 		return running;
 	}
 	function request(): Promise<void> {
@@ -72,10 +90,18 @@ export function startDraftLive(options: DraftLiveOptions) {
 	}
 	unsubscribe = (options.client ?? eventClient).subscribe((event) => {
 		if (!alive()) return;
-		if (event.type === 'auth.expired') { dispose(); return; }
+		if (event.type === 'auth.expired') {
+			dispose();
+			return;
+		}
 		if (event.type === 'draft.changed' || event.type === 'resync') void request();
 	});
 	if (disposed) unsubscribe();
 	else void request();
-	return { request, wake, dispose, getState: () => ({ pending: dirty, running: running !== null, disposed }) };
+	return {
+		request,
+		wake,
+		dispose,
+		getState: () => ({ pending: dirty, running: running !== null, disposed })
+	};
 }

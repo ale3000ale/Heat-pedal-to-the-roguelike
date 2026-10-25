@@ -6,16 +6,49 @@ import type { DraftRead } from './draft-types';
 
 async function setup() {
 	let version = 2;
-	const value = (): DraftRead => ({ id: 1, championship_id: 7, version, phase: 'decks', first_race: true,
-		can_manage: true, my_pilot_ids: [11], participants: [{ pilot_id: 11, name: 'Anna', present: true }],
-		order: [], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null });
-	const owner = new DraftStore({ draftId: 1, getContext: () => 'auth-1', read: async () => value() });
+	const value = (): DraftRead => ({
+		id: 1,
+		championship_id: 7,
+		version,
+		phase: 'decks',
+		first_race: true,
+		can_manage: true,
+		my_pilot_ids: [11],
+		participants: [{ pilot_id: 11, name: 'Anna', present: true }],
+		order: [],
+		cards: [],
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: null
+	});
+	const owner = new DraftStore({
+		draftId: 1,
+		getContext: () => 'auth-1',
+		read: async () => value()
+	});
 	await owner.refresh();
-	const read = vi.fn(async () => ({ pilot_id: 11, preparation_version: version, ready: false,
-		inventory_version: 1, game_version: 1, inventory: [], game_deck: [] }));
+	const read = vi.fn(async () => ({
+		pilot_id: 11,
+		preparation_version: version,
+		ready: false,
+		inventory_version: 1,
+		game_version: 1,
+		inventory: [],
+		game_deck: []
+	}));
 	const decks = createDraftDeckSession({ store: owner, draftId: 1, read });
 	const live = createDraftLiveDeckRefresh();
-	return { owner, decks, read, live, async advance() { version += 1; await owner.refresh(); } };
+	return {
+		owner,
+		decks,
+		read,
+		live,
+		async advance() {
+			version += 1;
+			await owner.refresh();
+		}
+	};
 }
 
 describe('dettaglio mazzo dopo aggiornamento live', () => {

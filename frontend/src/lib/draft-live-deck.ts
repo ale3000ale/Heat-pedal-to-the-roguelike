@@ -12,12 +12,23 @@ export function createDraftLiveDeckRefresh() {
 		owner.syncContext();
 		const root = owner.state;
 		const detail = decks.getState();
-		if (decks.owner !== owner || root.status !== 'idle' || root.snapshot?.phase !== 'decks' ||
-			decks.draftId !== root.snapshot.id || detail.busy || detail.status === 'disposed' ||
-			detail.pilotId === null || !detail.data) return false;
+		if (
+			decks.owner !== owner ||
+			root.status !== 'idle' ||
+			root.snapshot?.phase !== 'decks' ||
+			decks.draftId !== root.snapshot.id ||
+			detail.busy ||
+			detail.status === 'disposed' ||
+			detail.pilotId === null ||
+			!detail.data
+		)
+			return false;
 		const version = root.snapshot.version;
-		if (detail.data.preparation_version === version &&
-			detail.data.ready === root.snapshot.ready.includes(detail.pilotId)) return false;
+		if (
+			detail.data.preparation_version === version &&
+			detail.data.ready === root.snapshot.ready.includes(detail.pilotId)
+		)
+			return false;
 		const previous = attempted.get(decks);
 		if (previous?.pilotId === detail.pilotId && previous.version === version) return false;
 		attempted.set(decks, { pilotId: detail.pilotId, version });
