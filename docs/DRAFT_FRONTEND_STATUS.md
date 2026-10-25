@@ -4,11 +4,13 @@ Data: 25 ottobre 2026. Ramo: draft. PR: 18.
 
 ## Stato corrente
 
-Primo incremento: contratti TypeScript, validazione runtime, client API autenticato e test Vitest predisposti, pubblicati nel commit 8d6f7cd62ef5058e0123e4acae5245bd62cd130a. Corretto il refuso TypeScriptScript del documento precedente.
+Primo incremento: contratti TypeScript, validazione runtime, client API autenticato e test Vitest predisposti, pubblicati nel commit 8d6f7cd62ef5058e0123e4acae5245bd62cd130a. Il precedente refuso TypeScriptScript e stato corretto nel secondo incremento.
 
-Secondo incremento: controller isolato della sessione e test predisposti per concorrenza, lifecycle e gestione degli errori. Non contiene ancora interfaccia, store reattivo, modal o collegamento SSE. Nuova gara non viene modificato. Nessuna funzionalita visuale draft dichiarata disponibile.
+Secondo incremento: controller isolato della sessione e test predisposti per concorrenza, lifecycle e gestione degli errori, pubblicati nel commit a243cc0f848c95b68c92f03d9923f83c7462464f.
 
-File del primo incremento: frontend/src/lib/draft-types.ts, draft-validation.ts, draft-api.ts, draft-validation.spec.ts e draft-api.spec.ts. CardEntry e api.ts sono riusati senza modificarli. Nuovi file del secondo incremento: frontend/src/lib/draft-session.ts e draft-session.spec.ts.
+Terzo incremento: store a istanze con rune Svelte sopra il controller, con test predisposti. Non contiene ancora modal, collegamento SSE o integrazione con layout/autenticazione. Nuova gara non viene modificato. Nessuna funzionalita visuale draft dichiarata disponibile.
+
+File del primo incremento: frontend/src/lib/draft-types.ts, draft-validation.ts, draft-api.ts, draft-validation.spec.ts e draft-api.spec.ts. CardEntry e api.ts sono riusati senza modificarli. File del secondo: frontend/src/lib/draft-session.ts e draft-session.spec.ts. File del terzo: frontend/src/lib/stores/draft.svelte.ts e frontend/src/lib/draft-store.spec.ts.
 
 ## Contratto e limiti dei DTO
 
@@ -20,7 +22,7 @@ Nessun retry automatico, polling o rilettura implicita dopo scrittura. ApiError 
 
 ## Controller della sessione
 
-createDraftSession non avvia richieste. refresh esegue una lettura soltanto su chiamata esplicita; command invia una sola operazione usando la versione dello snapshot server. Durante lettura o scrittura non accoda altre richieste. getState restituisce copie indipendenti; non e una sottoscrizione reattiva e non sostituisce il futuro store UI.
+createDraftSession non avvia richieste. refresh esegue una lettura soltanto su chiamata esplicita; command invia una sola operazione usando la versione dello snapshot server. Durante lettura o scrittura non accoda altre richieste. getState restituisce copie indipendenti; non e una sottoscrizione reattiva. Il terzo incremento lo adatta alle rune senza riscriverlo.
 
 Il contesto e fissato alla creazione. getContext deve restituire una chiave che comprenda la generazione autenticata e il contesto, cambiando anche dopo logout e nuovo login dello stesso utente. Il futuro chiamante deve chiamare dispose a cambio utente/ruolo/contesto e smontaggio. Il controller ricontrolla inoltre la chiave quando si consulta lo stato o si gestiscono operazioni e risposte. Non ascolta autonomamente auth o SSE.
 
@@ -30,11 +32,21 @@ HTTP 409 blocca le scritture conservando lo snapshot precedente, che non va most
 
 READY intermedio conserva la preparazione restituita dal server. Un esito con race_id conclude la sessione come gara creata; annullamento riuscito la conclude separatamente senza inventare una gara. Non sono consentiti altri comandi o refresh dopo conclusione o dispose. Il controller non sostituisce i permessi del server o le future conferme testuali dell interfaccia.
 
+## Store reattivo
+
+DraftStore e una classe a istanze, non un singleton. Usa $state.raw per pubblicare la vista del controller. state restituisce copie indipendenti; busy e blocked sono indicatori tecnici, non autorizzazioni di gioco. La vista viene aggiornata subito dopo l avvio dell operazione e nel finally alla sua conclusione. La serializzazione delle richieste resta responsabilita del controller.
+
+Il costruttore non legge il server. refresh e command sono espliciti; non aggiungono coda, retry o polling. dispose svuota subito la vista e la risposta tardiva non puo riattivarla. syncContext pubblica senza rete l eventuale invalidazione rilevata dal controller: il futuro host deve chiamarlo al cambio del contesto, fuori dai getter di rendering, oppure dismettere direttamente l istanza. Lo store non installa listener auth/SSE e non osserva automaticamente logout o cambio ruolo.
+
+AuthStore attuale espone utente e ruolo, non una generazione autenticata. Non viene modificato in questo incremento. La chiave di contesto non puo quindi essere sostituita ingenuamente dal solo user_id. L integrazione effettiva con autenticazione e layout resta da realizzare.
+
 ## Verifiche
 
-Test di client, validatori e controller predisposti, non eseguiti localmente. Type-check, lint, Vitest e build non dichiarati superati per questi incrementi. Nessun nuovo risultato della CI letto o atteso dall assistente. I risultati backend precedenti non attestano questo codice frontend. I test delle fasi del parser verificano il discriminante del DTO, non la coerenza di gioco dello stato; i test controller usano trasporti simulati, non browser o concorrenza reale sul database.
+Test di client, validatori, controller e store predisposti, non eseguiti localmente. Type-check, lint, Vitest e build non dichiarati superati per questi incrementi. Nessun nuovo risultato della CI letto o atteso dall assistente. I risultati backend precedenti non attestano questo codice frontend.
 
-Comandi previsti per la verifica, dalla cartella frontend: npm run check, npm run lint, npm test, npm run build. Nessun comando di installazione, formattazione o test dichiarato eseguito in questa preparazione.
+I test delle fasi del parser verificano il discriminante del DTO, non la coerenza di gioco dello stato. Controller e store usano trasporti simulati. I test store leggono le proprieta della classe compilata nell ambiente Node configurato da Vitest: non sono prove di rendering DOM, sottoscrizioni o interazioni browser, ne concorrenza reale sul database.
+
+Comandi previsti per la verifica, dalla cartella frontend: npm run check, npm run lint, npm test, npm run build. Nessun comando di installazione, formattazione o test dichiarato eseguito in questa preparazione. Due letture GitHub inizialmente fallite con 503 sono riuscite al tentativo successivo; non erano fallimenti dei test applicativi.
 
 ## Metodo aggiornato dall autore
 
@@ -42,6 +54,6 @@ Pubblicare direttamente gli incrementi approvati sul solo ramo draft; non accumu
 
 ## Allineamento documentale e seguito
 
-Questa nota registra lo stato tecnico corrente e aggiorna, per questo perimetro, le precedenti descrizioni generiche di frontend non implementato: trasporto e controller sono predisposti, l interfaccia non lo e. Le regole funzionali di docs/DRAFT_SPEC.md restano invariate. Le note backend e il manifest documentano la verifica precedente, non un nuovo verde frontend.
+Questa nota registra lo stato tecnico corrente e aggiorna, per questo perimetro, le precedenti descrizioni generiche di frontend non implementato: trasporto, controller e store sono predisposti, l interfaccia non lo e. Le regole funzionali di docs/DRAFT_SPEC.md restano invariate. Le note backend e il manifest documentano la verifica precedente, non un nuovo verde frontend.
 
-README e documenti generali conservano validita su assenza dell interfaccia, setup, script, schema e risorse: tali aspetti non cambiano. Nessuna dipendenza, lockfile, scaffold, API backend o migrazione modificata. Nessun accesso al database reale. Restano store UI, modal iniziale, presenze, ordine, scelta carte, preparazione mazzi, READY, lifecycle integrato e live, con verifiche browser separate.
+README e documenti generali conservano validita su assenza dell interfaccia, setup, script, schema e risorse: tali aspetti non cambiano. Nessuna dipendenza, lockfile, scaffold, API backend o migrazione modificata. Nessun accesso al database reale. Restano modal iniziale, presenze, ordine, scelta carte, preparazione mazzi, READY, lifecycle integrato e live, con verifiche browser separate.
