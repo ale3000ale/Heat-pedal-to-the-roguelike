@@ -157,9 +157,12 @@ jobs:
               if target.is_symlink() or not target.resolve().is_relative_to(root):
                   raise RuntimeError(f'Documento esterno: {name}')
               text = target.read_text(encoding='utf-8')
-              title, separator, body = text.partition('\n')
-              if not separator or not title.startswith('# ') or marker in text:
-                  raise RuntimeError(f'Documento inatteso o gia aggiornato: {name}')
+              heading = re.search(r'^# [^\r\n]+\r?$', text, flags=re.M)
+              if heading is None or marker in text:
+                  raise RuntimeError(f'Documento senza titolo H1 o gia aggiornato: {name}')
+              # Conserva anche eventuali note introduttive prima del titolo.
+              prefix = text[:heading.end()]
+              body = text[heading.end():]
               if name == 'docs/DRAFT_SPEC.md':
                   old = 'Stato: requisiti concordati; implementazione e verifiche non ancora eseguite.'
                   new = 'Stato: backend consolidato e verificato in CI; frontend draft e collaudo browser non completati.'
@@ -173,7 +176,7 @@ jobs:
                   body = body.replace(old, 'Backend ricostruito dai checkpoint e verificato nel runner GitHub. Frontend draft e verifica browser non completati. Provenienza, limiti e verifiche sono descritti nella sezione corrente sopra.', 1)
               block = ('\n' + marker + '\n## Draft - backend consolidato e limiti correnti\n\n'
                        + shared + '\n\n' + specific + '\n<!-- draft-backend-current:end -->\n\n')
-              updates[name] = title + '\n' + block + body.lstrip('\n')
+              updates[name] = prefix + '\n' + block + body.lstrip('\r\n')
           for name, raw in validated.items():
               target = root / name
               target.parent.mkdir(parents=True, exist_ok=True)
