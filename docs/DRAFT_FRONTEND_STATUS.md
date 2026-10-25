@@ -2,26 +2,28 @@
 
 25 ottobre 2026. Solo Heat-pedal-to-the-roguelike, ramo draft, PR 18.
 
-## Incremento ridotto: indicatore di anteprima
+## Incremento zoom locale
 
-Su richiesta dell'autore delle 19:55 il fix 2 viene diviso in commit piccoli e autonomi. Questo incremento cambia soltanto l'indicatore visuale: draftPickingView restituisce previewSlotId solo a chi non possiede il pilota del turno. Nome Anteprima di e alone non vengono quindi mostrati al proprietario, neppure durante loading/writing/blocked. Il DTO server, preview_slot_id, la coerenza dei riferimenti e i permessi dei comandi non vengono modificati.
+Lo zoom passa dal componente picking all'istanza esistente di DraftStore. Non vengono aggiunti coordinatori, singleton, persistenza o nuove richieste. Il riferimento include preparazione, campionato, slot_id, nome e percorso. Versione, turno, preview e chosen_by non lo invalidano; la carta puo restare ingrandita anche passando alle copie scelte. Il solo rimontaggio del picking con lo stesso store non elimina il valore.
 
-File: frontend/src/lib/draft-picking.ts; nuovo frontend/src/lib/draft-preview-indicator.spec.ts; questo documento. Nessuna modifica ai componenti picking/card, quindi Scelta da resta invariato. Nessun modello zoom o collegamento parziale fra componenti viene introdotto.
+sync conserva lo zoom durante loading/writing con snapshot valido e lo elimina a fine fase, perdita di accesso, cambio identita carta o dispose. toggleZoom e soltanto locale e rifiuta busy, blocchi e slot assenti. La preview viene proposta dal clic solo con i permessi gia esistenti; nessun invio automatico al cambio turno. Scelta e conferma restano vincolate a proprietario, versione e copia correnti.
 
-## Stato delle tre segnalazioni UI
+File: stores/draft.svelte.ts, components/draft-picking.svelte, nuovo draft-zoom-store.spec.ts sotto frontend/src/lib; questo documento. DraftFlow, controller, CardTile, componente carta, backend e stream invariati. Scelta da preservato.
 
-1. Drag dall'intera scheda e frecce: pubblicato in 9ceedd5d49bf8ed05fdbf27cad79a459844d9b08, da collaudare nel browser. Cattura del puntatore sull'ol stabile, soglia e geometrie iniziali, compensazione scroll; drop mantiene la bozza e cancel la ripristina. Nessuna scrittura durante il gesto; Avanti salva order se necessario e poi start, con permessi e versioni invariati.
-2. Anteprima propria: modifica visuale predisposta in questo incremento. Conservazione dello zoom locale durante aggiornamenti, cambi turno o rimontaggio: ancora aperta. Il refactoring esteso proposto in conversazione non e stato pubblicato. La chiusura immediata non e stata riprodotta nel browser.
-3. Salti verticali nei mazzi: ancora aperti. Messaggi transitori, focus senza preventScroll e modal centrato ad altezza variabile sono punti da verificare, non una causa unica accertata.
+## Stato UI
 
-## Test e limiti
+1. Drag intera scheda e frecce pubblicati in 9ceedd5d49bf8ed05fdbf27cad79a459844d9b08; collaudo browser ancora necessario.
+2. Indicatore della propria anteprima nascosto in 20a29699a2ef64bed4e4e85d964f3bc12a0b3601. Questo incremento aggiunge la conservazione dello zoom nello store, non il refactoring esteso precedentemente proposto. Difetto visivo completo non ancora collaudato.
+3. Salti verticali dei mazzi ancora aperti: messaggi transitori, focus senza preventScroll e modal ad altezza variabile da verificare.
 
-Nuove regressioni predisposte per indicatore proprio durante idle/writing/loading/blocked, DTO immutato e comandi preview invariati; SSR per nome/alone propri assenti e indicatore altrui presente anche per un gestore che non possiede il turno. Non sono prove di clic, zoom, SSE reale, drag, touch, focus o layout browser.
+## Verifiche e limiti
 
-Nessuna installazione, formattazione, esecuzione locale di lint/check/test/build o nuova consultazione/attesa CI per questo incremento. Nessun test dichiarato superato. Ultimi esiti letti alle 15:58 sul commit 9ceedd5d49bf8ed05fdbf27cad79a459844d9b08: backend e migrazioni superati, job frontend e runtime falliti; causa non verificata dai log. Quegli esiti non attestano questa modifica.
+Controller esaminato: refresh/command mantengono lo snapshot mentre lavorano; 401/403 lo svuotano. CardTile non contiene un reset dello zoom. Non e una riproduzione della chiusura immediata nel browser.
 
-## Integrazione precedente e seguito
+Regressioni predisposte per toggle senza rete, preview POST simulato, loading e preview altrui, rendering SSR ripetuto con lo stesso store, cambio turno/copia scelta, identita immagine diversa, fine fase, cambio contesto, risultati tardivi, isolamento istanze, dispose e 401/403. SSR non prova clic, reattivita DOM o rimontaggio client effettivo.
 
-Controllo anticipato delle 15 carte rimosso in 0052c1d4680ebcba8f7afc3690fa9a589927aac1; vincolo dopo modifica ai READY e ricontrollo finale conservati. Nuova Gara usa il registro del layout, host e SSE condiviso, notifiche accorpate e recupero REST accodato; nessuna gara dedotta da READY o sparizione REST, nessun nuovo polling o redirect. Regole in docs/DRAFT_SPEC.md.
+Nessuna installazione, formattazione, esecuzione locale lint/check/test/build o nuova lettura/attesa CI per questo incremento. Nessun test dichiarato superato. Ultimi esiti letti alle 15:58 sul commit 9ceedd5: backend e migrazioni superati, frontend e runtime falliti; causa non verificata dai log. Non attestano questi nuovi incrementi.
 
-Prossimo incremento: zoom locale, poi stabilita dei mazzi; verifiche automatiche e collaudo reale restano necessari. Riallineamento generale dei documenti dopo verifiche effettive. Nessuna modifica a backend, DB reale/schema, risorse, dipendenze o script; nessun merge o ZIP finale.
+## Seguito e integrazione
+
+Restano verifiche automatiche, collaudo reale di zoom/drag/SSE e correzione dello scroll dei mazzi. Documenti generali da riallineare dopo verifiche effettive. Controllo anticipato 15 carte rimosso in 0052c1d, vincoli READY/finale conservati. Nuova Gara usa il registro del layout, host/SSE condivisi e recupero REST accodato; nessuna gara dedotta da READY o sparizione REST. Regole in docs/DRAFT_SPEC.md invariate. Nessuna modifica a DB reale/schema, risorse, dipendenze o script; nessun merge o ZIP finale.

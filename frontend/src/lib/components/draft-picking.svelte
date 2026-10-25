@@ -11,12 +11,6 @@
 	import type { DraftStore } from '$lib/stores/draft.svelte';
 
 	let { store }: { store: DraftStore } = $props();
-	let zoomed = $state.raw<{
-		owner: DraftStore;
-		draftId: number;
-		turnId: number;
-		slotId: number;
-	} | null>(null);
 	let selection = $state.raw<{ owner: DraftStore; proposal: DraftChoiceProposal } | null>(null);
 	let submitting = $state(false);
 	let notice = $state<string | null>(null);
@@ -29,13 +23,7 @@
 	);
 
 	function enlarged(slotId: number): boolean {
-		return (
-			zoomed !== null &&
-			zoomed.owner === store &&
-			zoomed.draftId === sessionState.snapshot?.id &&
-			zoomed.turnId === view.turn?.pilot_id &&
-			zoomed.slotId === slotId
-		);
+		return store.zoomedSlotId === slotId;
 	}
 
 	$effect(() => {
@@ -46,7 +34,7 @@
 		}
 	});
 
-	/** Zoom locale per tutti. Solo il proprietario di turno puo aggiornare preview. */
+	/** Zoom locale nello store. Solo il proprietario di turno puo aggiornare preview. */
 	async function zoom(slotId: number): Promise<void> {
 		if (selection || submitting || store.busy) return;
 		store.syncContext();
@@ -55,20 +43,8 @@
 		const slot = current.snapshot?.cards.find((item) => item.slot_id === slotId);
 		if (!picking.visible || !picking.coherent || !picking.turn || !current.snapshot || !slot)
 			return;
-		const closing =
-			zoomed !== null &&
-			zoomed.owner === store &&
-			zoomed.draftId === current.snapshot.id &&
-			zoomed.turnId === picking.turn.pilot_id &&
-			zoomed.slotId === slotId;
-		zoomed = closing
-			? null
-			: {
-					owner: store,
-					draftId: current.snapshot.id,
-					turnId: picking.turn.pilot_id,
-					slotId
-				};
+		const closing = store.zoomedSlotId === slotId;
+		if (!store.toggleZoom(slotId)) return;
 		const sharedSlot = !closing && slot.chosen_by === null ? slotId : null;
 		const payload = proposeDraftPreview(current, sharedSlot);
 		if (payload && current.snapshot.preview_slot_id !== sharedSlot) {
