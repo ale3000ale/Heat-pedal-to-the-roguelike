@@ -6,6 +6,7 @@
 	// I valori predefiniti conservano il comportamento dei modal esistenti.
 	// closeOnOutside controlla Escape/sfondo; showClose e closeDisabled solo la X.
 	// onrequestclose delega la chiusura senza cambiare automaticamente open.
+	// stableViewport e opt-in: non ricentra il riquadro a ogni variazione del contenuto.
 	let {
 		open = $bindable(false),
 		title,
@@ -13,6 +14,7 @@
 		blur = false,
 		wide = false,
 		narrow = false,
+		stableViewport = false,
 		showClose = true,
 		closeDisabled = false,
 		closePosition = 'right',
@@ -25,6 +27,7 @@
 		blur?: boolean;
 		wide?: boolean;
 		narrow?: boolean;
+		stableViewport?: boolean;
 		showClose?: boolean;
 		closeDisabled?: boolean;
 		closePosition?: 'left' | 'right';
@@ -58,6 +61,7 @@
 			aria-modal="true"
 			aria-label={title}
 			class={`relative max-h-[90vh] w-full ${wide ? 'max-w-3xl' : narrow ? 'max-w-xs' : 'max-w-lg'} overflow-y-auto rounded-lg border bg-background p-4 text-foreground shadow-lg`}
+			class:viewport-stable={stableViewport}
 		>
 			<div
 				class={`mb-3 flex items-center justify-between gap-3 ${closePosition === 'left' ? 'flex-row-reverse' : ''}`}
@@ -79,3 +83,15 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	/* Altezza indipendente dal contenuto; vh e il fallback per browser senza dvh. */
+	.viewport-stable {
+		box-sizing: border-box;
+		height: 90vh;
+		height: 90dvh;
+		max-height: calc(100vh - 2rem);
+		max-height: calc(100dvh - 2rem);
+		scrollbar-gutter: stable;
+	}
+</style>

@@ -2,26 +2,26 @@
 
 25 ottobre 2026. Solo Heat-pedal-to-the-roguelike, ramo draft, PR 18.
 
-## Incremento feedback stabile nei mazzi
+## Incremento contenitore stabile
 
-I messaggi Operazione in corso e Il mazzo deve essere caricato o verificato restano nel layout della schermata mazzi con pilota selezionato. Quando non pertinenti usano invisible e aria-hidden, non hidden/display:none o rimozione condizionale. Lo spazio segue il wrapping del testo alla larghezza disponibile, senza altezza fissa o clipping. Un contenitore space-y-1 raccoglie le due righe prima del pulsante di rilettura e delle carte.
+Modal riceve stableViewport opzionale, false per default. Solo DraftModal lo abilita nelle fasi picking/decks, comprese le viste READY e le conferme mostrate dentro quelle fasi. Presenze e ordine mantengono il layout naturale. Non vengono cambiati open, Escape, sfondo, X, conferma annullamento, inert, busy o permessi.
 
-La variazione di busy/current cambia la visibilita, non la presenza di quelle righe. Errori e blocchi restano visibili secondo la logica precedente. Dati vecchi, carte, conteggi, READY, permessi, selezione pilota, lifecycle, chiamate e serializzazione restano invariati. Non e un congelamento dell'intero layout: griglie, messaggi di errore, riepiloghi e modal possono ancora cambiare altezza.
+La classe locale viewport-stable assegna altezza 90vh con successivo 90dvh per i browser che lo supportano. Il limite massimo sottrae 2rem al viewport per rispettare il padding esterno anche su schermi bassi; box-sizing e border-box. Rimane lo stesso contenitore overflow-y-auto. scrollbar-gutter: stable riserva lo spazio della scrollbar dove supportato. L'altezza del riquadro non dipende piu dalla quantita di contenuto in quelle fasi; puo comunque cambiare con il viewport o all'ingresso/uscita delle fasi.
 
-File: frontend/src/lib/components/draft-decks.svelte, frontend/src/lib/draft-decks-ui.spec.ts e questo documento. Modal condiviso, controller, coordinatore mazzi, focus e backend non modificati qui.
+File: components/modal.svelte, components/draft-modal.svelte e nuovo draft-modal-layout.spec.ts sotto frontend/src/lib; questo documento. Gli altri chiamanti non ricevono un nuovo comportamento se non attivano l'opzione. Nessuna nuova gestione JavaScript dello scroll o ricostruzione intenzionale del dialog.
 
 ## Stato UI
 
-1. Drag intera scheda e frecce: 9ceedd5d; collaudo browser ancora necessario.
-2. Indicatore proprio nascosto: 20a29699. Zoom per copia nello store, indipendente da turno/versione/preview: d5d21088. Difetto visivo completo non ancora collaudato.
-3. Focus automatico con preventScroll, Tab normale: d80f2675374386830dc279a1e6f1599c125cf62a. Questo incremento riserva lo spazio dei due messaggi transitori. Stabilita del contenitore e variazioni delle griglie ancora da trattare/verificare; problema complessivo non dichiarato risolto.
+1. Drag intera scheda e frecce: 9ceedd5d; da collaudare nel browser.
+2. Indicatore proprio nascosto: 20a29699; zoom per copia nello store: d5d21088. Difetto visivo completo non ancora collaudato.
+3. Focus automatico senza scroll: d80f2675. Spazio dei due messaggi transitori riservato in ca5c682df1b1f3fbc54fe2eb8d4d8f9c0d18b279. Questo incremento stabilizza il riquadro delle fasi carte/mazzi. Le griglie, gli errori e i riepiloghi interni possono ancora variare: non si dichiara assenza di tutti i movimenti verticali.
 
 ## Verifiche e limiti
 
-Esaminati componente, coordinatore e vista dei mazzi. Predisposte regressioni SSR prima/durante/dopo rilettura simulata, mantenimento delle carte e delle righe, visibilita/aria-hidden di busy e verifica, dati obsoleti e recupero esplicito. I casi precedenti su proprietari, conteggi e READY restano nel file.
+Riletti modal condiviso, wrapper draft e test della policy di chiusura; due letture iniziali con 503 sono state ripetute con successo. Predisposti test SSR per default invariato, opt-in con contenuti corti/lunghi, attivazione per fase, modal chiuso, showClose e assenza di comandi dal rendering. Non misurano CSS calcolato, viewport, scrollTop, focus o geometrie reali.
 
-Queste verifiche non misurano altezza, scrollTop, reattivita DOM o annunci reali di un lettore di schermo. Nessuna installazione, formattazione, esecuzione locale lint/check/test/build o nuova lettura/attesa CI per questo incremento. Nessun test dichiarato superato. Ultimi esiti letti alle 15:58 su 9ceedd5: backend/migrazioni superati, frontend/runtime falliti; causa non verificata dai log. Non attestano gli incrementi successivi.
+Nessuna installazione, formattazione, esecuzione locale lint/check/test/build o nuova lettura/attesa CI per questo incremento. Nessun test dichiarato superato. Ultimi esiti letti alle 15:58 su 9ceedd5: backend/migrazioni superati, frontend/runtime falliti; causa non verificata dai log. Non attestano gli incrementi successivi.
 
 ## Seguito e integrazione
 
-Prossimo intervento: stabilita del contenitore senza alterare gli altri modal, poi verifiche automatiche e collaudo browser di focus/scroll/zoom/drag/SSE. Documenti generali da riallineare dopo verifiche effettive. Controllo anticipato 15 carte rimosso in 0052c1d, vincoli READY/finale conservati. Nuova Gara usa registro del layout, host/SSE condivisi e recupero REST accodato; nessuna gara dedotta da READY o sparizione REST. Regole in docs/DRAFT_SPEC.md invariate. Nessuna modifica a DB reale/schema, risorse, dipendenze o script; nessun merge o ZIP finale.
+Prossimo passo: verifiche automatiche, correzione di eventuali fallimenti e collaudo browser mobile/desktop di focus, scroll interno, zoom, drag e SSE. Riallineamento generale dei documenti dopo verifiche effettive. Controllo anticipato 15 carte rimosso in 0052c1d; vincoli READY/finale conservati. Nuova Gara usa registro del layout, host/SSE condivisi e recupero REST accodato; nessuna gara dedotta da READY o sparizione REST. Regole in docs/DRAFT_SPEC.md invariate. Nessuna modifica a backend, DB reale/schema, risorse, dipendenze o script; nessun merge o ZIP finale.
