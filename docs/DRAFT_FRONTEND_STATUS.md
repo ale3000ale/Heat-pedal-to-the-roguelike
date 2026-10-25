@@ -2,24 +2,26 @@
 
 25 ottobre 2026. Solo Heat-pedal-to-the-roguelike, ramo draft, PR 18.
 
-## Incremento focus e scroll automatico
+## Incremento feedback stabile nei mazzi
 
-Primo intervento circoscritto sulla terza segnalazione: draftHostFocus passa preventScroll: true soltanto al focus automatico iniziale/di contenimento e al ripristino differito del focus precedente. La navigazione esplicita Tab/Shift Tab conserva focus() normale, cosi il browser puo rendere visibile il controllo raggiunto. Filtri dei controlli, listener, guardie alive/moving, cleanup e protezione del flusso successivo restano invariati.
+I messaggi Operazione in corso e Il mazzo deve essere caricato o verificato restano nel layout della schermata mazzi con pilota selezionato. Quando non pertinenti usano invisible e aria-hidden, non hidden/display:none o rimozione condizionale. Lo spazio segue il wrapping del testo alla larghezza disponibile, senza altezza fissa o clipping. Un contenitore space-y-1 raccoglie le due righe prima del pulsante di rilettura e delle carte.
 
-File: frontend/src/lib/draft-host-focus.ts; nuovo frontend/src/lib/draft-host-focus.spec.ts; questo documento. Nessuna modifica ai modal, al layout delle carte, ai messaggi dei mazzi o ai protocolli di rete. La modifica impedisce la richiesta di scroll implicita di quelle chiamate automatiche; non prova che tutte le cause del salto siano eliminate.
+La variazione di busy/current cambia la visibilita, non la presenza di quelle righe. Errori e blocchi restano visibili secondo la logica precedente. Dati vecchi, carte, conteggi, READY, permessi, selezione pilota, lifecycle, chiamate e serializzazione restano invariati. Non e un congelamento dell'intero layout: griglie, messaggi di errore, riepiloghi e modal possono ancora cambiare altezza.
+
+File: frontend/src/lib/components/draft-decks.svelte, frontend/src/lib/draft-decks-ui.spec.ts e questo documento. Modal condiviso, controller, coordinatore mazzi, focus e backend non modificati qui.
 
 ## Stato UI
 
-1. Drag intera scheda e frecce pubblicati in 9ceedd5d49bf8ed05fdbf27cad79a459844d9b08; collaudo browser necessario.
-2. Indicatore della propria anteprima nascosto in 20a29699a2ef64bed4e4e85d964f3bc12a0b3601. Zoom per copia conservato nell'istanza DraftStore in d5d21088be06e63ee0258246ab9e999352c92c4b, indipendente da turno/versione/preview e con pulizia a fine fase, perdita accesso o dispose. Difetto visivo completo non ancora collaudato.
-3. Scroll: focus automatico trattato in questo incremento; stabilita verticale dei mazzi ancora parziale. Messaggi di operazione/verifica aggiunti e rimossi, modal centrato ad altezza variabile e variazioni delle griglie restano da verificare/correggere. Non dichiarato risolto l'intero problema.
+1. Drag intera scheda e frecce: 9ceedd5d; collaudo browser ancora necessario.
+2. Indicatore proprio nascosto: 20a29699. Zoom per copia nello store, indipendente da turno/versione/preview: d5d21088. Difetto visivo completo non ancora collaudato.
+3. Focus automatico con preventScroll, Tab normale: d80f2675374386830dc279a1e6f1599c125cf62a. Questo incremento riserva lo spazio dei due messaggi transitori. Stabilita del contenitore e variazioni delle griglie ancora da trattare/verificare; problema complessivo non dichiarato risolto.
 
 ## Verifiche e limiti
 
-Esaminati draft-modal.svelte, draft-decks.svelte, modal.svelte e draft-host-focus.ts. I dati delle carte non vengono sostituiti da questa modifica. Predisposti test con DOM minimo simulato per ingresso/recupero focus, fallback al contenitore, Tab/Shift Tab, ripristino, rimozione listener, flusso successivo e autofocus pendente dopo destroy/disconnessione.
+Esaminati componente, coordinatore e vista dei mazzi. Predisposte regressioni SSR prima/durante/dopo rilettura simulata, mantenimento delle carte e delle righe, visibilita/aria-hidden di busy e verifica, dati obsoleti e recupero esplicito. I casi precedenti su proprietari, conteggi e READY restano nel file.
 
-I test verificano chiamate e opzioni focus, non scrollTop, geometrie, eventi nativi o browser reale. Nessuna installazione, formattazione, esecuzione locale lint/check/test/build o nuova lettura/attesa CI per questo incremento. Nessun test dichiarato superato. Ultimi esiti letti alle 15:58 sul commit 9ceedd5: backend e migrazioni superati, frontend e runtime falliti; causa non verificata dai log. Non attestano gli incrementi successivi.
+Queste verifiche non misurano altezza, scrollTop, reattivita DOM o annunci reali di un lettore di schermo. Nessuna installazione, formattazione, esecuzione locale lint/check/test/build o nuova lettura/attesa CI per questo incremento. Nessun test dichiarato superato. Ultimi esiti letti alle 15:58 su 9ceedd5: backend/migrazioni superati, frontend/runtime falliti; causa non verificata dai log. Non attestano gli incrementi successivi.
 
 ## Seguito e integrazione
 
-Prossimo intervento mirato: spazio dei messaggi transitori nei mazzi e stabilita del contenitore, poi verifiche automatiche e collaudo reale di focus/scroll/zoom/drag/SSE. Documenti generali da riallineare dopo verifiche effettive. Controllo anticipato 15 carte rimosso in 0052c1d, vincoli READY/finale conservati. Nuova Gara usa registro del layout, host/SSE condivisi e recupero REST accodato; nessuna gara dedotta da READY o sparizione REST. Regole in docs/DRAFT_SPEC.md invariate. Nessuna modifica a backend, DB reale/schema, risorse, dipendenze o script; nessun merge o ZIP finale.
+Prossimo intervento: stabilita del contenitore senza alterare gli altri modal, poi verifiche automatiche e collaudo browser di focus/scroll/zoom/drag/SSE. Documenti generali da riallineare dopo verifiche effettive. Controllo anticipato 15 carte rimosso in 0052c1d, vincoli READY/finale conservati. Nuova Gara usa registro del layout, host/SSE condivisi e recupero REST accodato; nessuna gara dedotta da READY o sparizione REST. Regole in docs/DRAFT_SPEC.md invariate. Nessuna modifica a DB reale/schema, risorse, dipendenze o script; nessun merge o ZIP finale.

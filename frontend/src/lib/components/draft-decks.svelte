@@ -81,15 +81,27 @@
 					{#if $decks.error}
 						<p role="alert" class="text-sm text-destructive">{$decks.error}</p>
 					{/if}
-					{#if $decks.busy}
-						<p role="status" class="text-sm">Operazione in corso…</p>
-					{/if}
-					{#if !view.current}
-						<p class="text-sm">
+					<!-- Conserva le righe e il loro wrapping anche quando non sono pertinenti. -->
+					<div class="space-y-1" data-draft-deck-feedback>
+						<p
+							role="status"
+							class="text-sm"
+							class:invisible={!$decks.busy}
+							aria-hidden={!$decks.busy}
+							data-draft-deck-busy
+						>
+							Operazione in corso…
+						</p>
+						<p
+							class="text-sm"
+							class:invisible={view.current}
+							aria-hidden={view.current}
+							data-draft-deck-verification
+						>
 							Il mazzo deve essere caricato o verificato prima di modificare carte o confermare
 							pronto.
 						</p>
-					{/if}
+					</div>
 					{#if sessionState.status === 'blocked'}
 						<p class="text-sm">Rileggi prima la preparazione dal comando del contenitore.</p>
 					{/if}
