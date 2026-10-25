@@ -3,6 +3,8 @@ const SELECTOR = 'a[href],button,input,select,textarea,[tabindex]';
 /** Action client per il contenitore del solo flusso attivo.
  * @param node Contenitore con tabindex=-1, comprensivo degli errori recuperabili.
  * @returns Cleanup dei listener e ripristino differito se il vecchio focus e ancora valido.
+ * Il focus automatico non richiede scroll. Tab conserva il comportamento di scorrimento
+ * del browser per rendere visibili i controlli raggiunti dalla tastiera.
  * Nessun uso DOM all'importazione, nessuna richiesta e nessuna chiusura del modal.
  */
 export function draftHostFocus(node: HTMLElement): { destroy: () => void } {
@@ -21,7 +23,8 @@ export function draftHostFocus(node: HTMLElement): { destroy: () => void } {
 		if (!alive || !node.isConnected || moving) return;
 		moving = true;
 		try {
-			(controls()[0] ?? node).focus();
+			// Il recupero automatico del focus non deve riportare lo scroll alla prima carta.
+			(controls()[0] ?? node).focus({ preventScroll: true });
 		} finally {
 			moving = false;
 		}
@@ -60,7 +63,7 @@ export function draftHostFocus(node: HTMLElement): { destroy: () => void } {
 					!previous.closest('[inert]') &&
 					(current === document.body || current === null || node.contains(current))
 				)
-					previous.focus();
+					previous.focus({ preventScroll: true });
 			});
 		}
 	};
