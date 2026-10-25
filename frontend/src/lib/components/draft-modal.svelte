@@ -14,11 +14,13 @@
 		open = true,
 		store,
 		title = 'Preparazione gara',
+		externalBusy = false,
 		children
 	}: {
 		open?: boolean;
 		store: DraftStore;
 		title?: string;
+		externalBusy?: boolean;
 		children: Snippet;
 	} = $props();
 
@@ -29,11 +31,10 @@
 	const policy = $derived(draftClosePolicy(sessionState));
 	const visible = $derived(open && sessionState.status !== 'finished' && sessionState.status !== 'disposed');
 	const canConfirm = $derived(
-		confirmation !== null && confirmation.owner === store &&
+		!externalBusy && confirmation !== null && confirmation.owner === store &&
 		canConfirmDraftCancellation(sessionState, confirmation.proposal)
 	);
 
-	// Una conferma non e un'autorizzazione permanente dopo variazioni del contesto.
 	$effect(() => {
 		if (confirmation && !submitting && !canConfirm) {
 			confirmation = null;
@@ -42,7 +43,7 @@
 	});
 
 	function requestClose(): void {
-		if (submitting || confirmation) return;
+		if (externalBusy || submitting || confirmation) return;
 		store.syncContext();
 		const proposal = proposeDraftCancellation(store.state);
 		if (!proposal) return;
@@ -50,9 +51,9 @@
 		confirmation = { owner: store, proposal };
 	}
 
-	/** Ricontrolla istanza e versione prima di inviare; non chiude il modal in anticipo. */
+	/** Ricontrolla istanza e versione e non entra in conflitto con una lettura esterna. */
 	async function confirmCancellation(): Promise<void> {
-		if (submitting) return;
+		if (externalBusy || submitting) return;
 		const captured = confirmation;
 		store.syncContext();
 		if (!captured || captured.owner !== store ||
@@ -73,6 +74,12 @@
 			submitting = false;
 		}
 	}
+
+	/** Rilettura esplicita solo quando non ci sono operazioni o conferme concorrenti. */
+	async function reload(): Promise<void> {
+		if (externalBusy || submitting || confirmation || store.busy) return;
+		await store.refresh();
+	}
 </script>
 
 <Modal
@@ -81,7 +88,7 @@
 	closeOnOutside={false}
 	closePosition="left"
 	showClose={policy.showClose}
-	closeDisabled={!policy.canRequest || submitting || confirmation !== null}
+	closeDisabled={!policy.canRequest || externalBusy || submitting || confirmation !== null}
 	wide={sessionState.snapshot?.phase === 'picking' || sessionState.snapshot?.phase === 'decks'}
 	onrequestclose={requestClose}
 >
@@ -94,7 +101,7 @@
 	{#if sessionState.status === 'blocked' && !submitting}
 		<div class="mb-3">
 			<p class="mb-2 text-sm">Lo stato deve essere verificato prima di nuove operazioni.</p>
-			<Button variant="outline" disabled={store.busy} onclick={() => store.refresh()}>
+			<Button variant="outline" disabled={store.busy || externalBusy} onclick={reload}>
 				Rileggi dal server
 			</Button>
 		</div>
@@ -105,7 +112,7 @@
 			<p class="mt-2 text-sm text-muted-foreground">
 				La procedura verra annullata e le carte ripristinate dal server. Non verra creata una gara.
 			</p>
-			<div class="mt-4 flex flex-wrap justify-end gap-2">
+			<div class="mt-4 flex justify-end flex-wrap gap-2">
 				<Button variant="outline" disabled={submitting} onclick={() => (confirmation = null)}>
 					Non annullare
 				</Button>
