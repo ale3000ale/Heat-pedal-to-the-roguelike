@@ -70,7 +70,8 @@ export function draftPickingView(state: DraftSessionState): DraftPickingView {
 		turn: turn ? { ...turn } : null,
 		availableCards,
 		pickedCards,
-		previewSlotId: coherent ? draft.preview_slot_id : null
+		// Solo indicatore visuale altrui: il DTO server resta intatto anche durante busy.
+		previewSlotId: coherent && !ownedTurn ? draft.preview_slot_id : null
 	};
 }
 
