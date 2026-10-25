@@ -20,12 +20,11 @@ function cursor(value: string): boolean {
 	return /^(0|[1-9]\d{0,18})$/.test(value) && (value.length < 19 || value <= '9223372036854775807');
 }
 
-/**
- * Decodifica un evento del protocollo backend; non autorizza accessi alle API.
+/** Decodifica il protocollo backend, non autorizza accessi REST.
  * @param type Nome SSE ricevuto.
  * @param raw Corpo JSON non fidato.
- * @param id LastEventId mantenuto come stringa, anche oltre MAX_SAFE_INTEGER.
- * @returns Evento normalizzato o null per tipo, JSON o riferimenti invalidi.
+ * @param id LastEventId mantenuto come stringa int64.
+ * @returns Evento normalizzato o null per JSON, tipi o riferimenti invalidi.
  * Gli errori di parsing e le strutture eccessivamente annidate sono rifiutati.
  */
 export function parseStreamEvent(type: string, raw: unknown, id: string): StreamEvent | null {
@@ -51,6 +50,13 @@ export function parseStreamEvent(type: string, raw: unknown, id: string): Stream
 		if (
 			domainType === 'championship.pilots_changed' &&
 			(data.pilot_id !== null || Object.keys(data.payload).length !== 0)
+		)
+			return null;
+		// Il segnale privato backend contiene solo l'ID, mai carte o snapshot.
+		if (
+			domainType === 'draft.changed' &&
+			(data.pilot_id !== null || Object.keys(data.payload).length !== 1 ||
+				!positive(data.payload.preparation_id))
 		)
 			return null;
 		return {
