@@ -26,13 +26,16 @@ export async function openChampionshipDraft(
 	if (!input.canManage) throw new Error('Non hai i permessi per aprire una preparazione.');
 	if (input.closed) throw new Error('Il campionato e chiuso.');
 	if (input.raceUnfinished) {
-		throw new Error("C'è una gara non conclusa (in corso o in revisione): va conclusa prima di crearne un'altra.");
+		throw new Error(
+			"C'è una gara non conclusa (in corso o in revisione): va conclusa prima di crearne un'altra."
+		);
 	}
 	const state = host.getState();
 	if (state.contextKey !== input.sessionKey || state.status === 'disposed') {
 		throw new Error('Contesto draft cambiato: verifica l accesso.');
 	}
-	if (state.status === 'blocked') throw new Error('Rileggi le preparazioni prima di una nuova apertura.');
+	if (state.status === 'blocked')
+		throw new Error('Rileggi le preparazioni prima di una nuova apertura.');
 	if (state.busy || state.entries.some((entry) => entry.store.busy)) return null;
 	return host.open(input.championshipId);
 }

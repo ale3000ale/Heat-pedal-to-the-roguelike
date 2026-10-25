@@ -4,30 +4,57 @@ import type { DraftHost } from './draft-host-context';
 import { openChampionshipDraft, type ChampionshipDraftLaunch } from './championship-draft-launch';
 import type { DraftRead } from './draft-types';
 
-const input: ChampionshipDraftLaunch = { championshipId: 7, sessionKey: 'auth-1', canManage: true, closed: false, raceUnfinished: false };
-const dto: DraftRead = { id: 1, championship_id: 7, version: 1, phase: 'attendance', first_race: true,
-	can_manage: true, my_pilot_ids: [11], participants: [{ pilot_id: 11, name: 'Anna', present: true }],
-	order: [], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null };
+const input: ChampionshipDraftLaunch = {
+	championshipId: 7,
+	sessionKey: 'auth-1',
+	canManage: true,
+	closed: false,
+	raceUnfinished: false
+};
+const dto: DraftRead = {
+	id: 1,
+	championship_id: 7,
+	version: 1,
+	phase: 'attendance',
+	first_race: true,
+	can_manage: true,
+	my_pilot_ids: [11],
+	participants: [{ pilot_id: 11, name: 'Anna', present: true }],
+	order: [],
+	cards: [],
+	picks: [],
+	preview_slot_id: null,
+	ready: [],
+	current_pilot_id: null
+};
 const hosts: DraftHost[] = [];
 function host(getKey: () => string | null = () => 'auth-1'): DraftHost {
-	const value = createDraftHost({ getContext: () => {
-		const key = getKey();
-		return key ? { key, userId: 9, role: 'judge' } : null;
-	} });
+	const value = createDraftHost({
+		getContext: () => {
+			const key = getKey();
+			return key ? { key, userId: 9, role: 'judge' } : null;
+		}
+	});
 	hosts.push(value);
 	return value;
 }
 function reply(status = 200): Response {
 	return new Response(JSON.stringify(status === 200 ? dto : { detail: 'Errore server' }), {
-		status, headers: { 'Content-Type': 'application/json' }
+		status,
+		headers: { 'Content-Type': 'application/json' }
 	});
 }
 function deferred<T>() {
 	let resolve!: (value: T) => void;
-	const promise = new Promise<T>((done) => { resolve = done; });
+	const promise = new Promise<T>((done) => {
+		resolve = done;
+	});
 	return { promise, resolve };
 }
-afterEach(() => { for (const value of hosts.splice(0)) value.dispose(); vi.unstubAllGlobals(); });
+afterEach(() => {
+	for (const value of hosts.splice(0)) value.dispose();
+	vi.unstubAllGlobals();
+});
 
 describe('Nuova Gara apre la preparazione', () => {
 	it('usa il POST draft e riusa lo store, senza creare una Race o duplicare GET', async () => {
@@ -43,14 +70,21 @@ describe('Nuova Gara apre la preparazione', () => {
 	});
 
 	it.each([
-		{ sessionKey: null }, { canManage: false }, { closed: true },
-		{ raceUnfinished: true }, { sessionKey: 'auth-2' }, { championshipId: 0 }
-	] satisfies Partial<ChampionshipDraftLaunch>[])('blocca il contesto locale %o senza rete', async (patch) => {
-		const fetch = vi.fn();
-		vi.stubGlobal('fetch', fetch);
-		await expect(openChampionshipDraft({ ...input, ...patch }, host())).rejects.toThrow();
-		expect(fetch).not.toHaveBeenCalled();
-	});
+		{ sessionKey: null },
+		{ canManage: false },
+		{ closed: true },
+		{ raceUnfinished: true },
+		{ sessionKey: 'auth-2' },
+		{ championshipId: 0 }
+	] satisfies Partial<ChampionshipDraftLaunch>[])(
+		'blocca il contesto locale %o senza rete',
+		async (patch) => {
+			const fetch = vi.fn();
+			vi.stubGlobal('fetch', fetch);
+			await expect(openChampionshipDraft({ ...input, ...patch }, host())).rejects.toThrow();
+			expect(fetch).not.toHaveBeenCalled();
+		}
+	);
 
 	it('non invia un secondo POST mentre l apertura e in corso', async () => {
 		const pending = deferred<Response>();

@@ -194,20 +194,31 @@
 			raceError = 'Campionato non disponibile: rileggi la pagina.';
 			return;
 		}
-		const isCurrent = () => active === currentLive && sessionKey === auth.sessionKey &&
+		const isCurrent = () =>
+			active === currentLive &&
+			sessionKey === auth.sessionKey &&
 			championshipId === Number(page.params.id);
 		raceError = null;
 		busy = true;
 		try {
-			const opened = await openChampionshipDraft({
-				championshipId, sessionKey, canManage: auth.canManageRaces,
-				closed: championship.is_closed, raceUnfinished
-			}, draftHost);
+			const opened = await openChampionshipDraft(
+				{
+					championshipId,
+					sessionKey,
+					canManage: auth.canManageRaces,
+					closed: championship.is_closed,
+					raceUnfinished
+				},
+				draftHost
+			);
 			if (isCurrent() && !opened) {
-				raceError = draftHost.getState().error ?? 'Apertura non confermata. Verifica le preparazioni prima di riprovare.';
+				raceError =
+					draftHost.getState().error ??
+					'Apertura non confermata. Verifica le preparazioni prima di riprovare.';
 			}
 		} catch (cause) {
-			if (isCurrent()) raceError = cause instanceof Error ? cause.message : 'Apertura preparazione non riuscita';
+			if (isCurrent())
+				raceError = cause instanceof Error ? cause.message : 'Apertura preparazione non riuscita';
 		} finally {
 			if (isCurrent()) busy = false;
 		}
@@ -445,7 +456,7 @@
 											>
 												Tuo Pilota
 											</span>
-											{/if}
+										{/if}
 									</div>
 								</div>
 
@@ -466,7 +477,7 @@
 										</span>
 										<span class="ml-0.5 text-[10px] font-bold text-muted-foreground uppercase"
 											>PTS</span
-											>
+										>
 									</div>
 
 									{#if canGift && row.pilot_id !== null}
@@ -545,7 +556,10 @@
 					<Button
 						size="sm"
 						onclick={createRace}
-						disabled={busy || $draftHost.busy || $draftHost.status === 'blocked' || !auth.sessionKey}
+						disabled={busy ||
+							$draftHost.busy ||
+							$draftHost.status === 'blocked' ||
+							!auth.sessionKey}
 						aria-disabled={raceUnfinished}
 						class="heat-glow h-9 bg-primary font-racing font-bold tracking-wider text-white uppercase hover:bg-accent {raceUnfinished
 							? 'cursor-not-allowed opacity-50'
@@ -602,16 +616,17 @@
 									<div class="flex items-center gap-3">
 										<span
 											class="rounded-full border px-3 py-1 font-racing text-xs font-bold tracking-wider uppercase {statusInfo.class}"
-											>
-												{statusInfo.label}
-											</span>
+										>
+											{statusInfo.label}
+										</span>
 										<span
 											class="text-xs font-bold text-primary transition-transform group-hover:translate-x-1"
-											>→</span>
-											>
+											>→</span
+										>
+										>
 									</div>
 								</a>
-								</li>
+							</li>
 						{/each}
 					</ul>
 				{/if}
