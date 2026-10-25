@@ -6,6 +6,9 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { auth } from '$lib/auth.svelte';
+	import { createDraftHost } from '$lib/draft-host';
+	import { provideDraftHost } from '$lib/draft-host-context';
+	import DraftHost from '$lib/components/draft-host.svelte';
 	import { eventClient } from '$lib/events/event-client';
 	import { Button } from '$lib/components/ui/button';
 	import AccountSettings from '$lib/components/account-settings.svelte';
@@ -13,6 +16,13 @@
 
 	let { children } = $props();
 	let settingsOpen = $state(false);
+	const draftHost = provideDraftHost(createDraftHost({
+		getContext: () => {
+			const key = auth.sessionKey;
+			const user = auth.user;
+			return key && user ? { key, userId: user.id, role: user.role } : null;
+		}
+	}));
 
 	// Pagine visibili anche senza sessione.
 	const publicPaths = ['/login', '/register'];
@@ -55,6 +65,8 @@
 	});
 
 	function closeAdminMenu(event: MouseEvent) {
+		// I click nel draft non chiudono il menu sottostante sospeso.
+		if (event.target instanceof Element && event.target.closest('[data-draft-host-dialog]')) return;
 		if (adminMenuOpen && adminMenu && !adminMenu.contains(event.target as Node)) {
 			adminMenuOpen = false;
 		}
@@ -81,6 +93,7 @@
 </svelte:head>
 <svelte:window onclick={closeAdminMenu} />
 
+<DraftHost host={draftHost}>
 <div
 	class="flex min-h-screen flex-col bg-background text-foreground selection:bg-primary selection:text-white"
 >
@@ -324,3 +337,4 @@
 		{/if}
 	{/if}
 </div>
+</DraftHost>

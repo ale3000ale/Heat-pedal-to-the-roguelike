@@ -6,7 +6,7 @@ Data: 25 ottobre 2026. Solo ramo draft, PR 18.
 
 Log negativo dell autore alle 03:47: npm run check con 25 errori e 0 warning in ordine/modal. Rename state -> sessionState in a854b28c9ea68444b216a45964925cad03fa6dd7; nessun nuovo esito positivo attestato. $state, store.state e port state invariati.
 
-Nessuna installazione, formattazione, esecuzione locale check/lint/test/build o consultazione/attesa CI per questo incremento. Tutti i test sono predisposti, non dichiarati superati. Ok/prosegui non e un risultato di test; verifiche backend precedenti non attestano il frontend.
+Nessuna installazione, formattazione, esecuzione locale check/lint/test/build o consultazione/attesa CI per questo incremento. I test sono predisposti, non dichiarati superati. Ok/prosegui non e un risultato di test. Le verifiche backend precedenti non attestano il frontend.
 
 ## Incrementi
 
@@ -19,58 +19,61 @@ Nessuna installazione, formattazione, esecuzione locale check/lint/test/build o 
 7. Scelta carte: 1c912647c00fec1f134315005b948acd126f398c.
 8. Mazzi/READY: 2fedefcb492cfc24eefa747f4a11c8630a0882e7.
 9. Composizione: a8b1c050401befc854b9feeb5b1ad71b78e62f8f.
-10. Generazione auth locale, registro host e test predisposti: incremento corrente.
+10. Generazione auth e registro: 48d59990c538db6e4c779e557126834be722e90b.
+11. Host nel layout, coda stabile e sospensione dei modal: incremento corrente.
 
-DraftFlow compone tutte le schermate ma non e montato nel layout o in Nuova gara. Il registro e predisposto, non collegato all autenticazione o allo stream. Il pulsante Nuova gara usa ancora il percorso precedente fino al successivo incremento. Recupero all avvio, apertura automatica per partecipanti, navigazione e collaudo globale non sono dichiarati funzionanti.
+## Perimetro corrente
 
-File del decimo: auth.svelte.ts aggiornato, nuovi draft-host.ts, draft-host.spec.ts e auth-generation.spec.ts, sotto frontend/src/lib, oltre a questo documento. Nessuna modifica a layout, pagina campionato, stream, endpoint o backend.
+Il layout crea un registro per propria istanza e lo espone con il contesto Svelte, non tramite singleton. DraftHost avvolge il contenuto esistente, collega sessionKey/utente/ruolo e richiede una lettura REST iniziale per generazione autenticata. La costruzione non fa rete e le effect client non vengono eseguite in SSR. Il provider e registrato dal layout prima di inizializzare i discendenti.
 
-## Generazione autenticata
+Il codice monta il flusso delle preparazioni recuperate; questo non e un collaudo del montaggio. Il pulsante Nuova Gara resta sul percorso precedente, non ancora collegato al registro. La connessione SSE condivisa del layout resta invariata e il draft non e ancora sottoscritto: niente notifiche live draft, apertura da eventi, recupero alla riconnessione o chiusura remota attestati. Questi collegamenti costituiscono il prossimo incremento.
 
-AuthStore aggiunge sessionEpoch, un contatore interno delle operazioni auth, authenticating e sessionKey. Prima di init, durante init/login/register/logout e senza utente, sessionKey e null. Ogni operazione incrementa la generazione; ID e ruolo fanno parte della chiave. Anche un nuovo accesso dello stesso utente o un cambio ruolo invalidano il contesto precedente.
+File undicesimo: nuovi draft-host-context.ts, draft-host-view.ts, draft-host-view.spec.ts, draft-host-focus.ts e components/draft-host.svelte sotto frontend/src/lib; aggiornati frontend/src/routes/+layout.svelte e questo documento. Nessuna modifica al modal condiviso o alle regole server.
 
-La chiave e locale e non e un token server: non viene inviata, usata come autorizzazione, persistita o inserita in URL. I metadati sono liberati nei finally. Endpoint, payload, cookie, ruoli, ritorni ed errori dei metodi restano quelli precedenti. Non viene introdotta una soluzione generale alle gare tra risposte di autenticazione o tra cookie: il nuovo perimetro isola i dati draft e sospende il relativo contesto durante le transizioni. Le autorizzazioni restano server.
+## Coda, modal e lifecycle
 
-## Registro host
+Politica approvata in conversazione: mantenere il flusso gia aperto, accodare le altre preparazioni e sospendere i modal sottostanti senza confermarli o considerarli chiusi. La coda e per identita di store, mantiene l ordine locale di ingresso anche se il server riordina l elenco e non cambia per nuove versioni. Al recupero iniziale usa l ordine dell elenco autorizzato, senza attribuirgli significato di gioco. I turni restano esclusivamente server. Termini, dismissioni, rimozioni o perdita di accesso liberano la coda.
 
-createDraftHost e a istanze, senza rete, timer, polling o connessioni alla costruzione. Il futuro chiamante deve fornire getContext e collegare sync ai metadati autenticati; null sospende il contesto. Il confronto usa chiave, userId e ruolo. Cambio contesto/dispose elimina gli store, le carte e gli esiti della generazione precedente e invalida risposte tardive. Non annulla HTTP gia inviati o loro possibili effetti.
+Il gestore puo vedere attendance/order; i partecipanti vengono mostrati solo in picking/decks con propri presenti. READY non e una condizione di conclusione e non fa avanzare la coda. Il flusso attivo e keyed per store, non per oggetto dell elenco o versione. Le istanze accodate non hanno un secondo proprietario DraftFlow montato.
 
-refresh fa una GET autorizzata dell elenco. DTO validati, duplicati di draft o campionato rifiutati; JSON o dati corrotti non diventano elenco vuoto. Gli store sono conservati per ID quando ancora utilizzabili. I DTO REST gia ricevuti alimentano una lettura iniziale o di recupero tramite il loader dello store, evitando una seconda GET duplicata; le successive riletture individuali usano fetchDraft. Il seme e consumato una volta e rimosso anche se non applicato.
+Il contenuto della pagina, header e modal gia aperti resta montato dentro un contenitore inert e aria-hidden durante il flusso. Escape e intercettato in cattura prima dei listener window dei modal sospesi, senza inviare cancel. I click nel draft non chiudono il menu admin sottostante. Cambi pagina e autenticazione conservano i loro comportamenti precedenti; il draft non forza navigazioni, non conferma altri dialoghi e non annulla HTTP gia partiti.
 
-Non si riconcilia mentre uno store principale e occupato, non si applicano versioni inferiori e non si resuscita un controller concluso da un elenco precedente. Una rilettura scartata richiede un nuovo comando esplicito, senza ciclo automatico. Il recupero multi-store non e una transazione atomica: DTO gia applicati possono essere aggiornati anche se una fase successiva di riconciliazione fallisce; la membership e sostituita soltanto alla fine riuscita.
+Il modulo focus e un action client con focus iniziale, contenimento di Tab/focus e ripristino differito solo se il vecchio controllo e connesso, non inert e nessun altro controllo ha preso il focus. Il ripristino non deve sottrarre focus al draft successivo. Non e un collaudo browser di focus, touch, screen reader o popup renderizzati fuori dal contenitore.
 
-open e esplicito e riservato a admin/giudice. Riusa una preparazione gia registrata per lo stesso campionato, blocca doppi invii e non crea Race. Una risposta di altro campionato non viene applicata. Rete, errori server o risposte inutilizzabili richiedono recupero prima di un altro POST; anche un 409 richiede recupero, ma non viene confuso con prova di commit incerto. recoveryChampionshipIds elenca i campionati da verificare, non una lista di gare create.
+Una pre-effect acquisisce gli esiti reali nel registro prima del cleanup DOM di DraftFlow, che dismette lo store. La rimozione REST conserva a sua volta eventuali esiti gia noti. takeCompletions consuma una sola volta per ID nel contesto corrente. Il contenitore mostra l ultimo gruppo di esiti quando non ci sono flussi bloccanti, senza cronologia persistente o redirect automatico. Assenza da elenco non diventa gara creata o annullamento.
 
-Il registro bloccato richiede refresh riuscito prima di altre aperture. 401/403 svuotano i dati e segnalano unauthorized, senza modificare autonomamente AuthStore. Gli esiti finished effettivi dei controller sono conservati una volta per ID nel contesto corrente e consumabili tramite takeCompletions prima di navigare o rimuovere il flusso. Sparizione da GET non viene interpretata come Race creata o annullamento. Il registro non sceglie una destinazione di navigazione.
+Errori del registro o degli store hanno un recupero manuale Rileggi preparazioni, non un reinvio dei POST. Le pagine non vengono bloccate da un semplice caricamento iniziale senza flusso. Perdita di contesto nasconde subito dati e notifiche precedenti e dismette i controller. 401/403 svuotano i dati privati; il contenitore non trasforma autonomamente un 403 di risorsa in logout. L auth.expired dello stream esistente mantiene il comportamento precedente.
 
-Il busy del registro riguarda le proprie GET/POST; i blocchi delle operazioni dei singoli flussi restano nei controller e nei coordinatori. La gestione delle letture locali del mazzo, delle code SSE e delle priorita tra piu preparazioni richiede ancora integrazione nel futuro host UI.
+## Auth e registro conservati
+
+AuthStore espone sessionEpoch, authenticating e sessionKey. Chiave null prima di ready, durante init/login/register/logout o senza utente; generazione diversa anche al nuovo accesso dello stesso account e ruolo nella chiave. Solo metadati locali, nessun token, persistenza o URL. Non e una soluzione generale alle gare fra richieste di autenticazione/cookie. Endpoint, payload, ruoli e autorizzazioni server non cambiano.
+
+Il registro e a istanze, confronta chiave/utente/ruolo e scarta risposte tardive. refresh legge l elenco autorizzato, valida e riusa i DTO tramite un seme consumato una volta dal loader, evitando GET duplicate. Gli store restano gli stessi per ID. Non riconcilia durante operazioni principali, non applica versioni inferiori o resuscita controller conclusi da un elenco precedente. I dati corrotti non diventano vuoto. Il recupero multi-store non e atomico; una rilettura scartata richiede altra richiesta esplicita. Nessun polling o retry automatico.
+
+open resta esplicito per admin/giudice, riusa preparazioni note, blocca doppi invii e non crea Race. Rete, errori server o DTO inutilizzabili impongono recupero prima di altro POST; anche 409 impone recupero senza essere dichiarato commit incerto. recoveryChampionshipIds indica verifiche necessarie, non gare create. Un registro bloccato richiede refresh riuscito prima di altre aperture. Dispose non annulla scritture gia inviate.
+
+Il busy del registro copre le proprie richieste, non sostituisce i blocchi dei dettagli mazzo. Le versioni e i controlli dei coordinatori restano necessari. Coordinamento delle notifiche SSE con letture/mutazioni e ripresa dopo disconnessione non ancora collegati.
 
 ## Composizione e regole conservate
 
-DraftFlow mantiene contesto e figli per store/ID, non per versione. Scelta iniziale locale owner/ID: Draft mostra presenze, le altre schermate seguono phase. Un reload in attendance riparte dalla scelta iniziale senza azzerare presenze server; picking/decks seguono il DTO. Niente persistenza locale aggiunta.
+DraftFlow conserva contesto e figli per store/ID, non per versione. Scelta iniziale locale: attendance riparte dalla scelta dopo reload senza azzerare presenze server; picking/decks seguono il DTO. Nessuna persistenza locale. Il caricamento iniziale del mazzo resta del componente mazzi, non viene duplicato dall host.
 
-Contesto senza GET alla costruzione; Carica preparazione e esplicito. Il caricamento iniziale del dettaglio in decks appartiene al componente mazzi. Cambio store/ID o perdita snapshot elimina i dettagli. Smontare DraftFlow dismette lo store principale: il futuro host deve usare istanze dedicate e acquisire gli esiti prima della dismissione; il registro offre una conservazione aggiuntiva degli esiti effettivi, non li deduce.
+DraftModal usa externalBusy del mazzo per bloccare X, conferma cancel e rilettura principale durante GET. Conferme legate a store/ID/versione diventano inutilizzabili se cambia lo stato. I gestori ricontrollano i blocchi, non solo disabled. Il modal condiviso conserva i default, X a destra; draft a sinistra, Escape/sfondo non chiudono. Creatore pronto coi propri presenti deve prima tornare non Pronto; insieme vuoto non blocca per vacuita.
 
-DraftModal usa externalBusy del mazzo per bloccare X, conferma cancel e rilettura principale anche durante GET. Default false conserva i chiamanti precedenti. Conferme diventano inutilizzabili se parte una lettura esterna; i gestori ricontrollano, non solo disabled. Il coordinamento globale con navigazione e altri modal resta da completare.
+Controller serializzato, API autenticata, versione server e risultati obsoleti scartati. 409 blocca; rete/500/DTO inutilizzabile dopo comando sono incerti; 422 consente correzione; 401/403 eliminano snapshot; lettura valida libera il blocco. 404 non prova annullo o creazione. READY intermedio conserva preparazione, race_id conclude, cancel conclude separatamente.
 
-DTO pubblici e copie indipendenti, CardEntry/CardTile/totalCopies riusati, slot_id per copie distinte. Nessuna replica completa del motore. API autenticata condivisa, payload versionati e soli campi previsti. Nessun retry automatico, polling o nuovo stream.
+Presenti/Assenti per pilota non ottimistici e limite backend 1-12. Il server decide order/decks se pool insufficiente. Ordine server, Prima gara centrato, drag/Su-Giu con baseline e scarto esplicito. order e start restano due HTTP senza rollback inventato. Gara gia disputata usa il comando dedicato senza controlli mazzi/READY.
 
-Controller serializzato con versione server e risposte obsolete scartate. Il suo getContext dovra essere collegato alla nuova sessionKey, ma quel collegamento non e ancora montato. 409 blocca; rete/500/DTO inutilizzabile durante comando sono incerti; 422 consente correzione manuale; 401/403 eliminano snapshot; solo lettura valida libera il blocco. 404 non prova creazione/annullo. READY intermedio conserva preparazione, race_id conclude, cancel conclude separatamente.
+Scelta per proprietario del turno, non per can_manage; slot_id distingue copie, conferma versionata senza rimozione ottimistica, zoom locale e preview consentita soltanto al turno utilizzabile. Ultima scelta porta a decks e non crea Race. Nessuna propagazione live ancora attestata.
 
-Modal condiviso mantiene X a destra per default, DraftModal a sinistra con Escape/sfondo disabilitati. Creatore non completamente READY coi propri presenti, insieme vuoto non blocca per vacuita. Conferma annullamento store/ID/versione senza chiusura anticipata o falso ripristino; contenuti montati ma nascosti/inert durante conferma.
-
-Gara gia disputata usa il comando dedicato senza controlli mazzi/READY. Presenze per pilota non ottimistiche, limite backend 1-12 e fase successiva decisa dal server. Ordine server, Prima gara centrato, drag/Su-Giu con baseline e scarto esplicito. order e poi start sono due HTTP, senza rollback inventato se il secondo fallisce.
-
-Scelta carte per proprietario del turno, non per can_manage; copie distinte, verde/rosso, zoom locale e preview consentita solo al turno utilizzabile, alone da DTO server. Choice confermata e versionata senza rimozione ottimistica; ultima scelta passa a decks senza creare Race. Nessuna propagazione live ancora attestata.
-
-Mazzi solo propri presenti, dati con versioni/READY coerenti, una copia per POST e GET mirata dopo successo. GET fallita dopo POST non e rollback; errore conserva blocco e dati precedenti readonly, 401/403 li elimina. Pronto con 15 esatte dopo la prima gara e massimo 15 sempre. Non Pronto puo revocare senza vecchio DTO/conteggio, ma richiede contesto utilizzabile e coordinatore non bloccato, poi GET. READY completo solo tutti i propri presenti, pulsante unico per selezionato o primo proprio, scala 0.95-1.05 e riduzione animazione. Nessuna gara dedotta dal conteggio.
+Mazzi soltanto propri presenti, DTO/versioni/READY coerenti, GET mirata dopo POST riuscito. GET fallita non e rollback; dati precedenti readonly e recupero esplicito. Pronto con 15 esatte dopo la prima gara, massimo 15 sempre. Non Pronto puo revocare senza vecchio DTO/conteggio ma con contesto utilizzabile e coordinatore non bloccato, poi GET. Tutti i propri presenti pronti nasconde editing e lascia non Pronto; nessuna gara dedotta da quel conteggio. CardEntry/CardTile/totalCopies riusati, nessuna nuova risorsa o conversione.
 
 ## Test predisposti e seguito
 
-Nuovi test: generazione auth, transizioni ed errori; registro senza rete iniziale, riuso store, recupero senza GET duplicate, aperture incerte, risposte tardive, stesso account con nuova chiave, ruolo player, dati corrotti, store occupati, conclusioni uniche e 401/dispose. Trasporti simulati, non sessioni/cookie browser reali o concorrenza DB. I test precedenti di helper/SSR non attestano clic, focus, touch, effetti client o end-to-end.
+Nuovi test helper: coda stabile anche con elenco riordinato, identita conservate, visibilita per fase e proprietario dei presenti, READY non terminale, passaggio dopo conclusione reale, rimozioni/dismissioni, duplicati di identita ed Escape simulato. Non sono test DOM di focus/action, effect client, SSR del layout, navigazione, sospensione di dialoghi reali o SSE. Restano i test predisposti degli incrementi precedenti, non dichiarati superati. Nessuna concorrenza DB o sessione browser reale verificata.
 
-Non attestati check/lint/Vitest/build per questo incremento o un nuovo esito del fix precedente. Comandi previsti in frontend: npm run check, npm run lint, npm test, npm run build; nessuno eseguito localmente. I vecchi 503 e il 400 sulla directory dinamica erano errori di lettura GitHub risolti ritentando o leggendo il file diretto, non test applicativi.
+Comandi previsti in frontend: npm run check, npm run lint, npm test, npm run build. Nessuno eseguito localmente; nessun risultato CI letto o atteso. Formattazione e accessibilita non dichiarate validate. I precedenti 503/400 GitHub erano letture fallite e poi recuperate, non test applicativi.
 
-Push diretto degli incrementi approvati sul solo draft; niente commenti-checkpoint o nuovi workflow. CI controllata/attesa soltanto su indicazione dell autore. Nessun merge implicito. Questo documento aggiorna lo stato tecnico, docs/DRAFT_SPEC.md conserva le regole. Setup, script, schema, risorse, dipendenze e lockfile invariati; nessun nuovo scaffold, endpoint, migrazione o accesso al database reale.
+Push diretto sul solo draft degli incrementi approvati, niente checkpoint nei commenti o nuovi workflow. CI controllata/attesa soltanto su indicazione dell autore. Nessun merge. Questo documento aggiorna lo stato tecnico; docs/DRAFT_SPEC.md conserva le regole. Setup, script, database, risorse, dipendenze e lockfile invariati. Nessuna migrazione, nuovo endpoint o accesso al database reale.
 
-Restano componente host e layout, collegamento Nuova gara, integrazione auth/SSE/lifecycle, priorita dei modal, navigazione, accessibilita/focus e collaudo browser.
+Restano Nuova Gara, collegamento draft allo stream SSE condiviso e alla riconnessione, coordinamento aggiornamenti/comandi e collaudo browser end-to-end, focus/accessibilita e verifica completa.
