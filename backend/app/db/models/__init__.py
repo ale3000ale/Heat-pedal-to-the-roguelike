@@ -9,9 +9,11 @@ from app.db.models.card_gift import CardGift
 from app.db.models.session import Session
 from app.db.models.shop import Pack, PackPurchase, PackTemplate, ShopTemplate, ShopTemplatePack
 from app.db.models.event_log import EventLog
+from app.db.models.draft import DraftPreparation
 
 __all__ = [
     "User", "Team", "Deck", "DeckPrototype", "Pilot",
     "Championship", "ChampionshipPilot", "Race", "RaceResult", "CardPlay", "CardGift", "Session",
     "Pack", "PackPurchase", "PackTemplate", "ShopTemplate", "ShopTemplatePack", "EventLog",
+    "DraftPreparation",
 ]
