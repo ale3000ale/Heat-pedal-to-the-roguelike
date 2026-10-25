@@ -2,36 +2,44 @@
 
 25 ottobre 2026. Solo Heat-pedal-to-the-roguelike, ramo draft, PR 18.
 
-## Correzione corrente: controllo mazzi dopo la modifica
+## Segnalazioni UI dell'autore alle 14:36
 
-Segnalazione dell'autore alle 13:55: il requisito delle 15 carte non deve bloccare Avanti dopo Presenti/Assenti. Il controllo anticipato era in backend/app/services/draft_commands.py, confirm_attendance, tramite require_ready_game_decks per le gare successive alla prima.
+1. Rendere trascinabile l'intera scheda pilota e sostituire Su/Giu con frecce.
+2. Mantenere lo zoom locale durante anteprime/aggiornamenti, senza indicare Anteprima di al proprietario nel proprio turno; preservare anche lo zoom degli utenti in attesa.
+3. Evitare salti verticali durante la modifica dei mazzi.
 
-La correzione rimuove soltanto quella chiamata e il relativo import. Restano verifiche di fase, creatore, versione, numero dei presenti 1-12, proprietari, riferimenti ai mazzi e pool. La conferma presenze porta a order o direttamente a decks secondo la pool, senza richiedere mazzi gia completi. Non viene modificata la validazione dei dati JSON.
+Questo incremento riguarda soltanto il punto 1. I punti 2 e 3 restano aperti, non dichiarati risolti. Nessun cambiamento al backend, al database o alle regole del gioco.
 
-Il controllo sui mazzi modificati resta nel comando READY e nel ricontrollo di tutti i presenti prima di creare Race. Dalla seconda gara servono 15 carte esatte; alla prima resta l'eccezione del conteggio esatto e il massimo di 15. Spostamenti, annullamento, snapshot, transazioni e segnali SSE restano quelli esistenti. Non vengono modificati ready_pilot, set_ready o il percorso Gara gia disputata.
+## Primo fix: ordine delle schede
 
-File previsti: backend/app/services/draft_commands.py, nuovo backend/tests/test_draft_attendance_readiness.py, docs/DRAFT_SPEC.md e questo documento. Il precedente tentativo di conferma con segnaposto non e stato eseguito e non ha pubblicato file.
+Nuovo frontend/src/lib/draft-order-drag.ts con action per iniziare il gesto dall'intera scheda, escludendo i controlli interni. La cattura del puntatore avviene sull'ol stabile, non sul pulsante/scheda riposizionato. Le posizioni iniziali e la distanza percorsa determinano l'indice senza leggere di nuovo il nodo sotto il puntatore dopo ogni riordino. Soglia minima, compensazione dello scroll del modal e limiti alle posizioni disponibili. Nessuna richiesta durante il trascinamento.
 
-## Regressioni predisposte e verifiche
+Pointerup conclude senza ripristinare la bozza: lo stato del gesto viene azzerato prima di rilasciare la cattura, cosi lostpointercapture non annulla un drop appena concluso. Pointercancel/perdita imprevista di cattura ripristinano la bozza iniziale del gesto. Frecce ↑/↓ con etichette accessibili restano l'alternativa da tastiera; il vecchio pulsante maniglia e rimosso.
 
-Nuove regressioni SQLite temporanee: precedente gara con risultati e revisione chiusa; presenze accettate con mazzo vuoto o da 14 copie sia con pool sufficiente sia insufficiente; nessuna modifica dei mazzi alla conferma presenze; percorso fino a decks, READY rifiutato a 14 e accettato dopo spostamento a 15; nuova gara assente fino a READY; endpoint HTTP conferma-presenze e permanenza del vincolo di almeno un presente.
+Permessi, versioni e coerenza dell'ordine restano controllati da canEditDraftOrder. La bozza e locale e Avanti continua a salvare order se necessario e poi start, senza retry o rollback inventato. Stato server cambiato conserva una bozza incompatibile ma ne blocca l'invio. Messaggio locale con altezza minima riservata per non inserire una nuova riga al primo movimento.
 
-Non sono stati eseguiti pytest, controlli frontend, installazioni, migrazioni o collaudo browser per questa correzione. Nessuna CI consultata o attesa in questo passaggio. Test predisposti, non dichiarati superati.
+File: nuovo draft-order-drag.ts e draft-order-drag.spec.ts; aggiornati components/draft-order.svelte e draft-order-ui.spec.ts, tutti sotto frontend/src/lib, oltre a questo documento. Nessuna modifica a modal condiviso, anteprime, focus, mazzi o stream in questo primo fix.
 
-Ultima verifica CI letta nella conversazione sul commit 26c5faabd4427f790dbdab0cf367cce7466829c6: frontend check/lint/test/build, runtime e migrazioni superati; backend pytest ancora in esecuzione a quella lettura. Sono risultati precedenti, non della patch attuale. Il vecchio log 594/596 e il fix fc71aa6ce50501f8c9b18e8a9ecacf90b2b004fb restano storia del precedente errore SSR, non un risultato nuovo.
+## Evidenze sui problemi ancora aperti
 
-Comandi da verificare dopo il push: in backend python -m pytest -q tests/test_draft_attendance_readiness.py tests/test_draft_commands.py tests/test_draft_completion.py tests/test_draft_api.py tests/test_draft_transitions.py; poi suite backend completa, check/lint/test/build frontend e controlli migrazioni gia previsti dalla CI. Nessun risultato anticipato.
+Il componente picking passa il nome dell'anteprima anche al proprietario del turno e lega lo zoom al pilota di turno; questo va distinto dalla conferma versionata della scelta. Non e stata riprodotta nel browser la chiusura immediata segnalata.
 
-## Integrazione conservata
+La schermata mazzi aggiunge/toglie messaggi di caricamento/verifica e il contenimento del focus usa focus senza preventScroll. Il modal e centrato con altezza variabile. Sono punti da correggere/verificare per la stabilita verticale, non una prova che il problema abbia una sola causa.
 
-Registro/auth: 48d59990c538db6e4c779e557126834be722e90b. Host/layout: 2739251d889e821e39a1a407eef56232a95710ba. SSE condiviso: e8daa23d8de734abfca9b72cddf9779e190111b0. Modulo apertura/test: 131612d667d132c23f9093ae9cec1d200fc33e30. Collegamento pagina Nuova Gara: 16eb2df83e3fcca1239b70a83b8bc07d6720bb29.
+## Test e limiti
 
-Nuova Gara apre la preparazione tramite il provider del layout, non crea direttamente Race. Un solo stream SSE, draft.changed con solo preparation_id e recupero REST accodato su notifiche/resync. Busy di store/dettagli rinvia il recupero senza ritentare POST. Dettaglio gia caricato ma obsoleto: tentativo GET mirato per coordinatore/pilota/versione, poi recupero manuale. Coda locale stabile, un solo DraftFlow, modal sottostanti inert, Escape non chiude e X del creatore con conferma/vincolo READY.
+Predisposti test puri per soglia, direzioni, indice stabile, limiti e geometrie invalide; SSR per schede trascinabili, frecce, assenza della maniglia, permessi e dati incoerenti. Non sono test reali di drag, pointer capture, mouse/touch, scroll o layout browser.
 
-Rimozione da elenco non viene etichettata automaticamente come creazione o annullamento; esiti effettivi acquisiti prima del cleanup. Nessun redirect o nuovo polling. Recupero multi-store non atomico; conteggi, versioni, permessi e blocchi restano server. Il frontend non viene modificato da questa correzione.
+Nessuna installazione, formattazione, esecuzione locale check/lint/test/build o consultazione/attesa CI per questo incremento. Test predisposti, non dichiarati superati. La prova browser resta necessaria anche dopo i controlli automatici.
 
-## Limiti e seguito
+## Correzioni e integrazione precedenti
 
-Nessuna modifica a schema, migrazioni, database reale, risorse, dipendenze, lockfile, script o workflow. Nessun merge o rilascio. Il manifesto backend descrive l'artefatto consolidato originario e non viene falsificato per rappresentare la patch attuale.
+Il controllo anticipato delle 15 carte e stato rimosso dalla conferma presenze in 0052c1d4680ebcba8f7afc3690fa9a589927aac1, con regressioni backend predisposte e specifica aggiornata. Il vincolo rimane dopo la modifica ai READY e nel ricontrollo finale. Nessun nuovo esito della patch backend attestato qui.
 
-Restano verifica della correzione e collaudo reale di gare successive con mazzi incompleti, scelta/modifica, pronto/non Pronto, annullamento e riconnessione. Focus, multi-browser e consegna ZIP finale non dichiarati completati. Dopo esiti effettivi va completato il riallineamento generale della documentazione.
+Nuova Gara usa il registro del layout (modulo 131612d667d132c23f9093ae9cec1d200fc33e30, pagina 16eb2df83e3fcca1239b70a83b8bc07d6720bb29). Host e SSE condiviso conservati; notifiche accorpate e recupero REST, un solo flusso montato e coda stabile. Nessuna gara dedotta da READY o sparizione REST, nessun nuovo polling o redirect.
+
+Ultima verifica CI letta nella conversazione: sul commit 26c5faabd4427f790dbdab0cf367cce7466829c6 frontend, runtime e migrazioni superati, backend ancora in corso a quella lettura. Questi risultati storici non attestano i nuovi fix. Regole complete in docs/DRAFT_SPEC.md, non modificate da questo intervento UI.
+
+## Seguito
+
+Dopo pubblicazione: correzione zoom/anteprima e poi stabilita dei mazzi; controlli frontend completi e collaudo reale degli aggiornamenti SSE, del drag, di focus e scroll. Nessun merge, nuova dipendenza, modifica a schema/risorse/script o ZIP finale. Riallineamento generale dei documenti dopo verifiche effettive.

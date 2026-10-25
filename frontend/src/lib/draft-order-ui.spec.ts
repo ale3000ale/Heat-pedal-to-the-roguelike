@@ -6,28 +6,13 @@ import type { DraftSessionOptions } from './draft-session';
 import { DraftStore } from './stores/draft.svelte';
 
 function snapshot(): DraftRead {
-	return {
-		id: 1,
-		championship_id: 7,
-		version: 2,
-		phase: 'order',
-		first_race: true,
-		can_manage: true,
-		my_pilot_ids: [11],
-		participants: [
+	return { id: 1, championship_id: 7, version: 2, phase: 'order', first_race: true,
+		can_manage: true, my_pilot_ids: [11], participants: [
 			{ pilot_id: 11, name: 'Anna', present: true },
 			{ pilot_id: 12, name: 'Luca', present: true },
 			{ pilot_id: 13, name: 'Assente', present: false }
-		],
-		order: [12, 11],
-		cards: [],
-		picks: [],
-		preview_slot_id: null,
-		ready: [],
-		current_pilot_id: null
-	};
+		], order: [12, 11], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null };
 }
-
 async function setup(value = snapshot()) {
 	const read = vi.fn<NonNullable<DraftSessionOptions['read']>>().mockResolvedValue(value);
 	const send = vi.fn<NonNullable<DraftSessionOptions['send']>>();
@@ -35,66 +20,63 @@ async function setup(value = snapshot()) {
 	const accepted = await store.refresh();
 	return { store, read, send, accepted };
 }
-
-/** Impone la presenza di pulsanti e l'attributo HTML su ciascuno, non classi disabled:*. */
 function expectAllButtonsDisabled(body: string): void {
 	const buttons = body.match(/<button\b[^>]*>/g) ?? [];
 	expect(buttons.length).toBeGreaterThan(0);
-	for (const button of buttons) {
-		const attributes = button.replace(/"[^"]*"|'[^']*'/g, '""');
-		expect(attributes).toMatch(/\sdisabled(?=\s|=|\/?>)/);
-	}
+	for (const button of buttons) expect(button.replace(/"[^"]*"|'[^']*'/g, '""')).toMatch(/\sdisabled(?=\s|=|\/?>)/);
 }
 
-// Test SSR: nessun evento pointer, tastiera o clic viene attivato.
+// SSR e geometria pura non attestano pointer capture, gesture touch o drop nel browser.
 describe('rendering ordine draft', () => {
-	it('mostra Prima gara e l ordine server senza sorteggi o richieste nel rendering', async () => {
+	it('mostra Prima gara e ordine server senza sorteggi o richieste nel rendering', async () => {
 		const { store, read, send } = await setup();
 		const { body } = render(DraftOrder, { props: { store } });
 		expect(body).toMatch(/<strong[^>]*text-center[^>]*>Prima gara<\/strong>/);
 		expect(body.indexOf('Luca')).toBeLessThan(body.indexOf('Anna'));
 		expect(body).not.toContain('Assente');
-		expect(body).toContain('aria-label="Trascina Luca"');
+		expect(body).toMatch(/<li\b[^>]*data-order-pilot="12"[^>]*data-order-draggable="true"/);
 		expect(body).toContain('aria-label="Sposta su Anna"');
 		expect(body).toContain('Avanti');
 		expect(read).toHaveBeenCalledTimes(1);
 		expect(send).not.toHaveBeenCalled();
 	});
-
+	it('offre due frecce accessibili e non un pulsante maniglia', async () => {
+		const { store } = await setup();
+		const body = render(DraftOrder, { props: { store } }).body;
+		expect(body).toContain('↑');
+		expect(body).toContain('↓');
+		expect(body).toContain('aria-label="Sposta giu Luca"');
+		expect(body).not.toContain('aria-label="Trascina');
+	});
 	it('non mostra Prima gara nelle gare successive', async () => {
-		const value = snapshot();
-		value.first_race = false;
+		const value = snapshot(); value.first_race = false;
 		const { store } = await setup(value);
 		expect(render(DraftOrder, { props: { store } }).body).not.toContain('Prima gara');
 	});
-
-	it('disabilita tutti i controlli ai non creatori', async () => {
-		const value = snapshot();
-		value.can_manage = false;
+	it('disabilita controlli e drag ai non creatori', async () => {
+		const value = snapshot(); value.can_manage = false;
 		const { store, accepted, send } = await setup(value);
 		expect(accepted).toBe(true);
-		expectAllButtonsDisabled(render(DraftOrder, { props: { store } }).body);
+		const body = render(DraftOrder, { props: { store } }).body;
+		expectAllButtonsDisabled(body);
+		expect(body).not.toContain('data-order-draggable="true"');
+		expect(body).toContain('data-order-draggable="false"');
 		expect(send).not.toHaveBeenCalled();
 	});
-
-	it('mostra l errore per un ordine senza duplicati ma incompleto rispetto ai presenti', async () => {
-		const value = snapshot();
-		// Il DTO e valido come forma, ma manca il presente 12 nella permutazione.
-		value.order = [11];
+	it('mostra errore e nessuna scheda per ordine unico ma incompleto', async () => {
+		const value = snapshot(); value.order = [11];
 		const { store, accepted, send } = await setup(value);
 		expect(accepted).toBe(true);
 		expect(store.state.status).toBe('idle');
 		expect(store.state.snapshot?.phase).toBe('order');
 		const body = render(DraftOrder, { props: { store } }).body;
 		expect(body).toContain('Ordine non utilizzabile');
-		expect(body).not.toContain('aria-label="Trascina');
+		expect(body).not.toContain('data-order-pilot=');
 		expectAllButtonsDisabled(body);
 		expect(send).not.toHaveBeenCalled();
 	});
-
-	it('rifiuta il DTO con ordine duplicato prima del rendering della fase', async () => {
-		const value = snapshot();
-		value.order = [11, 11];
+	it('rifiuta duplicati prima di renderizzare la fase', async () => {
+		const value = snapshot(); value.order = [11, 11];
 		const { store, accepted, send } = await setup(value);
 		expect(accepted).toBe(false);
 		expect(store.state.status).toBe('blocked');
@@ -103,13 +85,11 @@ describe('rendering ordine draft', () => {
 		expect(store.state.error).toContain('duplicati');
 		const body = render(DraftOrder, { props: { store } }).body;
 		expect(body).not.toContain('aria-label="Ordine draft"');
-		expect(body).not.toContain('aria-label="Trascina');
+		expect(body).not.toContain('data-order-pilot=');
 		expect(send).not.toHaveBeenCalled();
 	});
-
-	it('non mostra la schermata in una fase diversa', async () => {
-		const value = snapshot();
-		value.phase = 'decks';
+	it('non mostra la schermata in fase diversa', async () => {
+		const value = snapshot(); value.phase = 'decks';
 		const { store } = await setup(value);
 		expect(render(DraftOrder, { props: { store } }).body).not.toContain('Ordine di scelta');
 	});
