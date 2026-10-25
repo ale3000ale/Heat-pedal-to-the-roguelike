@@ -1,0 +1,101 @@
+name: Diagnosi pubblicazione draft
+
+on:
+  push:
+    branches: [draft]
+    paths: ['.github/workflows/draft-publish-diagnose.yml']
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: draft-publish-diagnose
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.ref == 'refs/heads/draft'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Recupera solo la diagnosi della precedente esecuzione
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+
+          def api(path):
+              """Legge JSON dalle API GitHub; propaga gli errori e non stampa credenziali."""
+              return json.loads(subprocess.check_output(['gh', 'api', path]))
+
+          def redact(text):
+              """Filtra token, header di autorizzazione e URL prima di salvare estratti."""
+              token = os.environ.get('GH_TOKEN', '')
+              if token:
+                  text = text.replace(token, '[REDACTED]')
+              text = re.sub(r'(?:github_pat_|gh[pousr]_)[A-Za-z0-9_]+', '[REDACTED]', text)
+              text = re.sub(r'(?i)(authorization\s*[:=]\s*)([^\r\n]+)', r'\1[REDACTED]', text)
+              return re.sub(r'https?://\S+', '[URL]', text)
+
+          repository = 'ale3000ale/Heat-pedal-to-the-roguelike'
+          endpoint = f'repos/{repository}/actions/runs/40152662704'
+          run = api(endpoint)
+          if (run['id'] != 40152662704 or run['status'] != 'completed'
+              or run['conclusion'] != 'failure'
+              or run['head_sha'] != 'ba0410e475afb85bb452ef66abd6a79954e9e21e'):
+              raise RuntimeError('Esecuzione diversa da quella da diagnosticare')
+          jobs = api(endpoint + '/jobs?per_page=100')['jobs']
+          matches = [job for job in jobs if job['id'] == 121047268476]
+          if len(matches) != 1:
+              raise RuntimeError('Job atteso non univoco')
+          job = matches[0]
+          report = {
+              'run_id': run['id'],
+              'run_attempt': run['run_attempt'],
+              'source_sha': run['head_sha'],
+              'job_id': job['id'],
+              'job_name': job['name'],
+              'conclusion': job['conclusion'],
+              'steps': [{'name': step['name'], 'status': step['status'],
+                         'conclusion': step.get('conclusion')} for step in job['steps']],
+              'scope': 'Diagnosi della pubblicazione; non attesta nuovi test o consolidamento backend.',
+          }
+          logs = subprocess.run(['gh', 'api', f'repos/{repository}/actions/jobs/121047268476/logs'],
+                                capture_output=True, text=True, errors='replace')
+          if logs.returncode:
+              report['log_retrieval_error'] = redact(logs.stderr)[-3000:]
+          else:
+              pattern = re.compile(r'traceback|error|exception|failed|failure|returned non-zero|permission|forbidden|not found|manifest|inatteso|inattesa|discordante', re.I)
+              lines = [redact(line)[:700] for line in logs.stdout.splitlines() if pattern.search(line)]
+              report['filtered_error_lines'] = lines[-40:]
+          root = Path.cwd().resolve()
+          target = root / '.github/diagnostics/draft-publish-40152662704.json'
+          if target.exists() or target.is_symlink() or not target.resolve().is_relative_to(root):
+              raise RuntimeError('Destinazione diagnostica gia presente o esterna')
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(json.dumps(report, ensure_ascii=True, indent=2) + '\n', encoding='utf-8')
+          subprocess.run(['git', 'add', '--', '.github/diagnostics/draft-publish-40152662704.json'], check=True)
+          subprocess.run(['git', 'diff', '--cached', '--check'], check=True)
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git', 'commit', '-m', 'ci: registra diagnosi filtrata della pubblicazione draft'], check=True)
+          subprocess.run(['git', 'fetch', 'origin', 'refs/heads/draft:refs/remotes/origin/draft'], check=True)
+          remote = subprocess.check_output(['git', 'rev-parse', 'refs/remotes/origin/draft'], text=True).strip()
+          if remote != os.environ['GITHUB_SHA']:
+              raise RuntimeError('Ramo cambiato durante la diagnosi; pubblicazione interrotta')
+          subprocess.run(['git', 'push', 'origin', 'HEAD:refs/heads/draft'], check=True)
+          PY
