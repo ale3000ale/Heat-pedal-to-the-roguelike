@@ -41,8 +41,8 @@
 								variant="outline"
 								disabled={!view.canEdit}
 								aria-label={`Escludi ${pilot.name}`}
-								onclick={() => setPresent(pilot.pilot_id, false)}
-							>Escludi</Button>
+								onclick={() => setPresent(pilot.pilot_id, false)}>Escludi</Button
+							>
 						</li>
 					{/each}
 				</ul>
@@ -63,8 +63,8 @@
 								variant="outline"
 								disabled={!view.canEdit}
 								aria-label={`Includi ${pilot.name}`}
-								onclick={() => setPresent(pilot.pilot_id, true)}
-							>Includi</Button>
+								onclick={() => setPresent(pilot.pilot_id, true)}>Includi</Button
+							>
 						</li>
 					{/each}
 				</ul>

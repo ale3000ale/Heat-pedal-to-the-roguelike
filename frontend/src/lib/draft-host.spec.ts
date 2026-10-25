@@ -6,14 +6,27 @@ import type { DraftRead } from './draft-types';
 
 function dto(): DraftRead {
 	return {
-		id: 1, championship_id: 7, version: 2, phase: 'attendance', first_race: true,
-		can_manage: true, my_pilot_ids: [11], participants: [{ pilot_id: 11, name: 'Anna', present: true }],
-		order: [], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null
+		id: 1,
+		championship_id: 7,
+		version: 2,
+		phase: 'attendance',
+		first_race: true,
+		can_manage: true,
+		my_pilot_ids: [11],
+		participants: [{ pilot_id: 11, name: 'Anna', present: true }],
+		order: [],
+		cards: [],
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: null
 	};
 }
 function deferred<T>() {
 	let resolve!: (value: T) => void;
-	const promise = new Promise<T>((done) => { resolve = done; });
+	const promise = new Promise<T>((done) => {
+		resolve = done;
+	});
 	return { promise, resolve };
 }
 function setup() {
@@ -22,7 +35,15 @@ function setup() {
 	const open = vi.fn<NonNullable<DraftHostOptions['open']>>().mockResolvedValue(dto());
 	const read = vi.fn<NonNullable<DraftHostOptions['read']>>().mockResolvedValue(dto());
 	const host = createDraftHost({ getContext: () => context, list, open, read });
-	return { host, list, open, read, change(value: DraftHostContext | null) { context = value; } };
+	return {
+		host,
+		list,
+		open,
+		read,
+		change(value: DraftHostContext | null) {
+			context = value;
+		}
+	};
 }
 afterEach(() => vi.unstubAllGlobals());
 
@@ -125,7 +146,9 @@ describe('registro draft autorizzato', () => {
 		await host.refresh();
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 		await host.getState().entries[0].store.command('cancel', {});
-		expect(host.takeCompletions()).toEqual([{ draftId: 1, championshipId: 7, kind: 'cancelled', raceId: null }]);
+		expect(host.takeCompletions()).toEqual([
+			{ draftId: 1, championshipId: 7, kind: 'cancelled', raceId: null }
+		]);
 		list.mockResolvedValueOnce([]);
 		expect(await host.refresh()).toBe(true);
 		expect(host.getState().entries).toEqual([]);

@@ -8,19 +8,37 @@ import { DraftStore } from './stores/draft.svelte';
 
 async function setup(ready: number[] = []) {
 	const root: DraftRead = {
-		id: 1, championship_id: 7, version: 2, phase: 'decks', first_race: false,
-		can_manage: false, my_pilot_ids: [11, 12],
+		id: 1,
+		championship_id: 7,
+		version: 2,
+		phase: 'decks',
+		first_race: false,
+		can_manage: false,
+		my_pilot_ids: [11, 12],
 		participants: [
 			{ pilot_id: 11, name: 'Anna', present: true },
 			{ pilot_id: 12, name: 'Luca', present: true },
 			{ pilot_id: 13, name: 'Altro proprietario', present: true }
 		],
-		order: [], cards: [], picks: [], preview_slot_id: null, ready, current_pilot_id: null
+		order: [],
+		cards: [],
+		picks: [],
+		preview_slot_id: null,
+		ready,
+		current_pilot_id: null
 	};
-	const store = new DraftStore({ draftId: 1, getContext: () => 'auth-1:player:1', read: async () => root });
+	const store = new DraftStore({
+		draftId: 1,
+		getContext: () => 'auth-1:player:1',
+		read: async () => root
+	});
 	await store.refresh();
 	const read = vi.fn().mockImplementation(async (_id: number, pilotId: number) => ({
-		pilot_id: pilotId, preparation_version: 2, ready: ready.includes(pilotId), inventory_version: 1, game_version: 1,
+		pilot_id: pilotId,
+		preparation_version: 2,
+		ready: ready.includes(pilotId),
+		inventory_version: 1,
+		game_version: 1,
 		inventory: [{ name: 'Carta', path: 'cards/a.webp', copies: 2 }],
 		game_deck: [{ name: 'Carta', path: 'cards/a.webp', copies: 15 }]
 	}));
@@ -59,7 +77,9 @@ describe('rendering preparazione mazzi', () => {
 	});
 
 	it('la schermata READY ha un solo pulsante e rispetta busy', () => {
-		const { body } = render(DraftReady, { props: { pilotName: 'Anna', busy: true, onnotready: vi.fn() } });
+		const { body } = render(DraftReady, {
+			props: { pilotName: 'Anna', busy: true, onnotready: vi.fn() }
+		});
 		expect(body.match(/<button\b/g)).toHaveLength(1);
 		expect(body).toMatch(/<button[^>]*disabled/);
 		expect(body).toContain('Anna');

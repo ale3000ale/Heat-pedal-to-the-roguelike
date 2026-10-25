@@ -10,17 +10,31 @@ import { DraftStore } from './stores/draft.svelte';
 
 function snapshot(phase: DraftPhase): DraftRead {
 	return {
-		id: 1, championship_id: 7, version: 2, phase, first_race: true,
-		can_manage: true, my_pilot_ids: [11, 12],
+		id: 1,
+		championship_id: 7,
+		version: 2,
+		phase,
+		first_race: true,
+		can_manage: true,
+		my_pilot_ids: [11, 12],
 		participants: [
 			{ pilot_id: 11, name: 'Anna', present: true },
 			{ pilot_id: 12, name: 'Luca', present: true }
 		],
 		order: phase === 'order' || phase === 'picking' ? [11, 12] : [],
-		cards: phase === 'picking' ? Array.from({ length: 5 }, (_, index) => ({
-			slot_id: index + 1, name: 'Carta', path: 'cards/a.webp', chosen_by: null
-		})) : [],
-		picks: [], preview_slot_id: null, ready: [], current_pilot_id: phase === 'picking' ? 11 : null
+		cards:
+			phase === 'picking'
+				? Array.from({ length: 5 }, (_, index) => ({
+						slot_id: index + 1,
+						name: 'Carta',
+						path: 'cards/a.webp',
+						chosen_by: null
+					}))
+				: [],
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: phase === 'picking' ? 11 : null
 	};
 }
 
@@ -60,9 +74,10 @@ describe('composizione draft', () => {
 		const { store } = await setup();
 		const normal = render(DraftModal, { props: { store, children } }).body;
 		const busy = render(DraftModal, { props: { store, children, externalBusy: true } }).body;
-		const closeButton = (body: string) => body.match(/<button\b[^>]*>/g)?.find(
-			(tag) => tag.includes('aria-label="Chiudi"') && !tag.includes('tabindex="-1"')
-		);
+		const closeButton = (body: string) =>
+			body
+				.match(/<button\b[^>]*>/g)
+				?.find((tag) => tag.includes('aria-label="Chiudi"') && !tag.includes('tabindex="-1"'));
 		expect(closeButton(normal)).not.toContain('disabled');
 		expect(closeButton(busy)).toContain('disabled');
 	});
@@ -72,7 +87,9 @@ describe('composizione draft', () => {
 		send.mockRejectedValueOnce(new ApiError(409, 'Conflitto'));
 		await store.command('start', {});
 		const { body } = render(DraftModal, { props: { store, children, externalBusy: true } });
-		const reload = body.match(/<button\b[^>]*>[\s\S]*?<\/button>/g)?.find((button) => button.includes('Rileggi dal server'));
+		const reload = body
+			.match(/<button\b[^>]*>[\s\S]*?<\/button>/g)
+			?.find((button) => button.includes('Rileggi dal server'));
 		expect(reload).toMatch(/<button[^>]*disabled/);
 	});
 

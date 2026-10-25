@@ -23,8 +23,15 @@
 	});
 	// Un solo caricamento iniziale quando si entra con un proprio presente non tutto READY.
 	$effect(() => {
-		if (compatible && view.visible && !view.allOwnReady && view.selected &&
-			sessionState.status === 'idle' && $decks.status === 'empty' && $decks.pilotId === null) {
+		if (
+			compatible &&
+			view.visible &&
+			!view.allOwnReady &&
+			view.selected &&
+			sessionState.status === 'idle' &&
+			$decks.status === 'empty' &&
+			$decks.pilotId === null
+		) {
 			void decks.select(view.selected.pilot_id);
 		}
 	});
@@ -42,17 +49,29 @@
 
 {#if view.visible && compatible}
 	{#if view.allOwnReady && view.selected && sessionState.status !== 'blocked' && $decks.status !== 'blocked'}
-		<DraftReady pilotName={view.selected.name} busy={locked || !view.canUnready} onnotready={() => ready(false)} />
+		<DraftReady
+			pilotName={view.selected.name}
+			busy={locked || !view.canUnready}
+			onnotready={() => ready(false)}
+		/>
 	{:else}
-		<section aria-label="Preparazione mazzi draft" aria-busy={$decks.busy || store.busy} class="space-y-4">
+		<section
+			aria-label="Preparazione mazzi draft"
+			aria-busy={$decks.busy || store.busy}
+			class="space-y-4"
+		>
 			{#if view.ownPilots.length === 0}
 				<p role="status">Non hai piloti presenti da preparare. Attendi gli altri partecipanti.</p>
 			{:else}
 				<div class="flex flex-wrap gap-2" aria-label="I tuoi piloti presenti">
 					{#each view.ownPilots as pilot (pilot.pilot_id)}
-						<Button type="button" variant="outline" aria-pressed={view.selected?.pilot_id === pilot.pilot_id}
+						<Button
+							type="button"
+							variant="outline"
+							aria-pressed={view.selected?.pilot_id === pilot.pilot_id}
 							disabled={store.busy || $decks.status === 'writing' || sessionState.status !== 'idle'}
-							onclick={() => choosePilot(pilot.pilot_id)}>
+							onclick={() => choosePilot(pilot.pilot_id)}
+						>
 							{pilot.name}{sessionState.snapshot?.ready.includes(pilot.pilot_id) ? ' — pronto' : ''}
 						</Button>
 					{/each}
@@ -66,39 +85,67 @@
 						<p role="status" class="text-sm">Operazione in corso…</p>
 					{/if}
 					{#if !view.current}
-						<p class="text-sm">Il mazzo deve essere caricato o verificato prima di modificare carte o confermare pronto.</p>
+						<p class="text-sm">
+							Il mazzo deve essere caricato o verificato prima di modificare carte o confermare
+							pronto.
+						</p>
 					{/if}
 					{#if sessionState.status === 'blocked'}
 						<p class="text-sm">Rileggi prima la preparazione dal comando del contenitore.</p>
 					{/if}
-					<Button type="button" variant="outline" disabled={$decks.busy || store.busy || sessionState.status !== 'idle'}
-						onclick={() => choosePilot(view.selected!.pilot_id)}>Rileggi mazzo</Button>
+					<Button
+						type="button"
+						variant="outline"
+						disabled={$decks.busy || store.busy || sessionState.status !== 'idle'}
+						onclick={() => choosePilot(view.selected!.pilot_id)}>Rileggi mazzo</Button
+					>
 					{#if view.hasDeck}
-						<p class="text-sm">Mazzo {view.count}/15{view.current ? '' : ' — dati precedenti, non modificabili'}</p>
+						<p class="text-sm">
+							Mazzo {view.count}/15{view.current ? '' : ' — dati precedenti, non modificabili'}
+						</p>
 						<InventorySection title="Inventario modifiche" count={totalCopies(view.inventory)}>
 							<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 								{#each view.inventory as card (card.path)}
-									<CardTile {card} compact disabled={locked || !view.canAdd} onclick={() => move(card.path, true)} />
+									<CardTile
+										{card}
+										compact
+										disabled={locked || !view.canAdd}
+										onclick={() => move(card.path, true)}
+									/>
 								{/each}
 							</div>
 						</InventorySection>
 						<InventorySection title="Mazzo da gioco" count={view.count ?? 0}>
 							<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 								{#each view.gameDeck as card (card.path)}
-									<CardTile {card} compact disabled={locked || !view.canEdit} onclick={() => move(card.path, false)} />
+									<CardTile
+										{card}
+										compact
+										disabled={locked || !view.canEdit}
+										onclick={() => move(card.path, false)}
+									/>
 								{/each}
 							</div>
 						</InventorySection>
 					{/if}
 					<div class="flex justify-end">
 						{#if view.selectedReady}
-							<Button type="button" variant="outline" disabled={locked || !view.canUnready} onclick={() => ready(false)}>non Pronto</Button>
+							<Button
+								type="button"
+								variant="outline"
+								disabled={locked || !view.canUnready}
+								onclick={() => ready(false)}>non Pronto</Button
+							>
 						{:else}
-							<Button type="button" disabled={locked || !view.canReady} onclick={() => ready(true)}>Pronto</Button>
+							<Button type="button" disabled={locked || !view.canReady} onclick={() => ready(true)}
+								>Pronto</Button
+							>
 						{/if}
 					</div>
 					<p class="text-sm text-muted-foreground">
-						{sessionState.snapshot?.first_race ? 'Prima gara: non sono richieste esattamente 15 copie; resta il massimo di 15.' : 'Per pronto sono richieste esattamente 15 copie.'}
+						{sessionState.snapshot?.first_race
+							? 'Prima gara: non sono richieste esattamente 15 copie; resta il massimo di 15.'
+							: 'Per pronto sono richieste esattamente 15 copie.'}
 					</p>
 				{/if}
 			{/if}

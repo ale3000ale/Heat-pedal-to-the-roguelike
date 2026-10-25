@@ -30,8 +30,8 @@
 			</Button>
 		</div>
 		<p class="text-sm text-muted-foreground">
-			Draft prosegue con Presenti e Assenti. Gara già disputata crea una gara normale:
-			i risultati saranno inseriti successivamente, senza draft o preparazione READY.
+			Draft prosegue con Presenti e Assenti. Gara già disputata crea una gara normale: i risultati
+			saranno inseriti successivamente, senza draft o preparazione READY.
 		</p>
 		{#if store.busy}
 			<p role="status" class="text-sm">Operazione in corso…</p>

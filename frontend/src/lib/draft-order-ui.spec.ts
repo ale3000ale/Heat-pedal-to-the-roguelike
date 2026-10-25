@@ -7,14 +7,24 @@ import { DraftStore } from './stores/draft.svelte';
 
 function snapshot(): DraftRead {
 	return {
-		id: 1, championship_id: 7, version: 2, phase: 'order', first_race: true,
-		can_manage: true, my_pilot_ids: [11],
+		id: 1,
+		championship_id: 7,
+		version: 2,
+		phase: 'order',
+		first_race: true,
+		can_manage: true,
+		my_pilot_ids: [11],
 		participants: [
 			{ pilot_id: 11, name: 'Anna', present: true },
 			{ pilot_id: 12, name: 'Luca', present: true },
 			{ pilot_id: 13, name: 'Assente', present: false }
 		],
-		order: [12, 11], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null
+		order: [12, 11],
+		cards: [],
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: null
 	};
 }
 

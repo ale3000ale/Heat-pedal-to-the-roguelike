@@ -59,7 +59,9 @@
 			aria-label={title}
 			class={`relative max-h-[90vh] w-full ${wide ? 'max-w-3xl' : narrow ? 'max-w-xs' : 'max-w-lg'} overflow-y-auto rounded-lg border bg-background p-4 text-foreground shadow-lg`}
 		>
-			<div class={`mb-3 flex items-center justify-between gap-3 ${closePosition === 'left' ? 'flex-row-reverse' : ''}`}>
+			<div
+				class={`mb-3 flex items-center justify-between gap-3 ${closePosition === 'left' ? 'flex-row-reverse' : ''}`}
+			>
 				<h2 class="text-lg font-semibold">{title}</h2>
 				{#if showClose}
 					<Button

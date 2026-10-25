@@ -3,20 +3,28 @@ import type { DraftDeckSession } from './draft-deck-session';
 import type { DraftSessionState } from './draft-session';
 import type { DraftStore } from './stores/draft.svelte';
 
-export type DraftFlowScreen = 'loading' | 'start' | 'attendance' | 'order' | 'picking' | 'decks' | 'closed';
+export type DraftFlowScreen =
+	'loading' | 'start' | 'attendance' | 'order' | 'picking' | 'decks' | 'closed';
 
 /** Deriva la schermata senza transizioni di gioco o rete.
  * attendanceDraftId e solo la scelta locale del percorso iniziale.
  * Nessuna deduzione di gara creata da tutti READY: valgono gli esiti del controller.
  */
-export function draftFlowView(state: DraftSessionState, attendanceDraftId: number | null, externalBusy = false) {
+export function draftFlowView(
+	state: DraftSessionState,
+	attendanceDraftId: number | null,
+	externalBusy = false
+) {
 	const closed = state.status === 'finished' || state.status === 'disposed';
 	let screen: DraftFlowScreen = 'loading';
 	if (closed) screen = 'closed';
 	else if (state.snapshot) {
-		screen = state.snapshot.phase === 'attendance'
-			? state.snapshot.id === attendanceDraftId ? 'attendance' : 'start'
-			: state.snapshot.phase;
+		screen =
+			state.snapshot.phase === 'attendance'
+				? state.snapshot.id === attendanceDraftId
+					? 'attendance'
+					: 'start'
+				: state.snapshot.phase;
 	}
 	return {
 		screen,

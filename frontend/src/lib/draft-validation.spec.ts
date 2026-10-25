@@ -39,11 +39,18 @@ describe('contratti pubblici draft', () => {
 		expect(value.my_pilot_ids).toEqual([11]);
 	});
 
-	it.each([null, [], {}, { ...snapshot(), version: '2' }, { ...snapshot(), first_race: 1 },
-		{ ...snapshot(), id: Number.MAX_SAFE_INTEGER + 1 }, { ...snapshot(), phase: 'closed' },
-		{ ...snapshot(), my_pilot_ids: [11, 11] }, { ...snapshot(), ready: undefined }])(
-		'rifiuta risposte malformate: %j',
-		(value) => expect(() => parseDraft(value)).toThrow(TypeError)
+	it.each([
+		null,
+		[],
+		{},
+		{ ...snapshot(), version: '2' },
+		{ ...snapshot(), first_race: 1 },
+		{ ...snapshot(), id: Number.MAX_SAFE_INTEGER + 1 },
+		{ ...snapshot(), phase: 'closed' },
+		{ ...snapshot(), my_pilot_ids: [11, 11] },
+		{ ...snapshot(), ready: undefined }
+	])('rifiuta risposte malformate: %j', (value) =>
+		expect(() => parseDraft(value)).toThrow(TypeError)
 	);
 
 	it('mantiene copie identiche distinte tramite slot_id', () => {
@@ -63,12 +70,19 @@ describe('contratti pubblici draft', () => {
 
 	it('valida carte e versioni senza imporre esattamente 15 copie nel lettore', () => {
 		const value = {
-			pilot_id: 11, preparation_version: 2, ready: false, inventory_version: 1, game_version: 1,
-			inventory: [{ name: 'Carta', path: 'cards/a.webp', copies: 3 }], game_deck: []
+			pilot_id: 11,
+			preparation_version: 2,
+			ready: false,
+			inventory_version: 1,
+			game_version: 1,
+			inventory: [{ name: 'Carta', path: 'cards/a.webp', copies: 3 }],
+			game_deck: []
 		};
 		expect(parseDraftDeck(value)).toEqual(value);
 		for (const copies of [0, 1.5, 1000, '3']) {
-			expect(() => parseDraftDeck({ ...value, inventory: [{ ...value.inventory[0], copies }] })).toThrow(TypeError);
+			expect(() =>
+				parseDraftDeck({ ...value, inventory: [{ ...value.inventory[0], copies }] })
+			).toThrow(TypeError);
 		}
 	});
 

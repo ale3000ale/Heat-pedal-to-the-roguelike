@@ -1,22 +1,41 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-	advanceDraftOrder, canEditDraftOrder, createDraftOrder, draftOrderChanged,
-	draftOrderMatches, draftOrderRows, moveDraftOrder
+	advanceDraftOrder,
+	canEditDraftOrder,
+	createDraftOrder,
+	draftOrderChanged,
+	draftOrderMatches,
+	draftOrderRows,
+	moveDraftOrder
 } from './draft-order';
 import type { DraftSessionState } from './draft-session';
 
 function state(): DraftSessionState {
 	return {
-		status: 'idle', block: null, error: null, completion: null, raceId: null,
+		status: 'idle',
+		block: null,
+		error: null,
+		completion: null,
+		raceId: null,
 		snapshot: {
-			id: 1, championship_id: 7, version: 2, phase: 'order', first_race: true,
-			can_manage: true, my_pilot_ids: [11],
+			id: 1,
+			championship_id: 7,
+			version: 2,
+			phase: 'order',
+			first_race: true,
+			can_manage: true,
+			my_pilot_ids: [11],
 			participants: [
 				{ pilot_id: 11, name: 'Anna', present: true },
 				{ pilot_id: 12, name: 'Luca', present: true },
 				{ pilot_id: 13, name: 'Assente', present: false }
 			],
-			order: [12, 11], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null
+			order: [12, 11],
+			cards: [],
+			picks: [],
+			preview_slot_id: null,
+			ready: [],
+			current_pilot_id: null
 		}
 	};
 }
@@ -87,7 +106,10 @@ describe('bozza ordine draft', () => {
 describe('salvataggio prima dell avvio', () => {
 	it('avvia direttamente se l ordine non e modificato', async () => {
 		const { current, port, save, start } = setup();
-		expect(await advanceDraftOrder(createDraftOrder(current)!, port)).toEqual({ accepted: true, started: true });
+		expect(await advanceDraftOrder(createDraftOrder(current)!, port)).toEqual({
+			accepted: true,
+			started: true
+		});
 		expect(save).not.toHaveBeenCalled();
 		expect(start).toHaveBeenCalledTimes(1);
 	});

@@ -8,17 +8,28 @@ import { DraftStore } from './stores/draft.svelte';
 
 function snapshot(): DraftRead {
 	return {
-		id: 1, championship_id: 7, version: 2, phase: 'picking', first_race: true,
-		can_manage: false, my_pilot_ids: [11],
+		id: 1,
+		championship_id: 7,
+		version: 2,
+		phase: 'picking',
+		first_race: true,
+		can_manage: false,
+		my_pilot_ids: [11],
 		participants: [
 			{ pilot_id: 11, name: 'Anna', present: true },
 			{ pilot_id: 12, name: 'Luca', present: true }
 		],
 		order: [11, 12],
 		cards: Array.from({ length: 5 }, (_, index) => ({
-			slot_id: index + 1, name: 'Carta', path: 'cards/a.webp', chosen_by: null
+			slot_id: index + 1,
+			name: 'Carta',
+			path: 'cards/a.webp',
+			chosen_by: null
 		})),
-		picks: [], preview_slot_id: null, ready: [], current_pilot_id: 11
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: 11
 	};
 }
 
@@ -57,11 +68,20 @@ describe('rendering scelta carte', () => {
 	});
 
 	it('mostra Scegli solo sulla copia ingrandita e consentita', () => {
-		const slot: DraftCardSlot = { slot_id: 1, name: 'Carta', path: 'cards/a.webp', chosen_by: null };
+		const slot: DraftCardSlot = {
+			slot_id: 1,
+			name: 'Carta',
+			path: 'cards/a.webp',
+			chosen_by: null
+		};
 		const props = { slot, enlarged: true, chooseAllowed: true, onzoom: vi.fn(), onchoose: vi.fn() };
 		expect(render(DraftPickingCard, { props }).body).toContain('Scegli');
-		expect(render(DraftPickingCard, { props: { ...props, chooseAllowed: false } }).body).not.toContain('Scegli');
-		expect(render(DraftPickingCard, { props: { ...props, enlarged: false } }).body).not.toContain('Scegli');
+		expect(
+			render(DraftPickingCard, { props: { ...props, chooseAllowed: false } }).body
+		).not.toContain('Scegli');
+		expect(render(DraftPickingCard, { props: { ...props, enlarged: false } }).body).not.toContain(
+			'Scegli'
+		);
 	});
 
 	it('riepiloga la scelta col pilota senza riunire copie identiche', async () => {

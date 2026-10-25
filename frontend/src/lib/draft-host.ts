@@ -42,7 +42,9 @@ export interface DraftHostOptions {
 type Managed = DraftHostEntry & { seed: DraftRead | null };
 
 function same(a: DraftHostContext | null, b: DraftHostContext | null): boolean {
-	return a === null || b === null ? a === b : a.key === b.key && a.userId === b.userId && a.role === b.role;
+	return a === null || b === null
+		? a === b
+		: a.key === b.key && a.userId === b.userId && a.role === b.role;
 }
 
 /** Registro a istanze, senza richieste iniziali, polling o connessioni.
@@ -67,30 +69,57 @@ export function createDraftHost(options: DraftHostOptions) {
 
 	function context(): DraftHostContext | null {
 		const value = options.getContext();
-		if (!value || !value.key || !Number.isSafeInteger(value.userId) || value.userId < 1 ||
-			!(['admin', 'judge', 'player'] as string[]).includes(value.role)) return null;
+		if (
+			!value ||
+			!value.key ||
+			!Number.isSafeInteger(value.userId) ||
+			value.userId < 1 ||
+			!(['admin', 'judge', 'player'] as string[]).includes(value.role)
+		)
+			return null;
 		return { key: value.key, userId: value.userId, role: value.role };
 	}
 	function remember(entry: Managed): boolean {
 		const state = entry.store.state;
-		if (state.status !== 'finished' || state.completion === null || seen.has(entry.id)) return false;
+		if (state.status !== 'finished' || state.completion === null || seen.has(entry.id))
+			return false;
 		seen.add(entry.id);
-		completions.push({ draftId: entry.id, championshipId: entry.championshipId, kind: state.completion, raceId: state.raceId });
+		completions.push({
+			draftId: entry.id,
+			championshipId: entry.championshipId,
+			kind: state.completion,
+			raceId: state.raceId
+		});
 		return true;
 	}
 	function snapshot(): DraftHostState {
 		return {
-			contextKey: bound?.key ?? null, status, busy: status === 'loading' || status === 'opening',
-			entries: [...entries.values()].map(({ id, championshipId, store }) => ({ id, championshipId, store })),
-			recoveryChampionshipIds: [...recovery], completions: completions.map((item) => ({ ...item })),
-			unauthorized, error
+			contextKey: bound?.key ?? null,
+			status,
+			busy: status === 'loading' || status === 'opening',
+			entries: [...entries.values()].map(({ id, championshipId, store }) => ({
+				id,
+				championshipId,
+				store
+			})),
+			recoveryChampionshipIds: [...recovery],
+			completions: completions.map((item) => ({ ...item })),
+			unauthorized,
+			error
 		};
 	}
 	const channel = writable(snapshot());
-	const subscribe: Readable<DraftHostState>['subscribe'] = (run, invalidate) => channel.subscribe((value) => run({
-		...value, entries: value.entries.map((entry) => ({ ...entry })),
-		recoveryChampionshipIds: [...value.recoveryChampionshipIds], completions: value.completions.map((item) => ({ ...item }))
-	}), invalidate);
+	const subscribe: Readable<DraftHostState>['subscribe'] = (run, invalidate) =>
+		channel.subscribe(
+			(value) =>
+				run({
+					...value,
+					entries: value.entries.map((entry) => ({ ...entry })),
+					recoveryChampionshipIds: [...value.recoveryChampionshipIds],
+					completions: value.completions.map((item) => ({ ...item }))
+				}),
+			invalidate
+		);
 	const publish = () => channel.set(snapshot());
 
 	function clear(): void {
@@ -138,7 +167,7 @@ export function createDraftHost(options: DraftHostOptions) {
 		const holder: { seed: DraftRead | null } = { seed: dto };
 		const store = new DraftStore({
 			draftId: dto.id,
-			getContext: () => !disposed && same(context(), expected) ? expected.key : null,
+			getContext: () => (!disposed && same(context(), expected) ? expected.key : null),
 			read: async (id) => {
 				if (holder.seed) {
 					const value = holder.seed;
@@ -149,16 +178,25 @@ export function createDraftHost(options: DraftHostOptions) {
 			}
 		});
 		return {
-			id: dto.id, championshipId: dto.championship_id, store,
-			get seed() { return holder.seed; },
-			set seed(value: DraftRead | null) { holder.seed = value; }
+			id: dto.id,
+			championshipId: dto.championship_id,
+			store,
+			get seed() {
+				return holder.seed;
+			},
+			set seed(value: DraftRead | null) {
+				holder.seed = value;
+			}
 		};
 	}
 	async function adopt(entry: Managed, dto: DraftRead): Promise<boolean> {
 		if (entry.store.busy) return false;
 		entry.seed = dto;
-		try { return await entry.store.refresh(); }
-		finally { entry.seed = null; }
+		try {
+			return await entry.store.refresh();
+		} finally {
+			entry.seed = null;
+		}
 	}
 
 	/** Una GET elenco; riusa i DTO gia autorizzati per aggiornare gli store senza GET duplicate.
@@ -167,26 +205,35 @@ export function createDraftHost(options: DraftHostOptions) {
 	 */
 	async function refresh(): Promise<boolean> {
 		sync();
-		if (disposed || !bound || status === 'loading' || status === 'opening' || storesBusy()) return false;
+		if (disposed || !bound || status === 'loading' || status === 'opening' || storesBusy())
+			return false;
 		const expected = { ...bound };
 		const ticket = ++serial;
 		const created: Managed[] = [];
-		status = 'loading'; error = null; publish();
+		status = 'loading';
+		error = null;
+		publish();
 		try {
 			const raw = await list();
 			if (!valid(ticket, expected)) return false;
 			if (!Array.isArray(raw)) throw new TypeError('Elenco draft non valido');
 			const values = raw.map(parseDraft);
-			if (new Set(values.map((dto) => dto.id)).size !== values.length ||
-				new Set(values.map((dto) => dto.championship_id)).size !== values.length) {
+			if (
+				new Set(values.map((dto) => dto.id)).size !== values.length ||
+				new Set(values.map((dto) => dto.championship_id)).size !== values.length
+			) {
 				throw new TypeError('Preparazioni duplicate nell elenco');
 			}
 			if (storesBusy()) throw new Error('Rilettura scartata: operazione draft in corso.');
 			for (const dto of values) {
 				const old = entries.get(dto.id);
 				const state = old?.store.state;
-				if (old && old.championshipId !== dto.championship_id) throw new TypeError('Campionato della draft cambiato');
-				if (state?.status === 'finished' || (state?.snapshot && state.snapshot.version > dto.version)) {
+				if (old && old.championshipId !== dto.championship_id)
+					throw new TypeError('Campionato della draft cambiato');
+				if (
+					state?.status === 'finished' ||
+					(state?.snapshot && state.snapshot.version > dto.version)
+				) {
 					throw new Error('Elenco precedente allo stato corrente: recupera nuovamente dal server.');
 				}
 			}
@@ -197,7 +244,8 @@ export function createDraftHost(options: DraftHostOptions) {
 					entry = make(dto, expected);
 					created.push(entry);
 				}
-				if (!(await adopt(entry, dto))) throw new Error('Snapshot draft non applicato: verifica il contesto.');
+				if (!(await adopt(entry, dto)))
+					throw new Error('Snapshot draft non applicato: verifica il contesto.');
 				if (!valid(ticket, expected)) return false;
 				next.set(dto.id, entry);
 			}
@@ -209,13 +257,18 @@ export function createDraftHost(options: DraftHostOptions) {
 				}
 			}
 			entries = next;
-			recovery.clear(); status = 'idle'; unauthorized = false; error = null; publish();
+			recovery.clear();
+			status = 'idle';
+			unauthorized = false;
+			error = null;
+			publish();
 			return true;
 		} catch (cause) {
 			if (valid(ticket, expected)) failure(cause);
 			return false;
 		} finally {
-			for (const entry of created) if (entries.get(entry.id)?.store !== entry.store) entry.store.dispose();
+			for (const entry of created)
+				if (entries.get(entry.id)?.store !== entry.store) entry.store.dispose();
 		}
 	}
 
@@ -227,30 +280,56 @@ export function createDraftHost(options: DraftHostOptions) {
 		sync();
 		if (disposed || !bound) return null;
 		if (bound.role !== 'admin' && bound.role !== 'judge') {
-			error = 'Solo admin e giudice possono aprire una preparazione.'; publish(); return null;
+			error = 'Solo admin e giudice possono aprire una preparazione.';
+			publish();
+			return null;
 		}
-		if (status === 'loading' || status === 'opening' || status === 'blocked' || storesBusy() || recovery.has(championshipId)) return null;
-		const existing = [...entries.values()].find((entry) => entry.championshipId === championshipId &&
-			entry.store.state.status !== 'finished' && entry.store.state.status !== 'disposed');
+		if (
+			status === 'loading' ||
+			status === 'opening' ||
+			status === 'blocked' ||
+			storesBusy() ||
+			recovery.has(championshipId)
+		)
+			return null;
+		const existing = [...entries.values()].find(
+			(entry) =>
+				entry.championshipId === championshipId &&
+				entry.store.state.status !== 'finished' &&
+				entry.store.state.status !== 'disposed'
+		);
 		if (existing) return existing.store;
 		const expected = { ...bound };
 		const ticket = ++serial;
 		let created: Managed | null = null;
-		status = 'opening'; error = null; publish();
+		status = 'opening';
+		error = null;
+		publish();
 		try {
 			const raw = await openRequest(championshipId);
 			if (!valid(ticket, expected)) return null;
 			const dto = parseDraft(raw);
-			if (dto.championship_id !== championshipId || entries.has(dto.id)) throw new TypeError('Risposta apertura draft discordante');
+			if (dto.championship_id !== championshipId || entries.has(dto.id))
+				throw new TypeError('Risposta apertura draft discordante');
 			created = make(dto, expected);
-			if (!(await adopt(created, dto))) throw new Error('Preparazione ricevuta ma non utilizzabile: recupera dal server.');
+			if (!(await adopt(created, dto)))
+				throw new Error('Preparazione ricevuta ma non utilizzabile: recupera dal server.');
 			if (!valid(ticket, expected)) return null;
 			entries.set(dto.id, created);
-			status = 'idle'; unauthorized = false; error = null; publish();
+			status = 'idle';
+			unauthorized = false;
+			error = null;
+			publish();
 			return created.store;
 		} catch (cause) {
 			if (valid(ticket, expected)) {
-				if (!(cause instanceof ApiError) || cause.status === 0 || cause.status >= 500 || cause.status === 409) recovery.add(championshipId);
+				if (
+					!(cause instanceof ApiError) ||
+					cause.status === 0 ||
+					cause.status >= 500 ||
+					cause.status === 409
+				)
+					recovery.add(championshipId);
 				failure(cause);
 			}
 			return null;
@@ -269,8 +348,25 @@ export function createDraftHost(options: DraftHostOptions) {
 	}
 	function dispose(): void {
 		if (disposed) return;
-		disposed = true; serial += 1; clear(); bound = null;
-		status = 'disposed'; error = null; unauthorized = false; publish();
+		disposed = true;
+		serial += 1;
+		clear();
+		bound = null;
+		status = 'disposed';
+		error = null;
+		unauthorized = false;
+		publish();
 	}
-	return { subscribe, sync, refresh, open, takeCompletions, dispose, getState: () => { sync(); return snapshot(); } };
+	return {
+		subscribe,
+		sync,
+		refresh,
+		open,
+		takeCompletions,
+		dispose,
+		getState: () => {
+			sync();
+			return snapshot();
+		}
+	};
 }

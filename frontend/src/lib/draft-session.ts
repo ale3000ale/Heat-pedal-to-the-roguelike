@@ -3,7 +3,8 @@ import { fetchDraft, sendDraftCommand } from './draft-api';
 import type { DraftCommands, DraftRead } from './draft-types';
 import { parseDraft, parseDraftAction, requireDraftId } from './draft-validation';
 
-export type DraftSessionStatus = 'empty' | 'loading' | 'idle' | 'writing' | 'blocked' | 'finished' | 'disposed';
+export type DraftSessionStatus =
+	'empty' | 'loading' | 'idle' | 'writing' | 'blocked' | 'finished' | 'disposed';
 export type DraftSessionBlock = 'read-failed' | 'conflict' | 'authorization' | 'uncertain' | null;
 
 export interface DraftSessionState {
@@ -42,7 +43,12 @@ export function createDraftSession(options: DraftSessionOptions) {
 	let generation = 0;
 	let championshipId: number | null = null;
 	let state: DraftSessionState = {
-		status: 'empty', snapshot: null, block: null, error: null, completion: null, raceId: null
+		status: 'empty',
+		snapshot: null,
+		block: null,
+		error: null,
+		completion: null,
+		raceId: null
 	};
 
 	/** Scarta lo stato locale e tutti i risultati futuri; non annulla scritture gia inviate. */
@@ -50,7 +56,12 @@ export function createDraftSession(options: DraftSessionOptions) {
 		generation += 1;
 		championshipId = null;
 		state = {
-			status: 'disposed', snapshot: null, block: null, error: null, completion: null, raceId: null
+			status: 'disposed',
+			snapshot: null,
+			block: null,
+			error: null,
+			completion: null,
+			raceId: null
 		};
 	}
 
@@ -68,12 +79,20 @@ export function createDraftSession(options: DraftSessionOptions) {
 	}
 
 	function available(): boolean {
-		return live() && state.status !== 'loading' && state.status !== 'writing' && state.status !== 'finished';
+		return (
+			live() &&
+			state.status !== 'loading' &&
+			state.status !== 'writing' &&
+			state.status !== 'finished'
+		);
 	}
 
 	function accept(value: unknown): void {
 		const next = parseDraft(value);
-		if (next.id !== options.draftId || (championshipId !== null && next.championship_id !== championshipId)) {
+		if (
+			next.id !== options.draftId ||
+			(championshipId !== null && next.championship_id !== championshipId)
+		) {
 			throw new TypeError('Contesto della risposta draft discordante');
 		}
 		if (state.snapshot && next.version < state.snapshot.version) {
@@ -88,14 +107,23 @@ export function createDraftSession(options: DraftSessionOptions) {
 		const message = error instanceof Error ? error.message : 'Operazione draft non riuscita';
 		if (status === 401 || status === 403) {
 			championshipId = null;
-			state = { ...state, status: 'blocked', snapshot: null, block: 'authorization', error: message };
+			state = {
+				...state,
+				status: 'blocked',
+				snapshot: null,
+				block: 'authorization',
+				error: message
+			};
 		} else if (status === 409) {
 			state = { ...state, status: 'blocked', block: 'conflict', error: message };
 		} else if (writing && status === 422) {
 			state = { ...state, status: 'idle', block: null, error: message };
 		} else {
 			state = {
-				...state, status: 'blocked', block: writing ? 'uncertain' : 'read-failed', error: message
+				...state,
+				status: 'blocked',
+				block: writing ? 'uncertain' : 'read-failed',
+				error: message
 			};
 		}
 	}
@@ -133,7 +161,10 @@ export function createDraftSession(options: DraftSessionOptions) {
 		payload: Omit<DraftCommands[K], 'version'>
 	): Promise<boolean> {
 		if (!available() || state.status !== 'idle' || !state.snapshot) return false;
-		const body = { ...payload, version: state.snapshot.version } as DraftCommands[keyof DraftCommands];
+		const body = {
+			...payload,
+			version: state.snapshot.version
+		} as DraftCommands[keyof DraftCommands];
 		const ticket = ++generation;
 		state = { ...state, status: 'writing', error: null };
 		try {
@@ -141,7 +172,13 @@ export function createDraftSession(options: DraftSessionOptions) {
 			if (!current(ticket)) return false;
 			if (action === 'cancel') {
 				if (value !== undefined) throw new TypeError('Risposta di annullamento inattesa');
-				state = { ...state, status: 'finished', snapshot: null, block: null, completion: 'cancelled' };
+				state = {
+					...state,
+					status: 'finished',
+					snapshot: null,
+					block: null,
+					completion: 'cancelled'
+				};
 			} else if (action === 'ready' || action === 'already-disputed') {
 				const result = parseDraftAction(value);
 				if (result.preparation) {
@@ -149,8 +186,12 @@ export function createDraftSession(options: DraftSessionOptions) {
 					accept(result.preparation);
 				} else {
 					state = {
-						...state, status: 'finished', snapshot: null, block: null,
-						completion: 'race', raceId: result.race_id
+						...state,
+						status: 'finished',
+						snapshot: null,
+						block: null,
+						completion: 'race',
+						raceId: result.race_id
 					};
 				}
 			} else {

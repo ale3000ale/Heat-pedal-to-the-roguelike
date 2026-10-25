@@ -4,12 +4,15 @@ import { AuthStore } from './auth.svelte';
 const player = { id: 9, username: 'anna', role: 'player' as const };
 function reply(status: number, body?: unknown): Response {
 	return new Response(body === undefined ? null : JSON.stringify(body), {
-		status, headers: { 'Content-Type': 'application/json' }
+		status,
+		headers: { 'Content-Type': 'application/json' }
 	});
 }
 function deferred<T>() {
 	let resolve!: (value: T) => void;
-	const promise = new Promise<T>((done) => { resolve = done; });
+	const promise = new Promise<T>((done) => {
+		resolve = done;
+	});
 	return { promise, resolve };
 }
 afterEach(() => vi.unstubAllGlobals());
@@ -31,7 +34,10 @@ describe('generazione autenticata locale', () => {
 		store.user = { ...player };
 		const previous = store.sessionKey;
 		const pending = deferred<Response>();
-		vi.stubGlobal('fetch', vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValueOnce(reply(200, player)));
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValueOnce(reply(200, player))
+		);
 		const login = store.login('anna', 'example-only');
 		expect(store.authenticating).toBe(true);
 		expect(store.sessionKey).toBeNull();

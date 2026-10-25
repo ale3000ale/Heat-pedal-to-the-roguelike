@@ -6,15 +6,32 @@ import { DraftStore } from './stores/draft.svelte';
 
 function snapshot(): DraftRead {
 	return {
-		id: 1, championship_id: 7, version: 2, phase: 'attendance', first_race: true,
-		can_manage: true, my_pilot_ids: [11],
+		id: 1,
+		championship_id: 7,
+		version: 2,
+		phase: 'attendance',
+		first_race: true,
+		can_manage: true,
+		my_pilot_ids: [11],
 		participants: [{ pilot_id: 11, name: 'Anna', present: true }],
-		order: [], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null
+		order: [],
+		cards: [],
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: null
 	};
 }
 
 function state(): DraftSessionState {
-	return { status: 'idle', snapshot: snapshot(), block: null, error: null, completion: null, raceId: null };
+	return {
+		status: 'idle',
+		snapshot: snapshot(),
+		block: null,
+		error: null,
+		completion: null,
+		raceId: null
+	};
 }
 
 describe('derivazione delle schermate draft', () => {
@@ -43,19 +60,35 @@ describe('derivazione delle schermate draft', () => {
 		const value = state();
 		value.snapshot!.phase = 'decks';
 		value.snapshot!.ready = [11];
-		expect(draftFlowView(value, null)).toMatchObject({ screen: 'decks', visible: true, raceId: null, completion: null });
+		expect(draftFlowView(value, null)).toMatchObject({
+			screen: 'decks',
+			visible: true,
+			raceId: null,
+			completion: null
+		});
 	});
 
 	it('chiude solo secondo conclusione o dismissione e conserva l esito reale', () => {
 		const value = state();
-		expect(draftFlowView({ ...value, status: 'finished', snapshot: null, completion: 'race', raceId: 9 }, null))
-			.toMatchObject({ visible: false, screen: 'closed', completion: 'race', raceId: 9 });
-		expect(draftFlowView({ ...value, status: 'finished', snapshot: null, completion: 'cancelled' }, null).completion).toBe('cancelled');
-		expect(draftFlowView({ ...value, status: 'disposed', snapshot: null }, null).visible).toBe(false);
+		expect(
+			draftFlowView(
+				{ ...value, status: 'finished', snapshot: null, completion: 'race', raceId: 9 },
+				null
+			)
+		).toMatchObject({ visible: false, screen: 'closed', completion: 'race', raceId: 9 });
+		expect(
+			draftFlowView({ ...value, status: 'finished', snapshot: null, completion: 'cancelled' }, null)
+				.completion
+		).toBe('cancelled');
+		expect(draftFlowView({ ...value, status: 'disposed', snapshot: null }, null).visible).toBe(
+			false
+		);
 	});
 
 	it('senza snapshot richiede caricamento senza inventare una fase', () => {
-		expect(draftFlowView({ ...state(), status: 'empty', snapshot: null }, null).screen).toBe('loading');
+		expect(draftFlowView({ ...state(), status: 'empty', snapshot: null }, null).screen).toBe(
+			'loading'
+		);
 	});
 });
 

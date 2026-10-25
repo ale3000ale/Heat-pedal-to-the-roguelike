@@ -5,23 +5,41 @@ import type { DraftSessionState } from './draft-session';
 
 function state(): DraftSessionState {
 	return {
-		status: 'idle', block: null, error: null, completion: null, raceId: null,
+		status: 'idle',
+		block: null,
+		error: null,
+		completion: null,
+		raceId: null,
 		snapshot: {
-			id: 1, championship_id: 7, version: 2, phase: 'decks', first_race: true,
-			can_manage: false, my_pilot_ids: [11, 12],
+			id: 1,
+			championship_id: 7,
+			version: 2,
+			phase: 'decks',
+			first_race: true,
+			can_manage: false,
+			my_pilot_ids: [11, 12],
 			participants: [
 				{ pilot_id: 11, name: 'Anna', present: true },
 				{ pilot_id: 12, name: 'Luca', present: true },
 				{ pilot_id: 13, name: 'Altro', present: true }
 			],
-			order: [], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null
+			order: [],
+			cards: [],
+			picks: [],
+			preview_slot_id: null,
+			ready: [],
+			current_pilot_id: null
 		}
 	};
 }
 
 function deck(copies = 14): DraftPilotDeckRead {
 	return {
-		pilot_id: 11, preparation_version: 2, ready: false, inventory_version: 1, game_version: 1,
+		pilot_id: 11,
+		preparation_version: 2,
+		ready: false,
+		inventory_version: 1,
+		game_version: 1,
 		inventory: [{ name: 'Carta', path: 'cards/a.webp', copies: 2 }],
 		game_deck: copies ? [{ name: 'Carta', path: 'cards/a.webp', copies }] : []
 	};

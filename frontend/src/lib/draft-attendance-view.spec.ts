@@ -4,15 +4,29 @@ import type { DraftSessionState, DraftSessionStatus } from './draft-session';
 
 function state(): DraftSessionState {
 	return {
-		status: 'idle', block: null, error: null, completion: null, raceId: null,
+		status: 'idle',
+		block: null,
+		error: null,
+		completion: null,
+		raceId: null,
 		snapshot: {
-			id: 1, championship_id: 7, version: 2, phase: 'attendance', first_race: true,
-			can_manage: true, my_pilot_ids: [11, 12],
+			id: 1,
+			championship_id: 7,
+			version: 2,
+			phase: 'attendance',
+			first_race: true,
+			can_manage: true,
+			my_pilot_ids: [11, 12],
 			participants: [
 				{ pilot_id: 11, name: 'Anna', present: true },
 				{ pilot_id: 12, name: 'Luca', present: false }
 			],
-			order: [], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null
+			order: [],
+			cards: [],
+			picks: [],
+			preview_slot_id: null,
+			ready: [],
+			current_pilot_id: null
 		}
 	};
 }
@@ -39,17 +53,32 @@ describe('vista presenze draft', () => {
 
 	it('permette di correggere le presenze ma non confermare zero o oltre il limite', () => {
 		const value = state();
-		value.snapshot!.participants.forEach((pilot) => { pilot.present = false; });
-		expect(draftAttendanceView(value)).toMatchObject({ count: 0, canEdit: true, canContinue: false });
+		value.snapshot!.participants.forEach((pilot) => {
+			pilot.present = false;
+		});
+		expect(draftAttendanceView(value)).toMatchObject({
+			count: 0,
+			canEdit: true,
+			canContinue: false
+		});
 		value.snapshot!.participants = Array.from({ length: MAX_DRAFT_PRESENT + 1 }, (_, index) => ({
-			pilot_id: index + 1, name: `Pilota ${index + 1}`, present: true
+			pilot_id: index + 1,
+			name: `Pilota ${index + 1}`,
+			present: true
 		}));
 		expect(draftAttendanceView(value).canContinue).toBe(false);
 		value.snapshot!.participants.pop();
 		expect(draftAttendanceView(value).canContinue).toBe(true);
 	});
 
-	const statuses: DraftSessionStatus[] = ['empty', 'loading', 'writing', 'blocked', 'finished', 'disposed'];
+	const statuses: DraftSessionStatus[] = [
+		'empty',
+		'loading',
+		'writing',
+		'blocked',
+		'finished',
+		'disposed'
+	];
 	it.each(statuses)('non abilita comandi in stato %s', (status) => {
 		const view = draftAttendanceView({ ...state(), status });
 		expect(view.canEdit).toBe(false);

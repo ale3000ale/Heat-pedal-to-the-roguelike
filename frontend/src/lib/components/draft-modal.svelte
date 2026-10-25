@@ -24,15 +24,21 @@
 		children: Snippet;
 	} = $props();
 
-	let confirmation = $state.raw<{ owner: DraftStore; proposal: DraftCancellationProposal } | null>(null);
+	let confirmation = $state.raw<{ owner: DraftStore; proposal: DraftCancellationProposal } | null>(
+		null
+	);
 	let submitting = $state(false);
 	let notice = $state<string | null>(null);
 	const sessionState = $derived(store.state);
 	const policy = $derived(draftClosePolicy(sessionState));
-	const visible = $derived(open && sessionState.status !== 'finished' && sessionState.status !== 'disposed');
+	const visible = $derived(
+		open && sessionState.status !== 'finished' && sessionState.status !== 'disposed'
+	);
 	const canConfirm = $derived(
-		!externalBusy && confirmation !== null && confirmation.owner === store &&
-		canConfirmDraftCancellation(sessionState, confirmation.proposal)
+		!externalBusy &&
+			confirmation !== null &&
+			confirmation.owner === store &&
+			canConfirmDraftCancellation(sessionState, confirmation.proposal)
 	);
 
 	$effect(() => {
@@ -56,8 +62,11 @@
 		if (externalBusy || submitting) return;
 		const captured = confirmation;
 		store.syncContext();
-		if (!captured || captured.owner !== store ||
-			!canConfirmDraftCancellation(store.state, captured.proposal)) {
+		if (
+			!captured ||
+			captured.owner !== store ||
+			!canConfirmDraftCancellation(store.state, captured.proposal)
+		) {
 			confirmation = null;
 			notice = 'Conferma non piu valida: verifica lo stato corrente.';
 			return;
@@ -112,11 +121,15 @@
 			<p class="mt-2 text-sm text-muted-foreground">
 				La procedura verra annullata e le carte ripristinate dal server. Non verra creata una gara.
 			</p>
-			<div class="mt-4 flex justify-end flex-wrap gap-2">
+			<div class="mt-4 flex flex-wrap justify-end gap-2">
 				<Button variant="outline" disabled={submitting} onclick={() => (confirmation = null)}>
 					Non annullare
 				</Button>
-				<Button variant="destructive" disabled={submitting || !canConfirm} onclick={confirmCancellation}>
+				<Button
+					variant="destructive"
+					disabled={submitting || !canConfirm}
+					onclick={confirmCancellation}
+				>
 					{submitting ? 'Annullamento in corso…' : 'Conferma annullamento'}
 				</Button>
 			</div>

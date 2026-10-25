@@ -9,16 +9,29 @@ import { shouldCloseModal } from './modal-close';
 
 function state(): DraftSessionState {
 	return {
-		status: 'idle', block: null, error: null, completion: null, raceId: null,
+		status: 'idle',
+		block: null,
+		error: null,
+		completion: null,
+		raceId: null,
 		snapshot: {
-			id: 1, championship_id: 7, version: 2, phase: 'decks', first_race: true,
-			can_manage: true, my_pilot_ids: [11, 12],
+			id: 1,
+			championship_id: 7,
+			version: 2,
+			phase: 'decks',
+			first_race: true,
+			can_manage: true,
+			my_pilot_ids: [11, 12],
 			participants: [
 				{ pilot_id: 11, name: 'Anna', present: true },
 				{ pilot_id: 12, name: 'Luca', present: true }
 			],
-			order: [], cards: [], picks: [], preview_slot_id: null,
-			ready: [], current_pilot_id: null
+			order: [],
+			cards: [],
+			picks: [],
+			preview_slot_id: null,
+			ready: [],
+			current_pilot_id: null
 		}
 	};
 }
@@ -61,7 +74,14 @@ describe('politica di annullamento draft', () => {
 		expect(draftClosePolicy(value).canRequest).toBe(true);
 	});
 
-	const unavailable: DraftSessionStatus[] = ['empty', 'loading', 'writing', 'blocked', 'finished', 'disposed'];
+	const unavailable: DraftSessionStatus[] = [
+		'empty',
+		'loading',
+		'writing',
+		'blocked',
+		'finished',
+		'disposed'
+	];
 	it.each(unavailable)('non propone annullamento durante %s', (status) => {
 		const value = { ...state(), status };
 		expect(proposeDraftCancellation(value)).toBeNull();

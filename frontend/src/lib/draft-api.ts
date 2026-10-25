@@ -1,5 +1,10 @@
 import { api } from './api';
-import type { DraftCommandResult, DraftCommands, DraftPilotDeckRead, DraftRead } from './draft-types';
+import type {
+	DraftCommandResult,
+	DraftCommands,
+	DraftPilotDeckRead,
+	DraftRead
+} from './draft-types';
 import {
 	draftObject,
 	parseDraft,
@@ -69,7 +74,10 @@ export async function fetchDrafts(doFetch?: typeof fetch): Promise<DraftRead[]> 
 }
 
 /** Apre la preparazione del campionato, non una Race; verifica il contesto ricevuto. */
-export async function openDraft(championshipId: number, doFetch?: typeof fetch): Promise<DraftRead> {
+export async function openDraft(
+	championshipId: number,
+	doFetch?: typeof fetch
+): Promise<DraftRead> {
 	requireDraftId(championshipId);
 	const value = parseDraft(
 		await api<unknown>(`/championships/${championshipId}/draft`, { method: 'POST', fetch: doFetch })
@@ -81,7 +89,10 @@ export async function openDraft(championshipId: number, doFetch?: typeof fetch):
 /** Recupera una preparazione; RangeError per ID, ApiError per HTTP/rete, TypeError per DTO. */
 export async function fetchDraft(draftId: number, doFetch?: typeof fetch): Promise<DraftRead> {
 	requireDraftId(draftId);
-	return sameDraft(parseDraft(await api<unknown>(`/drafts/${draftId}`, { fetch: doFetch })), draftId);
+	return sameDraft(
+		parseDraft(await api<unknown>(`/drafts/${draftId}`, { fetch: doFetch })),
+		draftId
+	);
 }
 
 /** Legge il mazzo autorizzato del pilota senza esporre o richiedere inventari sponsor. */

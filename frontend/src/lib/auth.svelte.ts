@@ -72,7 +72,8 @@ export class AuthStore {
 		this.beginAuth();
 		try {
 			this.user = await api<User>('/auth/register', {
-				method: 'POST', body: { username, password }
+				method: 'POST',
+				body: { username, password }
 			});
 		} finally {
 			this.endAuth();

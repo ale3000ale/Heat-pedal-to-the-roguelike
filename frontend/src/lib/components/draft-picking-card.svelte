@@ -24,9 +24,15 @@
 	} = $props();
 </script>
 
-<div data-slot-id={slot.slot_id} class={enlarged ? 'relative w-56 sm:w-72' : 'relative w-28 sm:w-36'}>
+<div
+	data-slot-id={slot.slot_id}
+	class={enlarged ? 'relative w-56 sm:w-72' : 'relative w-28 sm:w-36'}
+>
 	{#if previewPilotName}
-		<div aria-hidden="true" class="pointer-events-none absolute inset-x-2 -bottom-1 h-8 rounded-full bg-yellow-300/80 blur-md"></div>
+		<div
+			aria-hidden="true"
+			class="pointer-events-none absolute inset-x-2 -bottom-1 h-8 rounded-full bg-yellow-300/80 blur-md"
+		></div>
 	{/if}
 	<div class="relative space-y-2">
 		<CardTile

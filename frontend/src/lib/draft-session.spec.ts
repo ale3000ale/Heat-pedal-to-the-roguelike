@@ -6,16 +6,28 @@ import type { DraftRead } from './draft-types';
 
 function snapshot(version = 2): DraftRead {
 	return {
-		id: 1, championship_id: 7, version, phase: 'attendance', first_race: true,
-		can_manage: true, my_pilot_ids: [11],
+		id: 1,
+		championship_id: 7,
+		version,
+		phase: 'attendance',
+		first_race: true,
+		can_manage: true,
+		my_pilot_ids: [11],
 		participants: [{ pilot_id: 11, name: 'Anna', present: true }],
-		order: [], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null
+		order: [],
+		cards: [],
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: null
 	};
 }
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
-	const promise = new Promise<T>((done) => { resolve = done; });
+	const promise = new Promise<T>((done) => {
+		resolve = done;
+	});
 	return { promise, resolve };
 }
 
@@ -24,7 +36,14 @@ function setup() {
 	const read = vi.fn<NonNullable<DraftSessionOptions['read']>>().mockResolvedValue(snapshot());
 	const send = vi.fn<NonNullable<DraftSessionOptions['send']>>().mockResolvedValue(snapshot(3));
 	const session = createDraftSession({ draftId: 1, getContext: () => context, read, send });
-	return { session, read, send, changeContext: (value: string | null) => { context = value; } };
+	return {
+		session,
+		read,
+		send,
+		changeContext: (value: string | null) => {
+			context = value;
+		}
+	};
 }
 
 describe('sessione draft isolata', () => {
@@ -43,7 +62,11 @@ describe('sessione draft isolata', () => {
 		view.snapshot!.version = 999;
 		view.snapshot!.participants[0].name = 'Modificato';
 		expect(await session.command('attendance', { pilot_id: 11, present: false })).toBe(true);
-		expect(send).toHaveBeenCalledWith(1, 'attendance', { version: 2, pilot_id: 11, present: false });
+		expect(send).toHaveBeenCalledWith(1, 'attendance', {
+			version: 2,
+			pilot_id: 11,
+			present: false
+		});
 		expect(session.getState().snapshot?.version).toBe(3);
 		expect(session.getState().snapshot?.participants[0].name).toBe('Anna');
 	});
@@ -97,25 +120,30 @@ describe('sessione draft isolata', () => {
 		await session.refresh();
 		send.mockRejectedValueOnce(new ApiError(422, 'Movimento non valido'));
 		expect(await session.command('start', {})).toBe(false);
-		expect(session.getState()).toMatchObject({ status: 'idle', block: null, error: 'Movimento non valido' });
+		expect(session.getState()).toMatchObject({
+			status: 'idle',
+			block: null,
+			error: 'Movimento non valido'
+		});
 		expect(send).toHaveBeenCalledTimes(1);
 		expect(await session.command('start', {})).toBe(true);
 	});
 
-	it.each([new ApiError(0, 'Rete interrotta'), new ApiError(500, 'Errore server'), new TypeError('DTO')])(
-		'conserva snapshot e blocca gli esiti incerti: %s',
-		async (error) => {
-			const { session, read, send } = setup();
-			await session.refresh();
-			send.mockRejectedValueOnce(error);
-			expect(await session.command('start', {})).toBe(false);
-			expect(session.getState()).toMatchObject({ status: 'blocked', block: 'uncertain' });
-			expect(session.getState().snapshot?.version).toBe(2);
-			expect(await session.command('start', {})).toBe(false);
-			expect(send).toHaveBeenCalledTimes(1);
-			expect(read).toHaveBeenCalledTimes(1);
-		}
-	);
+	it.each([
+		new ApiError(0, 'Rete interrotta'),
+		new ApiError(500, 'Errore server'),
+		new TypeError('DTO')
+	])('conserva snapshot e blocca gli esiti incerti: %s', async (error) => {
+		const { session, read, send } = setup();
+		await session.refresh();
+		send.mockRejectedValueOnce(error);
+		expect(await session.command('start', {})).toBe(false);
+		expect(session.getState()).toMatchObject({ status: 'blocked', block: 'uncertain' });
+		expect(session.getState().snapshot?.version).toBe(2);
+		expect(await session.command('start', {})).toBe(false);
+		expect(send).toHaveBeenCalledTimes(1);
+		expect(read).toHaveBeenCalledTimes(1);
+	});
 
 	it('non considera aggiornata una lettura fallita o di altro contesto', async () => {
 		const { session, read } = setup();
@@ -140,7 +168,11 @@ describe('sessione draft isolata', () => {
 		await session.refresh();
 		send.mockRejectedValueOnce(new ApiError(status, 'Non autorizzato'));
 		await session.command('start', {});
-		expect(session.getState()).toMatchObject({ status: 'blocked', block: 'authorization', snapshot: null });
+		expect(session.getState()).toMatchObject({
+			status: 'blocked',
+			block: 'authorization',
+			snapshot: null
+		});
 	});
 
 	it('scarta una lettura tardiva dopo cambio generazione autenticata', async () => {
@@ -187,14 +219,23 @@ describe('sessione draft isolata', () => {
 		expect(session.getState().status).toBe('idle');
 		send.mockResolvedValueOnce({ preparation: null, race_id: 9 });
 		expect(await session.command('ready', { pilot_id: 11, ready: true })).toBe(true);
-		expect(session.getState()).toMatchObject({ status: 'finished', completion: 'race', raceId: 9, snapshot: null });
+		expect(session.getState()).toMatchObject({
+			status: 'finished',
+			completion: 'race',
+			raceId: 9,
+			snapshot: null
+		});
 		expect(await session.command('start', {})).toBe(false);
 		expect(await session.refresh()).toBe(false);
 		const cancelled = setup();
 		await cancelled.session.refresh();
 		cancelled.send.mockResolvedValueOnce(undefined);
 		expect(await cancelled.session.command('cancel', {})).toBe(true);
-		expect(cancelled.session.getState()).toMatchObject({ status: 'finished', completion: 'cancelled', raceId: null });
+		expect(cancelled.session.getState()).toMatchObject({
+			status: 'finished',
+			completion: 'cancelled',
+			raceId: null
+		});
 	});
 
 	it('accetta gara gia disputata solo con esito terminale valido', async () => {

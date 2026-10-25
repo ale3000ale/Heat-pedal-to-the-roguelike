@@ -8,13 +8,23 @@ import { DraftStore } from './stores/draft.svelte';
 
 function snapshot(): DraftRead {
 	return {
-		id: 1, championship_id: 7, version: 2, phase: 'attendance', first_race: true,
-		can_manage: true, my_pilot_ids: [11],
+		id: 1,
+		championship_id: 7,
+		version: 2,
+		phase: 'attendance',
+		first_race: true,
+		can_manage: true,
+		my_pilot_ids: [11],
 		participants: [
 			{ pilot_id: 11, name: 'Anna', present: true },
 			{ pilot_id: 12, name: 'Luca', present: false }
 		],
-		order: [], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null
+		order: [],
+		cards: [],
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: null
 	};
 }
 
