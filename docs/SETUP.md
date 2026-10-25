@@ -1,5 +1,19 @@
 # Installazione e avvio — Heat
 
+<!-- draft-backend-current:start -->
+## Draft - backend consolidato e limiti correnti
+
+Aggiornamento del 25 ottobre 2026, solo ramo draft e PR 18. Questa sezione aggiorna il solo stato del flusso draft e prevale sulle note storiche di avanzamento, senza alterare gli altri requisiti.
+
+Sorgenti recuperati dall artefatto draft-backend-materialized della run 40152061495, job materialize-and-check concluso con success sul commit tecnico 1052e5d. Gli hash SHA-256 dei sorgenti sono conservati in docs/DRAFT_BACKEND_MANIFEST.json.
+
+Prima della pubblicazione questo workflow verifica di nuovo pytest backend, upgrade/downgrade/upgrade con controlli dello schema e frontend check, lint, test e build. Esecuzione di pubblicazione: https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/40153346360. Il controllo dedicato sul commit risultante documenta queste verifiche pre-push; non e una nuova esecuzione dei job ordinari della PR.
+
+Nessun conteggio di test o warning inventato, nessun test locale o collaudo browser attestato. Nessun merge, rilascio, ZIP finale del progetto o intervento sul database reale. Il frontend draft non e implementato da questo consolidamento.
+
+Setup e avvio esistenti restano invariati. Questo consolidamento non aggiunge dipendenze o lockfile e non esegue setup, reset o migrazioni sul database dell autore.
+<!-- draft-backend-current:end -->
+
 Ultimo aggiornamento: 2026-10-13
 
 Questo documento descrive solo ciò che fa `heat.py` nella radice del repository (letto il 2026-10-13). Per l'elenco dei comandi vedi `SCRIPTS.md`.

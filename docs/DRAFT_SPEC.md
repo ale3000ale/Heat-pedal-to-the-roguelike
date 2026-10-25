@@ -1,6 +1,20 @@
 # Draft e preparazione della gara
 
-Data: 2026-10-25. Specifica ricavata dalle richieste e conferme dell'autore nella conversazione. Ramo di lavoro: draft. Stato: requisiti concordati; implementazione e verifiche non ancora eseguite. Questa specifica aggiorna le regole precedenti solo per il flusso qui descritto.
+<!-- draft-backend-current:start -->
+## Draft - backend consolidato e limiti correnti
+
+Aggiornamento del 25 ottobre 2026, solo ramo draft e PR 18. Questa sezione aggiorna il solo stato del flusso draft e prevale sulle note storiche di avanzamento, senza alterare gli altri requisiti.
+
+Sorgenti recuperati dall artefatto draft-backend-materialized della run 40152061495, job materialize-and-check concluso con success sul commit tecnico 1052e5d. Gli hash SHA-256 dei sorgenti sono conservati in docs/DRAFT_BACKEND_MANIFEST.json.
+
+Prima della pubblicazione questo workflow verifica di nuovo pytest backend, upgrade/downgrade/upgrade con controlli dello schema e frontend check, lint, test e build. Esecuzione di pubblicazione: https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/40153346360. Il controllo dedicato sul commit risultante documenta queste verifiche pre-push; non e una nuova esecuzione dei job ordinari della PR.
+
+Nessun conteggio di test o warning inventato, nessun test locale o collaudo browser attestato. Nessun merge, rilascio, ZIP finale del progetto o intervento sul database reale. Il frontend draft non e implementato da questo consolidamento.
+
+La specifica funzionale resta invariata. Backend consolidato da checkpoint verificati; frontend draft e verifica browser non ancora completati. Non sono attestati conteggi di test o copertura esaustiva di ogni scenario.
+<!-- draft-backend-current:end -->
+
+Data: 2026-10-25. Specifica ricavata dalle richieste e conferme dell'autore nella conversazione. Ramo di lavoro: draft. Stato: backend consolidato e verificato in CI; frontend draft e collaudo browser non completati. Questa specifica aggiorna le regole precedenti solo per il flusso qui descritto.
 
 ## Metodo
 
@@ -52,4 +66,4 @@ Verificare: selezione presenti/assenti; ordine inverso e nuovi presenti in coda;
 
 ## Stato delle verifiche
 
-Nessuna implementazione, migrazione, esecuzione di test o verifica browser della nuova funzione e attestata da questo documento. Nomi di nuovi moduli, rotte e tabelle saranno definiti soltanto dopo la lettura del codice e dello schema esistenti.
+Backend ricostruito dai checkpoint e verificato nel runner GitHub. Frontend draft e verifica browser non completati. Provenienza, limiti e verifiche sono descritti nella sezione corrente sopra.

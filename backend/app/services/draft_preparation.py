@@ -7,6 +7,7 @@ from app.schemas.draft_snapshot import DraftSnapshot
 from app.schemas.draft_state import DraftParticipant, DraftState
 from app.services.championships import ChampionshipClosedError, get_championship, list_entrants
 from app.services.draft_snapshot import capture_snapshot
+from app.services.draft_notifications import signal_draft_changed
 from app.services.races import RaceInProgressError, has_race_in_progress
 from app.services.sqlite_write_lock import acquire_sqlite_write_lock
 
@@ -59,6 +60,8 @@ def open_preparation(db: Session, championship_id: int, user_id: int) -> DraftPr
         preparation = DraftPreparation(championship_id=championship_id, creator_user_id=user_id,
             phase=state.phase, state_json=state.model_dump_json(), snapshot_json=snapshot.model_dump_json())
         db.add(preparation)
+        db.flush()
+        signal_draft_changed(db, preparation, state)
         db.commit()
         db.refresh(preparation)
         return preparation
@@ -103,6 +106,7 @@ def set_attendance(db: Session, preparation_id: int, user_id: int,
         pilot.present = present
         state = DraftState.model_validate(state.model_dump())
         row.state_json = state.model_dump_json()
+        signal_draft_changed(db, row, state)
         db.commit()
         db.refresh(row)
         return row

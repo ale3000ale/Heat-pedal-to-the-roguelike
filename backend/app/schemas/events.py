@@ -7,21 +7,17 @@ EventType = Literal[
     "card.gifted", "card.gift_undone", "card.played", "card.play_undone",
     "cards.changed", "race.started", "race.review_changed",
     "race.results_changed", "standings.changed", "championship.pilots_changed",
+    "draft.changed",
 ]
 
 
 class EventCreate(BaseModel):
-    """Valida tipo, riferimenti positivi e payload JSON prima della persistenza.
+    """Valida evento e riferimenti; autorizzazioni e commit spettano ai servizi.
 
-    recipient_user_id limita un evento privato al proprietario; None indica un
-    evento di campionato. Il servizio di lettura deve verificare gli accessi:
-    questo schema non autorizza l'utente e non pubblica alcun dato.
-    Campi sconosciuti, identificativi non interi e payload non JSON generano
-    ValidationError. I riferimenti devono essere verificati dal servizio.
+    recipient_user_id limita gli eventi privati al destinatario. Gli altri
+    eventi conservano il contratto esistente. Rifiuta extra e tipi coercibili.
     """
-
     model_config = ConfigDict(extra="forbid", strict=True)
-
     type: EventType
     championship_id: int = Field(gt=0)
     pilot_id: int | None = Field(default=None, gt=0)
@@ -30,9 +26,20 @@ class EventCreate(BaseModel):
 
     @model_validator(mode="after")
     def enrollment_signal_only(self) -> "EventCreate":
-        """Il segnale iscrizioni non trasporta dati del pilota o destinatari privati."""
+        """Il segnale iscrizioni resta pubblico e privo di dati aggiuntivi."""
         if self.type == "championship.pilots_changed" and (
             self.pilot_id is not None or self.recipient_user_id is not None or self.payload
         ):
             raise ValueError("Il segnale iscrizioni deve avere riferimenti nulli e payload vuoto")
+        return self
+
+    @model_validator(mode="after")
+    def draft_signal_only(self) -> "EventCreate":
+        """La draft ammette solo un destinatario privato e l'ID della preparazione."""
+        if self.type == "draft.changed":
+            key = self.payload.get("preparation_id")
+            if (self.recipient_user_id is None or self.pilot_id is not None
+                or set(self.payload) != {"preparation_id"}
+                or type(key) is not int or key < 1):
+                raise ValueError("Segnale draft privato non valido")
         return self
