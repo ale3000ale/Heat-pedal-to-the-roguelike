@@ -4,64 +4,65 @@ Data: 25 ottobre 2026. Ramo: draft. PR: 18.
 
 ## Stato corrente
 
-1. Contratti, validatori, client API e test predisposti: commit 8d6f7cd62ef5058e0123e4acae5245bd62cd130a.
-2. Controller della sessione e test predisposti: commit a243cc0f848c95b68c92f03d9923f83c7462464f.
-3. Store reattivo e test predisposti: commit dd9c011f1b9dd6a6aadd68c69b9e25cecd8b43ea.
-4. Contenitore modal, politica di annullamento e opzioni del modal condiviso: commit 06afc3a44edb4619fb6dd1d0dd19ecbfbcfce64f.
-5. Scelta iniziale Draft/Gara gia disputata, Presenti/Assenti, helper di vista, test unitari e test SSR predisposti: incremento corrente.
+1. Contratti, validatori, client e test predisposti: 8d6f7cd62ef5058e0123e4acae5245bd62cd130a.
+2. Controller e test predisposti: a243cc0f848c95b68c92f03d9923f83c7462464f.
+3. Store e test predisposti: dd9c011f1b9dd6a6aadd68c69b9e25cecd8b43ea.
+4. Modal e politica annullamento: 06afc3a44edb4619fb6dd1d0dd19ecbfbcfce64f.
+5. Scelta iniziale e presenze, helper e test predisposti: 3a17b7cb1aad0923f6f8e02643afde59ed3e0e9b.
+6. Ordine locale con trascinamento, salvataggio prima di start, test puri/SSR predisposti: incremento corrente.
 
-I componenti non sono ancora montati nell applicazione. Nuova gara, layout, autenticazione e SSE non sono collegati. Ordine, scelta carte, mazzi e READY non hanno ancora le rispettive schermate. Il flusso visuale completo non e disponibile.
+Componenti non montati nell applicazione: Nuova gara, layout, autenticazione e SSE non collegati. Mancano schermate di scelta carte, mazzi e READY. Il flusso completo non e disponibile.
 
-File dei primi incrementi: frontend/src/lib/draft-types.ts, draft-validation.ts, draft-api.ts e relativi spec; draft-session.ts e relativo spec; stores/draft.svelte.ts e draft-store.spec.ts; components/modal.svelte, draft-close-policy.ts e relativo spec, components/draft-modal.svelte. Il quinto aggiunge components/draft-start.svelte, components/draft-attendance.svelte, draft-attendance-view.ts, draft-attendance-view.spec.ts e draft-attendance-ui.spec.ts. CardEntry e api.ts sono riusati senza modifiche.
+File precedenti: draft-types.ts, draft-validation.ts, draft-api.ts e spec; draft-session.ts e spec; stores/draft.svelte.ts e draft-store.spec.ts; components/modal.svelte, draft-close-policy.ts e spec, components/draft-modal.svelte; components/draft-start.svelte, components/draft-attendance.svelte, draft-attendance-view.ts e spec, draft-attendance-ui.spec.ts, tutti sotto frontend/src/lib. Il sesto aggiunge draft-order.ts, draft-order.spec.ts, components/draft-order.svelte e draft-order-ui.spec.ts. CardEntry e api.ts riusati senza modificarli.
 
-## Contratti e trasporto
+## Trasporto e sessione
 
-DTO da backend/app/schemas/draft.py e DraftCardSlot. Copie identiche distinte tramite slot_id. Validatori di forma, tipi, interi sicuri, nullable espliciti e ID duplicati; output indipendenti con soli campi pubblici. Non riproducono il motore, non autorizzano scritture e non richiedono 15 copie nel lettore del mazzo.
+DTO dai contratti backend pubblici. slot_id distingue copie identiche. Validatori di forma/tipi, interi sicuri, nullable espliciti e ID duplicati, con copie dei campi pubblici. Non replicano l intero motore, non autorizzano scritture e non richiedono 15 copie nel lettore del mazzo.
 
-fetchDrafts, openDraft, fetchDraft e fetchDraftDeck leggono contesti autorizzati. sendDraftCommand usa i comandi versionati previsti dal backend con soli campi ammessi. Contesti confrontati quando il DTO contiene gli ID. Nessun retry, polling o rilettura implicita dopo scrittura. ApiError condiviso; rete interrotta o risposta POST inutilizzabile non provano rollback.
+Client autenticato e comandi versionati con soli campi ammessi, confronti di contesto quando il DTO contiene gli ID. Nessun retry, polling o rilettura implicita dopo POST. ApiError condiviso; rete interrotta o risposta inutilizzabile non provano rollback.
 
-## Controller e store
+Controller senza rete iniziale. refresh/command espliciti, una operazione alla volta, versione dallo snapshot server. Risposte obsolete o di contesti invalidati scartate; copie indipendenti. Draft/campionato non cambiano e versioni non regrediscono.
 
-Nessuna richiesta alla costruzione. refresh e command sono espliciti e serializzati dal controller, senza seconda coda nello store. Versione presa dallo snapshot server, non dal chiamante. Risposte obsolete o di contesti invalidati scartate; getState/state restituiscono copie. Draft e campionato non possono cambiare, ne la versione regredire.
+getContext deve comprendere generazione autenticata e contesto, cambiando anche al nuovo accesso dello stesso utente. Il chiamante deve integrare syncContext/dispose a cambi e smontaggio. AuthStore non modificato; il solo user_id non basta. dispose e definitivo ma non annulla HTTP gia inviati o effetti server.
 
-getContext deve comprendere generazione autenticata e contesto, cambiando anche dopo logout/login dello stesso utente. Il chiamante deve integrare syncContext/dispose a cambio utente, ruolo, contesto e smontaggio. Non ci sono listener auth/SSE e AuthStore non viene modificato. Il solo user_id non basta. dispose e definitivo e non annulla richieste HTTP gia inviate o loro possibili effetti server.
+409 blocca conservando snapshot non aggiornato; rete, 500 e risposte inutilizzabili durante comando sono incerti. 422 permette correzione manuale, 401/403 rimuovono snapshot. Solo rilettura server utilizzabile libera il blocco; 404 non prova annullamento/creazione. READY intermedio conserva preparazione, race_id conclude gara, cancel conclude separatamente. Nessuna operazione dopo conclusione/dispose.
 
-409 blocca e conserva lo snapshot non aggiornato. Rete, 500 e risposte inutilizzabili durante comando sono esiti incerti. 422 permette correzione manuale senza reinvio automatico. 401/403 rimuovono lo snapshot. Solo una lettura server utilizzabile libera il blocco; 404 non prova annullamento o creazione gara. READY intermedio conserva preparazione; race_id conclude come gara creata, cancel riuscito conclude separatamente. Nessuna operazione dopo conclusione/dispose.
+DraftStore a istanze con $state.raw, aggiorna vista all avvio/finally, senza seconda coda. busy/blocked non sono permessi. syncContext fuori dai getter di rendering. Autenticazione, layout e listener SSE non integrati.
 
-DraftStore e a istanze e usa $state.raw. Aggiorna la vista all avvio e nel finally; busy/blocked non sono permessi. syncContext va chiamato fuori dai getter di rendering. Il futuro host deve completare autenticazione e lifecycle.
+## Modal e presenze
 
-## Modal e annullamento
+Modal condiviso mantiene X visibile a destra e abilitata per default; opzioni nuove governano solo X. closeOnOutside governa Escape/sfondo. confirm-dialog e modal-close invariati.
 
-Modal condiviso: X predefinita visibile, a destra e non disabilitata. showClose/closeDisabled/closePosition controllano solo la X; closeOnOutside governa Escape e sfondo. confirm-dialog.svelte e modal-close.ts invariati.
+DraftModal usa X a sinistra e closeOnOutside falso. Solo creatore, bloccato quando tutti i propri presenti sono READY; insieme vuoto non blocca per vacuita. Conferma annullare la gara? legata a istanza store, ID/versione e ricontrollata al clic. Non annullare non scrive. Contenuti montati ma nascosti/inert durante conferma. Nessuna chiusura anticipata o falso ripristino su errore. Esito terminale/dispose nasconde il contenitore.
 
-DraftModal usa X a sinistra e closeOnOutside falso. X solo al creatore non completamente READY con i propri presenti, come cancel_preparation; insieme vuoto non blocca per vacuita e un solo proprio pronto non basta se ne sono presenti altri. Disabilitata durante richieste, blocchi e conferma.
+Rileggi dal server e esplicito. Le bozze delle schermate devono essere protette: l ordine locale ora conserva la propria baseline e diventa inutilizzabile se una lettura la cambia. Le future altre bozze richiedono integrazione analoga. Inert non sostituisce guardie server. Focus trap, stacking, tastiera e navigazione globale non dichiarati completi.
 
-La X propone annullare la gara? senza scrivere. Conferma legata a istanza store, ID e versione, ricontrollata al clic e invalidata da cambiamenti. Non annullare non scrive. Contenuti sottostanti montati ma nascosti/inert durante conferma per conservare stato locale. Nessuna chiusura anticipata durante cancel; errore non equivale a ripristino riuscito. Gli esiti terminali o dispose nascondono il contenitore.
+DraftStart richiede store caricato. Draft invoca solo ondraft del futuro padre, non start o apertura preparazioni. Gara gia disputata usa il comando dedicato e attende race_id, senza controlli mazzo/READY o risultati.
 
-Rileggi dal server e esplicito. Le future bozze locali richiederanno protezione prima di eventuali riletture. Inert non sostituisce guardie server/controller. Non e un host globale: focus, tastiera, stacking, navigazione e lifecycle non sono dichiarati completi o collaudati.
+Presenze da snapshot server, Presenti sopra Assenti, ordine interno ricevuto, conteggio per pilota senza deduplicare nomi/account. Escludi/Includi non ottimistici. Avanti conferma presenze, con indicatore del limite backend 1-12; il server controlla mazzi/pool e sceglie order o decks senza creare Race. Il padre e il recupero della selezione iniziale locale non sono ancora integrati.
 
-## Scelta iniziale e presenze
+## Ordine di scelta
 
-DraftStart richiede uno store gia caricato. Draft chiama solo ondraft del futuro padre per cambiare schermata locale: non chiama start, non estrae carte e non apre preparazioni. Il padre dovra implementare questo passaggio. Gara gia disputata invia already-disputed nella fase attendance dal creatore e attende race_id prima della conclusione. Non controlla mazzi o READY e non inserisce risultati.
+L ordine iniziale e solo quello ricevuto dal server: nessun sorteggio o inversione dell arrivo nel browser. Prima gara appare come strong centrato quando first_race e vero. Il creatore puo usare la maniglia pointer con cattura del puntatore o i pulsanti Su/Giu; la maniglia disabilita il pan touch soltanto sulla propria area. Al pointercancel o perdita di cattura si ripristina l ordine locale precedente al gesto, non si scrive sul server.
 
-DraftAttendance deriva Presenti sopra Assenti, preservando l ordine ricevuto all interno dei gruppi e contando i piloti. Non deduplica nomi e non raggruppa per account. Escludi/Includi ricontrollano pilota e stato corrente e inviano attendance: nessuno spostamento ottimistico prima della risposta server.
+La bozza e indipendente e conserva ID draft/campionato, versione, baseline e piloti presenti. Tutti e soli i presenti, senza duplicati; nessuna riparazione silenziosa di ordini errati. Cambi incompatibili rendono la bozza non inviabile e mostrano un avviso; non ne sostituiscono le modifiche. Il comando Scarta ordine locale richiede conferma esplicita, non fa rete e non libera blocchi del controller. La conferma di scarto verifica l identita della bozza e dello store.
 
-Avanti e in basso a destra e invia attendance/confirm. L indicatore usa il limite esistente backend di 1-12 presenti; e possibile correggere la selezione quando zero o oltre limite. Il server mantiene i controlli su iscrizioni, mazzi nelle gare successive e pool; sceglie ordine o direttamente decks e non crea Race alla conferma presenze. Nessun calcolo pool client o salto di fase inventato.
+Avanti esegue un solo tentativo esplicito: salva order se modificato; se save fallisce non chiama start. Dopo salvataggio controlla snapshot utilizzabile, identita, versione, ordine richiesto e disponibilita prima di start. Non e una transazione unica tra due HTTP e non c e rollback fittizio: se start fallisce dopo save, l ordine puo gia essere salvato. Nessun retry automatico. Un ordine confermato puo essere ricostruito dalla baseline server, senza conservare una falsa bozza ancora non salvata.
 
-I comandi sono disabilitati durante operazioni, blocchi, fase diversa o assenza di gestione. I gestori ricontrollano il contesto al clic. Queste sono schermate componibili, non il router/host del flusso: la selezione iniziale locale non viene ancora persistita dal frontend e il recupero globale resta da integrare. Errori e rilettura sono gestiti dal contenitore DraftModal quando verra montato.
+La serializzazione locale protegge l invio Avanti; il controller mantiene le proprie guardie e il server ricontrolla versione e permessi. Una pool divenuta insufficiente al momento di start e un errore server, non un salto client a decks. La scelta carte non e implementata in questo incremento.
 
-## Verifiche
+## Verifiche e limiti
 
-Test predisposti, non eseguiti localmente; type-check, lint, Vitest e build non dichiarati superati. Nessun nuovo risultato CI letto o atteso. Le verifiche backend precedenti non attestano questi incrementi frontend.
+Test predisposti, non eseguiti localmente. Nessun type-check, lint, Vitest o build dichiarato superato e nessun nuovo risultato CI letto o atteso. Verifiche backend precedenti non attestano questi incrementi.
 
-Test parser: forma, non coerenza di gioco completa. Controller/store: trasporti simulati e classi compilate in Node, non browser o concorrenza DB reale. Politica chiusura: READY multipilota e proposte obsolete, non clic/focus. Quinto incremento: helper puro e rendering server con svelte/server, senza attivare eventi. Non sono prove interattive di Escludi/Includi, Avanti, creazione gara, aggiornamenti DOM o integrazione del modal. Le nuove opzioni del modal non hanno ancora verifica browser attestata.
+Helper ordine: spostamenti immutabili, insiemi, baseline e coordinamento save/start con port simulato. Test SSR: etichette, ordine iniziale, stato prima gara e controlli; non generano eventi pointer, tastiera o clic. Non sono verifiche di trascinamento touch, focus, conferme, reattivita DOM o comportamento end-to-end. Controller/store testati soltanto nei casi predisposti con trasporti simulati, non DB concorrente reale. Le opzioni del modal non hanno ancora prova browser attestata.
 
-Comandi previsti in frontend: npm run check, npm run lint, npm test, npm run build. Nessuna installazione, formattazione o esecuzione di test dichiarata in questa preparazione. I precedenti errori 503 nelle letture GitHub erano stati risolti ritentando e non erano fallimenti applicativi.
+Comandi previsti in frontend: npm run check, npm run lint, npm test, npm run build. Nessuna installazione, formattazione o esecuzione test dichiarata in questa preparazione. I precedenti 503 GitHub erano errori di lettura risolti ritentando, non test falliti.
 
-## Metodo e allineamento
+## Metodo e seguito
 
-Pubblicare direttamente gli incrementi approvati sul solo draft, senza accumularli nei commenti o introdurre workflow. Non controllare/attendere CI autonomamente: decide l autore quando verificarla, intervenire o aspettare. Nessun merge implicito.
+Push diretto degli incrementi approvati sul solo draft; niente accumulo nei commenti o nuovi workflow. La CI viene controllata o attesa solo su indicazione dell autore. Nessun merge implicito.
 
-Questa nota aggiorna lo stato tecnico corrente; docs/DRAFT_SPEC.md conserva le regole funzionali. Note backend e manifest documentano verifiche precedenti, non nuovi verdi frontend. Setup, script, schema, risorse, dipendenze e lockfile invariati; nessun nuovo scaffold, API backend o migrazione, nessun accesso al database reale.
+Questa nota aggiorna lo stato tecnico; docs/DRAFT_SPEC.md conserva le regole. Note backend e manifest sono prove precedenti, non nuovi verdi frontend. Setup, script, schema, risorse, dipendenze e lockfile invariati; niente scaffold, API backend, migrazioni o accesso al DB reale.
 
-Restano ordine, scelta carte, mazzi, READY, montaggio in Nuova gara/layout, autenticazione, lifecycle e live, con test di integrazione e collaudo browser separati.
+Restano scelta carte, mazzi/READY, montaggio Nuova gara/layout, autenticazione, lifecycle/live e collaudo browser.
