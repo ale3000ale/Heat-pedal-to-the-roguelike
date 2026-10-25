@@ -1,24 +1,30 @@
 # Draft e preparazione della gara
 
+## Precisazione del 25 ottobre 2026: controllo dopo la modifica dei mazzi
+
+Richiesta dell'autore alle 13:55: il controllo di idoneita del mazzo deve avvenire alla fine, dopo la modifica dei mazzi, non dopo la selezione dei presenti. Questa precisazione prevale su precedenti riferimenti al controllo preliminare.
+
+Alla conferma Presenti/Assenti si verificano partecipazione, numero dei presenti, autorizzazioni, riferimenti e disponibilita della pool, senza richiedere mazzi gia da 15 carte. Si prosegue con ordine/scelta oppure direttamente alla modifica mazzi se la pool e insufficiente. Il requisito delle 15 copie si applica al mazzo modificato quando il pilota conferma pronto, dalle gare successive alla prima. Prima di creare la gara si ricontrollano i mazzi di tutti i presenti sotto lock. Restano il massimo di 15, l'eccezione della prima gara e gli altri vincoli esistenti.
+
+La correzione e successiva al consolidamento storico seguente: il manifesto descrive i sorgenti dell'artefatto originario, non gli hash della patch attuale. I risultati CI precedenti non attestano questa modifica. Nuovi test predisposti, nessuna nuova esecuzione locale o lettura CI per questa correzione.
+
 <!-- draft-backend-current:start -->
-## Draft - backend consolidato e limiti correnti
+## Provenienza storica del backend consolidato
 
-Aggiornamento del 25 ottobre 2026, solo ramo draft e PR 18. Questa sezione aggiorna il solo stato del flusso draft e prevale sulle note storiche di avanzamento, senza alterare gli altri requisiti.
+Consolidamento del 25 ottobre 2026, ramo draft e PR 18. Questa sezione documenta la provenienza originaria e non sostituisce le precisazioni funzionali successive.
 
-Sorgenti recuperati dall artefatto draft-backend-materialized della run 40152061495, job materialize-and-check concluso con success sul commit tecnico 1052e5d. Gli hash SHA-256 dei sorgenti sono conservati in docs/DRAFT_BACKEND_MANIFEST.json.
+Sorgenti recuperati dall artefatto draft-backend-materialized della run 40152061495, job materialize-and-check concluso con success sul commit tecnico 1052e5d. Gli hash SHA-256 di quei sorgenti sono conservati in docs/DRAFT_BACKEND_MANIFEST.json.
 
-Prima della pubblicazione questo workflow verifica di nuovo pytest backend, upgrade/downgrade/upgrade con controlli dello schema e frontend check, lint, test e build. Esecuzione di pubblicazione: https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/40153346360. Il controllo dedicato sul commit risultante documenta queste verifiche pre-push; non e una nuova esecuzione dei job ordinari della PR.
+Prima della pubblicazione quel workflow verifica pytest backend, upgrade/downgrade/upgrade con controlli dello schema e frontend check, lint, test e build. Esecuzione di pubblicazione: https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/40153346360. Il controllo dedicato sul commit risultante documenta quelle verifiche pre-push; non e una nuova esecuzione dei job ordinari della PR o una verifica delle correzioni successive.
 
-Nessun conteggio di test o warning inventato, nessun test locale o collaudo browser attestato. Nessun merge, rilascio, ZIP finale del progetto o intervento sul database reale. Il frontend draft non e implementato da questo consolidamento.
-
-La specifica funzionale resta invariata. Backend consolidato da checkpoint verificati; frontend draft e verifica browser non ancora completati. Non sono attestati conteggi di test o copertura esaustiva di ogni scenario.
+Nessun conteggio di test o warning inventato, nessun test locale o collaudo browser attestato dal consolidamento. Nessun merge, rilascio, ZIP finale o intervento sul database reale. Il frontend draft non era implementato da quel consolidamento ed e stato integrato successivamente.
 <!-- draft-backend-current:end -->
 
-Data: 2026-10-25. Specifica ricavata dalle richieste e conferme dell'autore nella conversazione. Ramo di lavoro: draft. Stato: backend consolidato e verificato in CI; frontend draft e collaudo browser non completati. Questa specifica aggiorna le regole precedenti solo per il flusso qui descritto.
+Data: 2026-10-25. Specifica ricavata dalle richieste e conferme dell'autore. Ramo: draft. Integrazione frontend pubblicata successivamente al consolidamento; correzione attuale e collaudo browser da verificare. Questa specifica aggiorna le regole precedenti solo per il flusso qui descritto.
 
 ## Metodo
 
-Lavorare soltanto su Heat-pedal-to-the-roguelike e sul ramo draft, senza creare altri rami. Leggere i file prima di modificarli. Aggiornare la documentazione all'inizio e alla fine della modifica, non negli incrementi intermedi. Aprire una PR di lavoro per la CI; non attendere la CI dei commit esclusivamente documentali. Affidare alla CI test backend, migrazioni e controlli frontend; non dichiarare esiti prima di averli letti. Nessun merge implicito. Nessuna modifica al database reale senza autorizzazione e backup.
+Lavorare soltanto su Heat-pedal-to-the-roguelike e sul ramo draft, senza creare altri rami. Leggere i file prima di modificarli. Aggiornare la documentazione all'inizio e alla fine della modifica, non negli incrementi intermedi. Usare la PR di lavoro per la CI; non attendere la CI dei soli commit documentali. Affidare alla CI test backend, migrazioni e controlli frontend; non dichiarare esiti prima di averli letti. Nessun merge implicito. Nessuna modifica al database reale senza autorizzazione e backup.
 
 ## Apertura e annullamento
 
@@ -28,7 +34,7 @@ Il modal iniziale offre draft e Gara già disputata. Il secondo chiude il modal 
 
 ## Presenti e assenti
 
-Elencare i piloti iscritti al campionato in Presenti, ciascuno con Escludi. Escludi sposta il pilota in Assenti in fondo, con Includi per riportarlo tra i presenti. Avanti in basso a destra porta alla fase successiva. La partecipazione e il conteggio N riguardano i piloti presenti, non gli account. Uno stesso account puo avere piu piloti presenti.
+Elencare i piloti iscritti al campionato in Presenti, ciascuno con Escludi. Escludi sposta il pilota in Assenti in fondo, con Includi per riportarlo tra i presenti. Avanti in basso a destra porta alla fase successiva senza richiedere che i mazzi siano gia da 15 carte. La partecipazione e il conteggio N riguardano i piloti presenti, non gli account. Uno stesso account puo avere piu piloti presenti.
 
 ## Ordine
 
@@ -36,7 +42,7 @@ Con pool sufficiente, mostrare i presenti nell'ordine inverso di arrivo della ga
 
 ## Pool insufficiente
 
-Servono N+3 copie nella pool modifiche del campionato. Se non bastano, mantenere la selezione Presenti/Assenti e poi passare direttamente alla modifica dei mazzi, saltando ordine e scelta carte. Non creare subito la gara.
+Servono N+3 copie nella pool modifiche del campionato. Se non bastano, mantenere la selezione Presenti/Assenti e poi passare direttamente alla modifica dei mazzi, saltando ordine e scelta carte. Non creare subito la gara e non bloccare il passaggio per mazzi ancora incompleti.
 
 ## Scelta delle carte
 
@@ -52,18 +58,18 @@ Dopo l'ultima scelta non creare ancora la gara: passare alla preparazione dei ma
 
 ## Preparazione mazzi e READY
 
-Aprire la modifica del mazzo per i piloti presenti. Il controllo preliminare dei mazzi riguarda soltanto i presenti e non viene eseguito alla prima gara. Dalla seconda gara il pulsante pronto richiede esattamente 15 carte nel mazzo; alla prima gara non impone questa condizione. Gli altri vincoli del mazzo restano validi.
+Aprire la modifica del mazzo per i piloti presenti anche se i loro mazzi non soddisfano ancora il requisito delle 15 carte. Il controllo di idoneita si applica dopo la modifica, quando ciascun pilota conferma pronto, non alla conferma delle presenze. Dalla seconda gara pronto richiede esattamente 15 carte nel mazzo; alla prima gara non impone questa condizione. Il massimo di 15 e gli altri vincoli del mazzo restano validi.
 
 La disponibilita e per pilota. Un utente con piu piloti presenti puo passare tra i propri piloti e confermarli singolarmente. La schermata READY completamente bloccata compare quando ha confermato tutti i propri piloti presenti.
 
 Nello stato pronto mostrare tutto in penombra con READY grande al centro, diagonale, contornato e a scacchi, animato con ingrandimento e riduzione del 5%. L'unico comando utilizzabile e non Pronto, che riporta alla modifica. Anche il creatore pronto deve premere non Pronto prima di poter accedere alla X di annullamento.
 
-Quando tutti i piloti presenti sono pronti, creare la gara e chiudere i modal a tutti. Prima di questo momento non deve esistere la gara.
+Quando tutti i piloti presenti sono pronti, ricontrollare sotto lock i loro mazzi modificati, creare la gara e chiudere i modal a tutti. Prima di questo momento non deve esistere la nuova gara.
 
 ## Criteri di verifica
 
-Verificare: selezione presenti/assenti; ordine inverso e nuovi presenti in coda; ordine casuale prima gara; trascinamento; pool insufficiente senza scelta carte; copie duplicate; turni e autorizzazioni per pilota; anteprima locale e indicazione condivisa; conferma scelta e inventario; restituzione delle copie residue; recupero su riconnessione e ricaricamento da qualsiasi pagina; account con piu piloti; prima gara senza requisito esatto delle 15 carte; gare successive con tale requisito; pronto/non Pronto; creazione soltanto quando tutti sono pronti; annullamento con ripristino completo anche durante la preparazione; percorso Gara già disputata.
+Verificare: selezione presenti/assenti senza requisito anticipato delle 15 carte; gare successive con mazzo vuoto o incompleto che raggiungono ordine/modifica; pool insufficiente senza blocco dei mazzi incompleti; ordine inverso e nuovi presenti in coda; ordine casuale prima gara; trascinamento; copie duplicate; turni e autorizzazioni per pilota; anteprima locale e indicazione condivisa; conferma scelta e inventario; restituzione delle copie residue; recupero su riconnessione/reload da qualsiasi pagina; account con piu piloti; prima gara senza requisito esatto delle 15 carte; pronto rifiutato con 14 carte nelle gare successive e accettato dopo modifica a 15; pronto/non Pronto; creazione soltanto a tutti pronti con ricontrollo finale; annullamento con ripristino completo anche durante la preparazione; percorso Gara già disputata.
 
 ## Stato delle verifiche
 
-Backend ricostruito dai checkpoint e verificato nel runner GitHub. Frontend draft e verifica browser non completati. Provenienza, limiti e verifiche sono descritti nella sezione corrente sopra.
+La provenienza del consolidamento e storica. Le verifiche frontend/runtime/migrazioni gia lette sul commit 26c5faabd4427f790dbdab0cf367cce7466829c6 non attestano questa correzione backend; a quella lettura pytest era ancora in corso. Non e stato letto qui un nuovo esito backend. Nessun nuovo test locale o collaudo browser dichiarato per la patch attuale.

@@ -8,7 +8,6 @@ from app.services.draft_preparation import DraftPermissionError, DraftPreparatio
 from app.services.draft_transaction import DraftMutation, draft_mutation
 from app.services.draft_transitions import advance_attendance, choose, preview, reorder, start_picking
 from app.services.pilot_deck import GameDeckFullError, _put_one, _take_one
-from app.services.race_deck_readiness import PilotGameDeck, require_ready_game_decks
 from app.services.races import MAX_RACE_PILOTS
 
 
@@ -45,10 +44,11 @@ def confirm_attendance(db: Session, preparation_id: int, user_id: int,
                        expected_version: int, *, shuffle=None) -> DraftPreparation:
     """Conferma presenze: ordine o direttamente mazzi con pool insufficiente.
 
-    Solo creatore. Richiede 1-12 presenti. Dopo la prima gara verifica sotto
-    lock le 15 copie dei soli presenti. Legge l'arrivo della gara precedente.
-    Snapshot, stato ed eventi sono coordinati da draft_mutation. Errori fanno
-    rollback completo, senza retry o completamento automatico dei mazzi.
+    Solo creatore. Richiede 1-12 presenti e verifica proprietari/riferimenti,
+    non il requisito delle 15 copie prima della modifica dei mazzi. Quel
+    requisito resta in READY e nel ricontrollo finale prima della gara.
+    Legge l'arrivo precedente. Snapshot, stato ed eventi sono coordinati da
+    draft_mutation; errori fanno rollback, senza retry o completamenti automatici.
     """
     with draft_mutation(db, preparation_id, user_id, expected_version, creator_only=True) as work:
         if work.state.phase != "attendance":
@@ -56,9 +56,6 @@ def confirm_attendance(db: Session, preparation_id: int, user_id: int,
         present = [_pilot(db, work, p.pilot_id) for p in work.state.participants if p.present]
         if not 1 <= len(present) <= MAX_RACE_PILOTS:
             raise DraftPreparationError(f"Servono da 1 a {MAX_RACE_PILOTS} piloti presenti")
-        if not work.state.first_race:
-            require_ready_game_decks(PilotGameDeck(p.id, p.name, work.decks[p.game_deck_id].cards)
-                                     for p in present)
         previous = db.scalar(select(Race.id).where(Race.championship_id == work.row.championship_id)
                              .order_by(Race.number.desc()).limit(1))
         finish = None if previous is None else list(db.scalars(

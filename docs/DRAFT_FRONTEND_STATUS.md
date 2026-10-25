@@ -1,45 +1,37 @@
-# Draft - incrementi frontend
+# Draft - stato dell'integrazione e correzioni
 
 25 ottobre 2026. Solo Heat-pedal-to-the-roguelike, ramo draft, PR 18.
 
-## Verifiche documentate
+## Correzione corrente: controllo mazzi dopo la modifica
 
-Ultimo log npm test fornito alle 04:54: 594 superati e 2 falliti su 596 test; 71 file superati e 2 falliti su 73, exit code 1, Vitest 4.1.12. SHA/run ID non indicati. Fix SSR in fc71aa6ce50501f8c9b18e8a9ecacf90b2b004fb: attributi disabled distinti dalle classi e ordine incompleto distinto da DTO duplicato rifiutato. Il successivo via libera non e un nuovo esito positivo.
+Segnalazione dell'autore alle 13:55: il requisito delle 15 carte non deve bloccare Avanti dopo Presenti/Assenti. Il controllo anticipato era in backend/app/services/draft_commands.py, confirm_attendance, tramite require_ready_game_decks per le gare successive alla prima.
 
-Nessuna esecuzione locale o consultazione/attesa CI di check, lint, test o build per questo incremento. Nessuna installazione o formattazione attestata. I test nuovi sono predisposti, non dichiarati superati. Il vecchio log check con 25 errori/0 warning e il rename a854b28c9ea68444b216a45964925cad03fa6dd7 non hanno qui un nuovo risultato check documentato.
+La correzione rimuove soltanto quella chiamata e il relativo import. Restano verifiche di fase, creatore, versione, numero dei presenti 1-12, proprietari, riferimenti ai mazzi e pool. La conferma presenze porta a order o direttamente a decks secondo la pool, senza richiedere mazzi gia completi. Non viene modificata la validazione dei dati JSON.
 
-## Avanzamento
+Il controllo sui mazzi modificati resta nel comando READY e nel ricontrollo di tutti i presenti prima di creare Race. Dalla seconda gara servono 15 carte esatte; alla prima resta l'eccezione del conteggio esatto e il massimo di 15. Spostamenti, annullamento, snapshot, transazioni e segnali SSE restano quelli esistenti. Non vengono modificati ready_pilot, set_ready o il percorso Gara gia disputata.
 
-Incrementi 1-8: DTO/client, controller, store, modal, presenze, ordine, scelta e mazzi. Composizione: a8b1c050401befc854b9feeb5b1ad71b78e62f8f. Auth/registro: 48d59990c538db6e4c779e557126834be722e90b. Host/layout: 2739251d889e821e39a1a407eef56232a95710ba. SSE condiviso: e8daa23d8de734abfca9b72cddf9779e190111b0. Modulo apertura e test: 131612d667d132c23f9093ae9cec1d200fc33e30. Incremento corrente: collegamento pagina Nuova Gara e stato.
+File previsti: backend/app/services/draft_commands.py, nuovo backend/tests/test_draft_attendance_readiness.py, docs/DRAFT_SPEC.md e questo documento. Il precedente tentativo di conferma con segnaposto non e stato eseguito e non ha pubblicato file.
 
-I precedenti tentativi di pubblicazione dei quattro file sono stati respinti dal controllo di approvazione e non hanno creato commit. Dopo suddivisione e stato pubblicato soltanto il modulo con test; questo secondo commit contiene pagina e documento. Gli errori di approvazione non sono test applicativi e non provano problemi del codice.
+## Regressioni predisposte e verifiche
 
-## Nuova Gara
+Nuove regressioni SQLite temporanee: precedente gara con risultati e revisione chiusa; presenze accettate con mazzo vuoto o da 14 copie sia con pool sufficiente sia insufficiente; nessuna modifica dei mazzi alla conferma presenze; percorso fino a decks, READY rifiutato a 14 e accettato dopo spostamento a 15; nuova gara assente fino a READY; endpoint HTTP conferma-presenze e permanenza del vincolo di almeno un presente.
 
-La pagina recupera getDraftHost durante l inizializzazione, non nel clic. createRace delega a openChampionshipDraft e host.open: POST /championships/{id}/draft, non POST /races. Il registro e quello del layout. Il modal viene mostrato dalla sottoscrizione dell host, senza istanza locale duplicata o navigazione automatica.
+Non sono stati eseguiti pytest, controlli frontend, installazioni, migrazioni o collaudo browser per questa correzione. Nessuna CI consultata o attesa in questo passaggio. Test predisposti, non dichiarati superati.
 
-Guardie locali: ID, sessione, permessi, campionato chiuso e gara non conclusa. Il backend resta autorevole. Registro occupato non genera secondo invio; registro bloccato richiede recupero. Il pulsante riflette busy locale/globale, sessione e blocco. Gara non conclusa conserva il messaggio precedente. Nessun controllo preliminare locale dei mazzi aggiunto al percorso Gara gia disputata.
+Ultima verifica CI letta nella conversazione sul commit 26c5faabd4427f790dbdab0cf367cce7466829c6: frontend check/lint/test/build, runtime e migrazioni superati; backend pytest ancora in esecuzione a quella lettura. Sono risultati precedenti, non della patch attuale. Il vecchio log 594/596 e il fix fc71aa6ce50501f8c9b18e8a9ecacf90b2b004fb restano storia del precedente errore SSR, non un risultato nuovo.
 
-Dopo await, errori e busy della pagina vengono aggiornati solo se coincidono coda campionato, parametro e generazione autenticata catturati. Il lifecycle live della pagina dipende da sessionKey, cosi un nuovo accesso dello stesso account pulisce i dati precedenti. Risposte tardive non vengono applicate al nuovo contesto; HTTP gia inviati possono avere avuto effetti server.
+Comandi da verificare dopo il push: in backend python -m pytest -q tests/test_draft_attendance_readiness.py tests/test_draft_commands.py tests/test_draft_completion.py tests/test_draft_api.py tests/test_draft_transitions.py; poi suite backend completa, check/lint/test/build frontend e controlli migrazioni gia previsti dalla CI. Nessun risultato anticipato.
 
-Non si rilegge l elenco gare alla sola apertura della preparazione: nessuna Race e stata creata. race.started e i consumer esistenti aggiornano l elenco quando la gara esiste davvero. Nessun fallback al vecchio endpoint o retry automatico dopo risposta incerta.
+## Integrazione conservata
 
-File del secondo commit: frontend/src/routes/championships/[id]/+page.svelte e questo documento. Modulo/test del primo commit non modificati. Iscrizioni, sponsor, classifica e dialoghi conservati salvo il collegamento della generazione autenticata al lifecycle della pagina.
+Registro/auth: 48d59990c538db6e4c779e557126834be722e90b. Host/layout: 2739251d889e821e39a1a407eef56232a95710ba. SSE condiviso: e8daa23d8de734abfca9b72cddf9779e190111b0. Modulo apertura/test: 131612d667d132c23f9093ae9cec1d200fc33e30. Collegamento pagina Nuova Gara: 16eb2df83e3fcca1239b70a83b8bc07d6720bb29.
 
-## Live, coda e garanzie conservate
+Nuova Gara apre la preparazione tramite il provider del layout, non crea direttamente Race. Un solo stream SSE, draft.changed con solo preparation_id e recupero REST accodato su notifiche/resync. Busy di store/dettagli rinvia il recupero senza ritentare POST. Dettaglio gia caricato ma obsoleto: tentativo GET mirato per coordinatore/pilota/versione, poi recupero manuale. Coda locale stabile, un solo DraftFlow, modal sottostanti inert, Escape non chiude e X del creatore con conferma/vincolo READY.
 
-Un solo stream SSE del layout. draft.changed contiene solo preparation_id; parser senza carte o snapshot. REST su avvio, draft.changed e resync; segnali accorpati durante GET/POST e busy dettagli. Generazioni precedenti scartate, nessun nuovo polling o connessione. Errori senza nuove invalidazioni non creano cicli. Stream indisponibile: recupero manuale.
+Rimozione da elenco non viene etichettata automaticamente come creazione o annullamento; esiti effettivi acquisiti prima del cleanup. Nessun redirect o nuovo polling. Recupero multi-store non atomico; conteggi, versioni, permessi e blocchi restano server. Il frontend non viene modificato da questa correzione.
 
-Dettagli caricati ma obsoleti: GET mirata dopo recupero principale, senza duplicare il primo caricamento. Un tentativo per coordinatore/pilota/versione, poi Rileggi mazzo manuale; nuova versione puo richiedere nuova lettura, mai reinvio di POST. Recupero multi-store non atomico, versioni e blocchi restano necessari.
+## Limiti e seguito
 
-Coda stabile per identita, un solo DraftFlow montato, modal sottostanti montati ma inert/aria-hidden. Escape non chiude, X creatore con conferma e vincolo READY. Focus/Tab/ripristino non collaudati nel browser. Esiti effettivi acquisiti prima del cleanup, consumati una volta; sparizione REST non etichettata arbitrariamente come annullamento o gara creata.
+Nessuna modifica a schema, migrazioni, database reale, risorse, dipendenze, lockfile, script o workflow. Nessun merge o rilascio. Il manifesto backend descrive l'artefatto consolidato originario e non viene falsificato per rappresentare la patch attuale.
 
-Presenze per pilota, ordine e turni server, copie distinte per slot_id, scelta confermata, pool insufficiente verso decks e nessuna gara all ultima scelta. READY per propri presenti, 15 esatte dopo la prima gara e massimo 15 sempre; non Pronto prima della X del creatore pronto. GET fallita dopo POST non significa rollback. Regole complete in docs/DRAFT_SPEC.md, non modificate qui.
-
-## Verifiche successive
-
-Test del modulo predisposti con trasporto simulato: endpoint draft/riuso store, guardie senza rete, doppio invio, nessun fallback dopo 500 e risposta tardiva. Non sono clic sulla pagina, cambi rotta DOM, focus, browser multipli, cookie o concorrenza SQLite.
-
-Comandi da verificare: npm run check, npm run lint, npm test, npm run build. Nessun nuovo esito attestato. Collegamento end-to-end nel codice, non dichiarato collaudato o pronto al rilascio.
-
-Backend, schema, DB reale, risorse, dipendenze, lockfile, script e workflow invariati. Nessun merge, migrazione o ZIP finale. Seguono verifiche complete e collaudo multi-browser di apertura, turni, anteprima, mazzi/READY, annullamento, riconnessione/sessioni, poi riallineamento generale dei documenti alla consegna verificata.
+Restano verifica della correzione e collaudo reale di gare successive con mazzi incompleti, scelta/modifica, pronto/non Pronto, annullamento e riconnessione. Focus, multi-browser e consegna ZIP finale non dichiarati completati. Dopo esiti effettivi va completato il riallineamento generale della documentazione.
