@@ -4,56 +4,64 @@ Data: 25 ottobre 2026. Ramo: draft. PR: 18.
 
 ## Stato corrente
 
-Primo incremento: contratti TypeScript, validazione runtime, client API autenticato e test Vitest predisposti, pubblicati nel commit 8d6f7cd62ef5058e0123e4acae5245bd62cd130a. Il precedente refuso TypeScriptScript e stato corretto nel secondo incremento.
+Primo incremento: contratti TypeScript, validazione runtime, client API autenticato e test predisposti, commit 8d6f7cd62ef5058e0123e4acae5245bd62cd130a. Il refuso TypeScriptScript e stato corretto nel secondo incremento.
 
-Secondo incremento: controller isolato della sessione e test predisposti per concorrenza, lifecycle e gestione degli errori, pubblicati nel commit a243cc0f848c95b68c92f03d9923f83c7462464f.
+Secondo incremento: controller isolato della sessione e test predisposti per concorrenza, lifecycle ed errori, commit a243cc0f848c95b68c92f03d9923f83c7462464f.
 
-Terzo incremento: store a istanze con rune Svelte sopra il controller, con test predisposti. Non contiene ancora modal, collegamento SSE o integrazione con layout/autenticazione. Nuova gara non viene modificato. Nessuna funzionalita visuale draft dichiarata disponibile.
+Terzo incremento: store a istanze con rune Svelte sopra il controller e test predisposti, commit dd9c011f1b9dd6a6aadd68c69b9e25cecd8b43ea.
 
-File del primo incremento: frontend/src/lib/draft-types.ts, draft-validation.ts, draft-api.ts, draft-validation.spec.ts e draft-api.spec.ts. CardEntry e api.ts sono riusati senza modificarli. File del secondo: frontend/src/lib/draft-session.ts e draft-session.spec.ts. File del terzo: frontend/src/lib/stores/draft.svelte.ts e frontend/src/lib/draft-store.spec.ts.
+Quarto incremento: contenitore modal draft con conferma di annullamento, politica UI separata e opzioni retrocompatibili del modal condiviso. Il componente riceve uno store e contenuti dal chiamante, ma non e ancora montato nell applicazione. Non contiene le schermate delle fasi e non e collegato a Nuova gara, layout, autenticazione o SSE. Il flusso visuale completo non e disponibile.
+
+File iniziali: frontend/src/lib/draft-types.ts, draft-validation.ts, draft-api.ts, draft-validation.spec.ts, draft-api.spec.ts, draft-session.ts, draft-session.spec.ts, stores/draft.svelte.ts e draft-store.spec.ts. CardEntry e api.ts sono riusati senza modificarli. Quarto incremento: components/modal.svelte aggiornato; nuovi draft-close-policy.ts, draft-close-policy.spec.ts e components/draft-modal.svelte.
 
 ## Contratto e limiti dei DTO
 
-I DTO seguono backend/app/schemas/draft.py e DraftCardSlot. Le carte identiche rimangono copie distinte tramite slot_id. I validatori verificano forma, tipi, interi sicuri, nullable espliciti e identificativi duplicati; restituiscono copie dei campi pubblici. Non riproducono il motore delle fasi, non decidono chi sia autorizzato e non impongono 15 copie nel lettore del mazzo.
+I DTO seguono backend/app/schemas/draft.py e DraftCardSlot. Le carte identiche rimangono distinte tramite slot_id. I validatori verificano forma, tipi, interi sicuri, nullable espliciti e ID duplicati e restituiscono copie dei campi pubblici. Non riproducono il motore delle fasi, non decidono permessi server e non impongono 15 copie nel lettore del mazzo.
 
-fetchDrafts, openDraft, fetchDraft e fetchDraftDeck leggono i contesti autorizzati. sendDraftCommand usa comandi tipizzati per attendance, attendance/confirm, order, start, preview, choice, deck/move, ready, already-disputed e cancel. Il payload richiede versione e soli campi previsti. Le risposte vengono validate e confrontate con draft, campionato o pilota richiesto quando il DTO contiene tale identificativo.
+fetchDrafts, openDraft, fetchDraft e fetchDraftDeck leggono i contesti autorizzati. sendDraftCommand usa attendance, attendance/confirm, order, start, preview, choice, deck/move, ready, already-disputed e cancel con versione e soli campi previsti. Le risposte vengono validate e confrontate con i contesti richiesti quando il DTO contiene gli identificativi.
 
-Nessun retry automatico, polling o rilettura implicita dopo scrittura. ApiError preserva il comportamento del client condiviso. Un errore di rete o una risposta POST inutilizzabile non dimostrano rollback.
+Nessun retry automatico, polling o rilettura implicita dopo scrittura. ApiError preserva il client condiviso. Errore di rete o risposta POST inutilizzabile non dimostrano rollback.
 
 ## Controller della sessione
 
-createDraftSession non avvia richieste. refresh esegue una lettura soltanto su chiamata esplicita; command invia una sola operazione usando la versione dello snapshot server. Durante lettura o scrittura non accoda altre richieste. getState restituisce copie indipendenti; non e una sottoscrizione reattiva. Il terzo incremento lo adatta alle rune senza riscriverlo.
+createDraftSession non avvia richieste. refresh legge solo su chiamata esplicita; command usa la versione dello snapshot server. Durante lettura o scrittura non accoda richieste. getState restituisce copie indipendenti. Il contesto e fissato alla creazione: getContext deve comprendere generazione autenticata e contesto, cambiando anche dopo logout/login dello stesso utente.
 
-Il contesto e fissato alla creazione. getContext deve restituire una chiave che comprenda la generazione autenticata e il contesto, cambiando anche dopo logout e nuovo login dello stesso utente. Il futuro chiamante deve chiamare dispose a cambio utente/ruolo/contesto e smontaggio. Il controller ricontrolla inoltre la chiave quando si consulta lo stato o si gestiscono operazioni e risposte. Non ascolta autonomamente auth o SSE.
+Il chiamante deve dismettere la sessione a cambio utente/ruolo/contesto e smontaggio. Il controller ricontrolla la chiave durante consultazioni, operazioni e risposte; non ascolta auth o SSE. Risposte tardive vengono scartate; dispose e definitivo e non annulla HTTP gia inviati. Versione, draft e campionato dello snapshot non possono regredire o cambiare contesto.
 
-Le risposte tardive dopo invalidazione sono scartate. dispose svuota lo stato ed e definitivo: non annulla richieste HTTP gia inviate e non garantisce rollback sul server. La versione di una risposta non puo regredire, ne possono cambiare draft o campionato del contesto gia caricato.
-
-HTTP 409 blocca le scritture conservando lo snapshot precedente, che non va mostrato come aggiornato. Errori di rete, 500 e risposte inutilizzabili durante un comando sono trattati conservativamente come esito incerto. Un 422 consente una successiva correzione manuale, senza reinvio automatico. Un 401/403 rimuove lo snapshot e blocca le scritture. Una rilettura fallita mantiene il blocco; solo una rilettura server utilizzabile lo libera. Un 404 non viene interpretato come prova di annullamento o creazione gara.
-
-READY intermedio conserva la preparazione restituita dal server. Un esito con race_id conclude la sessione come gara creata; annullamento riuscito la conclude separatamente senza inventare una gara. Non sono consentiti altri comandi o refresh dopo conclusione o dispose. Il controller non sostituisce i permessi del server o le future conferme testuali dell interfaccia.
+409 blocca conservando lo snapshot non aggiornato; rete, 500 o risposte inutilizzabili durante comando sono esiti incerti. 422 permette una correzione manuale senza retry; 401/403 rimuovono lo snapshot. Solo una lettura server utilizzabile libera il blocco; 404 non prova annullamento o creazione gara. READY intermedio conserva la preparazione, race_id conclude come gara creata, cancel riuscito conclude separatamente. Nessun comando o refresh dopo conclusione/dispose.
 
 ## Store reattivo
 
-DraftStore e una classe a istanze, non un singleton. Usa $state.raw per pubblicare la vista del controller. state restituisce copie indipendenti; busy e blocked sono indicatori tecnici, non autorizzazioni di gioco. La vista viene aggiornata subito dopo l avvio dell operazione e nel finally alla sua conclusione. La serializzazione delle richieste resta responsabilita del controller.
+DraftStore e a istanze, non singleton; usa $state.raw. state restituisce copie; busy e blocked sono indicatori tecnici, non permessi. Aggiorna la vista all avvio e nel finally senza seconda coda. Nessuna rete alla costruzione, nessun timer, retry o polling. dispose svuota la vista e risultati tardivi non la riattivano.
 
-Il costruttore non legge il server. refresh e command sono espliciti; non aggiungono coda, retry o polling. dispose svuota subito la vista e la risposta tardiva non puo riattivarla. syncContext pubblica senza rete l eventuale invalidazione rilevata dal controller: il futuro host deve chiamarlo al cambio del contesto, fuori dai getter di rendering, oppure dismettere direttamente l istanza. Lo store non installa listener auth/SSE e non osserva automaticamente logout o cambio ruolo.
+syncContext pubblica senza rete le invalidazioni; il futuro host deve chiamarlo a cambio contesto fuori dai getter di rendering, oppure dismettere l istanza. Non ci sono listener auth/SSE. AuthStore espone utente/ruolo, non una generazione autenticata: non viene modificato, e il solo user_id non basta per la chiave di contesto.
 
-AuthStore attuale espone utente e ruolo, non una generazione autenticata. Non viene modificato in questo incremento. La chiave di contesto non puo quindi essere sostituita ingenuamente dal solo user_id. L integrazione effettiva con autenticazione e layout resta da realizzare.
+## Modal e annullamento
+
+modal.svelte conserva i valori predefiniti: X visibile a destra e non disabilitata. Le nuove opzioni showClose, closeDisabled e closePosition riguardano la X. closeOnOutside continua a governare Escape e sfondo; nascondere o disabilitare la X non cambia implicitamente quei due canali. confirm-dialog.svelte e modal-close.ts non sono modificati.
+
+DraftModal riusa Modal con closeOnOutside falso e X a sinistra. X nascosta ai non creatori e quando tutti i propri piloti presenti sono READY; insieme proprio vuoto non blocca per vacuita. Questa politica segue cancel_preparation: con piu propri presenti, uno solo pronto non basta. X disabilitata senza snapshot utilizzabile, durante operazioni, blocchi o conferma.
+
+La X propone annullare la gara? senza inviare richieste. La conferma cattura istanza dello store, ID e versione e ricontrolla tutto al clic. Una variazione invalida la conferma; Non annullare non scrive. Il contenuto sottostante resta montato, nascosto e inert durante la conferma per non perdere stato locale. Durante invio il contenitore non viene chiuso anticipatamente; si nasconde dopo esito terminale o dismissione dello store. Un errore non chiude il modal e non viene presentato come ripristino riuscito.
+
+I blocchi mostrano Rileggi dal server, azione esplicita. Questo contenitore non gestisce ancora bozze delle schermate successive: la protezione di eventuali modifiche locali prima delle future riletture dovra essere integrata con quelle schermate. Inert impedisce interazioni dei contenuti durante blocchi e operazioni, ma non sostituisce le guardie del controller e del server.
+
+Il componente non e un host globale e non apre da solo modal per i partecipanti. La gestione completa di focus, tastiera, stacking con altri modal, navigazione e lifecycle deve ancora essere verificata e integrata. Non viene dichiarato un focus trap o un collaudo accessibilita completo.
 
 ## Verifiche
 
-Test di client, validatori, controller e store predisposti, non eseguiti localmente. Type-check, lint, Vitest e build non dichiarati superati per questi incrementi. Nessun nuovo risultato della CI letto o atteso dall assistente. I risultati backend precedenti non attestano questo codice frontend.
+Test di DTO, API, controller, store e politica di chiusura predisposti, non eseguiti localmente. Type-check, lint, Vitest e build non dichiarati superati; nessun nuovo risultato CI letto o atteso. Risultati backend precedenti non attestano questi incrementi frontend.
 
-I test delle fasi del parser verificano il discriminante del DTO, non la coerenza di gioco dello stato. Controller e store usano trasporti simulati. I test store leggono le proprieta della classe compilata nell ambiente Node configurato da Vitest: non sono prove di rendering DOM, sottoscrizioni o interazioni browser, ne concorrenza reale sul database.
+I test parser verificano discriminanti, non coerenza di gioco completa. Controller/store usano trasporti simulati e proprieta di classi compilate nell ambiente Node Vitest, non DOM/browser o concorrenza DB reale. I test della politica verificano disponibilita X, READY multipilota, versioni obsolete e delega Escape/sfondo del helper esistente; non provano clic, rendering, focus o funzionamento end-to-end dei nuovi componenti. I nuovi attributi del modal condiviso non hanno ancora una verifica visuale o browser attestata.
 
-Comandi previsti per la verifica, dalla cartella frontend: npm run check, npm run lint, npm test, npm run build. Nessun comando di installazione, formattazione o test dichiarato eseguito in questa preparazione. Due letture GitHub inizialmente fallite con 503 sono riuscite al tentativo successivo; non erano fallimenti dei test applicativi.
+Comandi previsti in frontend: npm run check, npm run lint, npm test, npm run build. Nessun comando di installazione, formattazione o test eseguito in questa preparazione. Due precedenti letture GitHub fallite con 503 erano riuscite al tentativo successivo: non erano fallimenti dei test.
 
 ## Metodo aggiornato dall autore
 
-Pubblicare direttamente gli incrementi approvati sul solo ramo draft; non accumularli nei commenti e non introdurre altri workflow di ricostruzione o pubblicazione. Non controllare o attendere la CI autonomamente: l autore comunica quando verificarla, intervenire o aspettare. Nessun merge implicito.
+Pubblicare direttamente gli incrementi approvati sul solo ramo draft, senza accumularli nei commenti o introdurre altri workflow. Non controllare o attendere la CI autonomamente: l autore comunica quando verificarla, intervenire o aspettare. Nessun merge implicito.
 
-## Allineamento documentale e seguito
+## Allineamento e seguito
 
-Questa nota registra lo stato tecnico corrente e aggiorna, per questo perimetro, le precedenti descrizioni generiche di frontend non implementato: trasporto, controller e store sono predisposti, l interfaccia non lo e. Le regole funzionali di docs/DRAFT_SPEC.md restano invariate. Le note backend e il manifest documentano la verifica precedente, non un nuovo verde frontend.
+Questa nota aggiorna lo stato tecnico: trasporto, controller, store e contenitore modal sono predisposti, ma il flusso non e montato o completo. docs/DRAFT_SPEC.md conserva le regole funzionali. Note backend e manifest documentano le verifiche precedenti, non un nuovo verde frontend.
 
-README e documenti generali conservano validita su assenza dell interfaccia, setup, script, schema e risorse: tali aspetti non cambiano. Nessuna dipendenza, lockfile, scaffold, API backend o migrazione modificata. Nessun accesso al database reale. Restano modal iniziale, presenze, ordine, scelta carte, preparazione mazzi, READY, lifecycle integrato e live, con verifiche browser separate.
+Le parti generali su setup, script, schema e risorse restano invariate. Nessuna dipendenza, lockfile, scaffold, API backend o migrazione modificata; nessun accesso al database reale. Restano schermate iniziale/presenze/ordine/scelta/mazzi/READY, integrazione Nuova gara, autenticazione/layout/lifecycle e live, con verifiche browser separate.

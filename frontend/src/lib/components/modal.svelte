@@ -3,12 +3,9 @@
 	import { Button } from '$lib/components/ui/button';
 	import { shouldCloseModal, type ModalCloseSource } from '$lib/modal-close';
 
-	// Con `closeOnOutside` falso la finestra si chiude solo con la X: il clic fuori e il
-	// tasto Esc non fanno nulla. Con `blur` lo sfondo è sfocato; con `wide` la finestra è
-	// più larga (serve all'apertura dei pacchetti); con `narrow` è stretta (serve al banner
-	// della carta ottenuta). Senza queste opzioni nulla cambia.
-	// Con onrequestclose la chiusura e' delegata: il chiamante modifica open solo
-	// dopo l'eventuale conferma, senza perdere automaticamente una bozza pendente.
+	// I valori predefiniti conservano il comportamento dei modal esistenti.
+	// closeOnOutside controlla Escape/sfondo; showClose e closeDisabled solo la X.
+	// onrequestclose delega la chiusura senza cambiare automaticamente open.
 	let {
 		open = $bindable(false),
 		title,
@@ -16,6 +13,9 @@
 		blur = false,
 		wide = false,
 		narrow = false,
+		showClose = true,
+		closeDisabled = false,
+		closePosition = 'right',
 		onrequestclose,
 		children
 	}: {
@@ -25,11 +25,15 @@
 		blur?: boolean;
 		wide?: boolean;
 		narrow?: boolean;
+		showClose?: boolean;
+		closeDisabled?: boolean;
+		closePosition?: 'left' | 'right';
 		onrequestclose?: () => void;
 		children: Snippet;
 	} = $props();
 
 	function requestClose(source: ModalCloseSource) {
+		if (source === 'button' && (!showClose || closeDisabled)) return;
 		if (shouldCloseModal(source, closeOnOutside, onrequestclose)) open = false;
 	}
 
@@ -55,16 +59,19 @@
 			aria-label={title}
 			class={`relative max-h-[90vh] w-full ${wide ? 'max-w-3xl' : narrow ? 'max-w-xs' : 'max-w-lg'} overflow-y-auto rounded-lg border bg-background p-4 text-foreground shadow-lg`}
 		>
-			<div class="mb-3 flex items-center justify-between gap-3">
+			<div class={`mb-3 flex items-center justify-between gap-3 ${closePosition === 'left' ? 'flex-row-reverse' : ''}`}>
 				<h2 class="text-lg font-semibold">{title}</h2>
-				<Button
-					size="sm"
-					variant="outline"
-					aria-label="Chiudi"
-					onclick={() => requestClose('button')}
-				>
-					✕
-				</Button>
+				{#if showClose}
+					<Button
+						size="sm"
+						variant="outline"
+						aria-label="Chiudi"
+						disabled={closeDisabled}
+						onclick={() => requestClose('button')}
+					>
+						✕
+					</Button>
+				{/if}
 			</div>
 			{@render children()}
 		</div>
