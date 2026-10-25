@@ -2,6 +2,14 @@
 
 Data: 25 ottobre 2026. Ramo: draft. PR: 18.
 
+## Correzione dei diagnostici riportati dall autore
+
+Il 25 ottobre 2026 alle 03:47, l autore ha fornito il log di npm run check: svelte-check ha riportato 25 errori e 0 warning in components/draft-order.svelte e components/draft-modal.svelte. Questo e un esito negativo del controllo, non un nuovo verde o un esito dei test Vitest. Il log non e stato recuperato autonomamente dall assistente tramite Actions.
+
+Nei due componenti la variabile locale state interferisce con il riconoscimento di $state, interpretato come accesso automatico a uno store. La correzione corrente rinomina solo quella variabile e i suoi riferimenti in sessionState, lasciando invariati la runa $state, la proprieta store.state e il campo state del port di advanceDraftOrder. Non aggiunge subscribe a DraftSessionState, non modifica il controller e non cambia regole o flussi.
+
+Correzione predisposta dopo lettura dei file correnti. Nessuna installazione, formattazione o esecuzione locale di check/lint/test/build. Il nuovo npm run check e ancora da verificare; non si dichiara che tutti i diagnostici siano gia scomparsi. La lettura o attesa della CI resta a indicazione dell autore.
+
 ## Stato corrente
 
 1. Contratti, validatori, client e test predisposti: 8d6f7cd62ef5058e0123e4acae5245bd62cd130a.
@@ -9,7 +17,7 @@ Data: 25 ottobre 2026. Ramo: draft. PR: 18.
 3. Store e test predisposti: dd9c011f1b9dd6a6aadd68c69b9e25cecd8b43ea.
 4. Modal e politica annullamento: 06afc3a44edb4619fb6dd1d0dd19ecbfbcfce64f.
 5. Scelta iniziale e presenze, helper e test predisposti: 3a17b7cb1aad0923f6f8e02643afde59ed3e0e9b.
-6. Ordine locale con trascinamento, salvataggio prima di start, test puri/SSR predisposti: incremento corrente.
+6. Ordine locale con trascinamento, salvataggio prima di start e test puri/SSR predisposti: 4996f8baaf16a600a8ddb325f1cb47aa2bbda3b9.
 
 Componenti non montati nell applicazione: Nuova gara, layout, autenticazione e SSE non collegati. Mancano schermate di scelta carte, mazzi e READY. Il flusso completo non e disponibile.
 
@@ -53,7 +61,7 @@ La serializzazione locale protegge l invio Avanti; il controller mantiene le pro
 
 ## Verifiche e limiti
 
-Test predisposti, non eseguiti localmente. Nessun type-check, lint, Vitest o build dichiarato superato e nessun nuovo risultato CI letto o atteso. Verifiche backend precedenti non attestano questi incrementi.
+Test predisposti, non eseguiti localmente. Nessun type-check, lint, Vitest o build dichiarato superato per gli incrementi frontend. Il fallimento di check fornito dall autore e descritto sopra; nessun nuovo risultato Actions e stato letto autonomamente. Verifiche backend precedenti non attestano questi incrementi.
 
 Helper ordine: spostamenti immutabili, insiemi, baseline e coordinamento save/start con port simulato. Test SSR: etichette, ordine iniziale, stato prima gara e controlli; non generano eventi pointer, tastiera o clic. Non sono verifiche di trascinamento touch, focus, conferme, reattivita DOM o comportamento end-to-end. Controller/store testati soltanto nei casi predisposti con trasporti simulati, non DB concorrente reale. Le opzioni del modal non hanno ancora prova browser attestata.
 

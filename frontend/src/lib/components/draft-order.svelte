@@ -17,14 +17,14 @@
 	let list = $state<HTMLOListElement>();
 	let submitting = $state(false);
 	let notice = $state<string | null>(null);
-	const state = $derived(store.state);
-	const baseline = $derived(createDraftOrder(state));
+	const sessionState = $derived(store.state);
+	const baseline = $derived(createDraftOrder(sessionState));
 	const dirty = $derived(edited !== null && edited.owner === store && draftOrderChanged(edited.order));
 	const local = $derived(dirty && edited ? edited.order : baseline);
 	const rows = $derived(local ? draftOrderRows(local) : []);
-	const stale = $derived(dirty && local !== null && !draftOrderMatches(state, local));
-	const available = $derived(state.snapshot?.phase === 'order' && state.status !== 'finished' && state.status !== 'disposed');
-	const editable = $derived(local !== null && !submitting && discard === null && canEditDraftOrder(state, local));
+	const stale = $derived(dirty && local !== null && !draftOrderMatches(sessionState, local));
+	const available = $derived(sessionState.snapshot?.phase === 'order' && sessionState.status !== 'finished' && sessionState.status !== 'disposed');
+	const editable = $derived(local !== null && !submitting && discard === null && canEditDraftOrder(sessionState, local));
 
 	function move(pilotId: number, index: number): void {
 		store.syncContext();
@@ -101,7 +101,7 @@
 
 {#if available}
 	<section aria-label="Ordine draft" aria-busy={submitting || store.busy} class="space-y-4">
-		{#if state.snapshot?.first_race}
+		{#if sessionState.snapshot?.first_race}
 			<strong class="block text-center">Prima gara</strong>
 		{/if}
 		<p class="text-sm text-muted-foreground">

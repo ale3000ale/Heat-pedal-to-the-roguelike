@@ -25,12 +25,12 @@
 	let confirmation = $state.raw<{ owner: DraftStore; proposal: DraftCancellationProposal } | null>(null);
 	let submitting = $state(false);
 	let notice = $state<string | null>(null);
-	const state = $derived(store.state);
-	const policy = $derived(draftClosePolicy(state));
-	const visible = $derived(open && state.status !== 'finished' && state.status !== 'disposed');
+	const sessionState = $derived(store.state);
+	const policy = $derived(draftClosePolicy(sessionState));
+	const visible = $derived(open && sessionState.status !== 'finished' && sessionState.status !== 'disposed');
 	const canConfirm = $derived(
 		confirmation !== null && confirmation.owner === store &&
-		canConfirmDraftCancellation(state, confirmation.proposal)
+		canConfirmDraftCancellation(sessionState, confirmation.proposal)
 	);
 
 	// Una conferma non e un'autorizzazione permanente dopo variazioni del contesto.
@@ -82,16 +82,16 @@
 	closePosition="left"
 	showClose={policy.showClose}
 	closeDisabled={!policy.canRequest || submitting || confirmation !== null}
-	wide={state.snapshot?.phase === 'picking' || state.snapshot?.phase === 'decks'}
+	wide={sessionState.snapshot?.phase === 'picking' || sessionState.snapshot?.phase === 'decks'}
 	onrequestclose={requestClose}
 >
-	{#if state.error}
-		<p role="alert" class="mb-3 text-sm text-destructive">{state.error}</p>
+	{#if sessionState.error}
+		<p role="alert" class="mb-3 text-sm text-destructive">{sessionState.error}</p>
 	{/if}
 	{#if notice}
 		<p role="status" class="mb-3 text-sm">{notice}</p>
 	{/if}
-	{#if state.status === 'blocked' && !submitting}
+	{#if sessionState.status === 'blocked' && !submitting}
 		<div class="mb-3">
 			<p class="mb-2 text-sm">Lo stato deve essere verificato prima di nuove operazioni.</p>
 			<Button variant="outline" disabled={store.busy} onclick={() => store.refresh()}>
