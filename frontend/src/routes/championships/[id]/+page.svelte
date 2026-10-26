@@ -4,6 +4,8 @@
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth.svelte';
+	import { getDraftHost } from '$lib/draft-host-context';
+	import { openChampionshipDraft } from '$lib/championship-draft-launch';
 	import { standingKey } from '$lib/standings';
 	import { canShowEnroll, enrollablePilots } from '$lib/enroll-candidates';
 	import { deckAction } from '$lib/deck-access';
@@ -22,9 +24,8 @@
 	import CardGiftPopup from '$lib/components/card-gift-popup.svelte';
 	import RacingIcon from '$lib/components/racing-icon.svelte';
 
-	const RACE_UNFINISHED_MESSAGE =
-		"C'è una gara non conclusa (in corso o in revisione): va conclusa prima di crearne un'altra.";
-
+	// Recuperato durante l'inizializzazione, mai dentro un gestore di clic.
+	const draftHost = getDraftHost();
 	let championship = $state<ChampionshipDetail | null>(null);
 	let standings = $state<Standing[]>([]);
 	let races = $state<Race[]>([]);
@@ -97,11 +98,12 @@
 		await currentLive?.close(shown.map((gift) => gift.id));
 	}
 
-	// Il contesto dipende solo da parametro e utente, non dagli snapshot applicati.
+	// Parametro e generazione autenticata delimitano il contesto, non gli snapshot.
 	// Dispose invalida risposte tardive; una lettura dell'intervallo tardiva non avvia lavoro.
 	$effect(() => {
 		const championshipId = Number(page.params.id);
-		const userId = auth.user?.id;
+		const sessionKey = auth.sessionKey;
+		const userId = sessionKey ? auth.user?.id : undefined;
 		championship = null;
 		standings = [];
 		races = [];
@@ -179,25 +181,46 @@
 		else if (enrolled.length > 0) goToDeck(enrolled[0]);
 	}
 
-	// La lettura dopo POST usa la coda live, senza applicare risposte del vecchio contesto.
-	async function createRace() {
-		if (raceUnfinished) {
-			raceError = RACE_UNFINISHED_MESSAGE;
-			return;
-		}
+	/** Apre la preparazione nel registro globale, senza creare direttamente una gara.
+	 * Dopo await aggiorna messaggi/busy solo per la stessa pagina e generazione.
+	 * Null non prova rollback: il recupero degli esiti incerti resta nel registro.
+	 */
+	async function createRace(): Promise<void> {
+		if (busy || !championship) return;
 		const active = currentLive;
 		const championshipId = Number(page.params.id);
+		const sessionKey = auth.sessionKey;
+		if (championship.id !== championshipId) {
+			raceError = 'Campionato non disponibile: rileggi la pagina.';
+			return;
+		}
+		const isCurrent = () =>
+			active === currentLive &&
+			sessionKey === auth.sessionKey &&
+			championshipId === Number(page.params.id);
 		raceError = null;
 		busy = true;
 		try {
-			await api<Race>(`/championships/${championshipId}/races`, { method: 'POST' });
-			if (active === currentLive) await active?.refresh();
-		} catch (e) {
-			if (active === currentLive) {
-				raceError = e instanceof Error ? e.message : 'Errore sconosciuto';
+			const opened = await openChampionshipDraft(
+				{
+					championshipId,
+					sessionKey,
+					canManage: auth.canManageRaces,
+					closed: championship.is_closed,
+					raceUnfinished
+				},
+				draftHost
+			);
+			if (isCurrent() && !opened) {
+				raceError =
+					draftHost.getState().error ??
+					'Apertura non confermata. Verifica le preparazioni prima di riprovare.';
 			}
+		} catch (cause) {
+			if (isCurrent())
+				raceError = cause instanceof Error ? cause.message : 'Apertura preparazione non riuscita';
 		} finally {
-			if (active === currentLive) busy = false;
+			if (isCurrent()) busy = false;
 		}
 	}
 </script>
@@ -533,7 +556,10 @@
 					<Button
 						size="sm"
 						onclick={createRace}
-						disabled={busy}
+						disabled={busy ||
+							$draftHost.busy ||
+							$draftHost.status === 'blocked' ||
+							!auth.sessionKey}
 						aria-disabled={raceUnfinished}
 						class="heat-glow h-9 bg-primary font-racing font-bold tracking-wider text-white uppercase hover:bg-accent {raceUnfinished
 							? 'cursor-not-allowed opacity-50'
@@ -596,6 +622,7 @@
 										<span
 											class="text-xs font-bold text-primary transition-transform group-hover:translate-x-1"
 											>→</span
+										>
 										>
 									</div>
 								</a>

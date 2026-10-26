@@ -1,0 +1,87 @@
+{
+  "run_id": 40152662704,
+  "run_attempt": 1,
+  "source_sha": "ba0410e475afb85bb452ef66abd6a79954e9e21e",
+  "job_id": 121047268476,
+  "job_name": "publish-verified-backend",
+  "conclusion": "failure",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/checkout@v4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/setup-python@v5",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Verifica provenienza e recupera artefatto immutabile",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Verifica hash, riallinea documenti e prepara commit locale",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "name": "Installa dipendenze backend esistenti",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Pytest sul candidato completo",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Migrazioni sul solo database temporaneo del runner",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Run actions/setup-node@v4",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Frontend esistente - check lint test build",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Pubblica solo dopo tutti i controlli e senza force-push",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Registra sul commit pubblicato le verifiche realmente eseguite",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Post Run actions/setup-python@v5",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "Post Run actions/checkout@v4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "scope": "Diagnosi della pubblicazione; non attesta nuovi test o consolidamento backend.",
+  "log_retrieval_error": "the response contains terminal escape sequences; pass --allow-escape-sequences to output it anyway\n"
+}

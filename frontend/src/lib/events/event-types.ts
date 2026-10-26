@@ -8,7 +8,8 @@ export const DOMAIN_EVENTS = [
 	'race.started',
 	'race.review_changed',
 	'race.results_changed',
-	'standings.changed'
+	'standings.changed',
+	'draft.changed'
 ] as const;
 
 export type DomainEventType = (typeof DOMAIN_EVENTS)[number];

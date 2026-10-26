@@ -1,0 +1,269 @@
+name: Pubblica backend draft verificato
+
+on:
+  push:
+    branches: [draft]
+    paths: ['.github/workflows/draft-backend-publish.yml']
+
+permissions:
+  contents: write
+  actions: read
+  checks: write
+
+concurrency:
+  group: draft-backend-publish
+  cancel-in-progress: false
+
+jobs:
+  publish-verified-backend:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.ref == 'refs/heads/draft'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verifica provenienza e recupera artefatto immutabile
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+
+          repository = 'ale3000ale/Heat-pedal-to-the-roguelike'
+          endpoint = f'repos/{repository}/actions/runs/40152061495'
+          run = json.loads(subprocess.check_output(['gh', 'api', endpoint]))
+          expected = {
+              'id': 40152061495,
+              'status': 'completed',
+              'conclusion': 'success',
+              'head_sha': '1052e5d645d9fc5b42c02676aca4b01cf86e9c90',
+              'head_branch': 'draft',
+              'path': '.github/workflows/draft-backend-materialize.yml',
+              'run_attempt': 1,
+          }
+          if any(run.get(key) != value for key, value in expected.items()):
+              raise RuntimeError('Esecuzione sorgente diversa da quella approvata')
+          data = json.loads(subprocess.check_output(['gh', 'api', endpoint + '/artifacts']))
+          artifacts = [a for a in data['artifacts'] if a['name'] == 'draft-backend-materialized']
+          if len(artifacts) != 1 or artifacts[0]['expired']:
+              raise RuntimeError('Artefatto assente, ambiguo o scaduto')
+          output = Path(os.environ['RUNNER_TEMP']) / 'draft-backend-verified'
+          if output.exists():
+              raise RuntimeError('Cartella artefatto non vuota o gia presente')
+          subprocess.run(['gh', 'run', 'download', '40152061495', '--repo', repository,
+                          '--name', 'draft-backend-materialized', '--dir', str(output)], check=True)
+          PY
+      - name: Verifica hash, riallinea documenti e prepara commit locale
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast
+          import hashlib
+          import json
+          import os
+          from pathlib import Path, PurePosixPath
+          import re
+          import subprocess
+
+          def git(*args):
+              """Esegue Git nel checkout del runner; propaga errori senza nasconderli."""
+              return subprocess.check_output(['git', *args], text=True).strip()
+
+          root = Path.cwd().resolve()
+          start = git('rev-parse', 'HEAD')
+          if start != os.environ['GITHUB_SHA']:
+              raise RuntimeError('Checkout diverso dal commit che ha avviato il workflow')
+          base = '3c0e617f232ebd8e2c659951e4a7586904b9cbb3'
+          subprocess.run(['git', 'diff', '--exit-code', base, 'HEAD', '--',
+                          'backend', 'frontend', 'heat.py', 'tools', 'database', 'assets'], check=True)
+          artifact = Path(os.environ['RUNNER_TEMP']) / 'draft-backend-verified'
+          manifest = json.loads((artifact / 'manifest.json').read_text(encoding='utf-8'))
+          required = {
+              'backend/app/services/championships.py',
+              'backend/app/services/pilot_deck.py',
+              'backend/app/services/shop_purchase.py',
+              'backend/app/services/admin_pilot_cards.py',
+              'backend/app/services/races.py',
+              'backend/app/services/draft_preparation.py',
+              'backend/app/main.py',
+              'backend/tests/test_draft_existing_services.py',
+              'scripts/reconstruct_draft_backend.py',
+          }
+          if not isinstance(manifest, dict) or not required.issubset(manifest):
+              raise RuntimeError('Manifest incompleto')
+          validated = {}
+          for name, expected in manifest.items():
+              path = PurePosixPath(name)
+              if path.is_absolute() or '..' in path.parts:
+                  raise RuntimeError(f'Percorso non valido: {name}')
+              if not (name.startswith('backend/') and name.endswith('.py')
+                      or name == 'scripts/reconstruct_draft_backend.py'):
+                  raise RuntimeError(f'File fuori perimetro: {name}')
+              if not isinstance(expected, str) or not re.fullmatch('[0-9a-f]{64}', expected):
+                  raise RuntimeError(f'Hash non valido: {name}')
+              source = artifact / name
+              if source.is_symlink() or not source.resolve().is_relative_to(artifact.resolve()):
+                  raise RuntimeError(f'Sorgente esterno: {name}')
+              raw = source.read_bytes()
+              if hashlib.sha256(raw).hexdigest() != expected:
+                  raise RuntimeError(f'Hash discordante: {name}')
+              ast.parse(raw.decode('utf-8'), filename=name)
+              target = root / name
+              if target.is_symlink() or not target.resolve().is_relative_to(root):
+                  raise RuntimeError(f'Destinazione esterna: {name}')
+              validated[name] = raw
+
+          documents = {
+              'README.md': 'Il backend draft e consolidato sul ramo draft. La nuova interfaccia draft non e ancora disponibile; i controlli frontend riguardano l applicazione esistente.',
+              'docs/PROJECT_SPEC.md': 'Le regole del flusso restano quelle di docs/DRAFT_SPEC.md. Questo aggiornamento registra lo stato tecnico, senza introdurre nuove regole o autorizzare la fase frontend.',
+              'docs/PROJECT_STATUS.md': 'Backend consolidato e verificato in CI. Frontend draft e collaudo browser restano da svolgere con approvazione separata. La PR 18 resta in bozza; nessun merge autorizzato.',
+              'docs/SETUP.md': 'Setup e avvio esistenti restano invariati. Questo consolidamento non aggiunge dipendenze o lockfile e non esegue setup, reset o migrazioni sul database dell autore.',
+              'docs/DATABASE.md': 'Il consolidamento non cambia lo schema o le migrazioni gia presenti nel ramo e non converte Deck.cards. Le prove upgrade/downgrade riguardano soltanto il database temporaneo del runner; nessun accesso al database reale.',
+              'docs/SCRIPTS.md': 'scripts/reconstruct_draft_backend.py ricostruisce sorgenti in staging esterno al repository da base Git fissata ed export JSON dei checkpoint PR 18. Parametri obbligatori: --repository, --comments e --output. Non e un comando di setup o avvio e non modifica il database. Il workflow di pubblicazione recupera invece l artefatto gia validato e non riesegue codice letto dai commenti.',
+              'docs/PROJECT_NOTES.md': 'I nuovi moduli backend provengono dai checkpoint PR 18; i percorsi e gli hash dei sorgenti sono elencati in docs/DRAFT_BACKEND_MANIFEST.json. Non viene creato un secondo frontend o uno scaffold nuovo.',
+              'docs/OPEN_QUESTIONS.md': 'Questo consolidamento non aggiunge decisioni di prodotto aperte. Restano attivita implementative: frontend draft, integrazione live lato interfaccia e collaudo browser; non vanno presentate come gia completate.',
+              'docs/DRAFT_SPEC.md': 'La specifica funzionale resta invariata. Backend consolidato da checkpoint verificati; frontend draft e verifica browser non ancora completati. Non sono attestati conteggi di test o copertura esaustiva di ogni scenario.',
+          }
+          marker = '<!-- draft-backend-current:start -->'
+          run_url = f'https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/{os.environ["GITHUB_RUN_ID"]}'
+          shared = (
+              'Aggiornamento del 25 ottobre 2026, solo ramo draft e PR 18. '
+              'Questa sezione aggiorna il solo stato del flusso draft e prevale sulle note storiche di avanzamento, senza alterare gli altri requisiti.\n\n'
+              'Sorgenti recuperati dall artefatto draft-backend-materialized della run 40152061495, '
+              'job materialize-and-check concluso con success sul commit tecnico 1052e5d. '
+              'Gli hash SHA-256 dei sorgenti sono conservati in docs/DRAFT_BACKEND_MANIFEST.json.\n\n'
+              'Prima della pubblicazione questo workflow verifica di nuovo pytest backend, '
+              'upgrade/downgrade/upgrade con controlli dello schema e frontend check, lint, test e build. '
+              'Esecuzione di pubblicazione: ' + run_url + '. '
+              'Il controllo dedicato sul commit risultante documenta queste verifiche pre-push; '
+              'non e una nuova esecuzione dei job ordinari della PR.\n\n'
+              'Nessun conteggio di test o warning inventato, nessun test locale o collaudo browser attestato. '
+              'Nessun merge, rilascio, ZIP finale del progetto o intervento sul database reale. '
+              'Il frontend draft non e implementato da questo consolidamento.'
+          )
+          updates = {}
+          for name, specific in documents.items():
+              target = root / name
+              if target.is_symlink() or not target.resolve().is_relative_to(root):
+                  raise RuntimeError(f'Documento esterno: {name}')
+              text = target.read_text(encoding='utf-8')
+              heading = re.search(r'^# [^\r\n]+\r?$', text, flags=re.M)
+              if heading is None or marker in text:
+                  raise RuntimeError(f'Documento senza titolo H1 o gia aggiornato: {name}')
+              # Conserva anche eventuali note introduttive prima del titolo.
+              prefix = text[:heading.end()]
+              body = text[heading.end():]
+              if name == 'docs/DRAFT_SPEC.md':
+                  old = 'Stato: requisiti concordati; implementazione e verifiche non ancora eseguite.'
+                  new = 'Stato: backend consolidato e verificato in CI; frontend draft e collaudo browser non completati.'
+                  if body.count(old) != 1:
+                      raise RuntimeError('Stato iniziale specifica diverso da quello letto')
+                  body = body.replace(old, new, 1)
+                  old = ('Nessuna implementazione, migrazione, esecuzione di test o verifica browser della nuova funzione e attestata da questo documento. '
+                         'Nomi di nuovi moduli, rotte e tabelle saranno definiti soltanto dopo la lettura del codice e dello schema esistenti.')
+                  if body.count(old) != 1:
+                      raise RuntimeError('Paragrafo verifiche della specifica inatteso')
+                  body = body.replace(old, 'Backend ricostruito dai checkpoint e verificato nel runner GitHub. Frontend draft e verifica browser non completati. Provenienza, limiti e verifiche sono descritti nella sezione corrente sopra.', 1)
+              block = ('\n' + marker + '\n## Draft - backend consolidato e limiti correnti\n\n'
+                       + shared + '\n\n' + specific + '\n<!-- draft-backend-current:end -->\n\n')
+              updates[name] = prefix + '\n' + block + body.lstrip('\r\n')
+          for name, raw in validated.items():
+              target = root / name
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(raw)
+          for name, text in updates.items():
+              (root / name).write_text(text, encoding='utf-8', newline='\n')
+          manifest_path = 'docs/DRAFT_BACKEND_MANIFEST.json'
+          if (root / manifest_path).exists():
+              raise RuntimeError('Manifest di consolidamento gia presente')
+          (root / manifest_path).write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
+          paths = sorted([*validated, *updates, manifest_path])
+          subprocess.run(['git', 'add', '--', *paths], check=True)
+          staged = set(git('diff', '--cached', '--name-only').splitlines())
+          if not staged or not staged.issubset(paths):
+              raise RuntimeError('Indice Git vuoto o contenente file non autorizzati')
+          subprocess.run(['git', 'diff', '--cached', '--check'], check=True)
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git', 'commit', '-m', 'feat: consolida backend draft verificato e documentazione'], check=True)
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              output.write(f'PROMOTION_START_SHA={start}\nPROMOTED_SHA={git("rev-parse", "HEAD")}\n')
+          print(f'Commit locale preparato con {len(validated)} sorgenti; nessun push ancora eseguito')
+          PY
+      - name: Installa dipendenze backend esistenti
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest httpx
+      - name: Pytest sul candidato completo
+        working-directory: backend
+        run: python -m pytest -q
+      - name: Migrazioni sul solo database temporaneo del runner
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: |
+          rm -f heat.db
+          alembic upgrade head
+          python ../.github/scripts/check_migrations.py schema
+          alembic downgrade base
+          python ../.github/scripts/check_migrations.py empty
+          alembic upgrade head
+          python ../.github/scripts/check_migrations.py schema
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Frontend esistente - check lint test build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run check
+          npm run lint
+          npm test
+          npm run build
+      - name: Pubblica solo dopo tutti i controlli e senza force-push
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PROMOTED_SHA"
+          git diff --exit-code
+          git diff --cached --exit-code
+          git fetch origin refs/heads/draft:refs/remotes/origin/draft
+          test "$(git rev-parse refs/remotes/origin/draft)" = "$PROMOTION_START_SHA"
+          git push origin HEAD:refs/heads/draft
+      - name: Registra sul commit pubblicato le verifiche realmente eseguite
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          payload = {
+              'name': 'Backend draft consolidato - verifiche pre-push',
+              'head_sha': os.environ['PROMOTED_SHA'],
+              'status': 'completed',
+              'conclusion': 'success',
+              'details_url': f'https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/{os.environ["GITHUB_RUN_ID"]}',
+              'output': {
+                  'title': 'Candidato verificato prima del push',
+                  'summary': 'Hash sorgenti verificati contro l artefatto della run 40152061495. Sul candidato completo sono riusciti pytest backend, migrazioni upgrade/downgrade/upgrade con controlli schema e frontend check/lint/test/build. Non sono risultati della CI ordinaria sul nuovo SHA; nessun collaudo browser attestato.',
+              },
+          }
+          subprocess.run(['gh', 'api', '--method', 'POST',
+                          'repos/ale3000ale/Heat-pedal-to-the-roguelike/check-runs', '--input', '-'],
+                         input=json.dumps(payload), text=True, check=True)
+          PY

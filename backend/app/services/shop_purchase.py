@@ -13,6 +13,8 @@ from app.services.championships import ChampionshipClosedError, get_championship
 from app.services.packs import get_pack
 from app.services.pilots import get_own_pilot
 from app.services.races import has_race_in_progress
+from app.services.draft_guards import require_no_draft
+from app.services.sqlite_write_lock import acquire_sqlite_write_lock
 from app.services.shop_draw import PackSoldOutError, draw_cards
 from app.services.shop_view import PilotNotEnrolledError, is_enrolled, load_pool
 
@@ -93,7 +95,7 @@ def purchase_pack(
     rng = rng or random.SystemRandom()
     with _PURCHASE_LOCK:
         try:
-            _lock_database(db)
+            acquire_sqlite_write_lock(db)
             result = _purchase(db, user, championship_id, pack_id, pilot_id, rng)
             db.commit()
         except Exception:
@@ -111,6 +113,7 @@ def _purchase(db, user, championship_id, pack_id, pilot_id, rng) -> PurchaseResu
     pilot = get_own_pilot(db, user, pilot_id)
     if not is_enrolled(db, championship_id, pilot.id):
         raise PilotNotEnrolledError
+    require_no_draft(db, championship_id)
     if has_race_in_progress(db, championship_id):
         raise ShopLockedError
     pack = get_pack(db, championship_id, pack_id)

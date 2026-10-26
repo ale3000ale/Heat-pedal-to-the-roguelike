@@ -12,6 +12,7 @@ from app.schemas.admin_pilot_cards import (
 from app.services.cards import parse_cards
 from app.services.championships import get_championship
 from app.services.races import has_race_in_progress
+from app.services.draft_guards import has_draft
 
 
 class CardAdminForbiddenError(Exception):
@@ -108,6 +109,8 @@ def read_admin_pilot_cards(
                 available=True, id=deck.id, version=deck.version, cards=parse_cards(deck.cards),
             )
     blocked = "Campionato chiuso" if championship.is_closed else None
+    if blocked is None and has_draft(db, championship_id):
+        blocked = "Preparazione gara attiva"
     if blocked is None and has_race_in_progress(db, championship_id):
         blocked = "Gara o revisione non ancora confermata"
     return AdminPilotCardsRead(

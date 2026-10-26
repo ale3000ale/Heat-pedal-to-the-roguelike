@@ -1,0 +1,95 @@
+name: Diagnosi pubblicazione draft
+
+on:
+  push:
+    branches: [draft]
+    paths: ['.github/workflows/draft-publish-diagnose.yml']
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: draft-publish-diagnose
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    if: github.repository == 'ale3000ale/Heat-pedal-to-the-roguelike' && github.ref == 'refs/heads/draft'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Recupera errori filtrati senza sequenze terminale
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+
+          def redact(text):
+              """Rimuove sequenze terminale, controlli, token e URL dagli estratti dei log."""
+              text = re.sub(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)', '', text)
+              text = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', text)
+              text = re.sub(r'[\x00-\x08\x0b-\x1f\x7f]', '', text)
+              token = os.environ.get('GH_TOKEN', '')
+              if token:
+                  text = text.replace(token, '[REDACTED]')
+              text = re.sub(r'(?:github_pat_|gh[pousr]_)[A-Za-z0-9_]+', '[REDACTED]', text)
+              text = re.sub(r'(?i)(authorization\s*[:=]\s*)([^\r\n]+)', r'\1[REDACTED]', text)
+              return re.sub(r'https?://\S+', '[URL]', text)
+
+          root = Path.cwd().resolve()
+          previous = json.loads((root / '.github/diagnostics/draft-publish-40152662704.json').read_text(encoding='utf-8'))
+          if (previous['run_id'] != 40152662704 or previous['job_id'] != 121047268476
+              or previous['source_sha'] != 'ba0410e475afb85bb452ef66abd6a79954e9e21e'
+              or previous['conclusion'] != 'failure'):
+              raise RuntimeError('Rapporto precedente diverso da quello diagnosticato')
+          logs = subprocess.check_output([
+              'gh', 'api', '--allow-escape-sequences',
+              'repos/ale3000ale/Heat-pedal-to-the-roguelike/actions/jobs/121047268476/logs',
+          ]).decode('utf-8', errors='replace')
+          clean = redact(logs)
+          pattern = re.compile(r'traceback|error|exception|failed|failure|returned non-zero|permission|forbidden|not found|manifest|inatteso|inattesa|discordante', re.I)
+          lines = [line[:700] for line in clean.splitlines() if pattern.search(line)][-40:]
+          if not lines:
+              raise RuntimeError('Nessuna riga diagnostica riconoscibile: non viene pubblicato un falso rapporto utile')
+          report = {
+              'run_id': 40152662704,
+              'job_id': 121047268476,
+              'source_sha': previous['source_sha'],
+              'filtered_error_lines': lines,
+              'scope': 'Solo diagnosi. Nessuna modifica backend, nuovo test o pubblicazione sorgenti attestata.',
+          }
+          relative = '.github/diagnostics/draft-publish-40152662704-log.json'
+          target = root / relative
+          if target.is_symlink() or not target.resolve().is_relative_to(root):
+              raise RuntimeError('Destinazione diagnostica esterna')
+          content = json.dumps(report, ensure_ascii=True, indent=2) + '\n'
+          if target.exists():
+              if target.read_text(encoding='utf-8') == content:
+                  raise SystemExit(0)
+              raise RuntimeError('Rapporto gia presente con contenuto diverso: nessuna sovrascrittura')
+          target.write_text(content, encoding='utf-8')
+          subprocess.run(['git', 'add', '--', relative], check=True)
+          subprocess.run(['git', 'diff', '--cached', '--check'], check=True)
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git', 'commit', '-m', 'ci: conserva errore filtrato della pubblicazione draft'], check=True)
+          subprocess.run(['git', 'fetch', 'origin', 'refs/heads/draft:refs/remotes/origin/draft'], check=True)
+          remote = subprocess.check_output(['git', 'rev-parse', 'refs/remotes/origin/draft'], text=True).strip()
+          if remote != os.environ['GITHUB_SHA']:
+              raise RuntimeError('Ramo cambiato: pubblicazione diagnostica interrotta')
+          subprocess.run(['git', 'push', 'origin', 'HEAD:refs/heads/draft'], check=True)
+          PY

@@ -16,6 +16,7 @@ from app.services.cards import (
     parse_cards,
 )
 from app.services.pilots import get_own_pilot
+from app.services.draft_guards import pilot_has_draft, require_no_pilot_draft
 from app.services.sqlite_write_lock import SQLiteWriteLockError, acquire_sqlite_write_lock
 
 # Tentativi di spostamento se un'altra richiesta modifica gli stessi mazzi nel frattempo.
@@ -76,7 +77,8 @@ def has_race_in_progress(db: Session, pilot: Pilot) -> bool:
         )
         .limit(1)
     )
-    return db.scalar(stmt) is not None
+    # deck_locked comprende la preparazione senza creare una Race.
+    return db.scalar(stmt) is not None or pilot_has_draft(db, pilot.id)
 
 
 def _take_one(cards: list[CardEntry], path: str) -> CardEntry:
@@ -116,6 +118,7 @@ def move_card(db: Session, user: User, pilot_id: int, path: str, to_game: bool) 
         try:
             acquire_sqlite_write_lock(db)
             pilot = get_own_pilot(db, user, pilot_id)
+            require_no_pilot_draft(db, pilot.id)
             if has_race_in_progress(db, pilot):
                 raise RaceInProgressError
             inventory_deck = db.get(Deck, pilot.inventory_deck_id)
