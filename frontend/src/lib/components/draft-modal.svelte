@@ -99,7 +99,8 @@
 	showClose={policy.showClose}
 	closeDisabled={!policy.canRequest || externalBusy || submitting || confirmation !== null}
 	wide={sessionState.snapshot?.phase === 'picking' || sessionState.snapshot?.phase === 'decks'}
-	stableViewport={sessionState.snapshot?.phase === 'picking' || sessionState.snapshot?.phase === 'decks'}
+	stableViewport={sessionState.snapshot?.phase === 'picking' ||
+		sessionState.snapshot?.phase === 'decks'}
 	onrequestclose={requestClose}
 >
 	{#if sessionState.error}

@@ -6,12 +6,26 @@ import type { DraftSessionOptions } from './draft-session';
 import { DraftStore } from './stores/draft.svelte';
 
 function snapshot(): DraftRead {
-	return { id: 1, championship_id: 7, version: 2, phase: 'order', first_race: true,
-		can_manage: true, my_pilot_ids: [11], participants: [
+	return {
+		id: 1,
+		championship_id: 7,
+		version: 2,
+		phase: 'order',
+		first_race: true,
+		can_manage: true,
+		my_pilot_ids: [11],
+		participants: [
 			{ pilot_id: 11, name: 'Anna', present: true },
 			{ pilot_id: 12, name: 'Luca', present: true },
 			{ pilot_id: 13, name: 'Assente', present: false }
-		], order: [12, 11], cards: [], picks: [], preview_slot_id: null, ready: [], current_pilot_id: null };
+		],
+		order: [12, 11],
+		cards: [],
+		picks: [],
+		preview_slot_id: null,
+		ready: [],
+		current_pilot_id: null
+	};
 }
 async function setup(value = snapshot()) {
 	const read = vi.fn<NonNullable<DraftSessionOptions['read']>>().mockResolvedValue(value);
@@ -23,7 +37,8 @@ async function setup(value = snapshot()) {
 function expectAllButtonsDisabled(body: string): void {
 	const buttons = body.match(/<button\b[^>]*>/g) ?? [];
 	expect(buttons.length).toBeGreaterThan(0);
-	for (const button of buttons) expect(button.replace(/"[^"]*"|'[^']*'/g, '""')).toMatch(/\sdisabled(?=\s|=|\/?>)/);
+	for (const button of buttons)
+		expect(button.replace(/"[^"]*"|'[^']*'/g, '""')).toMatch(/\sdisabled(?=\s|=|\/?>)/);
 }
 
 // SSR e geometria pura non attestano pointer capture, gesture touch o drop nel browser.
@@ -49,12 +64,14 @@ describe('rendering ordine draft', () => {
 		expect(body).not.toContain('aria-label="Trascina');
 	});
 	it('non mostra Prima gara nelle gare successive', async () => {
-		const value = snapshot(); value.first_race = false;
+		const value = snapshot();
+		value.first_race = false;
 		const { store } = await setup(value);
 		expect(render(DraftOrder, { props: { store } }).body).not.toContain('Prima gara');
 	});
 	it('disabilita controlli e drag ai non creatori', async () => {
-		const value = snapshot(); value.can_manage = false;
+		const value = snapshot();
+		value.can_manage = false;
 		const { store, accepted, send } = await setup(value);
 		expect(accepted).toBe(true);
 		const body = render(DraftOrder, { props: { store } }).body;
@@ -64,7 +81,8 @@ describe('rendering ordine draft', () => {
 		expect(send).not.toHaveBeenCalled();
 	});
 	it('mostra errore e nessuna scheda per ordine unico ma incompleto', async () => {
-		const value = snapshot(); value.order = [11];
+		const value = snapshot();
+		value.order = [11];
 		const { store, accepted, send } = await setup(value);
 		expect(accepted).toBe(true);
 		expect(store.state.status).toBe('idle');
@@ -76,7 +94,8 @@ describe('rendering ordine draft', () => {
 		expect(send).not.toHaveBeenCalled();
 	});
 	it('rifiuta duplicati prima di renderizzare la fase', async () => {
-		const value = snapshot(); value.order = [11, 11];
+		const value = snapshot();
+		value.order = [11, 11];
 		const { store, accepted, send } = await setup(value);
 		expect(accepted).toBe(false);
 		expect(store.state.status).toBe('blocked');
@@ -89,7 +108,8 @@ describe('rendering ordine draft', () => {
 		expect(send).not.toHaveBeenCalled();
 	});
 	it('non mostra la schermata in fase diversa', async () => {
-		const value = snapshot(); value.phase = 'decks';
+		const value = snapshot();
+		value.phase = 'decks';
 		const { store } = await setup(value);
 		expect(render(DraftOrder, { props: { store } }).body).not.toContain('Ordine di scelta');
 	});

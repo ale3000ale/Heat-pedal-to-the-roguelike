@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import {
-		advanceDraftOrder, canEditDraftOrder, createDraftOrder, draftOrderChanged,
-		draftOrderMatches, draftOrderRows, moveDraftOrder
+		advanceDraftOrder,
+		canEditDraftOrder,
+		createDraftOrder,
+		draftOrderChanged,
+		draftOrderMatches,
+		draftOrderRows,
+		moveDraftOrder
 	} from '$lib/draft-order';
 	import { orderDragRow, orderDragTarget } from '$lib/draft-order-drag';
 	import type { DraftOrderDraft } from '$lib/draft-order';
@@ -13,21 +18,36 @@
 	let edited = $state.raw<LocalOrder | null>(null);
 	let discard = $state.raw<LocalOrder | null>(null);
 	let dragging = $state.raw<{
-		owner: DraftStore; pointerId: number; pilotId: number; original: DraftOrderDraft;
-		container: HTMLOListElement; centers: number[]; from: number; startY: number;
-		scroller: HTMLElement | null; scrollStart: number;
+		owner: DraftStore;
+		pointerId: number;
+		pilotId: number;
+		original: DraftOrderDraft;
+		container: HTMLOListElement;
+		centers: number[];
+		from: number;
+		startY: number;
+		scroller: HTMLElement | null;
+		scrollStart: number;
 	} | null>(null);
 	let list = $state<HTMLOListElement>();
 	let submitting = $state(false);
 	let notice = $state<string | null>(null);
 	const sessionState = $derived(store.state);
 	const baseline = $derived(createDraftOrder(sessionState));
-	const dirty = $derived(edited !== null && edited.owner === store && draftOrderChanged(edited.order));
+	const dirty = $derived(
+		edited !== null && edited.owner === store && draftOrderChanged(edited.order)
+	);
 	const local = $derived(dirty && edited ? edited.order : baseline);
 	const rows = $derived(local ? draftOrderRows(local) : []);
 	const stale = $derived(dirty && local !== null && !draftOrderMatches(sessionState, local));
-	const available = $derived(sessionState.snapshot?.phase === 'order' && sessionState.status !== 'finished' && sessionState.status !== 'disposed');
-	const editable = $derived(local !== null && !submitting && discard === null && canEditDraftOrder(sessionState, local));
+	const available = $derived(
+		sessionState.snapshot?.phase === 'order' &&
+			sessionState.status !== 'finished' &&
+			sessionState.status !== 'disposed'
+	);
+	const editable = $derived(
+		local !== null && !submitting && discard === null && canEditDraftOrder(sessionState, local)
+	);
 
 	function move(pilotId: number, index: number): void {
 		store.syncContext();
@@ -40,9 +60,16 @@
 	function beginDrag(event: PointerEvent, pilotId: number): void {
 		store.syncContext();
 		const container = list;
-		if (!editable || !local || !container || dragging || event.button !== 0 || !event.isPrimary) return;
+		if (!editable || !local || !container || dragging || event.button !== 0 || !event.isPrimary)
+			return;
 		const elements = [...container.querySelectorAll<HTMLElement>('[data-order-pilot]')];
-		if (elements.length !== local.pilotIds.length || elements.some((element, index) => Number(element.dataset.orderPilot) !== local.pilotIds[index])) return;
+		if (
+			elements.length !== local.pilotIds.length ||
+			elements.some(
+				(element, index) => Number(element.dataset.orderPilot) !== local.pilotIds[index]
+			)
+		)
+			return;
 		const from = local.pilotIds.indexOf(pilotId);
 		if (from < 0) return;
 		const centers = elements.map((element) => {
@@ -52,8 +79,18 @@
 		orderDragTarget(centers, from, 0);
 		const scroller = container.closest<HTMLElement>('[role="dialog"]');
 		container.setPointerCapture(event.pointerId);
-		dragging = { owner: store, pointerId: event.pointerId, pilotId, original: local,
-			container, centers, from, startY: event.clientY, scroller, scrollStart: scroller?.scrollTop ?? 0 };
+		dragging = {
+			owner: store,
+			pointerId: event.pointerId,
+			pilotId,
+			original: local,
+			container,
+			centers,
+			from,
+			startY: event.clientY,
+			scroller,
+			scrollStart: scroller?.scrollTop ?? 0
+		};
 		event.preventDefault();
 	}
 
@@ -63,7 +100,11 @@
 		store.syncContext();
 		if (!editable || !local) return;
 		const scrollDelta = (captured.scroller?.scrollTop ?? 0) - captured.scrollStart;
-		const index = orderDragTarget(captured.centers, captured.from, event.clientY - captured.startY + scrollDelta);
+		const index = orderDragTarget(
+			captured.centers,
+			captured.from,
+			event.clientY - captured.startY + scrollDelta
+		);
 		if (index !== local.pilotIds.indexOf(captured.pilotId)) move(captured.pilotId, index);
 		event.preventDefault();
 	}
@@ -74,10 +115,15 @@
 		if (!captured || captured.pointerId !== event.pointerId) return;
 		dragging = null;
 		if (cancelled && captured.owner === store) edited = { owner: store, order: captured.original };
-		if (captured.container.hasPointerCapture(captured.pointerId)) captured.container.releasePointerCapture(captured.pointerId);
+		if (captured.container.hasPointerCapture(captured.pointerId))
+			captured.container.releasePointerCapture(captured.pointerId);
 	}
-	function endDrag(event: PointerEvent): void { finishDrag(event, false); }
-	function cancelDrag(event: PointerEvent): void { finishDrag(event, true); }
+	function endDrag(event: PointerEvent): void {
+		finishDrag(event, false);
+	}
+	function cancelDrag(event: PointerEvent): void {
+		finishDrag(event, true);
+	}
 
 	/** Scarta solo la bozza confermata, senza rete o sblocco dello stato server. */
 	function discardLocal(): void {
@@ -104,49 +150,105 @@
 			});
 			if (store !== target) return;
 			if (result.accepted && edited === captured) edited = null;
-			if (!result.started) notice = result.accepted
-				? 'Ordine presente sul server, ma avvio non confermato. Nessun nuovo tentativo automatico.'
-				: 'Ordine non confermato: verifica errore o variazioni dello stato prima di procedere.';
-		} finally { submitting = false; }
+			if (!result.started)
+				notice = result.accepted
+					? 'Ordine presente sul server, ma avvio non confermato. Nessun nuovo tentativo automatico.'
+					: 'Ordine non confermato: verifica errore o variazioni dello stato prima di procedere.';
+		} finally {
+			submitting = false;
+		}
 	}
 </script>
 
 {#if available}
 	<section aria-label="Ordine draft" aria-busy={submitting || store.busy} class="space-y-4">
-		{#if sessionState.snapshot?.first_race}<strong class="block text-center">Prima gara</strong>{/if}
-		<p class="text-sm text-muted-foreground">Ordine ricevuto dal server. Trascina l'intera scheda del pilota oppure usa le frecce.</p>
-		{#if stale}<p role="alert" class="text-sm text-destructive">Lo stato server e cambiato. La bozza e conservata, ma non puo essere inviata.</p>{/if}
-		{#if !local}<p role="alert" class="text-sm text-destructive">Ordine non utilizzabile: verifica lo stato server.</p>{/if}
+		{#if sessionState.snapshot?.first_race}<strong class="block text-center">Prima gara</strong
+			>{/if}
+		<p class="text-sm text-muted-foreground">
+			Ordine ricevuto dal server. Trascina l'intera scheda del pilota oppure usa le frecce.
+		</p>
+		{#if stale}<p role="alert" class="text-sm text-destructive">
+				Lo stato server e cambiato. La bozza e conservata, ma non puo essere inviata.
+			</p>{/if}
+		{#if !local}<p role="alert" class="text-sm text-destructive">
+				Ordine non utilizzabile: verifica lo stato server.
+			</p>{/if}
 		<p role="status" class="min-h-5 text-sm">{notice ?? ''}</p>
-		<ol bind:this={list} aria-label="Ordine di scelta" class="space-y-2" inert={discard !== null}
-			onpointermove={drag} onpointerup={endDrag} onpointercancel={cancelDrag} onlostpointercapture={cancelDrag}>
+		<ol
+			bind:this={list}
+			aria-label="Ordine di scelta"
+			class="space-y-2"
+			inert={discard !== null}
+			onpointermove={drag}
+			onpointerup={endDrag}
+			onpointercancel={cancelDrag}
+			onlostpointercapture={cancelDrag}
+		>
 			{#each rows as pilot, index (pilot.pilot_id)}
-				<li data-order-pilot={pilot.pilot_id} data-order-draggable={editable ? 'true' : 'false'}
+				<li
+					data-order-pilot={pilot.pilot_id}
+					data-order-draggable={editable ? 'true' : 'false'}
 					use:orderDragRow={{ pilotId: pilot.pilot_id, start: beginDrag }}
 					title={editable ? 'Trascina la scheda per cambiare ordine' : undefined}
-					class="flex flex-wrap items-center gap-2 rounded-md border p-3 {editable || dragging ? 'touch-none select-none' : ''} {dragging?.pilotId === pilot.pilot_id ? 'cursor-grabbing ring-2 ring-primary' : editable ? 'cursor-grab' : ''}">
+					class="flex flex-wrap items-center gap-2 rounded-md border p-3 {editable || dragging
+						? 'touch-none select-none'
+						: ''} {dragging?.pilotId === pilot.pilot_id
+						? 'cursor-grabbing ring-2 ring-primary'
+						: editable
+							? 'cursor-grab'
+							: ''}"
+				>
 					<span class="min-w-0 flex-1 break-words">{index + 1}. {pilot.name}</span>
-					<Button type="button" size="sm" variant="outline"
+					<Button
+						type="button"
+						size="sm"
+						variant="outline"
 						disabled={!editable || index === 0 || dragging !== null}
-						aria-label={`Sposta su ${pilot.name}`} title={`Sposta su ${pilot.name}`}
-						onclick={() => move(pilot.pilot_id, index - 1)}><span aria-hidden="true">↑</span></Button>
-					<Button type="button" size="sm" variant="outline"
+						aria-label={`Sposta su ${pilot.name}`}
+						title={`Sposta su ${pilot.name}`}
+						onclick={() => move(pilot.pilot_id, index - 1)}
+						><span aria-hidden="true">↑</span></Button
+					>
+					<Button
+						type="button"
+						size="sm"
+						variant="outline"
 						disabled={!editable || index === rows.length - 1 || dragging !== null}
-						aria-label={`Sposta giu ${pilot.name}`} title={`Sposta giu ${pilot.name}`}
-						onclick={() => move(pilot.pilot_id, index + 1)}><span aria-hidden="true">↓</span></Button>
+						aria-label={`Sposta giu ${pilot.name}`}
+						title={`Sposta giu ${pilot.name}`}
+						onclick={() => move(pilot.pilot_id, index + 1)}
+						><span aria-hidden="true">↓</span></Button
+					>
 				</li>
 			{/each}
 		</ol>
-		{#if dirty}<Button type="button" variant="outline" disabled={submitting || store.busy || dragging !== null} onclick={() => (discard = edited)}>Scarta ordine locale</Button>{/if}
+		{#if dirty}<Button
+				type="button"
+				variant="outline"
+				disabled={submitting || store.busy || dragging !== null}
+				onclick={() => (discard = edited)}>Scarta ordine locale</Button
+			>{/if}
 		{#if discard}
 			<div class="space-y-2 rounded-md border p-3">
 				<p class="text-sm">Scartare le modifiche locali all ordine?</p>
 				<div class="flex flex-wrap gap-2">
-					<Button type="button" variant="outline" disabled={submitting || store.busy} onclick={() => (discard = null)}>Conserva bozza</Button>
-					<Button type="button" variant="destructive" disabled={submitting || store.busy} onclick={discardLocal}>Scarta bozza</Button>
+					<Button
+						type="button"
+						variant="outline"
+						disabled={submitting || store.busy}
+						onclick={() => (discard = null)}>Conserva bozza</Button
+					>
+					<Button
+						type="button"
+						variant="destructive"
+						disabled={submitting || store.busy}
+						onclick={discardLocal}>Scarta bozza</Button
+					>
 				</div>
 			</div>
 		{/if}
-		<div class="flex justify-end"><Button type="button" disabled={!editable || dragging !== null} onclick={next}>Avanti</Button></div>
+		<div class="flex justify-end">
+			<Button type="button" disabled={!editable || dragging !== null} onclick={next}>Avanti</Button>
+		</div>
 	</section>
 {/if}

@@ -11,15 +11,23 @@ export interface OrderDragRowOptions {
 export function orderDragRow(node: HTMLElement, options: OrderDragRowOptions) {
 	let current = options;
 	function down(event: PointerEvent): void {
-		if (event.target instanceof Element && event.target.closest(
-			'button,a,input,select,textarea,[contenteditable="true"],[data-no-order-drag]'
-		)) return;
+		if (
+			event.target instanceof Element &&
+			event.target.closest(
+				'button,a,input,select,textarea,[contenteditable="true"],[data-no-order-drag]'
+			)
+		)
+			return;
 		current.start(event, current.pilotId);
 	}
 	node.addEventListener('pointerdown', down);
 	return {
-		update(value: OrderDragRowOptions) { current = value; },
-		destroy() { node.removeEventListener('pointerdown', down); }
+		update(value: OrderDragRowOptions) {
+			current = value;
+		},
+		destroy() {
+			node.removeEventListener('pointerdown', down);
+		}
 	};
 }
 
@@ -32,11 +40,23 @@ export function orderDragRow(node: HTMLElement, options: OrderDragRowOptions) {
  * @throws RangeError per geometria, indice o distanze non validi.
  */
 export function orderDragTarget(
-	centers: readonly number[], from: number, deltaY: number, threshold = 6
+	centers: readonly number[],
+	from: number,
+	deltaY: number,
+	threshold = 6
 ): number {
-	if (centers.length === 0 || !Number.isInteger(from) || from < 0 || from >= centers.length ||
-		!Number.isFinite(deltaY) || !Number.isFinite(threshold) || threshold < 0 ||
-		centers.some((value, index) => !Number.isFinite(value) || (index > 0 && value <= centers[index - 1]))) {
+	if (
+		centers.length === 0 ||
+		!Number.isInteger(from) ||
+		from < 0 ||
+		from >= centers.length ||
+		!Number.isFinite(deltaY) ||
+		!Number.isFinite(threshold) ||
+		threshold < 0 ||
+		centers.some(
+			(value, index) => !Number.isFinite(value) || (index > 0 && value <= centers[index - 1])
+		)
+	) {
 		throw new RangeError('Geometria del trascinamento ordine non valida');
 	}
 	if (Math.abs(deltaY) < threshold) return from;
@@ -45,7 +65,10 @@ export function orderDragTarget(
 	let distance = Math.abs(deltaY);
 	for (let index = 0; index < centers.length; index += 1) {
 		const candidate = Math.abs(position - centers[index]);
-		if (candidate < distance) { target = index; distance = candidate; }
+		if (candidate < distance) {
+			target = index;
+			distance = candidate;
+		}
 	}
 	return target;
 }
