@@ -154,7 +154,8 @@
 {/snippet}
 
 {#if selected}
-	{#key selected.store}
+	<!-- La versione e gli oggetti dei DTO non definiscono il ciclo di vita del dialog. -->
+	{#key `${contextKey}:${selected.id}`}
 		<section
 			data-draft-host-dialog
 			tabindex="-1"

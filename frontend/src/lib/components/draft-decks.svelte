@@ -21,15 +21,16 @@
 	const compatible = $derived(decks.owner === store && decks.draftId === sessionState.snapshot?.id);
 	const view = $derived(draftDeckView(sessionState, $decks.pilotId, $decks.data));
 	const locked = $derived($decks.busy || store.busy || $decks.status === 'blocked');
+	const coordinatorIdentity = $derived(decks.subscribe);
 
+	// La vista possiede solo la cattura scroll, non il coordinatore del contesto.
 	$effect(() => {
-		const current = decks;
+		const identity = coordinatorIdentity;
 		return () => {
-			if (pendingScroll?.coordinator === current.subscribe) {
+			if (pendingScroll?.coordinator === identity) {
 				pendingScroll.handle?.cancel();
 				pendingScroll = null;
 			}
-			current.dispose();
 		};
 	});
 	$effect(() => {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { readable } from 'svelte/store';
 	import { Button } from '$lib/components/ui/button';
 	import DraftModal from '$lib/components/draft-modal.svelte';
@@ -47,14 +47,8 @@
 		untrack(() => callback?.(owner, coordinator, busy));
 		return () => untrack(() => callback?.(owner, null, false));
 	});
-	$effect(() => {
-		const owner = store;
-		return () =>
-			untrack(() => {
-				if (context?.owner === owner) context.dispose();
-				owner.dispose();
-			});
-	});
+	// Solo il contesto locale appartiene alla vista. Lo store resta del registro host.
+	onDestroy(() => untrack(() => context?.dispose()));
 	$effect(() => {
 		const owner = store;
 		const root = sessionState;
@@ -96,7 +90,7 @@
 {#if view.visible}
 	<DraftModal {store} externalBusy={$deck.busy}>
 		{#if active}
-			{#key active}
+			{#key active.draftId}
 				{#if view.screen === 'start'}
 					<DraftStart {store} ondraft={showAttendance} />
 				{:else if view.screen === 'attendance'}
