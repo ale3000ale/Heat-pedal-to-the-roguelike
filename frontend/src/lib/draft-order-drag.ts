@@ -72,3 +72,61 @@ export function orderDragTarget(
 	}
 	return target;
 }
+
+/** Traslazione visiva della scheda trascinata rispetto al suo slot corrente.
+ * @param centers Centri iniziali usati anche da orderDragTarget.
+ * @param from Indice iniziale del gesto.
+ * @param target Indice attuale della scheda nella bozza.
+ * @param deltaY Spostamento del puntatore piu scorrimento del contenitore.
+ * @returns Pixel da applicare con translateY perche la scheda resti sotto il puntatore.
+ */
+export function orderDragOffset(
+	centers: readonly number[],
+	from: number,
+	target: number,
+	deltaY: number
+): number {
+	if (centers[from] === undefined || centers[target] === undefined || !Number.isFinite(deltaY))
+		throw new RangeError('Geometria del trascinamento ordine non valida');
+	return deltaY - (centers[target] - centers[from]);
+}
+
+/** Limita lo spostamento perche la scheda resti nel rettangolo della lista dei piloti.
+ * @param deltaY Spostamento del puntatore piu scorrimento del contenitore.
+ * @param list Bordi verticali della lista all'inizio del gesto.
+ * @param card Bordi verticali della scheda trascinata all'inizio del gesto.
+ * @returns deltaY compreso tra il bordo superiore e quello inferiore della lista.
+ */
+export function orderDragClamp(
+	deltaY: number,
+	list: { top: number; bottom: number },
+	card: { top: number; bottom: number }
+): number {
+	const min = Math.min(0, list.top - card.top);
+	const max = Math.max(0, list.bottom - card.bottom);
+	return Math.min(max, Math.max(min, deltaY));
+}
+
+/** Velocita di scorrimento automatico vicino ai bordi del contenitore.
+ * @param clientY Posizione verticale del puntatore.
+ * @param top Bordo superiore visibile del contenitore.
+ * @param bottom Bordo inferiore visibile del contenitore.
+ * @param edge Fascia sensibile in pixel.
+ * @param max Pixel massimi per frame.
+ * @returns Negativo verso l'alto, positivo verso il basso, zero fuori dalle fasce.
+ */
+export function orderAutoScrollStep(
+	clientY: number,
+	top: number,
+	bottom: number,
+	edge = 56,
+	max = 14
+): number {
+	if (![clientY, top, bottom].every(Number.isFinite) || bottom <= top) return 0;
+	const band = Math.min(edge, (bottom - top) / 3);
+	if (band <= 0) return 0;
+	if (clientY < top + band) return -Math.ceil(max * Math.min(1, (top + band - clientY) / band));
+	if (clientY > bottom - band)
+		return Math.ceil(max * Math.min(1, (clientY - (bottom - band)) / band));
+	return 0;
+}

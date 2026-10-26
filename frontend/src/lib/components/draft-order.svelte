@@ -9,7 +9,15 @@
 		draftOrderRows,
 		moveDraftOrder
 	} from '$lib/draft-order';
-	import { orderDragRow, orderDragTarget } from '$lib/draft-order-drag';
+	import { flip } from 'svelte/animate';
+	import { onDestroy } from 'svelte';
+	import {
+		orderAutoScrollStep,
+		orderDragClamp,
+		orderDragOffset,
+		orderDragRow,
+		orderDragTarget
+	} from '$lib/draft-order-drag';
 	import type { DraftOrderDraft } from '$lib/draft-order';
 	import type { DraftStore } from '$lib/stores/draft.svelte';
 
@@ -24,11 +32,17 @@
 		original: DraftOrderDraft;
 		container: HTMLOListElement;
 		centers: number[];
+		minDelta: number;
+		maxDelta: number;
 		from: number;
 		startY: number;
 		scroller: HTMLElement | null;
 		scrollStart: number;
 	} | null>(null);
+	/** Traslazione visiva della scheda trascinata; non entra nella bozza. */
+	let dragOffset = $state(0);
+	let lastClientY = 0;
+	let scrollFrame: number | null = null;
 	let list = $state<HTMLOListElement>();
 	let submitting = $state(false);
 	let notice = $state<string | null>(null);
@@ -77,6 +91,8 @@
 			return (rect.top + rect.bottom) / 2;
 		});
 		orderDragTarget(centers, from, 0);
+		const bounds = container.getBoundingClientRect();
+		const card = elements[from].getBoundingClientRect();
 		const scroller = container.closest<HTMLElement>('[role="dialog"]');
 		container.setPointerCapture(event.pointerId);
 		dragging = {
@@ -86,34 +102,74 @@
 			original: local,
 			container,
 			centers,
+			minDelta: orderDragClamp(-Infinity, bounds, card),
+			maxDelta: orderDragClamp(Infinity, bounds, card),
 			from,
 			startY: event.clientY,
 			scroller,
 			scrollStart: scroller?.scrollTop ?? 0
 		};
+		dragOffset = 0;
+		lastClientY = event.clientY;
+		scrollFrame = requestAnimationFrame(autoScroll);
 		event.preventDefault();
+	}
+
+	/** Riposiziona bozza e scheda dalla stessa geometria iniziale, per puntatore o scroll. */
+	function follow(clientY: number): void {
+		const captured = dragging;
+		if (!captured || captured.owner !== store) return;
+		store.syncContext();
+		if (!editable || !local) return;
+		const scrollDelta = (captured.scroller?.scrollTop ?? 0) - captured.scrollStart;
+		// Il limite vale anche per lo scroll automatico: la scheda non esce dalla lista.
+		const deltaY = Math.min(
+			captured.maxDelta,
+			Math.max(captured.minDelta, clientY - captured.startY + scrollDelta)
+		);
+		const index = orderDragTarget(captured.centers, captured.from, deltaY);
+		if (index !== local.pilotIds.indexOf(captured.pilotId)) move(captured.pilotId, index);
+		dragOffset = orderDragOffset(captured.centers, captured.from, index, deltaY);
 	}
 
 	function drag(event: PointerEvent): void {
 		const captured = dragging;
 		if (!captured || captured.owner !== store || captured.pointerId !== event.pointerId) return;
-		store.syncContext();
-		if (!editable || !local) return;
-		const scrollDelta = (captured.scroller?.scrollTop ?? 0) - captured.scrollStart;
-		const index = orderDragTarget(
-			captured.centers,
-			captured.from,
-			event.clientY - captured.startY + scrollDelta
-		);
-		if (index !== local.pilotIds.indexOf(captured.pilotId)) move(captured.pilotId, index);
+		lastClientY = event.clientY;
+		follow(event.clientY);
 		event.preventDefault();
 	}
+
+	/** Scorre il dialog vicino ai bordi anche con puntatore fermo. */
+	function autoScroll(): void {
+		scrollFrame = null;
+		const captured = dragging;
+		if (!captured) return;
+		const scroller = captured.scroller;
+		if (scroller) {
+			const rect = scroller.getBoundingClientRect();
+			const step = orderAutoScrollStep(lastClientY, rect.top, rect.bottom);
+			const before = scroller.scrollTop;
+			if (step !== 0) scroller.scrollTop = before + step;
+			if (scroller.scrollTop !== before) follow(lastClientY);
+		}
+		scrollFrame = requestAnimationFrame(autoScroll);
+	}
+
+	function stopAutoScroll(): void {
+		if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
+		scrollFrame = null;
+	}
+
+	onDestroy(stopAutoScroll);
 
 	/** Azzera il gesto prima di release: lostpointercapture non deve annullare un drop riuscito. */
 	function finishDrag(event: PointerEvent, cancelled: boolean): void {
 		const captured = dragging;
 		if (!captured || captured.pointerId !== event.pointerId) return;
+		stopAutoScroll();
 		dragging = null;
+		dragOffset = 0;
 		if (cancelled && captured.owner === store) edited = { owner: store, order: captured.original };
 		if (captured.container.hasPointerCapture(captured.pointerId))
 			captured.container.releasePointerCapture(captured.pointerId);
@@ -185,19 +241,25 @@
 			onlostpointercapture={cancelDrag}
 		>
 			{#each rows as pilot, index (pilot.pilot_id)}
+				{@const lifted = dragging?.pilotId === pilot.pilot_id}
 				<li
+					animate:flip={{ duration: lifted ? 0 : 160 }}
 					data-order-pilot={pilot.pilot_id}
 					data-order-draggable={editable ? 'true' : 'false'}
 					use:orderDragRow={{ pilotId: pilot.pilot_id, start: beginDrag }}
 					title={editable ? 'Trascina la scheda per cambiare ordine' : undefined}
-					class="flex flex-wrap items-center gap-2 rounded-md border p-3 {editable || dragging
+					style:transform={lifted ? `translateY(${dragOffset}px)` : undefined}
+					class="order-row relative flex flex-wrap items-center gap-2 rounded-md border bg-background p-3 {editable ||
+					dragging
 						? 'touch-none select-none'
-						: ''} {dragging?.pilotId === pilot.pilot_id
-						? 'cursor-grabbing ring-2 ring-primary'
+						: ''} {lifted
+						? 'z-10 cursor-grabbing shadow-lg ring-2 ring-primary'
 						: editable
-							? 'cursor-grab'
+							? 'cursor-grab hover:border-primary/60'
 							: ''}"
+					class:lifted
 				>
+					{#if editable}<span aria-hidden="true" class="text-muted-foreground">⠿</span>{/if}
 					<span class="min-w-0 flex-1 break-words">{index + 1}. {pilot.name}</span>
 					<Button
 						type="button"
@@ -252,3 +314,16 @@
 		</div>
 	</section>
 {/if}
+
+<style>
+	/* La scheda sollevata segue il puntatore senza ritardo; le altre usano flip. */
+	.order-row {
+		transition:
+			box-shadow 120ms ease,
+			border-color 120ms ease;
+	}
+	.order-row.lifted {
+		transition: none;
+		will-change: transform;
+	}
+</style>
