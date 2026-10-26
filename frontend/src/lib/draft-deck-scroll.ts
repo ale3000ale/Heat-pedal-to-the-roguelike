@@ -23,11 +23,11 @@ export function captureDraftDeckScroll(anchor?: HTMLElement | null) {
 		scroller.addEventListener(event, interrupt, { capture: true, passive: true });
 	}
 
-	function cancel(): void {
+	const cancel = (): void => {
 		if (!active) return;
 		active = false;
 		for (const event of events) scroller.removeEventListener(event, interrupt, true);
-	}
+	};
 
 	const restore = (): boolean => {
 		if (!active) return false;
