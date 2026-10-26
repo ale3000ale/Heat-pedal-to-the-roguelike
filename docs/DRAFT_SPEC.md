@@ -1,5 +1,24 @@
 # Draft e preparazione della gara
 
+<!-- draft-validation-current:start -->
+
+## Draft - stato verificato del 26 ottobre 2026
+
+Questa sezione prevale esclusivamente sulle precedenti note di stato e verifica del flusso draft. Regole, specifiche delle altre fasi e contenuti storici restano conservati.
+
+Base funzionale: commit 8ba03aa1aa8a20f8c346b3e20b4f1352d9b2d74a, ramo draft, PR #18 ancora in bozza e senza merge in main. Correzione delle chiavi del flusso e della proprieta delle risorse UI, non una nuova modifica di regole o API.
+
+Verifiche lette: frontend (check, lint, test, build), runtime, backend pytest e migrazioni su database di test tutti success. Run CI 40269135082 e runtime 40269135447. I due job documentali di fase 16 sono skipped, non falliti.
+
+Collaudo manuale positivo riferito dall autore il 26 ottobre alle 05:31: ora funziona tutto senza errori. Il riscontro segue i reset di presenze, zoom e mazzi e la correzione lifecycle. Non e un test browser automatizzato o una certificazione di tutti i dispositivi.
+
+Le regole funzionali della specifica restano invariate; vengono aggiornate soltanto le note di stato e verifica.
+
+Questo riallineamento non cambia codice applicativo, dipendenze, lockfile o dati e non esegue nuovi test dell applicazione. Nessun rilascio, ZIP finale o merge implicito. Interventi grafici successivi sospesi fino alla scelta dell autore.
+
+[Evidenze, cronologia e limiti della validazione](DRAFT_VALIDATION.md).
+<!-- draft-validation-current:end -->
+
 ## Precisazione del 25 ottobre 2026: controllo dopo la modifica dei mazzi
 
 Richiesta dell'autore alle 13:55: il controllo di idoneita del mazzo deve avvenire alla fine, dopo la modifica dei mazzi, non dopo la selezione dei presenti. Questa precisazione prevale su precedenti riferimenti al controllo preliminare.
@@ -20,7 +39,7 @@ Prima della pubblicazione quel workflow verifica pytest backend, upgrade/downgra
 Nessun conteggio di test o warning inventato, nessun test locale o collaudo browser attestato dal consolidamento. Nessun merge, rilascio, ZIP finale o intervento sul database reale. Il frontend draft non era implementato da quel consolidamento ed e stato integrato successivamente.
 <!-- draft-backend-current:end -->
 
-Data: 2026-10-25. Specifica ricavata dalle richieste e conferme dell'autore. Ramo: draft. Integrazione frontend pubblicata successivamente al consolidamento; correzione attuale e collaudo browser da verificare. Questa specifica aggiorna le regole precedenti solo per il flusso qui descritto.
+Data della specifica: 2026-10-25. Aggiornamento dello stato: 2026-10-26. Specifica ricavata dalle richieste e conferme dell'autore. Ramo: draft. Implementazione integrata e correzione lifecycle verificata dalla CI sul commit 8ba03aa1aa8a20f8c346b3e20b4f1352d9b2d74a, con collaudo manuale positivo riferito dall'autore. Questa specifica aggiorna le regole precedenti solo per il flusso qui descritto.
 
 ## Metodo
 
@@ -72,4 +91,4 @@ Verificare: selezione presenti/assenti senza requisito anticipato delle 15 carte
 
 ## Stato delle verifiche
 
-La provenienza del consolidamento e storica. Le verifiche frontend/runtime/migrazioni gia lette sul commit 26c5faabd4427f790dbdab0cf367cce7466829c6 non attestano questa correzione backend; a quella lettura pytest era ancora in corso. Non e stato letto qui un nuovo esito backend. Nessun nuovo test locale o collaudo browser dichiarato per la patch attuale.
+Sul commit 8ba03aa1aa8a20f8c346b3e20b4f1352d9b2d74a sono stati letti con successo frontend (check, lint, test, build), runtime, backend pytest e migrazioni su database di test. Il 26 ottobre alle 05:31 l autore ha riferito che ora funziona tutto senza errori, dopo il collaudo negativo delle 05:09 e la correzione del lifecycle. Non sono attestati test locali dell assistente, conteggi o una matrice completa di browser/dispositivi. Evidenze e limiti in DRAFT_VALIDATION.md. Il manifesto backend resta la provenienza storica del consolidamento, non un manifesto degli hash del codice corrente.

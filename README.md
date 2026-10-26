@@ -1,5 +1,24 @@
 # Heat — Pedal to the Roguelike
 
+<!-- draft-validation-current:start -->
+
+## Draft - stato verificato del 26 ottobre 2026
+
+Questa sezione prevale esclusivamente sulle precedenti note di stato e verifica del flusso draft. Regole, specifiche delle altre fasi e contenuti storici restano conservati.
+
+Base funzionale: commit 8ba03aa1aa8a20f8c346b3e20b4f1352d9b2d74a, ramo draft, PR #18 ancora in bozza e senza merge in main. Correzione delle chiavi del flusso e della proprieta delle risorse UI, non una nuova modifica di regole o API.
+
+Verifiche lette: frontend (check, lint, test, build), runtime, backend pytest e migrazioni su database di test tutti success. Run CI 40269135082 e runtime 40269135447. I due job documentali di fase 16 sono skipped, non falliti.
+
+Collaudo manuale positivo riferito dall autore il 26 ottobre alle 05:31: ora funziona tutto senza errori. Il riscontro segue i reset di presenze, zoom e mazzi e la correzione lifecycle. Non e un test browser automatizzato o una certificazione di tutti i dispositivi.
+
+Base funzionale della draft confermata; le modifiche grafiche successive non sono ancora iniziate.
+
+Questo riallineamento non cambia codice applicativo, dipendenze, lockfile o dati e non esegue nuovi test dell applicazione. Nessun rilascio, ZIP finale o merge implicito. Interventi grafici successivi sospesi fino alla scelta dell autore.
+
+[Evidenze, cronologia e limiti della validazione](docs/DRAFT_VALIDATION.md).
+<!-- draft-validation-current:end -->
+
 <!-- draft-backend-current:start -->
 ## Draft - backend consolidato e limiti correnti
 
