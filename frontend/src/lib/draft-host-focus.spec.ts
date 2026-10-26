@@ -5,7 +5,7 @@ import { draftHostFocus } from './draft-host-focus';
 function environment() {
 	const tasks: (() => void)[] = [];
 	const windowListeners = new Map<string, (event: unknown) => void>();
-	let activeElement: FakeElement | null = null;
+	const focusState: { activeElement: FakeElement | null } = { activeElement: null };
 
 	class FakeElement {
 		isConnected = true;
@@ -16,7 +16,7 @@ function environment() {
 		children: FakeElement[] = [];
 		listeners = new Map<string, (event: unknown) => void>();
 		focus = vi.fn<(options?: FocusOptions) => void>(() => {
-			activeElement = this;
+			focusState.activeElement = this;
 		});
 		contains(target: unknown): boolean {
 			return target === this || this.children.some((child) => child.contains(target));
@@ -48,12 +48,12 @@ function environment() {
 	const last = new FakeElement();
 	node.tabIndex = -1;
 	node.children = [first, last];
-	activeElement = previous;
+	focusState.activeElement = previous;
 	vi.stubGlobal('Node', FakeElement);
 	vi.stubGlobal('HTMLElement', FakeElement);
 	vi.stubGlobal('document', {
 		get activeElement() {
-			return activeElement;
+			return focusState.activeElement;
 		},
 		body
 	});
@@ -75,7 +75,7 @@ function environment() {
 		start: () => draftHostFocus(node as unknown as HTMLElement),
 		createElement: () => new FakeElement(),
 		setActive(element: FakeElement | null) {
-			activeElement = element;
+			focusState.activeElement = element;
 		},
 		focusIn(target: unknown) {
 			windowListeners.get('focusin')?.({ target });
@@ -97,11 +97,13 @@ describe('focus automatico del flusso draft', () => {
 		const action = env.start();
 		env.flush();
 		expect(env.first.focus).toHaveBeenLastCalledWith({ preventScroll: true });
+		expect(document.activeElement).toBe(env.first);
 		const outside = env.createElement();
 		env.setActive(outside);
 		env.focusIn(outside);
 		expect(env.first.focus).toHaveBeenCalledTimes(2);
 		expect(env.first.focus).toHaveBeenLastCalledWith({ preventScroll: true });
+		expect(document.activeElement).toBe(env.first);
 		env.focusIn(env.last);
 		expect(env.first.focus).toHaveBeenCalledTimes(2);
 		action.destroy();
