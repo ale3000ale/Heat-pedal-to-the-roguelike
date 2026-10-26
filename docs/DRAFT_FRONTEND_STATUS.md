@@ -2,37 +2,33 @@
 
 26 ottobre 2026. Solo Heat-pedal-to-the-roguelike, ramo draft, PR 18.
 
-## Correzione check nel cleanup scroll
+## Correzione lint dell'identita del coordinatore
 
-Il log fornito dall'autore alle 04:21 sul nuovo incremento scroll identifica un errore di npm run check: scroller is possibly null in draft-deck-scroll.ts, nella rimozione dei listener dentro function cancel. Il controllo termina con un errore e zero warning; non attesta il superamento dei passaggi successivi.
+Il log dell'autore delle 04:51 mostra Prettier superato e tre errori svelte/require-store-reactive-access in draft-decks.svelte: confronto con current nel cleanup e confronto decks === target dopo await tick. Il log non attesta il superamento di test/build successivi o un nuovo esito runtime.
 
-La correzione definisce cancel come const con funzione freccia dopo la guardia che esclude il dialog nullo. Mantiene il narrowing del riferimento nella closure senza cast, asserzioni non-null, optional chaining sul cleanup o disattivazione dei controlli. Corpo del cleanup, idempotenza, listener, calcolo del delta e integrazione nei mazzi restano invariati. I test esistenti del cleanup non vengono rimossi o indeboliti.
+Il componente conserva nella cattura la funzione subscribe del coordinatore, confrontandola con current.subscribe nel cleanup e decks.subscribe prima del recupero scroll. La factory createDraftDeckSession crea questa closure una volta per istanza e non la sostituisce alle emissioni. Cio mantiene il controllo dell'identita del coordinatore senza confrontare direttamente store grezzi o confrontare erroneamente copie dei loro valori tramite $decks/get.
 
-File di questa correzione: frontend/src/lib/draft-deck-scroll.ts e questo documento. Nessuna esecuzione locale lint/check/test/build, nuova lettura o attesa CI per questa correzione. Esito della patch ancora da verificare; nessun via libera al collaudo manuale prima dei controlli verdi sul commit corretto. Il terzo problema resta aperto.
+Restano le guardie sullo store principale, compatibilita, pilota, fase, versione dei dettagli, busy/blocco e identita della cattura. Cleanup, annullamento per input utente, gestione errori, sequenza POST/GET/tick e logica dati restano invariati. Nessuna soppressione ESLint, modifica alle regole, nuova sottoscrizione o richiesta aggiunta.
 
-## Verifica della base e incremento scroll
+File di questa correzione: frontend/src/lib/components/draft-decks.svelte e questo documento. Nessuna esecuzione locale check/lint/test/build o nuova consultazione/attesa CI per questa correzione. Esito della patch ancora da verificare; collaudo manuale non ancora autorizzato come pronto.
 
-Controlli esistenti letti il 26 ottobre dopo il messaggio dell'autore delle 04:07: sul commit 1f5075fec58b6c3f8134995b386c890293e2880d risultano completati con successo frontend (check/lint/test/build), runtime, backend pytest e migrazioni. I due job documentali di fase 16 sono skipped. Questi esiti validano quella base, non il successivo incremento scroll 01cc4e51cee295ecdc03c18b90a2f06613db4769 o la correzione corrente, e non sono una prova browser dello scroll.
+## Correzioni e verifiche precedenti
 
-Sull'incremento 01cc4e51 la lettura successiva ha mostrato frontend/runtime falliti, migrazioni superate e backend ancora in corso a quella lettura. Il log dell'autore identifica il blocco del controllo tipi; non viene attribuita senza un log la causa esatta del job runtime.
+Nullabilita di scroller nel cleanup corretta in df2e91a9e47db6d3b0ea3245d6f7259192b4e01c: cancel e una funzione freccia dopo la guardia, senza cast o asserzioni non-null. Il log precedente dell'autore identificava un errore di npm run check. Nessun test del cleanup e stato rimosso o indebolito.
+
+Sul commit base 1f5075fec58b6c3f8134995b386c890293e2880d erano stati letti con successo frontend (check/lint/test/build), runtime, backend e migrazioni; due job documentali skipped. Questi esiti non attestano i successivi incrementi scroll. Sul commit 01cc4e51 erano stati letti frontend/runtime falliti, migrazioni superate e backend ancora in corso a quella lettura.
 
 ## Posizione della griglia dopo lo spostamento
 
-Il componente mazzi cattura la posizione della griglia di origine rispetto al dialog prima di chiamare il coordinatore move esistente. Dopo successo di scrittura e rilettura attende tick di Svelte e compensa il delta residuo su scrollTop del medesimo dialog. Il riferimento e la griglia, non la singola carta che puo scomparire quando si sposta l'ultima copia. InventorySection mantiene il contenitore anche se la griglia diventa vuota.
+L'incremento 01cc4e51cee295ecdc03c18b90a2f06613db4769 cattura la posizione della griglia di origine rispetto al dialog prima del move. Dopo successo di scrittura/rilettura e tick di Svelte compensa il delta residuo sullo scroll interno dello stesso contesto. La griglia permane anche quando scompare l'ultima copia. Non sposta focus, carte o scroll della pagina; nessun dato ottimistico o retry.
 
-Non corregge se cambiano store, coordinatore, pilota, fase, disponibilita dei dati o busy/blocco. Wheel, touchstart, pointerdown e keydown nel dialog segnalano una nuova intenzione utente e impediscono il recupero. Un nuovo move cancella la cattura precedente; finally e cleanup del componente rimuovono i listener, anche in caso di errore o smontaggio. Handle monouso, senza timer o rete.
-
-Il delta e relativo al dialog, quindi il solo spostamento del modal nel viewport non provoca una correzione. Non raddoppia un ancoraggio gia applicato dal browser. Rispetta i nuovi limiti di scorrimento: se il contenuto diventa troppo corto la posizione precedente puo non essere fisicamente mantenibile. Non sposta il focus, non ripristina carte, non modifica dati ottimisticamente, non cambia permessi e non ritenta richieste. Non viene applicato automaticamente alle sole notifiche SSE o alle operazioni fallite.
-
-File dell'incremento: frontend/src/lib/draft-deck-scroll.ts e draft-deck-scroll.spec.ts; components/draft-decks.svelte sotto frontend/src/lib e questo documento. Controller e coordinatore dei mazzi restano invariati.
+La cattura e monouso e viene annullata da wheel/touchstart/pointerdown/keydown nel dialog, nuovo move, cleanup o errore. Riferimenti disconnessi, nascosti o riparentati non vengono recuperati. Il delta relativo al dialog evita di compensare il semplice spostamento del modal e non raddoppia l'ancoraggio gia eseguito dal browser. La posizione e limitata alla nuova estensione del contenuto. Nessun recupero automatico sulle sole notifiche SSE o sulle operazioni fallite.
 
 ## Stato UI e limiti
 
-Drag intera scheda/frecce: 9ceedd5d. Indicatore proprio: 20a29699. Zoom nello store: d5d21088. Focus automatico senza scroll: d80f2675. Spazio dei messaggi transitori: ca5c682d. Viewport stabile del modal: a19d4d8e. Correzione lint test focus senza soppressioni: 1f5075fe.
+Drag intera scheda/frecce: 9ceedd5d. Indicatore proprio: 20a29699. Zoom nello store: d5d21088. Focus automatico senza scroll: d80f2675. Spazio dei messaggi: ca5c682d. Viewport stabile: a19d4d8e. Correzione lint test focus: 1f5075fe.
 
-Test predisposti dell'helper per delta, ancoraggio nativo gia applicato, posizione relativa al dialog, limiti superiori/inferiori, input utente, riferimenti disconnessi/nascosti/riparentati, cleanup e geometrie invalide. Sono mock di geometrie e listener, non un browser o un ciclo Svelte client. Non attestano i tempi reali di focus, eventi o layout.
-
-Il terzo problema resta aperto fino alla verifica del ciclo clic/POST/GET/rendering in browser mobile e desktop. I documenti generali vanno riallineati alla chiusura verificata del ciclo, senza anticipare successi della nuova patch.
+I test dell'helper scroll usano geometrie/listener simulati; gli altri test UI includono SSR. Non attestano un ciclo Svelte client o il comportamento browser reale. Il terzo problema resta aperto fino ai controlli verdi del commit da provare e al collaudo clic/POST/GET/rendering su mobile e desktop. Documenti generali da riallineare alla chiusura verificata del ciclo, senza anticipare esiti positivi.
 
 ## Integrazione preservata
 

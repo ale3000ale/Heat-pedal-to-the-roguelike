@@ -14,7 +14,7 @@
 	let inventoryGrid = $state<HTMLDivElement>();
 	let gameGrid = $state<HTMLDivElement>();
 	let pendingScroll: {
-		owner: DraftDeckSession;
+		coordinator: DraftDeckSession['subscribe'];
 		handle: ReturnType<typeof captureDraftDeckScroll>;
 	} | null = null;
 	const sessionState = $derived(store.state);
@@ -25,7 +25,7 @@
 	$effect(() => {
 		const current = decks;
 		return () => {
-			if (pendingScroll?.owner === current) {
+			if (pendingScroll?.coordinator === current.subscribe) {
 				pendingScroll.handle?.cancel();
 				pendingScroll = null;
 			}
@@ -67,7 +67,8 @@
 		const pilotId = view.selected.pilot_id;
 		pendingScroll?.handle?.cancel();
 		const captured = {
-			owner: target,
+			// La factory crea subscribe una volta per coordinatore, non per emissione.
+			coordinator: target.subscribe,
 			handle: captureDraftDeckScroll(toGame ? inventoryGrid : gameGrid)
 		};
 		pendingScroll = captured;
@@ -78,7 +79,7 @@
 			if (
 				pendingScroll === captured &&
 				store === owner &&
-				decks === target &&
+				decks.subscribe === captured.coordinator &&
 				compatible &&
 				view.visible &&
 				view.selected?.pilot_id === pilotId &&
