@@ -1,9 +1,10 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import { tick, type Snippet } from 'svelte';
 	import Modal from '$lib/components/modal.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
 		canConfirmDraftCancellation,
+		draftCancellationExpired,
 		draftClosePolicy,
 		proposeDraftCancellation
 	} from '$lib/draft-close-policy';
@@ -29,6 +30,7 @@
 	);
 	let submitting = $state(false);
 	let notice = $state<string | null>(null);
+	let keepButton = $state<HTMLButtonElement | null>(null);
 	const sessionState = $derived(store.state);
 	const policy = $derived(draftClosePolicy(sessionState));
 	const visible = $derived(
@@ -40,12 +42,45 @@
 			confirmation.owner === store &&
 			canConfirmDraftCancellation(sessionState, confirmation.proposal)
 	);
+	/** Carte gia assegnate che il server restituira al pool. */
+	const chosen = $derived(sessionState.snapshot?.picks.length ?? 0);
+	/** Riquadro ampio solo per carte e mazzi: la conferma usa la misura del suo messaggio.
+	 * La scelta carte si adatta al proprio riquadro; i mazzi tengono l'altezza stabile.
+	 */
+	const expanded = $derived(
+		confirmation === null &&
+			(sessionState.snapshot?.phase === 'picking' || sessionState.snapshot?.phase === 'decks')
+	);
+	let content = $state<HTMLDivElement | null>(null);
+	/** Scroll del dialog prima della conferma, ripristinato quando si torna alla gara. */
+	let savedScroll: number | null = null;
 
 	$effect(() => {
-		if (confirmation && !submitting && !canConfirm) {
+		if (confirmation !== null || savedScroll === null) return;
+		const top = savedScroll;
+		savedScroll = null;
+		void tick().then(() => {
+			const dialog = content?.closest<HTMLElement>('[role="dialog"]');
+			if (dialog) dialog.scrollTop = top;
+		});
+	});
+
+	// Solo una scadenza definitiva chiude la conferma: versioni e letture in corso no.
+	$effect(() => {
+		if (
+			confirmation &&
+			!submitting &&
+			(confirmation.owner !== store ||
+				draftCancellationExpired(sessionState, confirmation.proposal))
+		) {
 			confirmation = null;
-			notice = 'Lo stato e cambiato. Riapri la conferma dopo aver verificato i dati.';
+			notice = 'Annullamento non piu disponibile: verifica lo stato corrente.';
 		}
+	});
+
+	// Il focus parte dall'opzione sicura, cosi Invio non annulla per errore.
+	$effect(() => {
+		if (confirmation && keepButton) keepButton.focus();
 	});
 
 	function requestClose(): void {
@@ -54,10 +89,24 @@
 		const proposal = proposeDraftCancellation(store.state);
 		if (!proposal) return;
 		notice = null;
+		savedScroll = content?.closest<HTMLElement>('[role="dialog"]')?.scrollTop ?? null;
 		confirmation = { owner: store, proposal };
 	}
 
-	/** Ricontrolla istanza e versione e non entra in conflitto con una lettura esterna. */
+	function keepDraft(): void {
+		if (submitting) return;
+		confirmation = null;
+	}
+
+	/** Esc chiude solo la conferma: la procedura resta aperta come da specifica. */
+	function onkeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape' && confirmation && !submitting) {
+			event.preventDefault();
+			keepDraft();
+		}
+	}
+
+	/** Ricontrolla istanza e draft; la conferma resta aperta se il server rifiuta. */
 	async function confirmCancellation(): Promise<void> {
 		if (externalBusy || submitting) return;
 		const captured = confirmation;
@@ -66,20 +115,17 @@
 			!captured ||
 			captured.owner !== store ||
 			!canConfirmDraftCancellation(store.state, captured.proposal)
-		) {
-			confirmation = null;
-			notice = 'Conferma non piu valida: verifica lo stato corrente.';
+		)
 			return;
-		}
 		const target = store;
 		submitting = true;
+		notice = null;
 		try {
 			const completed = await target.command('cancel', {});
 			if (!completed && store === target) {
-				notice = 'Annullamento non confermato. Controlla l errore e rileggi se necessario.';
+				notice = 'Annullamento non confermato dal server. Puoi riprovare o tornare alla gara.';
 			}
 		} finally {
-			if (confirmation === captured) confirmation = null;
 			submitting = false;
 		}
 	}
@@ -91,6 +137,8 @@
 	}
 </script>
 
+<svelte:window {onkeydown} />
+
 <Modal
 	open={visible}
 	{title}
@@ -98,9 +146,9 @@
 	closePosition="left"
 	showClose={policy.showClose}
 	closeDisabled={!policy.canRequest || externalBusy || submitting || confirmation !== null}
-	wide={sessionState.snapshot?.phase === 'picking' || sessionState.snapshot?.phase === 'decks'}
-	stableViewport={sessionState.snapshot?.phase === 'picking' ||
-		sessionState.snapshot?.phase === 'decks'}
+	wide={expanded}
+	stableViewport={expanded && sessionState.snapshot?.phase === 'decks'}
+	fitContent={expanded && sessionState.snapshot?.phase === 'picking'}
 	onrequestclose={requestClose}
 >
 	{#if sessionState.error}
@@ -118,13 +166,27 @@
 		</div>
 	{/if}
 	{#if confirmation}
-		<div aria-busy={submitting}>
-			<p class="text-sm">annullare la gara?</p>
-			<p class="mt-2 text-sm text-muted-foreground">
-				La procedura verra annullata e le carte ripristinate dal server. Non verra creata una gara.
-			</p>
+		<div
+			role="alertdialog"
+			aria-labelledby="draft-cancel-title"
+			aria-describedby="draft-cancel-details"
+			aria-busy={submitting}
+			class="rounded-md border border-destructive/40 bg-destructive/5 p-4"
+		>
+			<p id="draft-cancel-title" class="font-semibold">Annullare la gara?</p>
+			<div id="draft-cancel-details" class="mt-2 space-y-1 text-sm text-muted-foreground">
+				<p>La preparazione verra chiusa per tutti i partecipanti e non verra creata alcuna gara.</p>
+				<p>
+					{chosen === 0
+						? 'Pool, inventari e mazzi restano come prima della preparazione.'
+						: `${chosen === 1 ? 'La carta gia scelta torna' : `Le ${chosen} carte gia scelte tornano`} nel pool; inventari e mazzi vengono ripristinati.`}
+				</p>
+			</div>
+			{#if !canConfirm && !submitting}
+				<p role="status" class="mt-2 text-sm text-muted-foreground">In attesa del server…</p>
+			{/if}
 			<div class="mt-4 flex flex-wrap justify-end gap-2">
-				<Button variant="outline" disabled={submitting} onclick={() => (confirmation = null)}>
+				<Button bind:ref={keepButton} variant="outline" disabled={submitting} onclick={keepDraft}>
 					Non annullare
 				</Button>
 				<Button
@@ -132,12 +194,14 @@
 					disabled={submitting || !canConfirm}
 					onclick={confirmCancellation}
 				>
-					{submitting ? 'Annullamento in corso…' : 'Conferma annullamento'}
+					{submitting ? 'Annullamento in corso…' : 'Annulla la gara'}
 				</Button>
 			</div>
+			<p class="mt-2 text-right text-xs text-muted-foreground">Esc per tornare alla gara</p>
 		</div>
 	{/if}
 	<div
+		bind:this={content}
 		class:hidden={confirmation !== null}
 		inert={confirmation !== null || submitting || store.busy || store.blocked}
 	>

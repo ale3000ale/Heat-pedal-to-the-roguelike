@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
 	canConfirmDraftCancellation,
+	draftCancellationExpired,
 	draftClosePolicy,
 	proposeDraftCancellation
 } from './draft-close-policy';
@@ -41,7 +42,7 @@ describe('politica di annullamento draft', () => {
 		const value = state();
 		const before = JSON.stringify(value);
 		const proposal = proposeDraftCancellation(value);
-		expect(proposal).toEqual({ draftId: 1, version: 2 });
+		expect(proposal).toEqual({ draftId: 1 });
 		expect(canConfirmDraftCancellation(value, proposal)).toBe(true);
 		expect(canConfirmDraftCancellation(value, null)).toBe(false);
 		expect(JSON.stringify(value)).toBe(before);
@@ -85,20 +86,36 @@ describe('politica di annullamento draft', () => {
 	it.each(unavailable)('non propone annullamento durante %s', (status) => {
 		const value = { ...state(), status };
 		expect(proposeDraftCancellation(value)).toBeNull();
-		expect(canConfirmDraftCancellation(value, { draftId: 1, version: 2 })).toBe(false);
+		expect(canConfirmDraftCancellation(value, { draftId: 1 })).toBe(false);
 	});
 
-	it('rifiuta una proposta dopo cambio versione, draft o disponibilita', () => {
+	it('conserva la proposta quando altri giocatori aggiornano la versione', () => {
 		const value = state();
 		const proposal = proposeDraftCancellation(value);
 		value.snapshot!.version = 3;
-		expect(canConfirmDraftCancellation(value, proposal)).toBe(false);
-		value.snapshot!.version = 2;
+		expect(draftCancellationExpired(value, proposal)).toBe(false);
+		expect(canConfirmDraftCancellation(value, proposal)).toBe(true);
+	});
+
+	it.each(['loading', 'writing'] as const)('sospende senza scadere durante %s', (status) => {
+		const proposal = proposeDraftCancellation(state());
+		const busy = { ...state(), status };
+		expect(draftCancellationExpired(busy, proposal)).toBe(false);
+		expect(canConfirmDraftCancellation(busy, proposal)).toBe(false);
+	});
+
+	it('scade dopo cambio draft, blocco o disponibilita', () => {
+		const value = state();
+		const proposal = proposeDraftCancellation(value);
 		value.snapshot!.id = 9;
+		expect(draftCancellationExpired(value, proposal)).toBe(true);
 		expect(canConfirmDraftCancellation(value, proposal)).toBe(false);
 		value.snapshot!.id = 1;
+		expect(draftCancellationExpired({ ...value, status: 'blocked' }, proposal)).toBe(true);
 		value.snapshot!.ready = [11, 12];
+		expect(draftCancellationExpired(value, proposal)).toBe(true);
 		expect(canConfirmDraftCancellation(value, proposal)).toBe(false);
+		expect(draftCancellationExpired(value, null)).toBe(true);
 	});
 
 	it('non permette annullamento senza snapshot', () => {

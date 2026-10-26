@@ -2,7 +2,6 @@ import type { DraftSessionState } from './draft-session';
 
 export interface DraftCancellationProposal {
 	draftId: number;
-	version: number;
 }
 
 /** Calcola solo la disponibilita UI della X, senza autorizzare scritture server.
@@ -23,23 +22,36 @@ export function draftClosePolicy(state: DraftSessionState) {
 	return { showClose, readyLocked, canRequest: showClose && state.status === 'idle' };
 }
 
-/** Fissa ID/versione della conferma solo da uno snapshot utilizzabile. */
+/** Fissa la preparazione della conferma solo da uno snapshot utilizzabile.
+ * La versione non e legata alla proposta: il controller invia quella corrente al clic,
+ * cosi preview o scelte degli altri giocatori non chiudono la conferma.
+ */
 export function proposeDraftCancellation(
 	state: DraftSessionState
 ): DraftCancellationProposal | null {
 	if (!draftClosePolicy(state).canRequest || !state.snapshot) return null;
-	return { draftId: state.snapshot.id, version: state.snapshot.version };
+	return { draftId: state.snapshot.id };
 }
 
-/** Ricontrolla lo stato al clic: conferme obsolete non possono inviare cancel. */
-export function canConfirmDraftCancellation(
+/** Vero quando la conferma non potra piu valere: altra draft, X tolta o stato bloccato.
+ * Letture o scritture in corso sospendono la conferma senza farla scadere.
+ */
+export function draftCancellationExpired(
 	state: DraftSessionState,
 	proposal: DraftCancellationProposal | null
 ): boolean {
 	return (
-		proposal !== null &&
-		draftClosePolicy(state).canRequest &&
-		state.snapshot?.id === proposal.draftId &&
-		state.snapshot.version === proposal.version
+		proposal === null ||
+		state.status === 'blocked' ||
+		!draftClosePolicy(state).showClose ||
+		state.snapshot?.id !== proposal.draftId
 	);
+}
+
+/** Ricontrolla lo stato al clic: conferme scadute o stato non idle non inviano cancel. */
+export function canConfirmDraftCancellation(
+	state: DraftSessionState,
+	proposal: DraftCancellationProposal | null
+): boolean {
+	return !draftCancellationExpired(state, proposal) && draftClosePolicy(state).canRequest;
 }
