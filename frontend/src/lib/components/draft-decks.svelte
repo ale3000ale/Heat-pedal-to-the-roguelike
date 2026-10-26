@@ -1,14 +1,22 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import CardTile from '$lib/components/CardTile.svelte';
 	import InventorySection from '$lib/components/inventory-section.svelte';
 	import DraftReady from '$lib/components/draft-ready.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { captureDraftDeckScroll } from '$lib/draft-deck-scroll';
 	import { draftDeckView } from '$lib/draft-deck-view';
 	import { totalCopies } from '$lib/inventory-count';
 	import type { DraftDeckSession } from '$lib/draft-deck-session';
 	import type { DraftStore } from '$lib/stores/draft.svelte';
 
 	let { store, decks }: { store: DraftStore; decks: DraftDeckSession } = $props();
+	let inventoryGrid = $state<HTMLDivElement>();
+	let gameGrid = $state<HTMLDivElement>();
+	let pendingScroll: {
+		owner: DraftDeckSession;
+		handle: ReturnType<typeof captureDraftDeckScroll>;
+	} | null = null;
 	const sessionState = $derived(store.state);
 	const compatible = $derived(decks.owner === store && decks.draftId === sessionState.snapshot?.id);
 	const view = $derived(draftDeckView(sessionState, $decks.pilotId, $decks.data));
@@ -16,7 +24,13 @@
 
 	$effect(() => {
 		const current = decks;
-		return () => current.dispose();
+		return () => {
+			if (pendingScroll?.owner === current) {
+				pendingScroll.handle?.cancel();
+				pendingScroll = null;
+			}
+			current.dispose();
+		};
 	});
 	$effect(() => {
 		if (decks.owner === store) decks.sync();
@@ -39,9 +53,45 @@
 	function choosePilot(pilotId: number): void {
 		if (compatible) void decks.select(pilotId);
 	}
-	function move(path: string, toGame: boolean): void {
-		if (compatible) void decks.move(path, toGame);
+
+	/** Sposta una copia con il coordinatore esistente e aggiorna solo lo scroll UI.
+	 * path identifica la carta; toGame sceglie la griglia di origine. Nessun reinvio.
+	 * Attende POST e GET del coordinatore, poi tick; recupera solo dopo successo e
+	 * nello stesso store/coordinatore/pilota aggiornato. Il finally pulisce anche
+	 * su errore; lo smontaggio cancella subito i listener della cattura pendente.
+	 */
+	async function move(path: string, toGame: boolean): Promise<void> {
+		if (!compatible || locked || !view.selected) return;
+		const owner = store;
+		const target = decks;
+		const pilotId = view.selected.pilot_id;
+		pendingScroll?.handle?.cancel();
+		const captured = {
+			owner: target,
+			handle: captureDraftDeckScroll(toGame ? inventoryGrid : gameGrid)
+		};
+		pendingScroll = captured;
+		try {
+			const completed = await target.move(path, toGame);
+			if (!completed) return;
+			await tick();
+			if (
+				pendingScroll === captured &&
+				store === owner &&
+				decks === target &&
+				compatible &&
+				view.visible &&
+				view.selected?.pilot_id === pilotId &&
+				view.current &&
+				!locked
+			)
+				captured.handle?.restore();
+		} finally {
+			captured.handle?.cancel();
+			if (pendingScroll === captured) pendingScroll = null;
+		}
 	}
+
 	function ready(value: boolean): void {
 		if (compatible && view.selected) void decks.setReady(view.selected.pilot_id, value);
 	}
@@ -116,25 +166,29 @@
 							Mazzo {view.count}/15{view.current ? '' : ' — dati precedenti, non modificabili'}
 						</p>
 						<InventorySection title="Inventario modifiche" count={totalCopies(view.inventory)}>
-							<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+							<div bind:this={inventoryGrid} class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 								{#each view.inventory as card (card.path)}
 									<CardTile
 										{card}
 										compact
 										disabled={locked || !view.canAdd}
-										onclick={() => move(card.path, true)}
+										onclick={() => {
+											void move(card.path, true);
+										}}
 									/>
 								{/each}
 							</div>
 						</InventorySection>
 						<InventorySection title="Mazzo da gioco" count={view.count ?? 0}>
-							<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+							<div bind:this={gameGrid} class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 								{#each view.gameDeck as card (card.path)}
 									<CardTile
 										{card}
 										compact
 										disabled={locked || !view.canEdit}
-										onclick={() => move(card.path, false)}
+										onclick={() => {
+											void move(card.path, false);
+										}}
 									/>
 								{/each}
 							</div>
