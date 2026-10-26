@@ -26,7 +26,9 @@
 
 <div
 	data-slot-id={slot.slot_id}
-	class={enlarged ? 'relative w-56 sm:w-72' : 'relative w-28 sm:w-36'}
+	class={enlarged
+		? 'relative col-span-full mx-auto w-56 max-w-full sm:mx-0 sm:w-72'
+		: 'relative w-full min-w-0 sm:w-36'}
 >
 	{#if previewPilotName}
 		<div

@@ -87,7 +87,7 @@ describe('zoom per copia nello store draft', () => {
 		await env.store.refresh();
 		env.store.toggleZoom(1);
 		const before = render(DraftPicking, { props: { store: env.store } }).body;
-		expect(before).toContain('relative w-56 sm:w-72');
+		expect(before).toContain('relative col-span-full mx-auto w-56 max-w-full sm:mx-0 sm:w-72');
 		env.value.version = 3;
 		env.value.preview_slot_id = 2;
 		const pending = deferred<unknown>();
@@ -97,7 +97,7 @@ describe('zoom per copia nello store draft', () => {
 		pending.resolve(env.value);
 		expect(await loading).toBe(true);
 		const after = render(DraftPicking, { props: { store: env.store } }).body;
-		expect(after).toContain('relative w-56 sm:w-72');
+		expect(after).toContain('relative col-span-full mx-auto w-56 max-w-full sm:mx-0 sm:w-72');
 		expect(after).toContain('Anteprima di Anna');
 		expect(after).not.toContain('Scegli');
 		expect(env.store.zoomedSlotId).toBe(1);
@@ -118,7 +118,7 @@ describe('zoom per copia nello store draft', () => {
 		expect(proposeDraftChoice(env.store.state, 1)).toBeNull();
 		const body = render(DraftPicking, { props: { store: env.store } }).body;
 		expect(body).toContain('Scelta da Anna');
-		expect(body).toContain('relative w-56 sm:w-72');
+		expect(body).toContain('relative col-span-full mx-auto w-56 max-w-full sm:mx-0 sm:w-72');
 	});
 
 	it('azzera una diversa identita carta e la fine della fase picking', async () => {

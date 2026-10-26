@@ -94,14 +94,16 @@
 		aria-label="Scelta carte draft"
 		aria-busy={submitting || store.busy}
 		class={view.ownedTurn
-			? 'space-y-5 rounded-xl bg-emerald-900 p-4 text-white'
-			: 'space-y-5 rounded-xl bg-red-950 p-4 text-white'}
+			? 'space-y-4 rounded-xl bg-emerald-900 p-3 text-white sm:space-y-5 sm:p-4'
+			: 'space-y-4 rounded-xl bg-red-950 p-3 text-white sm:space-y-5 sm:p-4'}
 	>
 		{#if view.coherent && view.turn}
 			{#if view.ownedTurn}
-				<p role="status" class="turn-pulse text-center text-xl font-bold">tocca a te</p>
+				<p role="status" class="turn-pulse text-center text-lg font-bold sm:text-xl">tocca a te</p>
 			{:else}
-				<p role="status" class="text-center text-xl font-bold">Tocca a {view.turn.name}</p>
+				<p role="status" class="text-center text-lg font-bold sm:text-xl">
+					Tocca a {view.turn.name}
+				</p>
 			{/if}
 		{:else}
 			<p role="alert">
@@ -131,7 +133,7 @@
 			<div class="space-y-5" inert={selection !== null || submitting}>
 				<section aria-label="Copie disponibili" class="space-y-3">
 					<h3 class="font-semibold">Carte disponibili</h3>
-					<div class="flex flex-wrap items-start gap-4">
+					<div class="card-grid">
 						{#each view.availableCards as slot (slot.slot_id)}
 							<DraftPickingCard
 								{slot}
@@ -154,7 +156,7 @@
 					{#if view.pickedCards.length === 0}
 						<p class="text-sm">Nessuna carta scelta.</p>
 					{:else}
-						<div class="flex flex-wrap items-start gap-4">
+						<div class="card-grid">
 							{#each view.pickedCards as picked (picked.slot.slot_id)}
 								<DraftPickingCard
 									slot={picked.slot}
@@ -175,6 +177,26 @@
 {/if}
 
 <style>
+	/* Telefono: griglia a colonne fisse, la carta ingrandita occupa una riga intera.
+	 * Da sm in su: righe libere con le larghezze fisse delle carte. */
+	.card-grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		align-items: start;
+		gap: 0.5rem;
+	}
+	@media (min-width: 480px) {
+		.card-grid {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+		}
+	}
+	@media (min-width: 640px) {
+		.card-grid {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 1rem;
+		}
+	}
 	.turn-pulse {
 		animation: draft-turn-pulse 1.2s ease-in-out infinite;
 	}
