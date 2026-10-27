@@ -3,12 +3,12 @@ from datetime import timedelta
 from fastapi import FastAPI
 from sqlalchemy import func, select, update
 
-from app.api.auth import router as auth_router
+from app.api.accounts.auth import router as auth_router
 from app.api.deps import AdminUser
 from app.config import SESSION_COOKIE_NAME
 from app.db.models import Session, User
 from app.security import hash_password
-from app.services.sessions import _now, purge_expired
+from app.services.accounts.sessions import _now, purge_expired
 
 PASSWORD = "password123"
 

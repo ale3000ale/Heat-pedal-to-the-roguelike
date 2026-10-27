@@ -75,7 +75,7 @@ Prima di eseguire migrazioni sui dati del gioco: arresto dell'app, backup verifi
 
 ### Formato di `cards` e `base_cards`
 
-- `deck.cards` e `deck_prototype.base_cards` sono colonne di testo che contengono un array JSON. Il formato è definito da `CardEntry` in `backend/app/services/cards.py`: `[{"name":"Velocità 1","path":"cards/starter/velocita-1.webp","copies":3}]`.
+- `deck.cards` e `deck_prototype.base_cards` sono colonne di testo che contengono un array JSON. Il formato è definito da `CardEntry` in `backend/app/services/cards/cards.py`: `[{"name":"Velocità 1","path":"cards/starter/velocita-1.webp","copies":3}]`.
 - `name`: testo da 1 a 64 caratteri. `path`: testo da 1 a 255 caratteri, relativo a `backend/media`. `copies`: intero da 1 a 999.
 - Testo vuoto o assente equivale a nessuna carta. La lettura (`parse_cards`) rifiuta i formati errati e i nomi duplicati nello stesso mazzo (confronto senza spazi ai bordi e senza distinguere le maiuscole). La scrittura passa da `dump_cards`.
 - Il mazzo da gioco (`game_deck_id`) può avere al massimo 15 carte in totale (somma delle copie) e, per ogni carta, non più copie di quelle possedute nell'inventario (`validate_game_deck`).
@@ -186,7 +186,7 @@ nessuna conversione al precedente esempio path/value o a /images/cards.
 Questa decisione aggiorna quel precedente requisito per la fase 16. Nessuna
 migrazione, modifica del DB reale, nuovo scaffold o dipendenza introdotta.
 
-backend/app/services/admin_card_transfers.py prepara una copia indipendente dei
+backend/app/services/cards/admin_card_transfers.py prepara una copia indipendente dei
 cinque contenitori e applica una copia per clic nelle sole direzioni approvate.
 Non modifica gli input neppure su errore; non espone endpoint e non salva dati.
 Nessuna aggiunta pool/mazzo, nessuna doppia sottrazione. I nomi mantengono

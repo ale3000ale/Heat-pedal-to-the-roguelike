@@ -2,9 +2,9 @@ import pytest
 from pydantic import ValidationError
 
 from app.db.models.shop import PackTemplate, ShopTemplate, ShopTemplatePack
-from app.schemas.shop import PackData
-from app.services.pack_images import DEFAULT_FOLDER, PackImageError
-from app.services.pack_templates import (
+from app.schemas.shop.shop import PackData
+from app.services.cards.pack_images import DEFAULT_FOLDER, PackImageError
+from app.services.cards.pack_templates import (
     PackTemplateNotFoundError,
     create_pack_template,
     delete_pack_template,
@@ -21,7 +21,7 @@ def media(tmp_path, monkeypatch):
     (tmp_path / DEFAULT_FOLDER / "base.webp").write_bytes(b"x")
     (tmp_path / "illustration").mkdir()
     (tmp_path / "illustration" / "turbo.webp").write_bytes(b"x")
-    monkeypatch.setattr("app.services.pack_images.DEFAULT_MEDIA_DIR", tmp_path)
+    monkeypatch.setattr("app.services.cards.pack_images.DEFAULT_MEDIA_DIR", tmp_path)
     return tmp_path
 
 
@@ -77,7 +77,7 @@ def test_create_uses_the_default_image(session_factory, media):
 
 
 def test_create_without_default_image_fails(session_factory, tmp_path, monkeypatch):
-    monkeypatch.setattr("app.services.pack_images.DEFAULT_MEDIA_DIR", tmp_path)
+    monkeypatch.setattr("app.services.cards.pack_images.DEFAULT_MEDIA_DIR", tmp_path)
     with session_factory() as db:
         with pytest.raises(PackImageError):
             create_pack_template(db, values())

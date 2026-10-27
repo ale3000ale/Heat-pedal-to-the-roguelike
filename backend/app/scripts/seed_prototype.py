@@ -2,7 +2,7 @@ from sqlalchemy import select
 
 from app.db.models import DeckPrototype
 from app.db.session import SessionLocal
-from app.services.pools import BASE_POOL_NAMES
+from app.services.championship.pools import BASE_POOL_NAMES
 
 
 def main() -> None:

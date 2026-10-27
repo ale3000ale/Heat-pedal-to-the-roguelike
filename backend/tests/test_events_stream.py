@@ -9,10 +9,10 @@ from sqlalchemy import delete
 import app.api.events as events_api
 from app.config import SESSION_COOKIE_NAME
 from app.db.models import Championship, EventLog, User
-from app.schemas.events import EventCreate
-from app.services.event_log import append_event
-from app.services.event_stream import encode_event, parse_cursor, poll_events
-from app.services.sessions import create_session, delete_session
+from app.schemas.core.events import EventCreate
+from app.services.core.event_log import append_event
+from app.services.core.event_stream import encode_event, parse_cursor, poll_events
+from app.services.accounts.sessions import create_session, delete_session
 
 
 @pytest.fixture()

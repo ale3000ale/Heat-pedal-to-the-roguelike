@@ -3,8 +3,8 @@ from io import BytesIO
 import pytest
 from PIL import Image
 
-from app.services.images import MAX_CARD_SIZE
-from app.services.pack_images import (
+from app.services.cards.images import MAX_CARD_SIZE
+from app.services.cards.pack_images import (
     DEFAULT_FOLDER,
     MAX_UPLOAD_BYTES,
     UPLOAD_FOLDER,

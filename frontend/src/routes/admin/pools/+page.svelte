@@ -2,15 +2,15 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
-	import { auth } from '$lib/auth.svelte';
-	import { deleteCard } from '$lib/card-admin-api';
-	import { excludeCardGroup, type CardGroup } from '$lib/pool-exclusion';
+	import { auth } from '$lib/auth/auth.svelte';
+	import { deleteCard } from '$lib/admin/card-admin-api';
+	import { excludeCardGroup, type CardGroup } from '$lib/championship/pool-exclusion';
 	import type { CardEntry, Pool, PoolDetail, PoolKind, ReloadResult } from '$lib/types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
-	import ConfirmDialog from '$lib/components/confirm-dialog.svelte';
-	import CardUploadForm from '$lib/components/card-upload-form.svelte';
-	import PoolCardPicker from '$lib/components/pool-card-picker.svelte';
+	import ConfirmDialog from '$lib/components/shared/confirm-dialog.svelte';
+	import CardUploadForm from '$lib/components/cards/card-upload-form.svelte';
+	import PoolCardPicker from '$lib/components/championship/pool-card-picker.svelte';
 
 	// Anteprima della ricarica: carte che verrebbero tolte, con l'uso nei campionati attivi.
 	interface ReloadPreview {

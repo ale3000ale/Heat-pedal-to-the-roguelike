@@ -1,0 +1,250 @@
+from datetime import datetime, timezone
+
+from sqlalchemy import func, or_, select
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session
+
+from app.db.models.pilot import Pilot
+from app.db.models.race import Race, RaceResult
+from app.schemas.core.events import EventCreate
+from app.services.championship.championships import (
+    ChampionshipClosedError,
+    get_championship,
+    list_entrants,
+    pilot_totals,
+)
+from app.services.core.event_log import append_event
+from app.services.draft.draft_guards import require_no_draft
+from app.services.championship.gold import award_race_gold, rules_of
+from app.services.race.race_deck_snapshot import require_ready_championship_decks
+from app.services.race.review_events import record_review_changed
+from app.services.core.sqlite_write_lock import SQLiteWriteLockError
+
+# Punti per posizione di arrivo; dalla 7ª in poi si prendono 0 punti.
+POINTS_BY_POSITION = {1: 9, 2: 6, 3: 4, 4: 3, 5: 2, 6: 1}
+MAX_RACE_PILOTS = 12
+
+
+class RaceNotFoundError(Exception):
+    """La gara non esiste in questo campionato."""
+
+
+class RaceAlreadyClosedError(Exception):
+    """La gara ha già i risultati: solo l'admin può correggerli."""
+
+
+class RaceInProgressError(Exception):
+    """C'è già una gara non conclusa (senza risultati o con la revisione carte da confermare)."""
+
+
+class RaceStartConflictError(Exception):
+    """Il lock non consente un avvio coerente; nessun retry automatico."""
+
+
+class RaceResultError(ValueError):
+    """Elenco dei risultati non valido (messaggio leggibile)."""
+
+
+def list_races(db: Session, championship_id: int) -> list[Race]:
+    get_championship(db, championship_id)
+    stmt = select(Race).where(Race.championship_id == championship_id).order_by(Race.number)
+    return list(db.scalars(stmt))
+
+
+def get_race(db: Session, championship_id: int, race_id: int) -> Race:
+    # La gara deve appartenere al campionato indicato.
+    get_championship(db, championship_id)
+    race = db.get(Race, race_id)
+    if race is None or race.championship_id != championship_id:
+        raise RaceNotFoundError
+    return race
+
+
+def has_race_in_progress(db: Session, championship_id: int) -> bool:
+    # Una gara resta non conclusa finché manca la conferma della revisione.
+    has_results = select(RaceResult.race_id).where(RaceResult.race_id == Race.id).exists()
+    stmt = (
+        select(Race.id)
+        .where(
+            Race.championship_id == championship_id,
+            or_(~has_results, Race.review_closed_at.is_(None)),
+        )
+        .limit(1)
+    )
+    return db.scalar(stmt) is not None
+
+
+def create_race(db: Session, championship_id: int, date: datetime | None = None) -> Race:
+    """Verifica tutti i mazzi e crea gara/evento nella stessa transazione protetta.
+
+    Parametri: sessione, campionato, data opzionale. Ritorna la gara persistita.
+    ChampionshipClosedError/RaceInProgressError impediscono la creazione;
+    GameDecksNotReadyError riporta tutti gli iscritti non pronti senza carte.
+    RaceStartConflictError traduce solo i conflitti del lock; altri errori SQL
+    propagano. Sempre rollback su errore, nessun retry o completamento dei mazzi.
+    Le revisioni scadute vanno elaborate dal chiamante prima della creazione.
+    Il lock rifiuta modifiche pendenti e invalida le letture ORM precedenti.
+    """
+    # Lock condiviso con salvataggi admin e movimenti del giocatore.
+    from app.services.core.sqlite_write_lock import acquire_sqlite_write_lock as _lock_database
+    try:
+        _lock_database(db)
+        championship = get_championship(db, championship_id)
+        if championship.is_closed:
+            raise ChampionshipClosedError
+        if has_race_in_progress(db, championship_id):
+            raise RaceInProgressError
+        # Nessuna gara o evento viene preparato prima di questa lettura sotto lock.
+        require_no_draft(db, championship_id)
+        require_ready_championship_decks(db, championship_id)
+        last = db.scalar(select(func.max(Race.number)).where(Race.championship_id == championship_id))
+        race = Race(
+            championship_id=championship_id,
+            number=(last or 0) + 1,
+            date=date or datetime.now(timezone.utc),
+        )
+        db.add(race)
+        db.flush()
+        append_event(db, EventCreate(
+            type="race.started", championship_id=championship_id,
+            payload={"race_id": race.id},
+        ))
+        db.commit()
+        db.refresh(race)
+        return race
+    except SQLiteWriteLockError as exc:
+        db.rollback()
+        raise RaceStartConflictError from exc
+    except OperationalError as exc:
+        db.rollback()
+        code = getattr(exc.orig, "sqlite_errorcode", 0) or 0
+        if (code & 255) in (5, 6):
+            raise RaceStartConflictError from exc
+        raise
+    except Exception:
+        db.rollback()
+        raise
+
+
+def count_participants(db: Session, race_id: int) -> int:
+    return db.scalar(select(func.count()).select_from(RaceResult).where(RaceResult.race_id == race_id))
+
+
+def set_results(
+    db: Session,
+    championship_id: int,
+    race_id: int,
+    entries: list[tuple[int, int]],
+    can_correct: bool = False,
+    absent: list[int] | None = None,
+    reviewer_id: int | None = None,
+) -> Race:
+    """Salva risultati, saldi, revisione ed eventi con un solo commit.
+
+    entries contiene (pilota, sponsor) in ordine; absent elenca gli assenti.
+    can_correct permette la correzione; reviewer_id identifica chi termina.
+    Ritorna la gara. Errori di dominio, SQL o evento causano rollback completo.
+    La correzione non riavvia la revisione e non assegna nuovamente oro.
+    """
+    from app.services.shop.shop_purchase import _lock_database
+    try:
+        _lock_database(db)
+        race = _set_results(db, championship_id, race_id, entries, can_correct, absent, reviewer_id)
+        db.commit()
+        db.refresh(race)
+        return race
+    except Exception:
+        db.rollback()
+        raise
+
+
+def _set_results(db, championship_id, race_id, entries, can_correct, absent, reviewer_id) -> Race:
+    """Valida e prepara i risultati e gli eventi; nessun commit o rollback interno.
+
+    Mantiene punti, oro una sola volta, delta sponsor e assenti delle regole esistenti.
+    Le carte sponsor sono consumate soltanto dalla conferma della revisione.
+    """
+    championship = get_championship(db, championship_id)
+    race = get_race(db, championship_id, race_id)
+    if championship.is_closed:
+        raise ChampionshipClosedError
+    old_sponsor = {
+        r.pilot_id: r.sponsor_points
+        for r in db.scalars(select(RaceResult).where(RaceResult.race_id == race.id))
+    }
+    if old_sponsor and not can_correct:
+        raise RaceAlreadyClosedError
+    pilot_ids = [pilot_id for pilot_id, _ in entries]
+    if not pilot_ids:
+        raise RaceResultError("Serve almeno un pilota")
+    if len(pilot_ids) > MAX_RACE_PILOTS:
+        raise RaceResultError(f"Una gara può avere al massimo {MAX_RACE_PILOTS} piloti")
+    if len(set(pilot_ids)) != len(pilot_ids):
+        raise RaceResultError("Pilota ripetuto")
+    if any(sponsor < 0 for _, sponsor in entries):
+        raise RaceResultError("I punti sponsor non possono essere negativi")
+    entrants = list_entrants(db, championship_id)
+    enrolled = {pilot.id for pilot in entrants}
+    if not set(pilot_ids) <= enrolled:
+        raise RaceResultError("Tutti i piloti devono essere iscritti al campionato")
+    if absent is not None:
+        if len(set(absent)) != len(absent):
+            raise RaceResultError("Pilota assente ripetuto")
+        if set(absent) & set(pilot_ids):
+            raise RaceResultError("Un pilota non può essere in classifica e tra gli assenti")
+        if not set(absent) <= enrolled:
+            raise RaceResultError("Tutti i piloti devono essere iscritti al campionato")
+        if enrolled - set(pilot_ids) - set(absent):
+            raise RaceResultError("Indica per ogni iscritto se ha partecipato o no")
+    db.query(RaceResult).where(RaceResult.race_id == race.id).delete()
+    for position, (pilot_id, sponsor) in enumerate(entries, start=1):
+        db.add(RaceResult(
+            race_id=race.id, pilot_id=pilot_id, position=position,
+            points=POINTS_BY_POSITION.get(position, 0), sponsor_points=sponsor,
+        ))
+    db.flush()
+    _sync_pilot_points(db, championship_id)
+    _apply_sponsor_delta(db, old_sponsor, dict(entries))
+    if not old_sponsor:
+        award_race_gold(entrants, rules_of(championship), pilot_ids)
+        if reviewer_id is not None:
+            race.review_started_at = datetime.now(timezone.utc)
+            race.review_started_by_user_id = reviewer_id
+            record_review_changed(db, race, "opened")
+    for kind in ("race.results_changed", "standings.changed"):
+        append_event(db, EventCreate(
+            type=kind, championship_id=championship_id,
+            payload={"race_id": race.id},
+        ))
+    return race
+
+
+def _sync_pilot_points(db: Session, championship_id: int) -> None:
+    # Allinea Pilot.point al totale ottenuto nel campionato.
+    totals = pilot_totals(db, championship_id)
+    for pilot in list_entrants(db, championship_id):
+        pilot.point = totals.get(pilot.id, (0, 0))[0]
+
+
+def _apply_sponsor_delta(db: Session, old: dict[int, int], new: dict[int, int]) -> None:
+    # Lo sponsor si può spendere: si applica solo la differenza, mai sotto zero.
+    for pilot_id in old.keys() | new.keys():
+        pilot = db.get(Pilot, pilot_id)
+        if pilot is not None:
+            pilot.sponsor = max(0, pilot.sponsor + new.get(pilot_id, 0) - old.get(pilot_id, 0))
+
+
+def race_table(
+    db: Session, championship_id: int, race_id: int
+) -> tuple[Race, list[tuple[Pilot, int | None, int, int]]]:
+    # Tutti gli iscritti: prima chi ha corso (per posizione), poi gli altri a 0 punti.
+    race = get_race(db, championship_id, race_id)
+    entrants = list_entrants(db, championship_id)
+    results = {
+        r.pilot_id: r for r in db.scalars(select(RaceResult).where(RaceResult.race_id == race.id))
+    }
+    raced = sorted((p for p in entrants if p.id in results), key=lambda p: results[p.id].position)
+    absent = [p for p in entrants if p.id not in results]
+    rows = [(p, results[p.id].position, results[p.id].points, results[p.id].sponsor_points) for p in raced]
+    rows += [(p, None, 0, 0) for p in absent]
+    return race, rows

@@ -49,10 +49,10 @@ jobs:
           set -euo pipefail
           git diff --exit-code -- backend database heat.py frontend/package.json frontend/package-lock.json frontend/prettier.config.js .github/workflows
           files=(
-            frontend/src/lib/admin-pilot-cards-save-plan.ts
-            frontend/src/lib/admin-pilot-cards-save-summary.spec.ts
-            frontend/src/lib/components/admin-pilot-cards-panel.svelte
-            frontend/src/lib/components/admin-pilot-cards-save-controls.svelte
+            frontend/src/lib/admin/pilot-cards/admin-pilot-cards-save-plan.ts
+            frontend/src/lib/admin/pilot-cards/admin-pilot-cards-save-summary.spec.ts
+            frontend/src/lib/components/admin/admin-pilot-cards-panel.svelte
+            frontend/src/lib/components/admin/admin-pilot-cards-save-controls.svelte
           )
           git add -- "${files[@]}"
           git diff --cached --check

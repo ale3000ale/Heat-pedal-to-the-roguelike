@@ -3,7 +3,7 @@ from io import BytesIO
 from PIL import Image
 
 from app.scripts.resize_cards import process_folder
-from app.services.images import MAX_CARD_SIZE
+from app.services.cards.images import MAX_CARD_SIZE
 
 
 def write_image(path, size, fmt):

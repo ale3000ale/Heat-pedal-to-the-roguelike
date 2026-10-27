@@ -1,8 +1,8 @@
 """Test puri della preparazione mazzi; non certificano avvio o concorrenza DB."""
 import unittest
 
-from app.services.cards import CardEntry, dump_cards
-from app.services.race_deck_readiness import (
+from app.services.cards.cards import CardEntry, dump_cards
+from app.services.race.race_deck_readiness import (
     GameDecksNotReadyError, PilotGameDeck, require_ready_game_decks, unready_game_decks,
 )
 

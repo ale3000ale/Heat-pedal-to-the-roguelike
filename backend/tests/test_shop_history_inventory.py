@@ -7,11 +7,11 @@ from app.db.models.championship import Championship, ChampionshipPilot
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
 from app.db.models.shop import PackPurchase
-from app.services.cards import STARTER_INVENTORY, CardEntry, dump_cards
-from app.services.pilots import PilotNotFoundError
-from app.services.shop_history import group_by_pilot, list_all_history, list_own_history
-from app.services.shop_inventory import inventory_summary, visible_cards
-from app.services.shop_view import PilotNotEnrolledError, ShopAccessDeniedError
+from app.services.cards.cards import STARTER_INVENTORY, CardEntry, dump_cards
+from app.services.pilots.pilots import PilotNotFoundError
+from app.services.shop.shop_history import group_by_pilot, list_all_history, list_own_history
+from app.services.shop.shop_inventory import inventory_summary, visible_cards
+from app.services.shop.shop_view import PilotNotEnrolledError, ShopAccessDeniedError
 
 
 def card(name, copies):

@@ -5,9 +5,9 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.models import CardGift, EventLog, Pilot, User
-from app.services.card_gift import draw_gift, undo_gift
-from app.services.event_log import read_events
-from app.services.gift_events import record_gift_action as real_record
+from app.services.cards.card_gift import draw_gift, undo_gift
+from app.services.core.event_log import read_events
+from app.services.cards.gift_events import record_gift_action as real_record
 from tests.test_race_review import scenario, sponsor_inventory, sponsor_pool
 
 
@@ -69,7 +69,7 @@ def test_gift_event_failure_rolls_back_everything(make_client, session_factory, 
         db.flush()
         raise RuntimeError("event failure")
 
-    monkeypatch.setattr("app.services.card_gift.record_gift_action", fail_after_flush)
+    monkeypatch.setattr("app.services.cards.card_gift.record_gift_action", fail_after_flush)
     with session_factory() as db:
         admin_user = db.scalar(select(User).where(User.role == "admin"))
         with pytest.raises(RuntimeError, match="event failure"):

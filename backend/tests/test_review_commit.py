@@ -2,8 +2,8 @@ import pytest
 
 from app.db.models import User
 from app.db.models.race import Race
-from app.schemas.review_counts import ReviewCountsRequest
-from app.services.review_commit import commit_review_counts, ReviewPlanConflict, save_review_counts
+from app.schemas.race.review_counts import ReviewCountsRequest
+from app.services.race.review_commit import commit_review_counts, ReviewPlanConflict, save_review_counts
 from tests.test_card_judge import (
     CARD, play, reviewing, scenario, sponsor_inventory, sponsor_pool,
 )

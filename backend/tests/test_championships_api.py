@@ -6,7 +6,7 @@ from app.db.models.race import Race, RaceResult
 from app.db.models.deck import Deck, DeckPrototype
 from app.db.models.pilot import Pilot
 from app.security import hash_password
-from app.services.cards import STARTER_INVENTORY, CardEntry, dump_cards, parse_cards
+from app.services.cards.cards import STARTER_INVENTORY, CardEntry, dump_cards, parse_cards
 
 PASSWORD = "password123"
 BASE_CARDS = [

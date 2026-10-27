@@ -5,7 +5,7 @@ from app.db.models.card_play import STATUS_PLAYED, CardPlay
 from app.db.models.championship import Championship
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race
-from app.services.championships import (
+from app.services.championship.championships import (
     ChampionshipOpenError,
     delete_championship,
 )

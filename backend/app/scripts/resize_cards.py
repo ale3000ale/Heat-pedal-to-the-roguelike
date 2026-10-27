@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 from app.config import MEDIA_DIR
-from app.services.images import MAX_CARD_SIZE, CardImageError, fit_card_image, load_image
+from app.services.cards.images import MAX_CARD_SIZE, CardImageError, fit_card_image, load_image
 
 EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp"}
 # Cartelle trattate se non se ne indica nessuna: carte e immagini dei pacchetti.

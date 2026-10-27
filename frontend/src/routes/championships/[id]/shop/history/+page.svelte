@@ -2,9 +2,9 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { fetchOwnHistory } from '$lib/shop-api';
-	import type { ShopHistory } from '$lib/shop-types';
-	import ShopHistoryList from '$lib/components/shop-history-list.svelte';
+	import { fetchOwnHistory } from '$lib/shop/shop-api';
+	import type { ShopHistory } from '$lib/shop/shop-types';
+	import ShopHistoryList from '$lib/components/shop/shop-history-list.svelte';
 
 	const championshipId = Number(page.params.id);
 

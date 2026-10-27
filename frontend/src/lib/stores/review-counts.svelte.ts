@@ -1,28 +1,28 @@
 import { SvelteSet } from 'svelte/reactivity';
 import { api, ApiError } from '$lib/api';
-import { auth } from '$lib/auth.svelte';
+import { auth } from '$lib/auth/auth.svelte';
 import {
 	ownReviewKey,
 	reconcileReviewInventory,
 	type ReviewLocalIssue
-} from '$lib/review-inventory-reconcile';
-import { abandonReview, openReview, reopenReview } from '$lib/race-review-api';
-import { secondsLeft } from '$lib/race-review-format';
-import type { RaceReview } from '$lib/race-review-types';
+} from '$lib/race/review/review-inventory-reconcile';
+import { abandonReview, openReview, reopenReview } from '$lib/race/race-review-api';
+import { secondsLeft } from '$lib/race/race-review-format';
+import type { RaceReview } from '$lib/race/race-review-types';
 import {
 	confirmReviewCounts,
 	fetchReviewDraft,
 	fetchReviewInventory,
 	ReviewConflictError,
 	saveReviewDraft
-} from '$lib/review-counts-api';
-import { adjustRemaining, toReviewCounts } from '$lib/review-counts';
-import { mergeReviewDraft } from '$lib/review-draft';
+} from '$lib/race/review/review-counts-api';
+import { adjustRemaining, toReviewCounts } from '$lib/race/review/review-counts';
+import { mergeReviewDraft } from '$lib/race/review/review-draft';
 import type {
 	ReviewCounts,
 	ReviewIncongruity,
 	ReviewInventoryPilot
-} from '$lib/review-counts-types';
+} from '$lib/race/review/review-counts-types';
 
 import { startLiveRefresh, type LiveRefreshOptions } from '$lib/events/live-refresh.svelte';
 import { eventClient } from '$lib/events/event-client';

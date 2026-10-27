@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
-	import { auth } from '$lib/auth.svelte';
+	import { auth } from '$lib/auth/auth.svelte';
 	import type { CardEntry, PoolDetail } from '$lib/types';
 
 	let pool = $state<PoolDetail | null>(null);

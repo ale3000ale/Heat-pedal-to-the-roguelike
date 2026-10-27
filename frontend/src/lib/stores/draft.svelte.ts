@@ -1,7 +1,7 @@
-import { createDraftSession } from '../draft-session';
-import type { DraftSessionOptions, DraftSessionState } from '../draft-session';
-import type { DraftCommands } from '../draft-types';
-import { parseDraft } from '../draft-validation';
+import { createDraftSession } from '../draft/draft-session';
+import type { DraftSessionOptions, DraftSessionState } from '../draft/draft-session';
+import type { DraftCommands } from '../draft/draft-types';
+import { parseDraft } from '../draft/draft-validation';
 
 /** Adattatore reattivo per una sola sessione, senza singleton o rete iniziale.
  * Il chiamante fornisce il contesto autenticato e gestisce il lifecycle.

@@ -6,10 +6,10 @@ from pydantic import ValidationError
 from sqlalchemy import select
 
 from app.db.models import EventLog
-from app.schemas.draft_state import DraftState
-from app.schemas.events import EventCreate
-from app.services.draft_notifications import signal_draft_changed
-from app.services.draft_preparation import open_preparation
+from app.schemas.draft.draft_state import DraftState
+from app.schemas.core.events import EventCreate
+from app.services.draft.draft_notifications import signal_draft_changed
+from app.services.draft.draft_preparation import open_preparation
 from tests.test_draft_preparation import seed
 
 

@@ -2,7 +2,7 @@ from app.db.models import User
 from app.db.models.deck import DeckPrototype
 from app.db.models.pilot import Pilot
 from app.security import hash_password
-from app.services.cards import CardEntry, dump_cards
+from app.services.cards.cards import CardEntry, dump_cards
 from app.db.models.championship import ChampionshipStanding
 from .race_fixtures import seed_game_deck_from_inventory_card
 

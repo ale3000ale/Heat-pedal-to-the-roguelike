@@ -41,9 +41,9 @@ jobs:
         run: |
           set -euo pipefail
           files=(
-            'frontend/src/lib/components/CardTile.svelte'
-            'frontend/src/lib/components/inventory-section.svelte'
-            'frontend/src/lib/components/racing-icon.svelte'
+            'frontend/src/lib/components/cards/CardTile.svelte'
+            'frontend/src/lib/components/shop/inventory-section.svelte'
+            'frontend/src/lib/components/shared/racing-icon.svelte'
             'frontend/src/routes/+layout.svelte'
             'frontend/src/routes/+page.svelte'
             'frontend/src/routes/championships/[id]/+page.svelte'

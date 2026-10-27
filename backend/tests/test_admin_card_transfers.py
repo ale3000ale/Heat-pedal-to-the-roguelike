@@ -2,8 +2,8 @@
 import copy
 import unittest
 
-from app.services.admin_card_transfers import CardTransfer, CardTransferError, plan_transfers
-from app.services.cards import CardEntry
+from app.services.cards.admin_card_transfers import CardTransfer, CardTransferError, plan_transfers
+from app.services.cards.cards import CardEntry
 
 
 class AdminCardTransfersTests(unittest.TestCase):

@@ -2,14 +2,14 @@ import pytest
 from pydantic import ValidationError
 
 from app.db.models.shop import PackTemplate, ShopTemplate, ShopTemplatePack
-from app.schemas.shop import ShopTemplateData
-from app.services.pack_images import DEFAULT_FOLDER
-from app.services.pack_templates import (
+from app.schemas.shop.shop import ShopTemplateData
+from app.services.cards.pack_images import DEFAULT_FOLDER
+from app.services.cards.pack_templates import (
     PackTemplateNotFoundError,
     create_pack_template,
     delete_pack_template,
 )
-from app.services.shop_templates import (
+from app.services.shop.shop_templates import (
     DuplicatePackTemplateError,
     ShopTemplateEmptyError,
     ShopTemplateNameTakenError,
@@ -26,7 +26,7 @@ from app.services.shop_templates import (
 def media(tmp_path, monkeypatch):
     (tmp_path / DEFAULT_FOLDER).mkdir()
     (tmp_path / DEFAULT_FOLDER / "base.webp").write_bytes(b"x")
-    monkeypatch.setattr("app.services.pack_images.DEFAULT_MEDIA_DIR", tmp_path)
+    monkeypatch.setattr("app.services.cards.pack_images.DEFAULT_MEDIA_DIR", tmp_path)
     return tmp_path
 
 

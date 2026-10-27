@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.cards import (
+from app.services.cards.cards import (
     STARTER_INVENTORY,
     CardEntry,
     CardError,

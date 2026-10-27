@@ -22,8 +22,8 @@ citati sotto. Stato attuale in `PROJECT_STATUS.md`.
 - Host di sviluppo sempre http://127.0.0.1:5173, mai localhost
 
 ## File
-app/api/auth.py, app/api/deps.py, app/schemas/auth.py,
-app/services/sessions.py, app/services/users.py,
+app/api/accounts/auth.py, app/api/deps.py, app/schemas/accounts/auth.py,
+app/services/accounts/sessions.py, app/services/accounts/users.py,
 app/db/models/session.py, migrazione 3daf355a6ffd,
 tests/conftest.py, tests/test_auth.py
 

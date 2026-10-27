@@ -5,8 +5,8 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.models import CardGift, CardPlay, Deck, EventLog, Pilot, User
-from app.services.card_judge import cancel_play, grant_bonus, remove_card
-from app.services.event_log import read_events
+from app.services.cards.card_judge import cancel_play, grant_bonus, remove_card
+from app.services.core.event_log import read_events
 from tests.test_card_judge import (
     CARD, bonus, cancel, confirm_review, leave_review, other_judge, play,
     removal, reviewing, scenario, sponsor_inventory, sponsor_pool, summary,
@@ -142,7 +142,7 @@ def test_invalid_card_or_repeated_cancel_emits_nothing(make_client, session_fact
 def test_event_failure_after_flush_rolls_back_correction(
     make_client, session_factory, monkeypatch, action
 ):
-    from app.services import card_judge
+    from app.services.cards import card_judge
 
     _, _, champ, pilot, race, play_id = prepared(make_client, session_factory, action == "consumed")
     target = "record_card_action" if action in ("cancel", "consumed") else "record_inventory_correction"

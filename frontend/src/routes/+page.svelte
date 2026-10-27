@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { auth } from '$lib/auth.svelte';
-	import RacingIcon from '$lib/components/racing-icon.svelte';
+	import { auth } from '$lib/auth/auth.svelte';
+	import RacingIcon from '$lib/components/shared/racing-icon.svelte';
 	import { Button } from '$lib/components/ui/button';
 </script>
 

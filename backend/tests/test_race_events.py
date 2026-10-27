@@ -5,8 +5,8 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import Championship, EventLog, Pilot, Race, RaceResult
-from app.services.event_log import append_event as real_append
-from app.services.races import create_race, set_results
+from app.services.core.event_log import append_event as real_append
+from app.services.race.races import create_race, set_results
 from tests.test_race_review import finish_race, scenario
 
 
@@ -57,7 +57,7 @@ def test_result_event_failure_rolls_back_all_changes(make_client, session_factor
     with session_factory() as db:
         row = db.get(Pilot, pilot)
         balances = (row.gold, row.sponsor, row.point)
-    monkeypatch.setattr("app.services.races.append_event", fail_event)
+    monkeypatch.setattr("app.services.race.races.append_event", fail_event)
     with session_factory() as db:
         with pytest.raises(RuntimeError, match="event failure"):
             set_results(db, champ, race, [(pilot, 3)])
@@ -75,7 +75,7 @@ def test_creation_event_failure_rolls_back_race(session_factory, monkeypatch):
         db.add(championship)
         db.commit()
         champ = championship.id
-    monkeypatch.setattr("app.services.races.append_event", fail_event)
+    monkeypatch.setattr("app.services.race.races.append_event", fail_event)
     with session_factory() as db:
         with pytest.raises(RuntimeError, match="event failure"):
             create_race(db, champ)

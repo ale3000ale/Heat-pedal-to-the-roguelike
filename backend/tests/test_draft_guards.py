@@ -2,11 +2,11 @@
 import pytest
 
 from app.db.models import Championship
-from app.services.draft_guards import (
+from app.services.draft.draft_guards import (
     DraftLockedError, has_draft, pilot_has_draft,
     require_no_draft, require_no_pilot_draft,
 )
-from app.services.draft_preparation import open_preparation
+from app.services.draft.draft_preparation import open_preparation
 from tests.test_draft_preparation import seed
 
 

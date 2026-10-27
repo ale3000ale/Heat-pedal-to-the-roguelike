@@ -2,7 +2,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.draft_snapshot import DraftDeckSnapshot, DraftSnapshot
+from app.schemas.draft.draft_snapshot import DraftDeckSnapshot, DraftSnapshot
 
 
 def test_initial_snapshot_without_current_version_remains_readable():

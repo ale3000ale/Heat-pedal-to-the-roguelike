@@ -5,8 +5,8 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.models import EventLog, Race
-from app.services.event_log import append_event as real_append_event
-from app.services.review_commit import ReviewPlanConflict, commit_review_counts
+from app.services.core.event_log import append_event as real_append_event
+from app.services.race.review_commit import ReviewPlanConflict, commit_review_counts
 from tests.test_card_judge import CARD, reviewing, scenario, sponsor_inventory, sponsor_pool
 from tests.test_review_commit import request, reviewer
 
@@ -61,7 +61,7 @@ def test_event_failure_rolls_back_even_after_flush(make_client, session_factory,
         db.flush()
         raise RuntimeError("simulated event failure")
 
-    monkeypatch.setattr("app.services.review_commit.append_event", fail_after_flush)
+    monkeypatch.setattr("app.services.race.review_commit.append_event", fail_after_flush)
     with session_factory() as db:
         with pytest.raises(RuntimeError, match="simulated event failure"):
             commit_review_counts(db, champ, race, reviewer(db, race), request(pilot, 0))

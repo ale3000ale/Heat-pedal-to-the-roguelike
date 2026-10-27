@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { auth } from '$lib/auth.svelte';
-	import PackTemplatesPanel from '$lib/components/pack-templates-panel.svelte';
-	import ShopTemplatesPanel from '$lib/components/shop-templates-panel.svelte';
+	import { auth } from '$lib/auth/auth.svelte';
+	import PackTemplatesPanel from '$lib/components/packs/pack-templates-panel.svelte';
+	import ShopTemplatesPanel from '$lib/components/shop/shop-templates-panel.svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	type Tab = 'packs' | 'shops';

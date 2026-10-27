@@ -8,7 +8,7 @@ from app.db.models.championship import Championship
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race
-from app.services.cards import CardEntry, dump_cards
+from app.services.cards.cards import CardEntry, dump_cards
 from .test_admin_pilot_cards_api import admin_cards, url
 
 NAMES = ("game_deck", "modification_inventory", "sponsor_inventory", "modification_pool", "sponsor_pool")
@@ -118,7 +118,7 @@ def test_failed_later_move_rolls_back_everything(client, session_factory, card_s
 
 
 def test_event_failure_rolls_back_cards_and_events(client, session_factory, card_setup, monkeypatch):
-    from app.services import admin_pilot_card_save as service
+    from app.services.cards import admin_pilot_card_save as service
     original = service.append_event
     calls = []
     def fail_second(db, event):
@@ -200,8 +200,8 @@ def test_two_concurrent_saves_do_not_overwrite(client, session_factory, card_set
     from threading import Barrier
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    from app.schemas.admin_pilot_cards import AdminPilotCardsSave
-    from app.services.admin_pilot_card_save import CardAdminConflictError, save_admin_pilot_cards
+    from app.schemas.cards.admin_pilot_cards import AdminPilotCardsSave
+    from app.services.cards.admin_pilot_card_save import CardAdminConflictError, save_admin_pilot_cards
     data = payload(client, card_setup)
     path = tmp_path / "concurrent-admin.sqlite"
     target = sqlite3.connect(path)
@@ -227,7 +227,7 @@ def test_two_concurrent_saves_do_not_overwrite(client, session_factory, card_set
             outcomes = [future.result(timeout=20) for future in futures]
         assert sorted(outcomes) == ["conflict", "saved"]
         with factory() as db:
-            from app.services.cards import parse_cards
+            from app.services.cards.cards import parse_cards
             game = db.get(Deck, data["versions"]["game_deck"]["id"])
             pool = db.get(Deck, data["versions"]["modification_pool"]["id"])
             assert parse_cards(game.cards)[0].copies == 1

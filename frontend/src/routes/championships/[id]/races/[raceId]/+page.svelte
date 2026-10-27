@@ -3,18 +3,18 @@
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { api, ApiError } from '$lib/api';
-	import { auth } from '$lib/auth.svelte';
-	import { raceStatusView } from '$lib/race-status';
-	import { loadPollIntervalMs } from '$lib/card-poll.svelte';
+	import { auth } from '$lib/auth/auth.svelte';
+	import { raceStatusView } from '$lib/race/race-status';
+	import { loadPollIntervalMs } from '$lib/cards/card-poll.svelte';
 	import { startLiveRefresh } from '$lib/events/live-refresh.svelte';
-	import { hasResultChanges, reconcileResults } from '$lib/race-result-reconcile';
-	import type { ResultForm, ResultRow } from '$lib/race-result-reconcile';
+	import { hasResultChanges, reconcileResults } from '$lib/race/race-result-reconcile';
+	import type { ResultForm, ResultRow } from '$lib/race/race-result-reconcile';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
-	import type { RaceDetail } from '$lib/race-types';
+	import type { RaceDetail } from '$lib/race/race-types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
-	import PilotGiftButton from '$lib/components/pilot-gift-button.svelte';
-	import RaceReviewPanel from '$lib/components/race-review-panel.svelte';
+	import PilotGiftButton from '$lib/components/pilots/pilot-gift-button.svelte';
+	import RaceReviewPanel from '$lib/components/race/race-review-panel.svelte';
 
 	interface Snapshot {
 		race: RaceDetail;

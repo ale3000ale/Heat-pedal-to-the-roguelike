@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_current_user
-from app.api.draft import router
+from app.api.draft.draft import router
 from app.db.models import User
 from app.db.session import get_db
 from tests.test_draft_preparation import seed

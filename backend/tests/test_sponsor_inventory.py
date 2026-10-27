@@ -2,9 +2,9 @@ from app.db.models import User
 from app.db.models.championship import Championship
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
-from app.services.cards import dump_cards
-from app.services.championships import close_championship, enroll_pilot
-from app.services.pilots import create_pilot
+from app.services.cards.cards import dump_cards
+from app.services.championship.championships import close_championship, enroll_pilot
+from app.services.pilots.pilots import create_pilot
 
 PASSWORD = "password123"
 

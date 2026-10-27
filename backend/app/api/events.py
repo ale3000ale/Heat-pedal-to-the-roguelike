@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 
 from app.config import SESSION_COOKIE_NAME
 from app.db.session import SessionLocal
-from app.services.event_stream import parse_cursor, poll_events, stream_events
+from app.services.core.event_stream import parse_cursor, poll_events, stream_events
 
 router = APIRouter(tags=["events"])
 

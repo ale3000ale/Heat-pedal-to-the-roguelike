@@ -6,7 +6,7 @@ from app.db.models.championship import Championship
 from app.db.models.deck import Deck, DeckPrototype
 from app.db.models.pilot import Pilot
 from app.security import hash_password
-from app.services.cards import STARTER_INVENTORY, CardEntry, dump_cards, parse_cards
+from app.services.cards.cards import STARTER_INVENTORY, CardEntry, dump_cards, parse_cards
 from .race_fixtures import seed_game_deck_from_inventory_card
 
 PASSWORD = "password123"

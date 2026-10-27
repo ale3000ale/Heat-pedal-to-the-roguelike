@@ -3,32 +3,32 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.auth import router as auth_router
+from app.api.accounts.auth import router as auth_router
 from app.db.session import SessionLocal
-from app.services.sessions import purge_expired
-from app.api.teams import router as teams_router
+from app.services.accounts.sessions import purge_expired
+from app.api.pilots.teams import router as teams_router
 from fastapi.staticfiles import StaticFiles
-from app.api.pilots import router as pilots_router
-from app.api.championships import router as championships_router
-from app.api.pools import router as pools_router
-from app.api.races import router as races_router
-from app.api.admin import router as admin_router
-from app.api.admin_pilot_cards import router as admin_pilot_cards_router
-from app.api.packs import router as packs_router
-from app.api.shop import router as shop_router
-from app.api.shop_play import router as shop_play_router
-from app.api.shop_me import router as shop_me_router
-from app.api.card_play import router as card_play_router
-from app.api.card_gift_seen import router as card_gift_seen_router
-from app.api.card_admin import router as card_admin_router
-from app.api.race_review import router as race_review_router
-from app.api.review_counts import router as review_counts_router
+from app.api.pilots.pilots import router as pilots_router
+from app.api.championship.championships import router as championships_router
+from app.api.championship.pools import router as pools_router
+from app.api.race.races import router as races_router
+from app.api.admin.admin import router as admin_router
+from app.api.admin.admin_pilot_cards import router as admin_pilot_cards_router
+from app.api.cards.packs import router as packs_router
+from app.api.shop.shop import router as shop_router
+from app.api.shop.shop_play import router as shop_play_router
+from app.api.shop.shop_me import router as shop_me_router
+from app.api.cards.card_play import router as card_play_router
+from app.api.cards.card_gift_seen import router as card_gift_seen_router
+from app.api.admin.card_admin import router as card_admin_router
+from app.api.race.race_review import router as race_review_router
+from app.api.race.review_counts import router as review_counts_router
 from app.api.events import router as events_router
-from app.api.draft import router as draft_router
-from app.api.draft_errors import draft_locked_response
-from app.services.draft_guards import DraftLockedError
-from app.services.cleanup import purge_old_deleted
-from app.services.review_timer import review_timer
+from app.api.draft.draft import router as draft_router
+from app.api.draft.draft_errors import draft_locked_response
+from app.services.draft.draft_guards import DraftLockedError
+from app.services.core.cleanup import purge_old_deleted
+from app.services.race.review_timer import review_timer
 
 from app.config import MEDIA_DIR
 

@@ -2,22 +2,22 @@ import pytest
 
 from app.db.models.championship import Championship
 from app.db.models.shop import Pack, PackPurchase
-from app.services.championships import (
+from app.services.championship.championships import (
     ChampionshipClosedError,
     ChampionshipNotFoundError,
     delete_championship,
 )
-from app.services.pack_images import DEFAULT_FOLDER, PackImageError
-from app.services.pack_templates import create_pack_template, update_pack_template
-from app.services.packs import (
+from app.services.cards.pack_images import DEFAULT_FOLDER, PackImageError
+from app.services.cards.pack_templates import create_pack_template, update_pack_template
+from app.services.cards.packs import (
     PackNotFoundError,
     create_pack,
     delete_pack,
     list_packs,
     update_pack,
 )
-from app.services.shop_copy import add_packs_from_templates, pack_templates_of
-from app.services.shop_templates import (
+from app.services.shop.shop_copy import add_packs_from_templates, pack_templates_of
+from app.services.shop.shop_templates import (
     ShopTemplateEmptyError,
     ShopTemplateNotFoundError,
     create_shop_template,
@@ -29,7 +29,7 @@ from app.services.shop_templates import (
 def media(tmp_path, monkeypatch):
     (tmp_path / DEFAULT_FOLDER).mkdir()
     (tmp_path / DEFAULT_FOLDER / "base.webp").write_bytes(b"x")
-    monkeypatch.setattr("app.services.pack_images.DEFAULT_MEDIA_DIR", tmp_path)
+    monkeypatch.setattr("app.services.cards.pack_images.DEFAULT_MEDIA_DIR", tmp_path)
     return tmp_path
 
 

@@ -3,14 +3,14 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.models import Championship, EventLog, PackPurchase, Pilot, Race, User
-from app.services.admin_pilot_card_save import CardAdminConflictError, save_admin_pilot_cards
-from app.services.admin_pilot_cards import read_admin_pilot_cards
-from app.services.championships import close_championship, enroll_pilot
-from app.services.draft_guards import DraftLockedError
-from app.services.draft_preparation import open_preparation
-from app.services.pilot_deck import has_race_in_progress, move_card
-from app.services.races import create_race
-from app.services.shop_purchase import purchase_pack
+from app.services.cards.admin_pilot_card_save import CardAdminConflictError, save_admin_pilot_cards
+from app.services.cards.admin_pilot_cards import read_admin_pilot_cards
+from app.services.championship.championships import close_championship, enroll_pilot
+from app.services.draft.draft_guards import DraftLockedError
+from app.services.draft.draft_preparation import open_preparation
+from app.services.pilots.pilot_deck import has_race_in_progress, move_card
+from app.services.race.races import create_race
+from app.services.shop.shop_purchase import purchase_pack
 from tests.test_draft_preparation import seed
 
 

@@ -9,19 +9,19 @@ from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race
 from app.db.models.shop import Pack, PackPurchase
-from app.services.cards import CardEntry, dump_cards, parse_cards
-from app.services.championships import ChampionshipClosedError
-from app.services.packs import PackNotFoundError
-from app.services.pilots import PilotNotFoundError
-from app.services.shop_draw import PackSoldOutError
-from app.services.shop_purchase import (
+from app.services.cards.cards import CardEntry, dump_cards, parse_cards
+from app.services.championship.championships import ChampionshipClosedError
+from app.services.cards.packs import PackNotFoundError
+from app.services.pilots.pilots import PilotNotFoundError
+from app.services.shop.shop_draw import PackSoldOutError
+from app.services.shop.shop_purchase import (
     InsufficientFundsError,
     InventoryLimitError,
     ShopLockedError,
     merge_inventory,
     purchase_pack,
 )
-from app.services.shop_view import (
+from app.services.shop.shop_view import (
     PilotNotEnrolledError,
     ShopAccessDeniedError,
     open_shop,

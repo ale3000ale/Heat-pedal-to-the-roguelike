@@ -73,7 +73,7 @@ nessuna conversione al precedente esempio path/value o a /images/cards.
 Questa decisione aggiorna quel precedente requisito per la fase 16. Nessuna
 migrazione, modifica del DB reale, nuovo scaffold o dipendenza introdotta.
 
-backend/app/services/admin_card_transfers.py prepara una copia indipendente dei
+backend/app/services/cards/admin_card_transfers.py prepara una copia indipendente dei
 cinque contenitori e applica una copia per clic nelle sole direzioni approvate.
 Non modifica gli input neppure su errore; non espone endpoint e non salva dati.
 Nessuna aggiunta pool/mazzo, nessuna doppia sottrazione. I nomi mantengono

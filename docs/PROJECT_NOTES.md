@@ -167,7 +167,7 @@ Regole in `PHASE_13_SPEC.md` (parte B, caricamento ed eliminazione). Stato:
 - Pacchetti: se valuta e costo mancano valgono 10 oro; con valuta sponsor e costo mancante valgono 2 sponsor. Il modulo del frontend parte da 10 e passa a 2 cambiando valuta solo se il costo non è stato modificato a mano.
 - Pagina del giocatore: `frontend/src/routes/championships/[id]/shop/+page.svelte`. In alto a destra stanno il pilota scelto con oro e punti sponsor e i pulsanti (Inventario in popup, link Storico verso la pagina `history`, scelta del pilota, impostazioni per l'admin).
 - Animazione di apertura (decisioni dell'11 ottobre): componente `components/pack-reveal.svelte`, fasi e tempi in `lib/pack-reveal-phases.ts` (test in `pack-reveal-phases.spec.ts`). La busta ha come texture l'immagine del pacchetto; la striscia superiore se ne va con uno strappo e la busta resta tagliata in alto. Poi le carte escono **una alla volta**, già scoperte: ogni tocco (o Invio, o Spazio) mostra la successiva, con il contatore "Carta N di M". Dopo l'ultima carta un altro tocco apre il **riepilogo finale**: griglia con le carte ottenute, ciascuna con immagine ed etichetta "Modifica" o "Sponsor", e il testo "Hai ottenuto N carte". Le copie uguali compaiono una sola volta con "x N" (`groupByCard` in `lib/pack-summary.ts`, test in `pack-summary.spec.ts`). Il tasto "Salta" porta al riepilogo da qualsiasi fase. La finestra si chiude con la X in ogni momento; il clic fuori e il tasto Esc valgono solo dal riepilogo (`done` di `pack-reveal.svelte`, passato a `closeOnOutside` di `modal.svelte`). Con il movimento ridotto si parte dalle carte. Busta, scorrimento e riepilogo sono solo CSS e markup, senza test dedicati, e sono stati verificati a mano dall'autore. `cardDelayMs` resta solo per il suo test.
-- Ordinamento e ricerca dei pacchetti: `frontend/src/lib/shop-sort.ts` (`sortPacks`, `filterPacksByName`, `PACK_SORT_OPTIONS`, `DEFAULT_PACK_SORT`), con test in `shop-sort.spec.ts`. Predefinito: dal meno caro al più caro; a parità contano il nome e poi l'id. La scelta non viene salvata.
+- Ordinamento e ricerca dei pacchetti: `frontend/src/lib/shop/shop-sort.ts` (`sortPacks`, `filterPacksByName`, `PACK_SORT_OPTIONS`, `DEFAULT_PACK_SORT`), con test in `shop-sort.spec.ts`. Predefinito: dal meno caro al più caro; a parità contano il nome e poi l'id. La scelta non viene salvata.
 - Le impostazioni del campionato aperte dal negozio usano l'opzione `shopOnly` di `championship-settings.svelte` e mostrano solo pacchetti, pool completa e storico. Lo storico completo dell'admin è in `championship-history-panel.svelte` (rotta `history/all`).
 - Deploy online: un solo server con pochi worker (SQLite accetta una sola scrittura alla volta).
 
@@ -211,7 +211,7 @@ nessuna conversione al precedente esempio path/value o a /images/cards.
 Questa decisione aggiorna quel precedente requisito per la fase 16. Nessuna
 migrazione, modifica del DB reale, nuovo scaffold o dipendenza introdotta.
 
-backend/app/services/admin_card_transfers.py prepara una copia indipendente dei
+backend/app/services/cards/admin_card_transfers.py prepara una copia indipendente dei
 cinque contenitori e applica una copia per clic nelle sole direzioni approvate.
 Non modifica gli input neppure su errore; non espone endpoint e non salva dati.
 Nessuna aggiunta pool/mazzo, nessuna doppia sottrazione. I nomi mantengono

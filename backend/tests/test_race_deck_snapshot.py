@@ -4,9 +4,9 @@ from sqlalchemy import select
 
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
-from app.services.cards import CardEntry, dump_cards
-from app.services.race_deck_readiness import GameDecksNotReadyError
-from app.services.race_deck_snapshot import require_ready_championship_decks
+from app.services.cards.cards import CardEntry, dump_cards
+from app.services.race.race_deck_readiness import GameDecksNotReadyError
+from app.services.race.race_deck_snapshot import require_ready_championship_decks
 from tests.test_races_api import setup
 
 

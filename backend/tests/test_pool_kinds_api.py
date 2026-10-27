@@ -4,7 +4,7 @@ from app.db.models import User
 from app.db.models.championship import Championship
 from app.db.models.deck import Deck, DeckPrototype
 from app.security import hash_password
-from app.services.cards import CardEntry, dump_cards, parse_cards
+from app.services.cards.cards import CardEntry, dump_cards, parse_cards
 
 PASSWORD = "password123"
 MODIFICHE = [
@@ -17,7 +17,7 @@ SPONSOR = [CardEntry(name="Premio", path="cards/base/sponsor/premio_1.webp", cop
 @pytest.fixture()
 def media(tmp_path, monkeypatch):
     # Cartella multimediale di prova: la ricarica legge da qui e non da backend/media.
-    monkeypatch.setattr("app.services.pools.MEDIA_DIR", tmp_path)
+    monkeypatch.setattr("app.services.championship.pools.MEDIA_DIR", tmp_path)
     return tmp_path
 
 

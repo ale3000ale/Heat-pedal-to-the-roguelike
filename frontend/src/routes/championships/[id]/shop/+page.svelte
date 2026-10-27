@@ -4,24 +4,24 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
-	import { auth } from '$lib/auth.svelte';
-	import { buyPack, fetchMyShops, fetchShop } from '$lib/shop-api';
-	import { packImageUrl, revealOrder } from '$lib/shop-cards';
-	import { currencyLabel } from '$lib/shop-format';
-	import { shopSelection } from '$lib/shop-selection.svelte';
+	import { auth } from '$lib/auth/auth.svelte';
+	import { buyPack, fetchMyShops, fetchShop } from '$lib/shop/shop-api';
+	import { packImageUrl, revealOrder } from '$lib/shop/shop-cards';
+	import { currencyLabel } from '$lib/shop/shop-format';
+	import { shopSelection } from '$lib/shop/shop-selection.svelte';
 	import {
 		DEFAULT_PACK_SORT,
 		PACK_SORT_OPTIONS,
 		filterPacksByName,
 		sortPacks,
 		type PackSort
-	} from '$lib/shop-sort';
+	} from '$lib/shop/shop-sort';
 	import type { ChampionshipDetail } from '$lib/types';
-	import type { PurchaseResult, ShopPack, ShopPilotRef, ShopView } from '$lib/shop-types';
-	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
-	import Modal from '$lib/components/modal.svelte';
-	import PackReveal from '$lib/components/pack-reveal.svelte';
-	import ShopInventoryModal from '$lib/components/shop-inventory-modal.svelte';
+	import type { PurchaseResult, ShopPack, ShopPilotRef, ShopView } from '$lib/shop/shop-types';
+	import ChampionshipSettings from '$lib/components/championship/championship-settings.svelte';
+	import Modal from '$lib/components/shared/modal.svelte';
+	import PackReveal from '$lib/components/packs/pack-reveal.svelte';
+	import ShopInventoryModal from '$lib/components/shop/shop-inventory-modal.svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	type Area = 'modifiche' | 'sponsor';

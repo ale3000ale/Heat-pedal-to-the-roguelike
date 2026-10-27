@@ -3,9 +3,9 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import Championship, ChampionshipPilot, Deck, DraftPreparation, Pilot, Race, User
-from app.schemas.draft_snapshot import DraftSnapshot
-from app.schemas.draft_state import DraftState
-from app.services.draft_preparation import (
+from app.schemas.draft.draft_snapshot import DraftSnapshot
+from app.schemas.draft.draft_state import DraftState
+from app.services.draft.draft_preparation import (
     DraftPermissionError, DraftPreparationError, open_preparation, set_attendance,
 )
 

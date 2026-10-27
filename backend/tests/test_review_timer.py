@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import EventLog, Race
-from app.services.review_timer import review_timer, run_review_sweep
+from app.services.race.review_timer import review_timer, run_review_sweep
 from tests.test_race_review import CARD, closed_scenario, sponsor_inventory, sponsor_pool
 
 
@@ -54,7 +54,7 @@ def test_timer_stop_after_one_sweep(monkeypatch):
             return 0
 
         worker = AsyncMock(side_effect=run_and_stop)
-        monkeypatch.setattr("app.services.review_timer.run_in_threadpool", worker)
+        monkeypatch.setattr("app.services.race.review_timer.run_in_threadpool", worker)
         await review_timer(object(), stop)
         assert worker.await_count == 1
 
@@ -66,7 +66,7 @@ def test_timer_already_stopped_does_not_touch_database(monkeypatch):
         stop = asyncio.Event()
         stop.set()
         worker = AsyncMock()
-        monkeypatch.setattr("app.services.review_timer.run_in_threadpool", worker)
+        monkeypatch.setattr("app.services.race.review_timer.run_in_threadpool", worker)
         await review_timer(object(), stop)
         assert worker.await_count == 0
 

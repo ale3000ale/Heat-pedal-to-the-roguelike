@@ -2,7 +2,7 @@
 import pytest
 
 from app.db.models import Deck
-from app.services.draft_snapshot import (
+from app.services.draft.draft_snapshot import (
     DraftSnapshotConflictError, capture_snapshot, stage_snapshot_restore,
 )
 

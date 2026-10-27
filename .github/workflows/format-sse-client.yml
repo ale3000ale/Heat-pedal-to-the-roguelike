@@ -60,8 +60,8 @@ jobs:
         run: |
           set -euo pipefail
           files=(
-            frontend/src/lib/review-inventory-reconcile.ts
-            frontend/src/lib/review-inventory-reconcile.spec.ts
+            frontend/src/lib/race/review/review-inventory-reconcile.ts
+            frontend/src/lib/race/review/review-inventory-reconcile.spec.ts
           )
           git diff --exit-code -- frontend/package.json frontend/package-lock.json frontend/prettier.config.js
           git add -- "${files[@]}"

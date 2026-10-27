@@ -33,7 +33,7 @@ jobs:
           start = original.index(marker) + len(marker)
           end = original.index('          PY\n', start)
           exec(compile(dedent(original[start:end]), 'lifecycle-approved-5908cc6', 'exec'), {'__name__': '__main__'})
-          p = Path('frontend/src/lib/components/card-crop-editor.svelte')
+          p = Path('frontend/src/lib/components/cards/card-crop-editor.svelte')
           text = p.read_text()
           old = '\t\t\trole="img"\n'
           if text.count(old) != 1:
@@ -80,7 +80,7 @@ jobs:
           if text.count(old) != 1: raise RuntimeError('Nota diversa')
           p.write_text(text.replace(old, 'Stato: patch applicata; formatter, lint, check senza diagnostica del canvas, test e build frontend riusciti prima del commit bot.'))
           PY
-          git add -- 'frontend/src/routes/championships/[id]/races/[raceId]/+page.svelte' frontend/src/lib/components/race-review-panel.svelte frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/components/card-crop-editor.svelte frontend/src/lib/review-session-guard.spec.ts docs/PHASE_15_REVIEW_LIFECYCLE_CANVAS.md
+          git add -- 'frontend/src/routes/championships/[id]/races/[raceId]/+page.svelte' frontend/src/lib/components/race/race-review-panel.svelte frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/components/cards/card-crop-editor.svelte frontend/src/lib/race/review/review-session-guard.spec.ts docs/PHASE_15_REVIEW_LIFECYCLE_CANVAS.md
           git diff --cached --check
           git fetch origin phase-15-sse-sistemazione
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"

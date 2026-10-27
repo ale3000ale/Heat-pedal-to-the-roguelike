@@ -1,7 +1,7 @@
 from app.db.models import User
 from app.db.models.deck import DeckPrototype
 from app.security import hash_password
-from app.services.cards import CardEntry, dump_cards
+from app.services.cards.cards import CardEntry, dump_cards
 
 PASSWORD = "password123"
 BASE_CARDS = [CardEntry(name="Velocità 1", path="cards/starter/velocita-1.webp", copies=3)]

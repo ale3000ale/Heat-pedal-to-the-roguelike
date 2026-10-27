@@ -1,7 +1,7 @@
 from app.db.models import User
 from app.db.models.deck import DeckPrototype
 from app.security import hash_password
-from app.services.cards import CardEntry, dump_cards
+from app.services.cards.cards import CardEntry, dump_cards
 
 PASSWORD = "password123"
 MODIFICHE = [

@@ -2,8 +2,8 @@ import random
 
 import pytest
 
-from app.services.cards import CardEntry
-from app.services.shop_draw import (
+from app.services.cards.cards import CardEntry
+from app.services.shop.shop_draw import (
     PackSoldOutError,
     available_copies,
     draw_cards,

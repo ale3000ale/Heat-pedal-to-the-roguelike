@@ -5,8 +5,8 @@ from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race
 from app.db.models.shop import Pack
-from app.services.cards import STARTER_INVENTORY, CardEntry, dump_cards
-from app.services.users import register_user
+from app.services.cards.cards import STARTER_INVENTORY, CardEntry, dump_cards
+from app.services.accounts.users import register_user
 
 PASSWORD = "password123"
 

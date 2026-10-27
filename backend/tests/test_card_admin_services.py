@@ -5,16 +5,17 @@ from PIL import Image
 
 from app.config import CARD_IMAGE_SIZE
 from app.db.models.deck import Deck, DeckPrototype
-from app.services import card_delete, card_upload, pools
-from app.services.card_delete import (
+from app.services.cards import card_delete, card_upload
+from app.services.championship import pools
+from app.services.cards.card_delete import (
     CardNotDeletableError,
     CardNotFoundError,
     delete_uploaded_card,
     remove_orphan_uploads,
 )
-from app.services.card_upload import CardNameTakenError, CardUploadError, upload_card
-from app.services.cards import CardEntry, dump_cards
-from app.services.pools import BASE_POOL_NAMES, get_base_pool, pool_cards
+from app.services.cards.card_upload import CardNameTakenError, CardUploadError, upload_card
+from app.services.cards.cards import CardEntry, dump_cards
+from app.services.championship.pools import BASE_POOL_NAMES, get_base_pool, pool_cards
 
 
 def image_bytes(fmt: str = "PNG", size: tuple[int, int] = CARD_IMAGE_SIZE) -> bytes:
