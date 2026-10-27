@@ -70,7 +70,8 @@ describe('rendering preparazione mazzi', () => {
 		expect(body).toContain('Anna');
 		expect(body).toContain('Luca');
 		expect(body).not.toContain('Altro proprietario');
-		expect(body).toContain('Mazzo 15/15');
+		expect(body).toContain('Mazzo di Anna');
+		expect(body).toContain('15/15');
 		expect(body).toContain('Inventario modifiche');
 		expect(read).toHaveBeenCalledTimes(1);
 	});
@@ -96,7 +97,8 @@ describe('rendering preparazione mazzi', () => {
 			expect(body).toContain('data-draft-deck-feedback');
 			expect(feedbackTag(body, 'verification')).toContain('invisible');
 			expect(body).toContain('Inventario modifiche');
-			expect(body).toContain('Mazzo 15/15');
+			expect(body).toContain('Mazzo di Anna');
+			expect(body).toContain('15/15');
 		}
 		expect(feedbackTag(after, 'busy')).toContain('invisible');
 		expect(decks.getState().data).toEqual(initial);

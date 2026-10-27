@@ -144,11 +144,10 @@
 	{title}
 	closeOnOutside={false}
 	closePosition="left"
-	showClose={policy.showClose}
+	showClose={policy.showClose && confirmation === null}
 	closeDisabled={!policy.canRequest || externalBusy || submitting || confirmation !== null}
 	wide={expanded}
-	stableViewport={expanded && sessionState.snapshot?.phase === 'decks'}
-	fitContent={expanded && sessionState.snapshot?.phase === 'picking'}
+	fitContent={expanded}
 	onrequestclose={requestClose}
 >
 	{#if sessionState.error}
@@ -197,7 +196,6 @@
 					{submitting ? 'Annullamento in corso…' : 'Annulla la gara'}
 				</Button>
 			</div>
-			<p class="mt-2 text-right text-xs text-muted-foreground">Esc per tornare alla gara</p>
 		</div>
 	{/if}
 	<div

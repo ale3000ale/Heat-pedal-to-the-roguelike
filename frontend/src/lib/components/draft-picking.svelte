@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import DraftPickingCard from '$lib/components/draft-picking-card.svelte';
+	import Modal from '$lib/components/modal.svelte';
 	import {
 		canConfirmDraftChoice,
 		draftPickingView,
@@ -22,8 +23,13 @@
 			canConfirmDraftChoice(sessionState, selection.proposal)
 	);
 
+	/** Chi ha gia scelto non ingrandisce: uno zoom rimasto non resta bloccato aperto. */
 	function enlarged(slotId: number): boolean {
-		return store.zoomedSlotId === slotId;
+		return !view.alreadyChosen && store.zoomedSlotId === slotId;
+	}
+
+	function cancelChoice(): void {
+		if (!submitting) selection = null;
 	}
 
 	$effect(() => {
@@ -41,7 +47,14 @@
 		const current = store.state;
 		const picking = draftPickingView(current);
 		const slot = current.snapshot?.cards.find((item) => item.slot_id === slotId);
-		if (!picking.visible || !picking.coherent || !picking.turn || !current.snapshot || !slot)
+		if (
+			!picking.visible ||
+			!picking.coherent ||
+			picking.alreadyChosen ||
+			!picking.turn ||
+			!current.snapshot ||
+			!slot
+		)
 			return;
 		const closing = store.zoomedSlotId === slotId;
 		if (!store.toggleZoom(slotId)) return;
@@ -113,21 +126,33 @@
 		{#if notice}
 			<p role="status" class="text-sm">{notice}</p>
 		{/if}
+		{#if view.alreadyChosen}
+			<p class="text-center text-sm text-white/80">
+				Hai gia scelto: segui la scelta degli altri in tempo reale.
+			</p>
+		{/if}
 		{#if selection}
-			<div class="space-y-3 rounded-md border border-white/40 p-3" aria-busy={submitting}>
-				<p>Scegliere {selection.proposal.cardName} per {selection.proposal.pilotName}?</p>
-				<div class="flex flex-wrap justify-end gap-2">
-					<Button
-						type="button"
-						variant="outline"
-						disabled={submitting}
-						onclick={() => (selection = null)}>Torna alle carte</Button
-					>
-					<Button type="button" disabled={submitting || !canConfirm} onclick={confirmChoice}>
-						{submitting ? 'Scelta in corso…' : 'Conferma scelta'}
-					</Button>
+			<Modal open title="Conferma scelta" narrow onrequestclose={cancelChoice}>
+				<div class="space-y-4" aria-busy={submitting}>
+					<img
+						src="/media/{selection.proposal.cardPath}"
+						alt={selection.proposal.cardName}
+						class="mx-auto aspect-[2/3] w-32 rounded-lg object-cover shadow-md sm:w-40"
+					/>
+					<p class="text-center text-sm">
+						Scegliere <strong>{selection.proposal.cardName}</strong> per
+						<strong>{selection.proposal.pilotName}</strong>?
+					</p>
+					<div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+						<Button type="button" variant="outline" disabled={submitting} onclick={cancelChoice}
+							>Torna alle carte</Button
+						>
+						<Button type="button" disabled={submitting || !canConfirm} onclick={confirmChoice}>
+							{submitting ? 'Scelta in corso…' : 'Conferma scelta'}
+						</Button>
+					</div>
 				</div>
-			</div>
+			</Modal>
 		{/if}
 		{#if view.coherent}
 			<div class="space-y-5" inert={selection !== null || submitting}>
@@ -143,9 +168,11 @@
 									: null}
 								chooseAllowed={view.canChoose && !submitting && selection === null}
 								disabled={store.busy || submitting || selection !== null}
-								onzoom={() => {
-									void zoom(slot.slot_id);
-								}}
+								onzoom={view.alreadyChosen
+									? undefined
+									: () => {
+											void zoom(slot.slot_id);
+										}}
 								onchoose={() => requestChoice(slot.slot_id)}
 							/>
 						{/each}
@@ -163,9 +190,11 @@
 									enlarged={enlarged(picked.slot.slot_id)}
 									pickedBy={picked.pilot.name}
 									disabled={store.busy || submitting || selection !== null}
-									onzoom={() => {
-										void zoom(picked.slot.slot_id);
-									}}
+									onzoom={view.alreadyChosen
+										? undefined
+										: () => {
+												void zoom(picked.slot.slot_id);
+											}}
 								/>
 							{/each}
 						</div>

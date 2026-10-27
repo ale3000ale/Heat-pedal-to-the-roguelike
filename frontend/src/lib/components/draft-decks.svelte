@@ -115,21 +115,67 @@
 			{#if view.ownPilots.length === 0}
 				<p role="status">Non hai piloti presenti da preparare. Attendi gli altri partecipanti.</p>
 			{:else}
-				<div class="flex flex-wrap gap-2" aria-label="I tuoi piloti presenti">
-					{#each view.ownPilots as pilot (pilot.pilot_id)}
-						<Button
-							type="button"
-							variant="outline"
-							aria-pressed={view.selected?.pilot_id === pilot.pilot_id}
-							disabled={store.busy || $decks.status === 'writing' || sessionState.status !== 'idle'}
-							onclick={() => choosePilot(pilot.pilot_id)}
-						>
-							{pilot.name}{sessionState.snapshot?.ready.includes(pilot.pilot_id) ? ' — pronto' : ''}
-						</Button>
-					{/each}
-				</div>
+				{#if view.ownPilots.length > 1}
+					<div class="flex flex-wrap gap-2" aria-label="I tuoi piloti presenti">
+						{#each view.ownPilots as pilot (pilot.pilot_id)}
+							<Button
+								type="button"
+								variant="outline"
+								aria-pressed={view.selected?.pilot_id === pilot.pilot_id}
+								disabled={store.busy ||
+									$decks.status === 'writing' ||
+									sessionState.status !== 'idle'}
+								onclick={() => choosePilot(pilot.pilot_id)}
+							>
+								{pilot.name}{sessionState.snapshot?.ready.includes(pilot.pilot_id)
+									? ' — pronto'
+									: ''}
+							</Button>
+						{/each}
+					</div>
+				{/if}
 				{#if view.selected}
-					<h3 class="font-semibold">Mazzo di {view.selected.name}</h3>
+					<h3
+						class="rounded-lg border border-amber-400/50 bg-amber-500/20 px-4 py-3 text-center font-racing text-xl font-black tracking-wider text-amber-300 uppercase"
+					>
+						Mazzo di {view.selected.name}{#if view.hasDeck}: {view.count}/15{view.current
+								? ''
+								: ' — dati precedenti, non modificabili'}{/if}
+					</h3>
+					{#if view.hasDeck}
+						<InventorySection title="Mazzo da gioco" count={view.count ?? 0}>
+							<div bind:this={gameGrid} class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+								{#each view.gameDeck as card (card.path)}
+									<CardTile
+										{card}
+										compact
+										hoverZoom={false}
+										hoverFocus
+										disabled={locked || !view.canEdit}
+										onclick={() => {
+											void move(card.path, false);
+										}}
+									/>
+								{/each}
+							</div>
+						</InventorySection>
+						<InventorySection title="Inventario modifiche" count={totalCopies(view.inventory)}>
+							<div bind:this={inventoryGrid} class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+								{#each view.inventory as card (card.path)}
+									<CardTile
+										{card}
+										compact
+										hoverZoom={false}
+										hoverFocus
+										disabled={locked || !view.canAdd}
+										onclick={() => {
+											void move(card.path, true);
+										}}
+									/>
+								{/each}
+							</div>
+						</InventorySection>
+					{/if}
 					{#if $decks.error}
 						<p role="alert" class="text-sm text-destructive">{$decks.error}</p>
 					{/if}
@@ -157,56 +203,21 @@
 					{#if sessionState.status === 'blocked'}
 						<p class="text-sm">Rileggi prima la preparazione dal comando del contenitore.</p>
 					{/if}
-					<Button
-						type="button"
-						variant="outline"
-						disabled={$decks.busy || store.busy || sessionState.status !== 'idle'}
-						onclick={() => choosePilot(view.selected!.pilot_id)}>Rileggi mazzo</Button
-					>
-					{#if view.hasDeck}
-						<p class="text-sm">
-							Mazzo {view.count}/15{view.current ? '' : ' — dati precedenti, non modificabili'}
-						</p>
-						<InventorySection title="Inventario modifiche" count={totalCopies(view.inventory)}>
-							<div bind:this={inventoryGrid} class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-								{#each view.inventory as card (card.path)}
-									<CardTile
-										{card}
-										compact
-										disabled={locked || !view.canAdd}
-										onclick={() => {
-											void move(card.path, true);
-										}}
-									/>
-								{/each}
-							</div>
-						</InventorySection>
-						<InventorySection title="Mazzo da gioco" count={view.count ?? 0}>
-							<div bind:this={gameGrid} class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-								{#each view.gameDeck as card (card.path)}
-									<CardTile
-										{card}
-										compact
-										disabled={locked || !view.canEdit}
-										onclick={() => {
-											void move(card.path, false);
-										}}
-									/>
-								{/each}
-							</div>
-						</InventorySection>
-					{/if}
-					<div class="flex justify-end">
+					<div class="-mt-2 flex justify-end">
 						{#if view.selectedReady}
 							<Button
 								type="button"
 								variant="outline"
 								disabled={locked || !view.canUnready}
+								size="lg"
 								onclick={() => ready(false)}>non Pronto</Button
 							>
 						{:else}
-							<Button type="button" disabled={locked || !view.canReady} onclick={() => ready(true)}
-								>Pronto</Button
+							<Button
+								type="button"
+								size="lg"
+								disabled={locked || !view.canReady}
+								onclick={() => ready(true)}>Pronto</Button
 							>
 						{/if}
 					</div>

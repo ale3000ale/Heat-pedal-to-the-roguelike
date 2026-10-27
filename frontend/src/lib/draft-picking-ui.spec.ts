@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from 'svelte/server';
 import DraftPicking from './components/draft-picking.svelte';
 import DraftPickingCard from './components/draft-picking-card.svelte';
+import { draftPickingView } from './draft-picking';
 import type { DraftCardSlot, DraftRead } from './draft-types';
 import type { DraftSessionOptions } from './draft-session';
 import { DraftStore } from './stores/draft.svelte';
@@ -62,7 +63,7 @@ describe('rendering scelta carte', () => {
 		const { body } = render(DraftPicking, { props: { store } });
 		expect(body).toContain('bg-red-950');
 		expect(body).toContain('Tocca a Anna');
-		expect(body).toContain('Anteprima di Anna');
+		expect(body).toContain('Anna sta scegliendo');
 		expect(body).toContain('bg-yellow-300/80');
 		expect(send).not.toHaveBeenCalled();
 	});
@@ -94,6 +95,27 @@ describe('rendering scelta carte', () => {
 		expect(body).toContain('Carte scelte');
 		expect(body).toContain('Scelta da Anna');
 		expect(body).toContain('data-slot-id="2"');
+	});
+
+	it('lascia a chi ha gia scelto la sola visione delle carte', async () => {
+		const value = snapshot();
+		value.cards[0].chosen_by = 11;
+		value.picks = [1];
+		value.current_pilot_id = 12;
+		value.preview_slot_id = 2;
+		const { store } = await setup(value);
+		expect(draftPickingView(store.state).alreadyChosen).toBe(true);
+		expect(store.toggleZoom(2)).toBe(true);
+		const { body } = render(DraftPicking, { props: { store } });
+		expect(body).toContain('Hai gia scelto');
+		expect(body).toContain('Luca sta scegliendo');
+		expect(body).not.toContain('<button');
+		expect(body).not.toContain('w-44');
+	});
+
+	it('non considera concluso chi deve ancora scegliere', async () => {
+		const { store } = await setup();
+		expect(draftPickingView(store.state).alreadyChosen).toBe(false);
 	});
 
 	it('non rende la schermata dopo il passaggio ai mazzi', async () => {

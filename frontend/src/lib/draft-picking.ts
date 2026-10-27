@@ -6,6 +6,8 @@ export interface DraftPickingView {
 	coherent: boolean;
 	ownedTurn: boolean;
 	canChoose: boolean;
+	/** Tutti i propri piloti presenti hanno gia scelto: resta la sola visione in tempo reale. */
+	alreadyChosen: boolean;
 	turn: DraftPilotRead | null;
 	availableCards: DraftCardSlot[];
 	pickedCards: { slot: DraftCardSlot; pilot: DraftPilotRead }[];
@@ -22,6 +24,7 @@ export function draftPickingView(state: DraftSessionState): DraftPickingView {
 		coherent: false,
 		ownedTurn: false,
 		canChoose: false,
+		alreadyChosen: false,
 		turn: null,
 		availableCards: [],
 		pickedCards: [],
@@ -62,11 +65,19 @@ export function draftPickingView(state: DraftSessionState): DraftPickingView {
 		(draft.preview_slot_id === null ||
 			availableCards.some((slot) => slot.slot_id === draft.preview_slot_id));
 	const ownedTurn = coherent && turn !== null && draft.my_pilot_ids.includes(turn.pilot_id);
+	const own = draft.participants.filter(
+		(pilot) => pilot.present && draft.my_pilot_ids.includes(pilot.pilot_id)
+	);
+	const alreadyChosen =
+		coherent &&
+		own.length > 0 &&
+		own.every((pilot) => pickedCards.some((item) => item.pilot.pilot_id === pilot.pilot_id));
 	return {
 		visible: true,
 		coherent,
 		ownedTurn,
 		canChoose: ownedTurn && state.status === 'idle',
+		alreadyChosen,
 		turn: turn ? { ...turn } : null,
 		availableCards,
 		pickedCards,

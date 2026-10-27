@@ -64,12 +64,12 @@ describe('viewport stabile del modal draft', () => {
 	});
 
 	it.each(['attendance', 'order', 'picking', 'decks'] as const)(
-		'adatta la scelta carte al contenuto e tiene stabile solo i mazzi: %s',
+		'adatta scelta carte e mazzi al contenuto: %s',
 		async (phase) => {
 			const { store, read, send } = await setup(phase);
 			const body = render(DraftModal, { props: { store, children: content() } }).body;
-			expect(dialogTag(body).includes('viewport-stable')).toBe(phase === 'decks');
-			expect(dialogTag(body).includes('viewport-fit')).toBe(phase === 'picking');
+			expect(dialogTag(body).includes('viewport-stable')).toBe(false);
+			expect(dialogTag(body).includes('viewport-fit')).toBe(phase === 'picking' || phase === 'decks');
 			expect(dialogTag(body).includes('max-w-3xl')).toBe(phase === 'picking' || phase === 'decks');
 			expect(dialogTag(body)).toContain('aria-modal="true"');
 			expect(read).toHaveBeenCalledTimes(1);

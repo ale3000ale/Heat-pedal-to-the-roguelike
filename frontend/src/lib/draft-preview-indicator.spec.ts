@@ -61,7 +61,7 @@ describe('indicatore anteprima draft', () => {
 		await store.refresh();
 		expect(draftPickingView(store.state).previewSlotId).toBe(2);
 		const body = render(DraftPicking, { props: { store } }).body;
-		expect(body).toContain('Anteprima di Anna');
+		expect(body).toContain('Anna sta scegliendo');
 		expect(body).toContain('bg-yellow-300/80');
 		expect(read).toHaveBeenCalledTimes(1);
 	});
@@ -72,7 +72,7 @@ describe('indicatore anteprima draft', () => {
 		await store.refresh();
 		const body = render(DraftPicking, { props: { store } }).body;
 		expect(body).toContain('tocca a te');
-		expect(body).not.toContain('Anteprima di');
+		expect(body).not.toContain('sta scegliendo');
 		expect(body).not.toContain('bg-yellow-300/80');
 		expect(store.state.snapshot?.preview_slot_id).toBe(2);
 	});

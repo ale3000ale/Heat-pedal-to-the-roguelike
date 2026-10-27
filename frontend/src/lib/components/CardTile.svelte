@@ -4,17 +4,25 @@
 
 	// Se `onclick` è passato la carta diventa un pulsante (usato per spostarla tra i mazzi).
 	// Con `compact` la carta è più piccola: il nome sta sotto e le copie sopra l'immagine.
+	// Con `hoverZoom` false il passaggio del mouse non ingrandisce né solleva la carta.
+	// Con `hoverFocus` il passaggio del mouse mostra un contorno; `selected` lo mantiene.
 	let {
 		card,
 		onclick,
 		disabled = false,
 		compact = false,
+		hoverZoom = true,
+		hoverFocus = false,
+		selected = false,
 		title = 'Copie possedute'
 	}: {
 		card: CardEntry;
 		onclick?: () => void;
 		disabled?: boolean;
 		compact?: boolean;
+		hoverZoom?: boolean;
+		hoverFocus?: boolean;
+		selected?: boolean;
 		title?: string;
 	} = $props();
 
@@ -29,7 +37,7 @@
 					src="/media/{card.path}"
 					alt={card.name}
 					onerror={() => (imgError = true)}
-					class="aspect-[2/3] w-full object-cover transition-transform duration-300 group-hover:scale-105"
+					class={`aspect-[2/3] w-full object-cover transition-transform duration-300 ${hoverZoom ? 'group-hover:scale-105' : ''}`}
 				/>
 			{:else}
 				<div
@@ -58,7 +66,7 @@
 					src="/media/{card.path}"
 					alt={card.name}
 					onerror={() => (imgError = true)}
-					class="aspect-[2/3] w-full object-cover transition-transform duration-300 group-hover:scale-105"
+					class={`aspect-[2/3] w-full object-cover transition-transform duration-300 ${hoverZoom ? 'group-hover:scale-105' : ''}`}
 				/>
 			{:else}
 				<div
@@ -86,7 +94,7 @@
 		type="button"
 		{onclick}
 		{disabled}
-		class="group block w-full overflow-hidden rounded-xl border border-white/10 bg-[#161a26] text-left transition-all duration-200 enabled:hover:-translate-y-1 enabled:hover:border-primary/60 enabled:hover:shadow-lg enabled:hover:shadow-primary/25 disabled:cursor-not-allowed disabled:opacity-50"
+		class={`group block w-full overflow-hidden rounded-xl border border-white/10 bg-[#161a26] text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${hoverZoom ? 'enabled:hover:-translate-y-1 enabled:hover:border-primary/60 enabled:hover:shadow-lg enabled:hover:shadow-primary/25' : ''} ${hoverFocus ? 'enabled:hover:ring-2 enabled:hover:ring-primary' : ''} ${selected ? 'ring-2 ring-primary' : ''}`}
 	>
 		{@render content()}
 	</button>
