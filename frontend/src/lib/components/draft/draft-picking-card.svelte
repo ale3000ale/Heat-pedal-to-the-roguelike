@@ -12,7 +12,8 @@
 		chooseAllowed = false,
 		disabled = false,
 		onzoom,
-		onchoose
+		onchoose,
+		cardClass = ''
 	}: {
 		slot: DraftCardSlot;
 		enlarged?: boolean;
@@ -22,14 +23,15 @@
 		disabled?: boolean;
 		onzoom?: () => void;
 		onchoose?: () => void;
+		cardClass?: string;
 	} = $props();
 </script>
 
 <div
 	data-slot-id={slot.slot_id}
-	class={enlarged
+	class="{enlarged
 		? 'relative col-span-full mx-auto w-44 max-w-full sm:mx-0 sm:w-52 lg:w-60'
-		: 'relative w-full min-w-0 sm:w-36'}
+		: 'relative w-full min-w-0 sm:w-36'} {cardClass}"
 >
 	<div class="relative space-y-2">
 		<div class={previewPilotName ? 'rounded-xl ring-2 ring-yellow-300/80' : undefined}>

@@ -163,6 +163,7 @@
 							<DraftPickingCard
 								{slot}
 								enlarged={enlarged(slot.slot_id)}
+								cardClass={enlarged(slot.slot_id) ? 'enlarged-first' : ''}
 								previewPilotName={view.previewSlotId === slot.slot_id
 									? (view.turn?.name ?? null)
 									: null}
@@ -183,11 +184,12 @@
 					{#if view.pickedCards.length === 0}
 						<p class="text-sm">Nessuna carta scelta.</p>
 					{:else}
-						<div class="card-grid">
+						<div class="card-grid picked-list">
 							{#each view.pickedCards as picked (picked.slot.slot_id)}
 								<DraftPickingCard
 									slot={picked.slot}
 									enlarged={enlarged(picked.slot.slot_id)}
+									cardClass={enlarged(picked.slot.slot_id) ? 'enlarged-first' : ''}
 									pickedBy={picked.pilot.name}
 									disabled={store.busy || submitting || selection !== null}
 									onzoom={view.alreadyChosen
@@ -224,6 +226,22 @@
 			display: flex;
 			flex-wrap: wrap;
 			gap: 1rem;
+		}
+	}
+	/* Telefono: carte scelte in colonna centrata; la carta ingrandita e la prima. */
+	@media (max-width: 639px) {
+		.picked-list {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 0.75rem;
+		}
+		.picked-list :global(> div:not(.col-span-full)) {
+			width: 8rem;
+		}
+		/* Telefono: la carta ingrandita va in cima, anche se nel DOM sta in mezzo. */
+		.card-grid :global(.enlarged-first) {
+			order: -1;
 		}
 	}
 	.turn-pulse {
