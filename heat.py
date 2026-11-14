@@ -167,7 +167,7 @@ def production_menu():
 def run_tests():
     if not VENV_PY.exists():
         fail("Ambiente non pronto. Scegli prima 'Setup'")
-    run([VENV_PY, "-m", "pytest", "-q"], BACKEND, check=False)
+    run([VENV_PY, "-m", "pytest", "-q"], BACKEND)
 
 
 def run_checks():
@@ -175,7 +175,7 @@ def run_checks():
     node = shutil.which("node")
     if not script.exists() or not node:
         fail("Servono node e tools/check-frontend.mjs")
-    run([node, script], ROOT, check=False)
+    run([node, script], ROOT)
 
 
 MENU = [
