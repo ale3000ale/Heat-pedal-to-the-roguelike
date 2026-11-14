@@ -144,7 +144,7 @@
 					</h3>
 					{#if view.hasDeck}
 						<InventorySection title="Mazzo da gioco" count={view.count ?? 0}>
-							<div bind:this={gameGrid} class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+							<div bind:this={gameGrid} class="grid grid-cols-4 gap-2 sm:grid-cols-4 sm:gap-3">
 								{#each view.gameDeck as card (card.path)}
 									<CardTile
 										{card}
@@ -160,7 +160,7 @@
 							</div>
 						</InventorySection>
 						<InventorySection title="Inventario modifiche" count={totalCopies(view.inventory)}>
-							<div bind:this={inventoryGrid} class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+							<div bind:this={inventoryGrid} class="grid grid-cols-4 gap-2 sm:grid-cols-4 sm:gap-3">
 								{#each view.inventory as card (card.path)}
 									<CardTile
 										{card}
