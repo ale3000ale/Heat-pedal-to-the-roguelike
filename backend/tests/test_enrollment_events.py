@@ -7,10 +7,10 @@ from sqlalchemy import func, select
 
 from app.config import SESSION_COOKIE_NAME
 from app.db.models import ChampionshipPilot, Deck, EventLog, Pilot, User
-from app.schemas.events import EventCreate
-from app.services.championships import enroll_pilot
-from app.services.event_log import append_event, read_events
-from app.services.event_stream import poll_events
+from app.schemas.core.events import EventCreate
+from app.services.championship.championships import enroll_pilot
+from app.services.core.event_log import append_event, read_events
+from app.services.core.event_stream import poll_events
 from tests.test_championships_api import (
     enroll, make_admin, make_pilot, make_player, new_championship, seed_base_pool,
 )
@@ -124,7 +124,7 @@ def test_event_failure_rolls_back_enrollment_and_reset(enrollment_case, session_
         append_event(db, data)
         db.flush()
         raise RuntimeError("event failure")
-    monkeypatch.setattr("app.services.championships.append_event", fail)
+    monkeypatch.setattr("app.services.championship.championships.append_event", fail)
     with session_factory() as db:
         with pytest.raises(RuntimeError, match="event failure"):
             enroll_pilot(db, db.get(User, c["ids"]["owner"]), c["champ"], c["pilot"])

@@ -2,7 +2,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.draft_snapshot import DraftDeckSnapshot, DraftSnapshot
+from app.schemas.draft.draft_snapshot import DraftDeckSnapshot, DraftSnapshot
 
 
 def snapshot_payload(cards="[]"):

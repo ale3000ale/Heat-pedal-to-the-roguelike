@@ -3,10 +3,10 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import Deck, DraftPreparation, Race
-from app.schemas.draft_snapshot import DraftSnapshot
-from app.services.draft_preparation import DraftPreparationError, open_preparation
-from app.services.draft_snapshot import DraftSnapshotConflictError
-from app.services.draft_transaction import cancel_preparation, draft_mutation
+from app.schemas.draft.draft_snapshot import DraftSnapshot
+from app.services.draft.draft_preparation import DraftPreparationError, open_preparation
+from app.services.draft.draft_snapshot import DraftSnapshotConflictError
+from app.services.draft.draft_transaction import cancel_preparation, draft_mutation
 from tests.test_draft_preparation import seed
 
 

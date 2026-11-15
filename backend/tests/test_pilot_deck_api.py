@@ -1,6 +1,6 @@
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
-from app.services.cards import CardEntry, dump_cards
+from app.services.cards.cards import CardEntry, dump_cards
 
 from .test_pilots_api import create_pilot, enroll, register
 

@@ -3,8 +3,8 @@ from datetime import timedelta
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race
-from app.services.cards import CardEntry, dump_cards, parse_cards
-from app.services.race_review import settle_expired_reviews
+from app.services.cards.cards import CardEntry, dump_cards, parse_cards
+from app.services.race.race_review import settle_expired_reviews
 from tests.test_card_judge import CARD, reviewing, scenario, sponsor_inventory, sponsor_pool
 from tests.test_review_counts_api import base, body
 

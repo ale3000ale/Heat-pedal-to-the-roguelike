@@ -14,12 +14,12 @@ CHECKPOINTS = {
     7: 6392037060, 8: 6392047199, 9: 6392060643, 10: 6392086380,
 }
 BLOBS = {
-    "backend/app/services/championships.py": "2297c9f62cee7839819873aebacb7065b5b76156",
-    "backend/app/services/pilot_deck.py": "82323e7242ee1388babb1259d504cf82b05fcf65",
-    "backend/app/services/shop_purchase.py": "05c86708006830b6e6ef15fc48bcf590f0d7d429",
-    "backend/app/services/admin_pilot_cards.py": "1ea5f92073af7cee2ca1c3e07c4aec1ce36d5a91",
-    "backend/app/services/races.py": "f6b13f844d6175cfb1d7ca5609749d2a39662462",
-    "backend/app/services/draft_preparation.py": "c8e2ecafd56e9e24bfce089522bf8298f3b7a8eb",
+    "backend/app/services/championship/championships.py": "2297c9f62cee7839819873aebacb7065b5b76156",
+    "backend/app/services/pilots/pilot_deck.py": "82323e7242ee1388babb1259d504cf82b05fcf65",
+    "backend/app/services/shop/shop_purchase.py": "05c86708006830b6e6ef15fc48bcf590f0d7d429",
+    "backend/app/services/cards/admin_pilot_cards.py": "1ea5f92073af7cee2ca1c3e07c4aec1ce36d5a91",
+    "backend/app/services/race/races.py": "f6b13f844d6175cfb1d7ca5609749d2a39662462",
+    "backend/app/services/draft/draft_preparation.py": "c8e2ecafd56e9e24bfce089522bf8298f3b7a8eb",
     "backend/app/main.py": "a5717972f432f118b35b6a04a155a16793c390a7",
 }
 
@@ -88,44 +88,44 @@ def checkpoint_files(comments: list[dict]) -> dict[str, str]:
 def integrate(base: dict[str, str], recovered: dict[str, str]) -> dict[str, str]:
     """Genera i sette file esistenti aggiornati e i nuovi moduli, senza scriverli."""
     out = dict(recovered)
-    path = "backend/app/services/championships.py"
+    path = "backend/app/services/championship/championships.py"
     src = base[path]
     src = replace_once(src, "from dataclasses import dataclass\n",
-        "from dataclasses import dataclass\nfrom app.services.draft_guards import require_no_draft\nfrom app.services.sqlite_write_lock import acquire_sqlite_write_lock\n")
+        "from dataclasses import dataclass\nfrom app.services.draft.draft_guards import require_no_draft\nfrom app.services.core.sqlite_write_lock import acquire_sqlite_write_lock\n")
     for name in ("close_championship", "enroll_pilot", "delete_championship"):
         src = wrap_write(src, name)
     out[path] = src
-    path = "backend/app/services/pilot_deck.py"
-    src = replace_once(base[path], "from app.services.pilots import get_own_pilot\n",
-        "from app.services.pilots import get_own_pilot\nfrom app.services.draft_guards import pilot_has_draft, require_no_pilot_draft\n")
+    path = "backend/app/services/pilots/pilot_deck.py"
+    src = replace_once(base[path], "from app.services.pilots.pilots import get_own_pilot\n",
+        "from app.services.pilots.pilots import get_own_pilot\nfrom app.services.draft.draft_guards import pilot_has_draft, require_no_pilot_draft\n")
     src = replace_once(src, "            pilot = get_own_pilot(db, user, pilot_id)\n",
         "            pilot = get_own_pilot(db, user, pilot_id)\n            require_no_pilot_draft(db, pilot.id)\n")
     src = replace_once(src, "    return db.scalar(stmt) is not None\n",
         "    # deck_locked comprende la preparazione senza creare una Race.\n    return db.scalar(stmt) is not None or pilot_has_draft(db, pilot.id)\n")
     out[path] = src
-    path = "backend/app/services/shop_purchase.py"
-    src = replace_once(base[path], "from app.services.races import has_race_in_progress\n",
-        "from app.services.races import has_race_in_progress\nfrom app.services.draft_guards import require_no_draft\nfrom app.services.sqlite_write_lock import acquire_sqlite_write_lock\n")
+    path = "backend/app/services/shop/shop_purchase.py"
+    src = replace_once(base[path], "from app.services.race.races import has_race_in_progress\n",
+        "from app.services.race.races import has_race_in_progress\nfrom app.services.draft.draft_guards import require_no_draft\nfrom app.services.core.sqlite_write_lock import acquire_sqlite_write_lock\n")
     src = replace_once(src, "            _lock_database(db)\n            result = _purchase",
         "            acquire_sqlite_write_lock(db)\n            result = _purchase")
     src = replace_once(src, "    if has_race_in_progress(db, championship_id):\n",
         "    require_no_draft(db, championship_id)\n    if has_race_in_progress(db, championship_id):\n")
     out[path] = src
-    path = "backend/app/services/admin_pilot_cards.py"
-    src = replace_once(base[path], "from app.services.races import has_race_in_progress\n",
-        "from app.services.races import has_race_in_progress\nfrom app.services.draft_guards import has_draft\n")
+    path = "backend/app/services/cards/admin_pilot_cards.py"
+    src = replace_once(base[path], "from app.services.race.races import has_race_in_progress\n",
+        "from app.services.race.races import has_race_in_progress\nfrom app.services.draft.draft_guards import has_draft\n")
     src = replace_once(src, "    if blocked is None and has_race_in_progress(db, championship_id):\n",
         "    if blocked is None and has_draft(db, championship_id):\n        blocked = \"Preparazione gara attiva\"\n    if blocked is None and has_race_in_progress(db, championship_id):\n")
     out[path] = src
-    path = "backend/app/services/races.py"
-    src = replace_once(base[path], "from app.services.event_log import append_event\n",
-        "from app.services.event_log import append_event\nfrom app.services.draft_guards import require_no_draft\n")
+    path = "backend/app/services/race/races.py"
+    src = replace_once(base[path], "from app.services.core.event_log import append_event\n",
+        "from app.services.core.event_log import append_event\nfrom app.services.draft.draft_guards import require_no_draft\n")
     src = replace_once(src, "        require_ready_championship_decks(db, championship_id)\n",
         "        require_no_draft(db, championship_id)\n        require_ready_championship_decks(db, championship_id)\n")
     out[path] = src
-    path = "backend/app/services/draft_preparation.py"
-    src = replace_once(base[path], "from app.services.draft_snapshot import capture_snapshot\n",
-        "from app.services.draft_snapshot import capture_snapshot\nfrom app.services.draft_notifications import signal_draft_changed\n")
+    path = "backend/app/services/draft/draft_preparation.py"
+    src = replace_once(base[path], "from app.services.draft.draft_snapshot import capture_snapshot\n",
+        "from app.services.draft.draft_snapshot import capture_snapshot\nfrom app.services.draft.draft_notifications import signal_draft_changed\n")
     src = replace_once(src, "        db.add(preparation)\n        db.commit()\n",
         "        db.add(preparation)\n        db.flush()\n        signal_draft_changed(db, preparation, state)\n        db.commit()\n")
     src = replace_once(src, "        row.state_json = state.model_dump_json()\n        db.commit()\n",
@@ -133,7 +133,7 @@ def integrate(base: dict[str, str], recovered: dict[str, str]) -> dict[str, str]
     out[path] = src
     path = "backend/app/main.py"
     src = replace_once(base[path], "from app.api.events import router as events_router\n",
-        "from app.api.events import router as events_router\nfrom app.api.draft import router as draft_router\nfrom app.api.draft_errors import draft_locked_response\nfrom app.services.draft_guards import DraftLockedError\n")
+        "from app.api.events import router as events_router\nfrom app.api.draft.draft import router as draft_router\nfrom app.api.draft.draft_errors import draft_locked_response\nfrom app.services.draft.draft_guards import DraftLockedError\n")
     src = replace_once(src, "app = FastAPI(title=\"Heat\", lifespan=lifespan)\n",
         "app = FastAPI(title=\"Heat\", lifespan=lifespan)\napp.add_exception_handler(DraftLockedError, draft_locked_response)\n")
     src = replace_once(src, "app.include_router(events_router, prefix=\"/api/events\")\n",

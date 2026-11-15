@@ -7,7 +7,7 @@ from app.db.models.pilot import Pilot
 from app.db.models.race import Race, RaceResult
 from app.db.models.team import Team
 from app.security import hash_password
-from app.services.cards import CardEntry, dump_cards
+from app.services.cards.cards import CardEntry, dump_cards
 from tests.race_fixtures import seed_game_deck_from_inventory_card
 
 PASSWORD = "password123"

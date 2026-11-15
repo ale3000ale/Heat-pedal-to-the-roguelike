@@ -11,7 +11,7 @@ from app.db.models import Race
 from tests.test_race_review import CARD, closed_scenario, sponsor_inventory
 
 main = import_module("app.main")
-timer_module = import_module("app.services.review_timer")
+timer_module = import_module("app.services.race.review_timer")
 
 
 @pytest.mark.parametrize("body_fails", [False, True])

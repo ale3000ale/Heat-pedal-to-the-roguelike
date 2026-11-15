@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.review_counts import ReviewCountsRequest
+from app.schemas.race.review_counts import ReviewCountsRequest
 
 
 def payload(remaining=1, name="Alettone", pilot_id=1):

@@ -10,7 +10,7 @@ esecuzione 39397520155. Il modulo timer ha superato la CI ma non e' attivato.
 
 ## File del blocco
 
-Modificato backend/app/services/review_commit.py: solo il percorso di conferma
+Modificato backend/app/services/race/review_commit.py: solo il percorso di conferma
 riuscita accoda race.review_changed (action counts_confirmed) e cards.changed
 prima dello stesso commit che salva inventari, pool, giocate e chiusura.
 I payload contengono soltanto race_id e azione; niente carte, conteggi o bozze.

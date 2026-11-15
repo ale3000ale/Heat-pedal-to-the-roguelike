@@ -2,7 +2,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.draft_state import DraftState
+from app.schemas.draft.draft_state import DraftState
 
 
 def payload(phase="picking"):

@@ -46,7 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           files=(
-            frontend/src/lib/championship-groups.spec.ts
+            frontend/src/lib/championship/championship-groups.spec.ts
             frontend/src/routes/championships/+page.svelte
           )
           git add -- "${files[@]}"

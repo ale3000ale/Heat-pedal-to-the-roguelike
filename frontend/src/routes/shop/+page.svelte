@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { fetchMyShops, fetchShop } from '$lib/shop-api';
-	import { shopSelection } from '$lib/shop-selection.svelte';
-	import type { ShopEntry, ShopPilot } from '$lib/shop-types';
-	import RacingIcon from '$lib/components/racing-icon.svelte';
+	import { fetchMyShops, fetchShop } from '$lib/shop/shop-api';
+	import { shopSelection } from '$lib/shop/shop-selection.svelte';
+	import type { ShopEntry, ShopPilot } from '$lib/shop/shop-types';
+	import RacingIcon from '$lib/components/shared/racing-icon.svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	let shops = $state<ShopEntry[] | null>(null);

@@ -1,4 +1,4 @@
-from app.services.names import clean_name, name_key
+from app.services.pilots.names import clean_name, name_key
 
 
 def test_clean_name_toglie_spazi_extra():

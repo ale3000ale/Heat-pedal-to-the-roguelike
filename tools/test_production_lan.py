@@ -60,6 +60,7 @@ class ProductionLanTests(unittest.TestCase):
                  patch("tools.production.production_origin", return_value=("http://192.168.1.50:5173", "192.168.1.50")), \
                  patch("tools.production.require_free_ports") as ports, \
                  patch("tools.production.wait_ready") as ready, \
+                 patch("tools.production.print_qr") as qr, \
                  patch("tools.production.time.sleep", side_effect=KeyboardInterrupt):
                 if readiness_error:
                     ready.side_effect = [None, RuntimeError("not ready")]
@@ -68,6 +69,8 @@ class ProductionLanTests(unittest.TestCase):
                 else:
                     start_production(root, root / "backend/.venv/python", None, info, run, spawn, stop)
                 ports.assert_called_once_with("192.168.1.50")
+                if not readiness_error:
+                    self.assertEqual(qr.call_args.args[0], "http://192.168.1.50:5173")
                 self.assertEqual(ready.call_args_list[1].args[1], "http://192.168.1.50:5173/__heat_ready")
                 backend_args = spawn.call_args_list[0].args[0]
                 self.assertEqual(backend_args[backend_args.index("--host") + 1], "127.0.0.1")

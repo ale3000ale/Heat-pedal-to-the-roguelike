@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session as DbSession
 from app.config import SESSION_COOKIE_NAME, SESSION_COOKIE_SECURE
 from app.db.models import User
 from app.db.session import get_db
-from app.services.sessions import SESSION_DURATION, get_user_by_token
+from app.services.accounts.sessions import SESSION_DURATION, get_user_by_token
 
 DbDep = Annotated[DbSession, Depends(get_db)]
 

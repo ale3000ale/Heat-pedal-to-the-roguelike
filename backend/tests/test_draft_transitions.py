@@ -4,9 +4,9 @@ import random
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.draft_state import DraftParticipant, DraftState
-from app.services.cards import CardEntry
-from app.services.draft_transitions import (
+from app.schemas.draft.draft_state import DraftParticipant, DraftState
+from app.services.cards.cards import CardEntry
+from app.services.draft.draft_transitions import (
     DraftTransitionError, DraftTurnPermissionError, advance_attendance, all_ready,
     choose, preview, reorder, set_ready, start_picking,
 )

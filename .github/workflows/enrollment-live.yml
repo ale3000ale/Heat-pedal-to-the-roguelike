@@ -25,13 +25,13 @@ jobs:
           from pathlib import Path
           import subprocess
           expected = {
-              'backend/app/services/championships.py': '98ba0fde34920bfb8b0668c83989457864d70155',
-              'backend/app/services/event_log.py': '262bd6e97015d7d50bfa1ccd5a47f5d9bddb7a5d',
-              'backend/app/schemas/events.py': 'd92263f1fc0b480ca211908db555955eaa77e42c',
+              'backend/app/services/championship/championships.py': '98ba0fde34920bfb8b0668c83989457864d70155',
+              'backend/app/services/core/event_log.py': '262bd6e97015d7d50bfa1ccd5a47f5d9bddb7a5d',
+              'backend/app/schemas/core/events.py': 'd92263f1fc0b480ca211908db555955eaa77e42c',
               'frontend/src/lib/events/event-types.ts': 'e743170435a92625373c02f4b29ae984a5b16d0f',
               'frontend/src/lib/events/event-validation.ts': '7c523c40888e34fbba1c4d24b978dd3674910400',
               'frontend/src/lib/events/event-validation.spec.ts': '21d0601a86b54d0eff3dd108ef77c1fd20b45c31',
-              'frontend/src/lib/championship-live.spec.ts': '59d1436a8cfea21bb9893fdc901b61e343d37dd0'
+              'frontend/src/lib/championship/championship-live.spec.ts': '59d1436a8cfea21bb9893fdc901b61e343d37dd0'
           }
           for name, sha in expected.items():
               if subprocess.check_output(['git', 'hash-object', name], text=True).strip() != sha:
@@ -40,7 +40,7 @@ jobs:
               global text
               if text.count(old) != 1: raise RuntimeError('Ancora non univoca: ' + old)
               text = text.replace(old, new)
-          p = Path('backend/app/schemas/events.py')
+          p = Path('backend/app/schemas/core/events.py')
           text = p.read_text()
           change('from pydantic import BaseModel, ConfigDict, Field, JsonValue', 'from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator')
           change('"race.results_changed", "standings.changed",', '"race.results_changed", "standings.changed", "championship.pilots_changed",')
@@ -55,12 +55,12 @@ jobs:
                   return self
           '''
           p.write_text(text)
-          p = Path('backend/app/services/championships.py')
+          p = Path('backend/app/services/championship/championships.py')
           text = p.read_text()
-          change('from app.db.models import User', 'from app.db.models import User\nfrom app.schemas.events import EventCreate\nfrom app.services.event_log import append_event')
+          change('from app.db.models import User', 'from app.db.models import User\nfrom app.schemas.core.events import EventCreate\nfrom app.services.core.event_log import append_event')
           change('db.add(ChampionshipPilot(championship_id=championship.id, pilot_id=pilot.id))\n    try:\n        db.commit()', 'db.add(ChampionshipPilot(championship_id=championship.id, pilot_id=pilot.id))\n    try:\n        append_event(db, EventCreate(type="championship.pilots_changed", championship_id=championship.id))\n        db.commit()')
           p.write_text(text)
-          p = Path('backend/app/services/event_log.py')
+          p = Path('backend/app/services/core/event_log.py')
           text = p.read_text()
           change('altrui; il giocatore vede i pubblici dei campionati con un proprio pilota\n    iscritto e non eliminato.', 'altrui. Il solo segnale iscrizioni vuoto e senza pilot_id e\n    disponibile anche agli osservatori autenticati, come il dettaglio REST. Gli\n    altri pubblici richiedono un proprio pilota iscritto e non eliminato.')
           change('public_access = and_(public_access, enrolled)', 'public_access = and_(\n            public_access,\n            or_(enrolled, and_(\n                EventLog.type == "championship.pilots_changed",\n                EventLog.pilot_id.is_(None),\n                EventLog.payload == "{}",\n            )),\n        )')
@@ -88,7 +88,7 @@ jobs:
           });
           '''
           p.write_text(text)
-          p = Path('frontend/src/lib/championship-live.spec.ts')
+          p = Path('frontend/src/lib/championship/championship-live.spec.ts')
           text = p.read_text()
           text += '''
           it('aggiorna iscritti e conteggio sul segnale remoto senza ack o POST', async () => {
@@ -120,10 +120,10 @@ jobs:
 
           from app.config import SESSION_COOKIE_NAME
           from app.db.models import ChampionshipPilot, Deck, EventLog, Pilot, User
-          from app.schemas.events import EventCreate
-          from app.services.championships import enroll_pilot
-          from app.services.event_log import append_event, read_events
-          from app.services.event_stream import poll_events
+          from app.schemas.core.events import EventCreate
+          from app.services.championship.championships import enroll_pilot
+          from app.services.core.event_log import append_event, read_events
+          from app.services.core.event_stream import poll_events
           from tests.test_championships_api import (
               enroll, make_admin, make_pilot, make_player, new_championship, seed_base_pool,
           )
@@ -237,7 +237,7 @@ jobs:
                   append_event(db, data)
                   db.flush()
                   raise RuntimeError("event failure")
-              monkeypatch.setattr("app.services.championships.append_event", fail)
+              monkeypatch.setattr("app.services.championship.championships.append_event", fail)
               with session_factory() as db:
                   with pytest.raises(RuntimeError, match="event failure"):
                       enroll_pilot(db, db.get(User, c["ids"]["owner"]), c["champ"], c["pilot"])
@@ -291,7 +291,7 @@ jobs:
           if text.count(old) != 1: raise RuntimeError('Nota diversa')
           p.write_text(text.replace(old, 'Stato fix: applicato; suite backend completa e formatter/lint/check/test/build frontend riusciti prima del commit bot.'))
           PY
-          git add -- backend/app/services/championships.py backend/app/services/event_log.py backend/app/schemas/events.py backend/tests/test_enrollment_events.py frontend/src/lib/events/event-types.ts frontend/src/lib/events/event-validation.ts frontend/src/lib/events/event-validation.spec.ts frontend/src/lib/championship-live.spec.ts docs/PHASE_15_ENROLLMENT_LIVE.md
+          git add -- backend/app/services/championship/championships.py backend/app/services/core/event_log.py backend/app/schemas/core/events.py backend/tests/test_enrollment_events.py frontend/src/lib/events/event-types.ts frontend/src/lib/events/event-validation.ts frontend/src/lib/events/event-validation.spec.ts frontend/src/lib/championship/championship-live.spec.ts docs/PHASE_15_ENROLLMENT_LIVE.md
           git diff --cached --check
           git fetch origin phase-15-sse-sistemazione
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"

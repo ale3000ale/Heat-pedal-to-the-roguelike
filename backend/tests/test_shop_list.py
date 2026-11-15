@@ -3,9 +3,9 @@ from datetime import datetime
 from app.db.models.championship import Championship, ChampionshipPilot
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
-from app.services.cards import dump_cards
-from app.services.shop_list import list_my_shops
-from app.services.users import register_user
+from app.services.cards.cards import dump_cards
+from app.services.shop.shop_list import list_my_shops
+from app.services.accounts.users import register_user
 
 PASSWORD = "password123"
 

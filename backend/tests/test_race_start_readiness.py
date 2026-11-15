@@ -7,10 +7,10 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 
 from app.db.models import Deck, EventLog, Pilot, Race
-from app.services.cards import STARTER_INVENTORY
-from app.services.event_log import append_event as real_append_event
-from app.services.race_deck_readiness import GameDecksNotReadyError
-from app.services.races import create_race
+from app.services.cards.cards import STARTER_INVENTORY
+from app.services.core.event_log import append_event as real_append_event
+from app.services.race.race_deck_readiness import GameDecksNotReadyError
+from app.services.race.races import create_race
 from tests.race_fixtures import seed_game_deck_from_inventory_card
 from tests.test_races_api import make_judge, setup
 
@@ -105,7 +105,7 @@ def test_event_failure_rolls_back_ready_start(make_client, session_factory, monk
         db.flush()
         raise RuntimeError("event failure")
 
-    monkeypatch.setattr("app.services.races.append_event", fail_event)
+    monkeypatch.setattr("app.services.race.races.append_event", fail_event)
     with session_factory() as db:
         with pytest.raises(RuntimeError, match="event failure"):
             create_race(db, cid)
@@ -121,7 +121,7 @@ def test_busy_lock_is_http_conflict_without_writes(make_client, session_factory,
         original.sqlite_errorcode = sqlite3.SQLITE_BUSY
         raise OperationalError("BEGIN IMMEDIATE", {}, original)
 
-    monkeypatch.setattr("app.services.sqlite_write_lock.acquire_sqlite_write_lock", busy)
+    monkeypatch.setattr("app.services.core.sqlite_write_lock.acquire_sqlite_write_lock", busy)
     response = admin.post(f"/api/championships/{cid}/races")
     assert response.status_code == 409
     assert snapshot(session_factory) == before

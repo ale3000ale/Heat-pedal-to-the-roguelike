@@ -5,7 +5,10 @@ import re
 import secrets
 import shutil
 import socket
+import tempfile
 import time
+import webbrowser
+from pathlib import Path
 from urllib.parse import urlsplit
 from urllib.request import ProxyHandler, build_opener
 
@@ -58,6 +61,22 @@ def production_origin(value=None, report=print):
     if parsed.scheme == "http" and parsed.hostname not in ("127.0.0.1", "localhost"):
         return origin, require_local_ip(parsed.hostname)
     return origin, "127.0.0.1"
+
+
+def print_qr(url, report=print):
+    """Salva il QR di url come PNG nella cartella temporanea e lo apre.
+
+    Libreria qrcode importata qui: senza di essa production parte lo stesso.
+    """
+    try:
+        import qrcode
+    except ImportError:
+        report("QR non disponibile: eseguire setup o pip install -r requirements.txt")
+        return
+    path = Path(tempfile.gettempdir()) / "heat-qr.png"
+    qrcode.make(url, box_size=10, border=2).save(path)
+    report(f"QR salvato in {path}")
+    webbrowser.open(path.as_uri())
 
 
 def runtime_environment(origin):
@@ -140,6 +159,9 @@ def start_production(root, python, public_url, info, run, spawn, stop):
         wait_ready(procs[1], f"http://{frontend_host}:5173/__heat_ready",
                    {"token": env["HEAT_READY_TOKEN"]})
         info(f"Heat avviato: {origin} - Ctrl+C per fermare")
+        if urlsplit(origin).hostname not in ("127.0.0.1", "localhost"):
+            info("QR per aprire Heat dal telefono (stessa rete Wi-Fi):")
+            print_qr(origin, report=info)
         if frontend_host != "127.0.0.1":
             info("Apri lo stesso indirizzo sul PC e sugli altri dispositivi della rete Wi-Fi/LAN.")
             info("Solo rete fidata: HTTP non cifra il traffico. Non aprire porte sul router.")

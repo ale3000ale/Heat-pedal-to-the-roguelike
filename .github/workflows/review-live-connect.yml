@@ -22,7 +22,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git hash-object frontend/src/lib/stores/review-counts.svelte.ts)" = "1a5e941859e49360bbe5686125750997fe6e928d"
-          test "$(git hash-object frontend/src/lib/components/race-review-panel.svelte)" = "aa14960434c1ed145899a6511e571a0eaca2c4f7"
+          test "$(git hash-object frontend/src/lib/components/race/race-review-panel.svelte)" = "aa14960434c1ed145899a6511e571a0eaca2c4f7"
           python - <<'PY'
           from pathlib import Path
           p = Path('frontend/src/lib/stores/review-counts.svelte.ts')
@@ -261,7 +261,7 @@ jobs:
           '''
           change('\tprivate stopTimer(): void {', methods + '\n\tprivate stopTimer(): void {')
           p.write_text(text)
-          p = Path('frontend/src/lib/components/race-review-panel.svelte')
+          p = Path('frontend/src/lib/components/race/race-review-panel.svelte')
           text = p.read_text()
           change("import { onDestroy, onMount } from 'svelte';", "import { onDestroy, onMount } from 'svelte';\nimport { loadPollIntervalMs } from '$lib/card-poll.svelte';\nimport ConfirmDialog from '$lib/components/confirm-dialog.svelte';")
           change('\t\tautoOpen = false,\n', '')
@@ -295,7 +295,7 @@ jobs:
           <ConfirmDialog bind:open={recoveryOpen} title="Sostituire la copia di lavoro?" message="Conteggi locali e spunte saranno sostituiti dopo un backup nel browser. La bozza server verrà riletta; se incompatibile, ripartirai dall'inventario corrente. Nessun conteggio sarà confermato automaticamente. Se il backup non riesce, l'operazione si interrompe." confirmLabel={pending === 'reload' ? 'Rileggi' : 'Apri revisione'} onconfirm={approveRecovery} />
           '''
           p.write_text(text)
-          p = Path('frontend/src/lib/review-live-integration.spec.ts')
+          p = Path('frontend/src/lib/race/review/review-live-integration.spec.ts')
           if p.exists(): raise RuntimeError('Test gia presente')
           p.write_text('''import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
           import { ApiError } from './api';
@@ -419,7 +419,7 @@ jobs:
           if text.count(old) != 1: raise RuntimeError('Nota diversa')
           p.write_text(text.replace(old, 'Stato: applicato; formatter, lint, check, test e build frontend riusciti prima del commit bot.'))
           PY
-          git add -- frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/components/race-review-panel.svelte frontend/src/lib/review-live-integration.spec.ts docs/PHASE_15_REVIEW_LIVE_CONNECT.md
+          git add -- frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/components/race/race-review-panel.svelte frontend/src/lib/race/review/review-live-integration.spec.ts docs/PHASE_15_REVIEW_LIVE_CONNECT.md
           git diff --cached --check
           git fetch origin phase-15-sse-sistemazione
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"

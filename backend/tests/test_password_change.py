@@ -7,11 +7,11 @@ from sqlalchemy import select, update
 
 from app.config import SESSION_COOKIE_NAME
 from app.db.models import Session, User
-from app.schemas.password_change import ChangePasswordRequest
+from app.schemas.accounts.password_change import ChangePasswordRequest
 from app.security import verify_password
-from app.services.event_stream import poll_events
-from app.services.password_changes import PasswordSessionError, change_own_password
-from app.services.sessions import _now
+from app.services.core.event_stream import poll_events
+from app.services.accounts.password_changes import PasswordSessionError, change_own_password
+from app.services.accounts.sessions import _now
 
 OLD = "old-password-123"
 NEW = "new-password-456"

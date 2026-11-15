@@ -3,8 +3,8 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
-from app.services import pilot_deck
-from app.services.cards import CardEntry, dump_cards
+from app.services.pilots import pilot_deck
+from app.services.cards.cards import CardEntry, dump_cards
 
 from .test_pilots_api import create_pilot, register
 

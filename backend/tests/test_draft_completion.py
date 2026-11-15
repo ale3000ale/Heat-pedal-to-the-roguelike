@@ -3,10 +3,10 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.models import ChampionshipPilot, Deck, DraftPreparation, EventLog, Pilot, Race
-from app.schemas.draft_state import DraftState
-from app.services.draft_commands import confirm_attendance, move_draft_card
-from app.services.draft_completion import already_disputed, ready_pilot
-from app.services.draft_preparation import DraftPreparationError, open_preparation
+from app.schemas.draft.draft_state import DraftState
+from app.services.draft.draft_commands import confirm_attendance, move_draft_card
+from app.services.draft.draft_completion import already_disputed, ready_pilot
+from app.services.draft.draft_preparation import DraftPreparationError, open_preparation
 from tests.test_draft_preparation import seed
 
 
@@ -64,7 +64,7 @@ def test_same_owner_must_confirm_each_pilot(session_factory):
 
 
 def test_terminal_signal_failure_rolls_back_race_and_last_ready(session_factory, monkeypatch):
-    from app.services import draft_transaction as transaction
+    from app.services.draft import draft_transaction as transaction
     cid, judge, _, player, pid = seed(session_factory)
     with session_factory() as db:
         row = open_preparation(db, cid, judge)

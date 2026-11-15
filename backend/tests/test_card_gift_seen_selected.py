@@ -3,9 +3,9 @@ import pytest
 from sqlalchemy import event, select
 
 from app.db.models import CardGift, Deck, EventLog, Pilot, User
-from app.schemas.card_gift_seen import GiftSeenSelection
-from app.services.card_gift_seen import mark_selected_gifts_seen
-from app.services.cards import STARTER_INVENTORY
+from app.schemas.cards.card_gift_seen import GiftSeenSelection
+from app.services.cards.card_gift_seen import mark_selected_gifts_seen
+from app.services.cards.cards import STARTER_INVENTORY
 from tests.race_fixtures import seed_game_deck_from_inventory_card
 from tests.test_card_gifts import (
     enrolled_pilot, gift, give_sponsor_pool, login_judge, register_player,

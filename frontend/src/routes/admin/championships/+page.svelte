@@ -2,13 +2,13 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
-	import { auth } from '$lib/auth.svelte';
+	import { auth } from '$lib/auth/auth.svelte';
 	import type { Championship, Pool } from '$lib/types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
-	import GoldRulesForm from '$lib/components/gold-rules-form.svelte';
-	import CardPollForm from '$lib/components/card-poll-form.svelte';
-	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
+	import GoldRulesForm from '$lib/components/championship/gold-rules-form.svelte';
+	import CardPollForm from '$lib/components/cards/card-poll-form.svelte';
+	import ChampionshipSettings from '$lib/components/championship/championship-settings.svelte';
 
 	let championships = $state<Championship[]>([]);
 	let pools = $state<Pool[]>([]);

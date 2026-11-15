@@ -16,7 +16,7 @@ Nessuna migrazione, nuova dipendenza o modifica di schema. La funzione modifica 
 
 Verifiche eseguite sul runner prima di questo riallineamento: pytest backend, check frontend, lint, test frontend e build. Esecuzione 40114589745, checkout 97653418434af55ff904d36ab75d80fb0e8fe365, con formattazione limitata ai cinque file frontend prima dei controlli. Il checkout identifica l avvio della run; il successivo commit contiene i file formattati effettivamente verificati. Nessun conteggio complessivo o warning viene inventato. Non e un collaudo manuale browser, di rete, di concorrenza reale o una prova di tutte le condizioni di login simultaneo. Nessun test locale eseguito dall assistente.
 
-Test aggiunti: backend/tests/test_password_change.py e frontend/src/lib/password-change.spec.ts. Il backend copre ruoli, password attuale, conferma/lunghezze/campi extra, sessione conservata, altre sessioni revocate, account estranei, hash, login vecchio/nuovo, sessione scaduta/revocata, rollback simulato ed esclusione delle sessioni revocate dal polling SSE. Il frontend copre validazione, Unicode, payload, cookie, errori e assenza di retry; non costituisce test DOM del modal.
+Test aggiunti: backend/tests/test_password_change.py e frontend/src/lib/auth/password-change.spec.ts. Il backend copre ruoli, password attuale, conferma/lunghezze/campi extra, sessione conservata, altre sessioni revocate, account estranei, hash, login vecchio/nuovo, sessione scaduta/revocata, rollback simulato ed esclusione delle sessioni revocate dal polling SSE. Il frontend copre validazione, Unicode, payload, cookie, errori e assenza di retry; non costituisce test DOM del modal.
 
 <!-- account-password-ui-current:start -->
 ## Aggiornamento grafico impostazioni e login - 24 ottobre 2026

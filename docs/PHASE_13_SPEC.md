@@ -135,8 +135,8 @@ Ogni sottofase parte solo dopo l'approvazione dell'autore, con l'elenco dei file
 
 ### File previsti per la 13e
 
-- Nuovi: `backend/app/services/card_upload.py`, `backend/app/services/card_delete.py`, `backend/app/api/card_admin.py`, `backend/app/schemas/card_admin.py`, `backend/tests/test_card_upload.py`, `backend/tests/test_card_delete.py`.
-- Da modificare: `backend/app/main.py` (registra il router), `backend/app/services/championships.py` (richiama la pulizia dei file orfani in `delete_championship`), `backend/app/config.py` (dimensione massima del file), `backend/requirements.txt` (`python-multipart==0.0.32`), poi i documenti a test verdi.
+- Nuovi: `backend/app/services/cards/card_upload.py`, `backend/app/services/cards/card_delete.py`, `backend/app/api/admin/card_admin.py`, `backend/app/schemas/cards/card_admin.py`, `backend/tests/test_card_upload.py`, `backend/tests/test_card_delete.py`.
+- Da modificare: `backend/app/main.py` (registra il router), `backend/app/services/championship/championships.py` (richiama la pulizia dei file orfani in `delete_championship`), `backend/app/config.py` (dimensione massima del file), `backend/requirements.txt` (`python-multipart==0.0.32`), poi i documenti a test verdi.
 - Nessuna migrazione e nessuna colonna nuova.
 
 ## Avanzamento della 13b

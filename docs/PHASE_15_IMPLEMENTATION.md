@@ -5,7 +5,7 @@
 Ramo esclusivo: phase-15-sse-sistemazione. Documento integrativo di PHASE_15.md.
 
 File introdotti:
-- backend/app/schemas/events.py: contratto Pydantic degli eventi, tipi espliciti,
+- backend/app/schemas/core/events.py: contratto Pydantic degli eventi, tipi espliciti,
   identificativi interi positivi, destinatario privato facoltativo e payload JSON.
 - backend/tests/test_event_schemas.py: test di validazione e indipendenza dei payload.
 

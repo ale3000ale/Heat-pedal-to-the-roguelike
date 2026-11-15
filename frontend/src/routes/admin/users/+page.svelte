@@ -2,8 +2,8 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
-	import { auth } from '$lib/auth.svelte';
-	import type { AdminUser } from '$lib/race-types';
+	import { auth } from '$lib/auth/auth.svelte';
+	import type { AdminUser } from '$lib/race/race-types';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 

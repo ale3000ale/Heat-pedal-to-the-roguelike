@@ -10,9 +10,9 @@ from sqlalchemy.orm import sessionmaker
 from app.db.models import User
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
-from app.services.cards import CardEntry, dump_cards, parse_cards
-from app.services.pilot_deck import PilotCardNotFoundError, move_card
-from app.services.sqlite_write_lock import SQLiteWriteLockError, acquire_sqlite_write_lock
+from app.services.cards.cards import CardEntry, dump_cards, parse_cards
+from app.services.pilots.pilot_deck import PilotCardNotFoundError, move_card
+from app.services.core.sqlite_write_lock import SQLiteWriteLockError, acquire_sqlite_write_lock
 from .test_pilots_api import create_pilot, register
 
 PATH = "cards/starter/velocita-1.webp"

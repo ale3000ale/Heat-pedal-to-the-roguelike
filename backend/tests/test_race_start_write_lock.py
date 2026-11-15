@@ -3,9 +3,9 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.models import Championship, EventLog, Race
-from app.services.championships import ChampionshipClosedError
-from app.services.races import RaceStartConflictError, create_race
-from app.services.sqlite_write_lock import SQLiteWriteLockError
+from app.services.championship.championships import ChampionshipClosedError
+from app.services.race.races import RaceStartConflictError, create_race
+from app.services.core.sqlite_write_lock import SQLiteWriteLockError
 
 
 def make_championship(factory):

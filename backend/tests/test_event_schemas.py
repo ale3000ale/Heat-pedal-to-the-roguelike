@@ -2,7 +2,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.events import EventCreate
+from app.schemas.core.events import EventCreate
 
 
 def test_valid_private_event():

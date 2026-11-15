@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import Championship, ChampionshipPilot, Deck, EventLog, Pilot, User
-from app.schemas.events import EventCreate
-from app.services.event_log import append_event, purge_expired_events, read_events
+from app.schemas.core.events import EventCreate
+from app.services.core.event_log import append_event, purge_expired_events, read_events
 
 
 @pytest.fixture()

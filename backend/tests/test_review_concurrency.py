@@ -16,7 +16,7 @@ def _close_worker(path, championship_id, race_id, owner_id, now_iso, mode, barri
     """Worker spawn: sincronizza prima del lock e riporta esito o traceback al padre."""
     import traceback
     from app.db.models import User
-    import app.services.race_review as reviews
+    import app.services.race.race_review as reviews
 
     engine = create_engine(f"sqlite:///{path}", connect_args={"timeout": 10})
 

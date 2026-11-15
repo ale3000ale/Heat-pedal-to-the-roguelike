@@ -2,13 +2,13 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
-	import { auth } from '$lib/auth.svelte';
-	import { groupChampionships, initiallyOpenGroup, type GroupKey } from '$lib/championship-groups';
+	import { auth } from '$lib/auth/auth.svelte';
+	import { groupChampionships, initiallyOpenGroup, type GroupKey } from '$lib/championship/championship-groups';
 	import type { Championship, Pilot } from '$lib/types';
 	import { Button } from '$lib/components/ui/button';
-	import ChampionshipSettings from '$lib/components/championship-settings.svelte';
-	import NewChampionshipDialog from '$lib/components/new-championship-dialog.svelte';
-	import RacingIcon from '$lib/components/racing-icon.svelte';
+	import ChampionshipSettings from '$lib/components/championship/championship-settings.svelte';
+	import NewChampionshipDialog from '$lib/components/championship/new-championship-dialog.svelte';
+	import RacingIcon from '$lib/components/shared/racing-icon.svelte';
 
 	// Messaggio mostrato quando una sezione non contiene campionati.
 	const emptyMessages: Record<GroupKey, string> = {

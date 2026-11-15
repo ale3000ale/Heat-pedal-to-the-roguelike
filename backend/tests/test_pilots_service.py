@@ -4,8 +4,8 @@ from app.db.models import User
 from app.db.models.championship import Championship, ChampionshipPilot
 from app.db.models.deck import Deck
 from app.security import hash_password
-from app.services.cards import STARTER_INVENTORY, parse_cards
-from app.services.pilots import (
+from app.services.cards.cards import STARTER_INVENTORY, parse_cards
+from app.services.pilots.pilots import (
     PilotInActiveChampionshipError,
     PilotNameTakenError,
     PilotNotFoundError,
@@ -16,7 +16,7 @@ from app.services.pilots import (
     rename_pilot,
     set_pilot_team,
 )
-from app.services.teams import TeamNotFoundError, create_team, delete_team
+from app.services.pilots.teams import TeamNotFoundError, create_team, delete_team
 
 
 @pytest.fixture()
