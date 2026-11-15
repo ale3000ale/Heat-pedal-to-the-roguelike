@@ -7,6 +7,20 @@
 
 # Domande aperte — Heat
 
+<!-- draft-backend-current:start -->
+## Draft - backend consolidato e limiti correnti
+
+Aggiornamento del 25 ottobre 2026, solo ramo draft e PR 18. Questa sezione aggiorna il solo stato del flusso draft e prevale sulle note storiche di avanzamento, senza alterare gli altri requisiti.
+
+Sorgenti recuperati dall artefatto draft-backend-materialized della run 40152061495, job materialize-and-check concluso con success sul commit tecnico 1052e5d. Gli hash SHA-256 dei sorgenti sono conservati in docs/DRAFT_BACKEND_MANIFEST.json.
+
+Prima della pubblicazione questo workflow verifica di nuovo pytest backend, upgrade/downgrade/upgrade con controlli dello schema e frontend check, lint, test e build. Esecuzione di pubblicazione: https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/40153346360. Il controllo dedicato sul commit risultante documenta queste verifiche pre-push; non e una nuova esecuzione dei job ordinari della PR.
+
+Nessun conteggio di test o warning inventato, nessun test locale o collaudo browser attestato. Nessun merge, rilascio, ZIP finale del progetto o intervento sul database reale. Il frontend draft non e implementato da questo consolidamento.
+
+Questo consolidamento non aggiunge decisioni di prodotto aperte. Restano attivita implementative: frontend draft, integrazione live lato interfaccia e collaudo browser; non vanno presentate come gia completate.
+<!-- draft-backend-current:end -->
+
 ## Fase 15 (SSE in tempo reale e sistemazione)
 
 Decisioni dell'autore del 20 ottobre 2026 in `PHASE_15.md`. Restano da definire prima del codice:

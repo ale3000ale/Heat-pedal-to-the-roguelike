@@ -1,5 +1,38 @@
 # Database — Heat
 
+<!-- draft-validation-current:start -->
+
+## Draft - stato verificato del 26 ottobre 2026
+
+Questa sezione prevale esclusivamente sulle precedenti note di stato e verifica del flusso draft. Regole, specifiche delle altre fasi e contenuti storici restano conservati.
+
+Base funzionale: commit 8ba03aa1aa8a20f8c346b3e20b4f1352d9b2d74a, ramo draft, PR #18 ancora in bozza e senza merge in main. Correzione delle chiavi del flusso e della proprieta delle risorse UI, non una nuova modifica di regole o API.
+
+Verifiche lette: frontend (check, lint, test, build), runtime, backend pytest e migrazioni su database di test tutti success. Run CI 40269135082 e runtime 40269135447. I due job documentali di fase 16 sono skipped, non falliti.
+
+Collaudo manuale positivo riferito dall autore il 26 ottobre alle 05:31: ora funziona tutto senza errori. Il riscontro segue i reset di presenze, zoom e mazzi e la correzione lifecycle. Non e un test browser automatizzato o una certificazione di tutti i dispositivi.
+
+Nessun accesso o modifica al database reale, nessuna nuova analisi SQLite e nessuna migrazione eseguita da questo riallineamento; il job migrazioni citato riguarda un database di test.
+
+Questo riallineamento non cambia codice applicativo, dipendenze, lockfile o dati e non esegue nuovi test dell applicazione. Nessun rilascio, ZIP finale o merge implicito. Interventi grafici successivi sospesi fino alla scelta dell autore.
+
+[Evidenze, cronologia e limiti della validazione](DRAFT_VALIDATION.md).
+<!-- draft-validation-current:end -->
+
+<!-- draft-backend-current:start -->
+## Draft - backend consolidato e limiti correnti
+
+Aggiornamento del 25 ottobre 2026, solo ramo draft e PR 18. Questa sezione aggiorna il solo stato del flusso draft e prevale sulle note storiche di avanzamento, senza alterare gli altri requisiti.
+
+Sorgenti recuperati dall artefatto draft-backend-materialized della run 40152061495, job materialize-and-check concluso con success sul commit tecnico 1052e5d. Gli hash SHA-256 dei sorgenti sono conservati in docs/DRAFT_BACKEND_MANIFEST.json.
+
+Prima della pubblicazione questo workflow verifica di nuovo pytest backend, upgrade/downgrade/upgrade con controlli dello schema e frontend check, lint, test e build. Esecuzione di pubblicazione: https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/40153346360. Il controllo dedicato sul commit risultante documenta queste verifiche pre-push; non e una nuova esecuzione dei job ordinari della PR.
+
+Nessun conteggio di test o warning inventato, nessun test locale o collaudo browser attestato. Nessun merge, rilascio, ZIP finale del progetto o intervento sul database reale. Il frontend draft non e implementato da questo consolidamento.
+
+Il consolidamento non cambia lo schema o le migrazioni gia presenti nel ramo e non converte Deck.cards. Le prove upgrade/downgrade riguardano soltanto il database temporaneo del runner; nessun accesso al database reale.
+<!-- draft-backend-current:end -->
+
 Ultimo aggiornamento: 2026-10-21 (delta fase 15 su registro eventi, ID e conferme notifiche).
 
 Lo schema di base sotto deriva dai modelli SQLAlchemy in `backend/app/db/models` letti il 2026-10-13 sul ramo `phase-13a-card-plays`; non è una nuova analisi completa del file SQLite reale. I delta della fase 15 sono distinti nelle sezioni `card_gift` e Migrazioni e nelle note collegate. Database: SQLite, `sqlite:///./heat.db` (vedi `backend/app/config.py`). Le migrazioni sono Alembic (`python heat.py migrate`). Le date `DateTime` dei modelli sono senza fuso; dove i modelli usano un'ora propria sono in UTC.

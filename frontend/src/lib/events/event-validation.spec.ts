@@ -9,7 +9,9 @@ describe('protocollo SSE', () => {
 		const value =
 			type === 'championship.pilots_changed'
 				? { championship_id: 1, pilot_id: null, payload: {} }
-				: body;
+				: type === 'draft.changed'
+					? { championship_id: 1, pilot_id: null, payload: { preparation_id: 4 } }
+					: body;
 		const event = parseStreamEvent(type, JSON.stringify(value), '9223372036854775807');
 		expect(event).toMatchObject({
 			type,

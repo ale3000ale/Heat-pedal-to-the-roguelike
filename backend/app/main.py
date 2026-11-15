@@ -24,6 +24,9 @@ from app.api.card_admin import router as card_admin_router
 from app.api.race_review import router as race_review_router
 from app.api.review_counts import router as review_counts_router
 from app.api.events import router as events_router
+from app.api.draft import router as draft_router
+from app.api.draft_errors import draft_locked_response
+from app.services.draft_guards import DraftLockedError
 from app.services.cleanup import purge_old_deleted
 from app.services.review_timer import review_timer
 
@@ -55,6 +58,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Heat", lifespan=lifespan)
+app.add_exception_handler(DraftLockedError, draft_locked_response)
 
 
 app.include_router(auth_router, prefix="/api/auth")
@@ -75,6 +79,7 @@ app.include_router(admin_router, prefix="/api/admin")
 app.include_router(admin_pilot_cards_router, prefix="/api/admin/championships")
 app.include_router(shop_router, prefix="/api/shop")
 app.include_router(events_router, prefix="/api/events")
+app.include_router(draft_router, prefix="/api")
 
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")

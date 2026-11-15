@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from app.services.draft_guards import require_no_draft
+from app.services.sqlite_write_lock import acquire_sqlite_write_lock
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
@@ -152,39 +154,51 @@ def set_gold_rules(db: Session, championship_id: int, rules: GoldRules) -> Champ
 def close_championship(db: Session, championship_id: int) -> Championship:
     # Chiude il campionato (anche con gare non finite): da qui in poi è in sola lettura.
     # Congela la classifica e reimposta i soli piloti iscritti a questo campionato.
-    championship = get_championship(db, championship_id)
-    if championship.is_closed:
-        raise ChampionshipClosedError
-    championship.is_closed = True
-    _freeze_standings(db, championship)
-    for pilot in list_entrants(db, championship.id):
-        _reset_pilot(db, pilot)
-    db.commit()
-    db.refresh(championship)
-    return championship
+    try:
+        acquire_sqlite_write_lock(db)
+        require_no_draft(db, championship_id)
+        championship = get_championship(db, championship_id)
+        if championship.is_closed:
+            raise ChampionshipClosedError
+        championship.is_closed = True
+        _freeze_standings(db, championship)
+        for pilot in list_entrants(db, championship.id):
+            _reset_pilot(db, pilot)
+        db.commit()
+        db.refresh(championship)
+        return championship
+    except Exception:
+        db.rollback()
+        raise
 
 
 def enroll_pilot(db: Session, user: User, championship_id: int, pilot_id: int) -> Pilot:
     # Iscrive un pilota dell'utente e lo reimposta: inventario iniziale, inventario
     # sponsor vuoto, mazzo da gioco vuoto, gold, sponsor e point a zero.
-    championship = get_championship(db, championship_id)
-    if championship.is_closed:
-        raise ChampionshipClosedError
-    pilot = get_own_pilot(db, user, pilot_id)
-    if pilot.team_id is None:
-        raise PilotWithoutTeamError
-    if pilots_in_active_championship(db, [pilot.id]):
-        raise PilotInActiveChampionshipError
-    _reset_pilot(db, pilot)
-    db.add(ChampionshipPilot(championship_id=championship.id, pilot_id=pilot.id))
     try:
-        append_event(db, EventCreate(type="championship.pilots_changed", championship_id=championship.id))
-        db.commit()
-    except IntegrityError:
+        acquire_sqlite_write_lock(db)
+        require_no_draft(db, championship_id)
+        championship = get_championship(db, championship_id)
+        if championship.is_closed:
+            raise ChampionshipClosedError
+        pilot = get_own_pilot(db, user, pilot_id)
+        if pilot.team_id is None:
+            raise PilotWithoutTeamError
+        if pilots_in_active_championship(db, [pilot.id]):
+            raise PilotInActiveChampionshipError
+        _reset_pilot(db, pilot)
+        db.add(ChampionshipPilot(championship_id=championship.id, pilot_id=pilot.id))
+        try:
+            append_event(db, EventCreate(type="championship.pilots_changed", championship_id=championship.id))
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise PilotInActiveChampionshipError
+        db.refresh(pilot)
+        return pilot
+    except Exception:
         db.rollback()
-        raise PilotInActiveChampionshipError
-    db.refresh(pilot)
-    return pilot
+        raise
 
 def delete_championship(db: Session, championship_id: int) -> None:
     # Cancella un campionato chiuso con tutto il suo storico: giocate e regali di carte,
@@ -192,37 +206,43 @@ def delete_championship(db: Session, championship_id: int) -> None:
     # delle pool. I piloti restano. Tutto in un'unica transazione. Dopo la conferma
     # cancella i file delle carte caricate che nessuna carta usa più.
     # Errori: ChampionshipNotFoundError, ChampionshipOpenError.
-    championship = get_championship(db, championship_id)
-    if not championship.is_closed:
-        raise ChampionshipOpenError
-    race_ids = select(Race.id).where(Race.championship_id == championship.id)
-    # Giocate e regali di carte puntano alla gara: vanno tolti prima delle gare.
-    db.execute(delete(CardPlay).where(CardPlay.race_id.in_(race_ids)))
-    db.execute(delete(CardGift).where(CardGift.race_id.in_(race_ids)))
-    db.execute(delete(RaceResult).where(RaceResult.race_id.in_(race_ids)))
-    db.execute(delete(Race).where(Race.championship_id == championship.id))
-    db.execute(
-        delete(ChampionshipPilot).where(ChampionshipPilot.championship_id == championship.id)
-    )
-    db.execute(
-        delete(ChampionshipStanding).where(ChampionshipStanding.championship_id == championship.id)
-    )
-    db.execute(delete(PackPurchase).where(PackPurchase.championship_id == championship.id))
-    db.execute(delete(Pack).where(Pack.championship_id == championship.id))
-    pool_deck_ids = [
-        deck_id
-        for deck_id in (championship.pool_deck_id, championship.sponsor_pool_deck_id)
-        if deck_id is not None
-    ]
-    db.delete(championship)
-    db.flush()
-    for deck_id in pool_deck_ids:
-        deck = db.get(Deck, deck_id)
-        if deck is not None:
-            db.delete(deck)
-    db.commit()
-    # I file si cancellano solo a transazione confermata: un errore prima non li perde.
-    remove_orphan_uploads(db)
+    try:
+        acquire_sqlite_write_lock(db)
+        require_no_draft(db, championship_id)
+        championship = get_championship(db, championship_id)
+        if not championship.is_closed:
+            raise ChampionshipOpenError
+        race_ids = select(Race.id).where(Race.championship_id == championship.id)
+        # Giocate e regali di carte puntano alla gara: vanno tolti prima delle gare.
+        db.execute(delete(CardPlay).where(CardPlay.race_id.in_(race_ids)))
+        db.execute(delete(CardGift).where(CardGift.race_id.in_(race_ids)))
+        db.execute(delete(RaceResult).where(RaceResult.race_id.in_(race_ids)))
+        db.execute(delete(Race).where(Race.championship_id == championship.id))
+        db.execute(
+            delete(ChampionshipPilot).where(ChampionshipPilot.championship_id == championship.id)
+        )
+        db.execute(
+            delete(ChampionshipStanding).where(ChampionshipStanding.championship_id == championship.id)
+        )
+        db.execute(delete(PackPurchase).where(PackPurchase.championship_id == championship.id))
+        db.execute(delete(Pack).where(Pack.championship_id == championship.id))
+        pool_deck_ids = [
+            deck_id
+            for deck_id in (championship.pool_deck_id, championship.sponsor_pool_deck_id)
+            if deck_id is not None
+        ]
+        db.delete(championship)
+        db.flush()
+        for deck_id in pool_deck_ids:
+            deck = db.get(Deck, deck_id)
+            if deck is not None:
+                db.delete(deck)
+        db.commit()
+        # I file si cancellano solo a transazione confermata: un errore prima non li perde.
+        remove_orphan_uploads(db)
+    except Exception:
+        db.rollback()
+        raise
 
 @dataclass
 class StandingRow:

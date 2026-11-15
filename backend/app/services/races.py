@@ -14,6 +14,7 @@ from app.services.championships import (
     pilot_totals,
 )
 from app.services.event_log import append_event
+from app.services.draft_guards import require_no_draft
 from app.services.gold import award_race_gold, rules_of
 from app.services.race_deck_snapshot import require_ready_championship_decks
 from app.services.review_events import record_review_changed
@@ -94,6 +95,7 @@ def create_race(db: Session, championship_id: int, date: datetime | None = None)
         if has_race_in_progress(db, championship_id):
             raise RaceInProgressError
         # Nessuna gara o evento viene preparato prima di questa lettura sotto lock.
+        require_no_draft(db, championship_id)
         require_ready_championship_decks(db, championship_id)
         last = db.scalar(select(func.max(Race.number)).where(Race.championship_id == championship_id))
         race = Race(
