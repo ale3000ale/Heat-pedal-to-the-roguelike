@@ -5,7 +5,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { resolve } from '$app/paths';
-	import RacingIcon from '$lib/components/racing-icon.svelte';
+	import RacingIcon from '$lib/components/shared/racing-icon.svelte';
 
 	const selectClass =
 		'h-9 rounded-lg border border-white/10 bg-[#0e121a] px-3 text-xs text-foreground focus:border-primary focus:outline-none disabled:opacity-50';

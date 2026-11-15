@@ -36,8 +36,8 @@ Regole richieste dall'autore:
 
 File:
 
-- `frontend/src/lib/championship-groups.ts`: logica che divide i campionati nelle tre sezioni e sceglie quella aperta.
-- `frontend/src/lib/championship-groups.spec.ts`: 7 test Vitest.
+- `frontend/src/lib/championship/championship-groups.ts`: logica che divide i campionati nelle tre sezioni e sceglie quella aperta.
+- `frontend/src/lib/championship/championship-groups.spec.ts`: 7 test Vitest.
 - `frontend/src/routes/championships/+page.svelte`: pagina con tre elementi `<details>` e conteggio.
 
 Dati: `GET /api/championships` e `GET /api/pilots` (solo i piloti dell'utente loggato). Backend, database, migrazioni e CI non sono stati modificati.
@@ -64,9 +64,9 @@ Regole richieste dall'autore:
 
 File:
 
-- `frontend/src/lib/enroll-candidates.ts`: `enrollablePilots` (piloti iscrivibili) e `canShowEnroll` (visibilità del pulsante).
-- `frontend/src/lib/enroll-candidates.spec.ts`: 8 test Vitest.
-- `frontend/src/lib/components/enroll-pilot-dialog.svelte`: la finestra a due passi, basata su `modal.svelte`.
+- `frontend/src/lib/championship/enroll-candidates.ts`: `enrollablePilots` (piloti iscrivibili) e `canShowEnroll` (visibilità del pulsante).
+- `frontend/src/lib/championship/enroll-candidates.spec.ts`: 8 test Vitest.
+- `frontend/src/lib/components/pilots/enroll-pilot-dialog.svelte`: la finestra a due passi, basata su `modal.svelte`.
 - `frontend/src/routes/championships/[id]/+page.svelte`: pulsante, finestra e ricarica dei dati.
 
 Dati: `POST /api/championships/{id}/pilots` e `GET /api/pilots`. Backend, database, migrazioni e CI non sono stati modificati.
@@ -94,9 +94,9 @@ Regole richieste dall'autore:
 
 File:
 
-- `frontend/src/lib/deck-access.ts`: `deckAction`, che decide se il pulsante compare e cosa fa (`hidden`, `open`, `choose`).
-- `frontend/src/lib/deck-access.spec.ts`: 4 test Vitest.
-- `frontend/src/lib/components/pilot-picker-dialog.svelte`: finestra di scelta del pilota, basata su `modal.svelte`.
+- `frontend/src/lib/draft/deck/deck-access.ts`: `deckAction`, che decide se il pulsante compare e cosa fa (`hidden`, `open`, `choose`).
+- `frontend/src/lib/draft/deck/deck-access.spec.ts`: 4 test Vitest.
+- `frontend/src/lib/components/pilots/pilot-picker-dialog.svelte`: finestra di scelta del pilota, basata su `modal.svelte`.
 - `frontend/src/routes/championships/[id]/+page.svelte`: pulsante, finestra e navigazione.
 
 Dati: nessuna nuova chiamata; usa l'elenco dei piloti già caricato dalla pagina. Backend, database, migrazioni e CI non sono stati modificati.
@@ -122,7 +122,7 @@ Regole richieste dall'autore:
 File:
 
 - `frontend/src/routes/pilots/[id]/+page.svelte`: layout a due colonne (`lg:grid-cols-[minmax(0,5fr)_minmax(0,3fr)]`), contenitore `max-w-6xl`, freccia "← Indietro" con `goBack`.
-- `frontend/src/lib/components/CardTile.svelte`: nuova proprietà opzionale `compact` (nome in piccolo sotto l'immagine e copie come badge sull'immagine); senza `compact` l'aspetto non cambia.
+- `frontend/src/lib/components/cards/CardTile.svelte`: nuova proprietà opzionale `compact` (nome in piccolo sotto l'immagine e copie come badge sull'immagine); senza `compact` l'aspetto non cambia.
 
 Scelta tecnica: la freccia usa `history.back()` e, se non c'è una pagina precedente, va a Team e piloti. Il parametro `?from=` non è stato usato perché la regola di lint `svelte/no-navigation-without-resolve` vieta di aggiungere una query a `resolve()`. L'etichetta è sempre "Indietro".
 
@@ -153,9 +153,9 @@ Regole:
 
 File:
 
-- `frontend/src/lib/components/pilot-card-plays.svelte`: la sezione di un pilota.
-- `frontend/src/lib/card-play-api.ts`: servizio API (stato delle giocate, gioca, annulla).
-- `frontend/src/lib/card-play-types.ts`: tipi `CardPlayState`, `AvailableCard`, `CardPlay`, `CardGift`, `CardPollSetting`.
+- `frontend/src/lib/components/pilots/pilot-card-plays.svelte`: la sezione di un pilota.
+- `frontend/src/lib/cards/card-play-api.ts`: servizio API (stato delle giocate, gioca, annulla).
+- `frontend/src/lib/cards/card-play-types.ts`: tipi `CardPlayState`, `AvailableCard`, `CardPlay`, `CardGift`, `CardPollSetting`.
 - `frontend/src/routes/championships/[id]/+page.svelte`: la card e il collegamento con le altre parti.
 
 Dati: `GET /api/championships/{id}/card-plays?pilot_id=`, `POST /api/championships/{id}/card-plays` e `POST /api/championships/{id}/card-plays/undo`.
@@ -176,11 +176,11 @@ Regole:
 
 File:
 
-- `frontend/src/lib/components/pilot-gift-button.svelte`: tasto S e messaggio.
-- `frontend/src/lib/components/card-gift-popup.svelte`: banner della carta ottenuta.
-- `frontend/src/lib/components/modal.svelte`: opzioni `closeOnOutside`, `blur`, `wide`, `narrow`.
-- `frontend/src/lib/card-poll.svelte.ts`: lettura dell'intervallo e controllo periodico.
-- `frontend/src/lib/card-play-api.ts`: `giveRandomCard`, `fetchUnseenGifts`, `markGiftsSeen`, `fetchCardPoll`, `saveCardPoll`.
+- `frontend/src/lib/components/pilots/pilot-gift-button.svelte`: tasto S e messaggio.
+- `frontend/src/lib/components/cards/card-gift-popup.svelte`: banner della carta ottenuta.
+- `frontend/src/lib/components/shared/modal.svelte`: opzioni `closeOnOutside`, `blur`, `wide`, `narrow`.
+- `frontend/src/lib/cards/card-poll.svelte.ts`: lettura dell'intervallo e controllo periodico.
+- `frontend/src/lib/cards/card-play-api.ts`: `giveRandomCard`, `fetchUnseenGifts`, `markGiftsSeen`, `fetchCardPoll`, `saveCardPoll`.
 
 Dati: `POST /api/championships/{id}/card-gifts`, `GET /api/championships/{id}/card-gifts?pilot_id=`, `POST /api/championships/{id}/card-gifts/seen`, `GET` e `PUT /api/admin/card-poll`.
 
@@ -207,11 +207,11 @@ Backend:
 
 Frontend:
 
-- `frontend/src/lib/gift-undo.ts`: `UNDO_SECONDS` e `secondsLeft`; `frontend/src/lib/gift-undo.spec.ts`: 3 test Vitest.
-- `frontend/src/lib/card-play-api.ts`: `undoGift`.
-- `frontend/src/lib/components/pilot-gift-button.svelte`: contatore, tasto Annulla e messaggio sotto la riga.
-- `frontend/src/lib/components/modal.svelte`: opzione `narrow`.
-- `frontend/src/lib/components/card-gift-popup.svelte`: banner stretto.
+- `frontend/src/lib/cards/gift-undo.ts`: `UNDO_SECONDS` e `secondsLeft`; `frontend/src/lib/cards/gift-undo.spec.ts`: 3 test Vitest.
+- `frontend/src/lib/cards/card-play-api.ts`: `undoGift`.
+- `frontend/src/lib/components/pilots/pilot-gift-button.svelte`: contatore, tasto Annulla e messaggio sotto la riga.
+- `frontend/src/lib/components/shared/modal.svelte`: opzione `narrow`.
+- `frontend/src/lib/components/cards/card-gift-popup.svelte`: banner stretto.
 
 Commit: `b58a3fe` (backend) e `3676025` (frontend). Il database e le migrazioni non sono stati modificati.
 
@@ -234,7 +234,7 @@ Soluzione:
 - La rilettura `refresh()` in `pilot-card-plays.svelte` è silenziosa: non mette i pulsanti in "occupato", ignora gli errori di rete (riprova al controllo successivo), non parte mentre l'utente sta agendo e scarta la risposta se nel frattempo è successa un'azione (contatore `stateVersion`).
 - Se il backend rifiuta una carta appena annullata, la lista si rilegge subito.
 
-File modificati: `frontend/src/lib/components/pilot-card-plays.svelte` e `frontend/src/routes/championships/[id]/+page.svelte`. Backend, database e migrazioni non sono stati modificati.
+File modificati: `frontend/src/lib/components/pilots/pilot-card-plays.svelte` e `frontend/src/routes/championships/[id]/+page.svelte`. Backend, database e migrazioni non sono stati modificati.
 
 Commit: `8bce344`.
 

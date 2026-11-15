@@ -1,9 +1,11 @@
 """Test puri del launcher: non avviano processi e non accedono al DB reale."""
 import os
+import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
-from tools.production import normalize_origin, runtime_environment, wait_ready
+from tools.production import normalize_origin, print_qr, runtime_environment, wait_ready
 
 
 class OriginTests(unittest.TestCase):
@@ -40,6 +42,23 @@ class OriginTests(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             wait_ready(Exited(), "http://127.0.0.1:1", {})
+
+
+class QrTests(unittest.TestCase):
+    def test_missing_library_reports_hint_without_failing(self):
+        messages = []
+        with patch.dict(sys.modules, {"qrcode": None}):
+            print_qr("http://192.168.1.10:5173", report=messages.append)
+        self.assertEqual(len(messages), 1)
+        self.assertIn("QR non disponibile", messages[0])
+
+    def test_saves_png_and_opens_it(self):
+        messages = []
+        with patch("tools.production.webbrowser.open") as opened:
+            print_qr("http://192.168.1.10:5173", report=messages.append)
+        path = Path(messages[0].removeprefix("QR salvato in "))
+        self.assertEqual(path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertEqual(opened.call_args.args[0], path.as_uri())
 
 
 if __name__ == "__main__":

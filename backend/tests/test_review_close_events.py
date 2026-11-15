@@ -6,9 +6,9 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import EventLog, Race, User
-from app.services.event_log import append_event
-from app.schemas.events import EventCreate
-from app.services.race_review import confirm_review, settle_expired_reviews
+from app.services.core.event_log import append_event
+from app.schemas.core.events import EventCreate
+from app.services.race.race_review import confirm_review, settle_expired_reviews
 from tests.test_race_review import CARD, closed_scenario, sponsor_inventory, sponsor_pool
 
 
@@ -50,7 +50,7 @@ def test_expiry_events_and_atomic_failure(make_client, session_factory, monkeypa
                                         payload={"race_id": row.id, "action": action}))
             db.flush()
             raise RuntimeError("event failure")
-        monkeypatch.setattr("app.services.race_review.record_review_closed", failing_record)
+        monkeypatch.setattr("app.services.race.race_review.record_review_closed", failing_record)
     with session_factory() as db:
         if fail:
             with pytest.raises(RuntimeError, match="event failure"):
@@ -78,7 +78,7 @@ def test_abandoned_between_scan_and_lock_is_not_closed(make_client, session_fact
     with session_factory() as db:
         db.get(Race, race).review_started_at = (now - timedelta(minutes=16)).replace(tzinfo=None)
         db.commit()
-    from app.services.race_review import _lock_database as original_lock
+    from app.services.race.race_review import _lock_database as original_lock
 
     def abandon_before_lock(db):
         with session_factory() as other:
@@ -86,7 +86,7 @@ def test_abandoned_between_scan_and_lock_is_not_closed(make_client, session_fact
             other.commit()
         original_lock(db)
 
-    monkeypatch.setattr("app.services.race_review._lock_database", abandon_before_lock)
+    monkeypatch.setattr("app.services.race.race_review._lock_database", abandon_before_lock)
     before = len(read_events(session_factory))
     with session_factory() as db:
         assert settle_expired_reviews(db, champ, now) == 0

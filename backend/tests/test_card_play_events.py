@@ -5,9 +5,9 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.models import CardPlay, EventLog, Pilot, User
-from app.services.card_events import record_card_action as real_record
-from app.services.card_play import play_card, undo_last_play
-from app.services.event_log import read_events
+from app.services.cards.card_events import record_card_action as real_record
+from app.services.cards.card_play import play_card, undo_last_play
+from app.services.core.event_log import read_events
 from tests.test_race_review import CARD, play, scenario, undo
 
 
@@ -56,7 +56,7 @@ def test_event_failure_rolls_back_play_or_undo(make_client, session_factory, mon
         db.flush()
         raise RuntimeError("event failure")
 
-    monkeypatch.setattr("app.services.card_play.record_card_action", fail_after_flush)
+    monkeypatch.setattr("app.services.cards.card_play.record_card_action", fail_after_flush)
     with session_factory() as db:
         owner_id = db.get(Pilot, pilot).user_id
         owner = db.get(User, owner_id)

@@ -94,7 +94,7 @@ jobs:
               raise RuntimeError('Nota diversa: pubblicazione interrotta')
           p.write_text(text.replace(old, 'Stato: patch applicata; formatter, lint, type-check, test e build frontend riusciti nel workflow che pubblica questo commit.'))
           PY
-          git add -- frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/review-session-guard.spec.ts docs/PHASE_15_REVIEW_SESSION_GUARD.md
+          git add -- frontend/src/lib/stores/review-counts.svelte.ts frontend/src/lib/race/review/review-session-guard.spec.ts docs/PHASE_15_REVIEW_SESSION_GUARD.md
           git diff --cached --check
           git fetch origin phase-15-sse-sistemazione
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/phase-15-sse-sistemazione)"

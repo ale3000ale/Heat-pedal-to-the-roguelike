@@ -10,7 +10,7 @@ CI della PR 14 sulla correzione 47df2a5: backend, frontend e migrazioni success
 
 ## File
 
-- backend/app/services/event_log.py: accodamento validato senza commit;
+- backend/app/services/core/event_log.py: accodamento validato senza commit;
   lettura ordinata e filtrata con pagine fino a 100 eventi; pulizia oltre 24 ore.
 - backend/tests/test_event_log_service.py: isolamento dei privati anche verso
   admin e giudici, accesso pubblico per iscritti/ruoli, revoca per pilota nascosto,

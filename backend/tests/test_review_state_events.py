@@ -5,9 +5,9 @@ import pytest
 from sqlalchemy import select
 
 from app.db.models import EventLog, Race, User
-from app.schemas.events import EventCreate
-from app.services.event_log import append_event as real_append_event
-from app.services.race_review import abandon_review, cancel_review, start_review
+from app.schemas.core.events import EventCreate
+from app.services.core.event_log import append_event as real_append_event
+from app.services.race.race_review import abandon_review, cancel_review, start_review
 from tests.test_race_review import (
     closed_scenario, confirm_review, leave_review, open_review, scenario,
 )
@@ -67,7 +67,7 @@ def test_state_change_rolls_back_when_event_fails(make_client, session_factory, 
         db.flush()
         raise RuntimeError("event failure")
 
-    monkeypatch.setattr("app.services.race_review.record_review_changed", fail_after_flush)
+    monkeypatch.setattr("app.services.race.race_review.record_review_changed", fail_after_flush)
     with session_factory() as db:
         owner = db.get(User, db.get(Race, race).review_started_by_user_id)
         # Il rollback scade gli attributi ORM: conserviamo il valore prima.

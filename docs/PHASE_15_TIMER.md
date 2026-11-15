@@ -10,7 +10,7 @@ CI PR 14 sul commit a332633: backend, frontend e migrazioni success
 
 ## Questo blocco
 
-Nuovi file: backend/app/services/review_timer.py, backend/tests/test_review_timer.py,
+Nuovi file: backend/app/services/race/review_timer.py, backend/tests/test_review_timer.py,
 questa nota. Nessuna modifica a main.py o ai servizi di chiusura in questo blocco.
 Il modulo non si avvia da solo e non e' ancora collegato al lifespan.
 

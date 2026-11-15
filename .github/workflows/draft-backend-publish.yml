@@ -89,12 +89,12 @@ jobs:
           artifact = Path(os.environ['RUNNER_TEMP']) / 'draft-backend-verified'
           manifest = json.loads((artifact / 'manifest.json').read_text(encoding='utf-8'))
           required = {
-              'backend/app/services/championships.py',
-              'backend/app/services/pilot_deck.py',
-              'backend/app/services/shop_purchase.py',
-              'backend/app/services/admin_pilot_cards.py',
-              'backend/app/services/races.py',
-              'backend/app/services/draft_preparation.py',
+              'backend/app/services/championship/championships.py',
+              'backend/app/services/pilots/pilot_deck.py',
+              'backend/app/services/shop/shop_purchase.py',
+              'backend/app/services/cards/admin_pilot_cards.py',
+              'backend/app/services/race/races.py',
+              'backend/app/services/draft/draft_preparation.py',
               'backend/app/main.py',
               'backend/tests/test_draft_existing_services.py',
               'scripts/reconstruct_draft_backend.py',

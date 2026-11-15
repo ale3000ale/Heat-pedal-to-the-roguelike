@@ -6,12 +6,12 @@ import pytest
 from sqlalchemy import func, select
 
 from app.db.models import Championship, Deck, DraftPreparation, Pilot, Race, RaceResult
-from app.schemas.draft_state import DraftState
-from app.services.cards import CardEntry, dump_cards, parse_cards
-from app.services.draft_commands import begin_picking, choose_card, confirm_attendance, move_draft_card
-from app.services.draft_completion import ready_pilot
-from app.services.draft_preparation import DraftPreparationError, open_preparation, set_attendance
-from app.services.draft_transitions import DraftTransitionError
+from app.schemas.draft.draft_state import DraftState
+from app.services.cards.cards import CardEntry, dump_cards, parse_cards
+from app.services.draft.draft_commands import begin_picking, choose_card, confirm_attendance, move_draft_card
+from app.services.draft.draft_completion import ready_pilot
+from app.services.draft.draft_preparation import DraftPreparationError, open_preparation, set_attendance
+from app.services.draft.draft_transitions import DraftTransitionError
 from tests.test_draft_api import api_client
 from tests.test_draft_preparation import seed
 

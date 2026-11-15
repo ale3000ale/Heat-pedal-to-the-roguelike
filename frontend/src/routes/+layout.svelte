@@ -5,14 +5,14 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { auth } from '$lib/auth.svelte';
-	import { createDraftHost } from '$lib/draft-host';
-	import { provideDraftHost } from '$lib/draft-host-context';
-	import DraftHost from '$lib/components/draft-host.svelte';
+	import { auth } from '$lib/auth/auth.svelte';
+	import { createDraftHost } from '$lib/draft/host/draft-host';
+	import { provideDraftHost } from '$lib/draft/host/draft-host-context';
+	import DraftHost from '$lib/components/draft/draft-host.svelte';
 	import { eventClient } from '$lib/events/event-client';
 	import { Button } from '$lib/components/ui/button';
-	import AccountSettings from '$lib/components/account-settings.svelte';
-	import RacingIcon from '$lib/components/racing-icon.svelte';
+	import AccountSettings from '$lib/components/shared/account-settings.svelte';
+	import RacingIcon from '$lib/components/shared/racing-icon.svelte';
 
 	let { children } = $props();
 	let settingsOpen = $state(false);

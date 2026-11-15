@@ -3,7 +3,7 @@ import io
 import pytest
 from PIL import Image
 
-from app.services.images import (
+from app.services.cards.images import (
     MAX_CARD_SIZE,
     CardImageError,
     fit_card_image,

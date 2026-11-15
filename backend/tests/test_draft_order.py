@@ -1,8 +1,8 @@
 """Test delle regole pure: nessuna dipendenza da database o autenticazione."""
 import pytest
 
-from app.services.cards import CardEntry
-from app.services.draft_order import draft_order, has_draft_copies
+from app.services.cards.cards import CardEntry
+from app.services.draft.draft_order import draft_order, has_draft_copies
 
 
 def test_inverse_finish_excludes_absent_and_appends_newcomers():

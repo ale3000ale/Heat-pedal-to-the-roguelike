@@ -1,6 +1,6 @@
 from app.db.models.championship import Championship
 from app.db.models.deck import Deck, DeckPrototype
-from app.services.cards import CardEntry, dump_cards
+from app.services.cards.cards import CardEntry, dump_cards
 from tests.test_card_judge import (
     CARD,
     cancel,

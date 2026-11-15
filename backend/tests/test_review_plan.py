@@ -1,7 +1,7 @@
 import unittest
 from copy import deepcopy
 
-from app.services.review_plan import PoolStock, ReviewHolding, build_review_plan
+from app.services.race.review_plan import PoolStock, ReviewHolding, build_review_plan
 
 
 class ReviewPlanTests(unittest.TestCase):

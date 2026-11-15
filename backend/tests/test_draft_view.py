@@ -2,10 +2,10 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.draft import DraftReadyCommand
-from app.services.draft_commands import confirm_attendance
-from app.services.draft_preparation import DraftPermissionError, open_preparation
-from app.services.draft_view import list_my_drafts, read_draft, read_draft_deck
+from app.schemas.draft.draft import DraftReadyCommand
+from app.services.draft.draft_commands import confirm_attendance
+from app.services.draft.draft_preparation import DraftPermissionError, open_preparation
+from app.services.draft.draft_view import list_my_drafts, read_draft, read_draft_deck
 from tests.test_draft_preparation import seed
 
 

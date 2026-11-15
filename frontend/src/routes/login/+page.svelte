@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { auth } from '$lib/auth.svelte';
+	import { auth } from '$lib/auth/auth.svelte';
 	import * as Card from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import PasswordInput from '$lib/components/password-input.svelte';
-	import RacingIcon from '$lib/components/racing-icon.svelte';
+	import PasswordInput from '$lib/components/shared/password-input.svelte';
+	import RacingIcon from '$lib/components/shared/racing-icon.svelte';
 
 	let username = $state('');
 	let password = $state('');

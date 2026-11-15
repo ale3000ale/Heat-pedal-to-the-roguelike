@@ -8,9 +8,9 @@ import {
 	openReview,
 	reopenReview,
 	removeCard
-} from '$lib/race-review-api';
-import { secondsLeft } from '$lib/race-review-format';
-import type { CardMove, PilotPlays, RaceReview } from '$lib/race-review-types';
+} from '$lib/race/race-review-api';
+import { secondsLeft } from '$lib/race/race-review-format';
+import type { CardMove, PilotPlays, RaceReview } from '$lib/race/race-review-types';
 
 export class RaceReviewStore {
 	review = $state<RaceReview | null>(null);

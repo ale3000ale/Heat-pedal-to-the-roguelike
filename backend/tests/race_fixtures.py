@@ -1,7 +1,7 @@
 """Dati di prova espliciti per i mazzi prima dell'avvio; mai importati dall'app."""
 from app.db.models.deck import Deck
 from app.db.models.pilot import Pilot
-from app.services.cards import CardEntry, dump_cards, parse_cards
+from app.services.cards.cards import CardEntry, dump_cards, parse_cards
 
 
 def seed_game_deck_from_inventory_card(factory, pilot_id: int, *, path: str, copies: int) -> None:

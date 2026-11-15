@@ -1,6 +1,6 @@
 import pytest
 
-from app.schemas.auth import UserRead
+from app.schemas.accounts.auth import UserRead
 
 
 @pytest.mark.parametrize("role", ["admin", "judge", "player"])
