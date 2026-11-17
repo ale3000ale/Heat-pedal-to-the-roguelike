@@ -69,7 +69,9 @@ describe('viewport stabile del modal draft', () => {
 			const { store, read, send } = await setup(phase);
 			const body = render(DraftModal, { props: { store, children: content() } }).body;
 			expect(dialogTag(body).includes('viewport-stable')).toBe(false);
-			expect(dialogTag(body).includes('viewport-fit')).toBe(phase === 'picking' || phase === 'decks');
+			expect(dialogTag(body).includes('viewport-fit')).toBe(
+				phase === 'picking' || phase === 'decks'
+			);
 			expect(dialogTag(body).includes('max-w-3xl')).toBe(phase === 'picking' || phase === 'decks');
 			expect(dialogTag(body)).toContain('aria-modal="true"');
 			expect(read).toHaveBeenCalledTimes(1);

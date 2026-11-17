@@ -1,8 +1,10 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+	import type { Pathname } from '$app/types';
 	import RacingIcon from './racing-icon.svelte';
 
 	type NavItem = {
-		href: string;
+		href: Pathname;
 		label: string;
 		icon: 'helmet' | 'trophy' | 'tires' | 'spark_plug';
 	};
@@ -86,7 +88,7 @@
 		{#each mainItems as item (item.href)}
 			<li class:contents={!vertical}>
 				<a
-					href={item.href}
+					href={resolve(item.href)}
 					class={itemClass(item.href)}
 					aria-current={isActive(item.href) ? 'page' : undefined}
 					onclick={() => onNavigate?.()}
@@ -108,7 +110,7 @@
 					{#each adminItems as item (item.href)}
 						<li>
 							<a
-								href={item.href}
+								href={resolve(item.href)}
 								class={adminLinkClass(item.href)}
 								aria-current={isActive(item.href) ? 'page' : undefined}
 								onclick={() => onNavigate?.()}
@@ -133,7 +135,7 @@
 					{#each adminItems as item (item.href)}
 						<li>
 							<a
-								href={item.href}
+								href={resolve(item.href)}
 								class={adminLinkClass(item.href)}
 								aria-current={isActive(item.href) ? 'page' : undefined}
 								onclick={() => onNavigate?.()}

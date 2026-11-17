@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { draftAttendanceView, MAX_DRAFT_PRESENT } from '$lib/draft/attendance/draft-attendance-view';
+	import {
+		draftAttendanceView,
+		MAX_DRAFT_PRESENT
+	} from '$lib/draft/attendance/draft-attendance-view';
 	import type { DraftStore } from '$lib/stores/draft.svelte';
 
 	let { store }: { store: DraftStore } = $props();

@@ -3,7 +3,11 @@
 	import { resolve } from '$app/paths';
 	import { api } from '$lib/api';
 	import { auth } from '$lib/auth/auth.svelte';
-	import { groupChampionships, initiallyOpenGroup, type GroupKey } from '$lib/championship/championship-groups';
+	import {
+		groupChampionships,
+		initiallyOpenGroup,
+		type GroupKey
+	} from '$lib/championship/championship-groups';
 	import type { Championship, Pilot } from '$lib/types';
 	import { Button } from '$lib/components/ui/button';
 	import ChampionshipSettings from '$lib/components/championship/championship-settings.svelte';

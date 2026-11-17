@@ -5,7 +5,11 @@
 	import type { DraftHostCompletion } from '$lib/draft/host/draft-host';
 	import type { DraftDeckSession } from '$lib/draft/deck/draft-deck-session';
 	import type { DraftStore } from '$lib/stores/draft.svelte';
-	import { blockDraftEscape, reconcileDraftQueue, selectDraftEntry } from '$lib/draft/host/draft-host-view';
+	import {
+		blockDraftEscape,
+		reconcileDraftQueue,
+		selectDraftEntry
+	} from '$lib/draft/host/draft-host-view';
 	import { draftHostFocus } from '$lib/draft/host/draft-host-focus';
 	import { startDraftLive } from '$lib/draft/draft-live';
 	import { createDraftLiveDeckRefresh } from '$lib/draft/deck/draft-live-deck';

@@ -3,7 +3,10 @@
 	import { ApiError } from '$lib/api';
 	import { fetchAdminPilotCards } from '$lib/admin/pilot-cards/admin-pilot-cards-api';
 	import { saveAdminPilotCards } from '$lib/admin/pilot-cards/admin-pilot-cards-save-api';
-	import { prepareAdminCardSave, type AdminCardSavePlan } from '$lib/admin/pilot-cards/admin-pilot-cards-save-plan';
+	import {
+		prepareAdminCardSave,
+		type AdminCardSavePlan
+	} from '$lib/admin/pilot-cards/admin-pilot-cards-save-plan';
 	import { countAdminDeckCopies } from '$lib/admin/pilot-cards/admin-pilot-cards-view';
 	import {
 		blockAdminCardDraftSession,
