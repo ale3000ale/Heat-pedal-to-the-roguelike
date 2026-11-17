@@ -12,6 +12,8 @@
 	import { eventClient } from '$lib/events/event-client';
 	import { Button } from '$lib/components/ui/button';
 	import AccountSettings from '$lib/components/shared/account-settings.svelte';
+	import NavDrawer from '$lib/components/shared/nav-drawer.svelte';
+	import NavMenu from '$lib/components/shared/nav-menu.svelte';
 	import RacingIcon from '$lib/components/shared/racing-icon.svelte';
 
 	let { children } = $props();
@@ -30,9 +32,8 @@
 	const publicPaths = ['/login', '/register'];
 	let isPublic = $derived(publicPaths.includes(page.url.pathname));
 
-	// Menu a tendina dell'admin: si chiude cambiando pagina o cliccando fuori.
-	let adminMenuOpen = $state(false);
-	let adminMenu = $state<HTMLElement | null>(null);
+	// Drawer di navigazione su schermi stretti: si chiude cambiando pagina.
+	let navOpen = $state(false);
 
 	// All'apertura dell'app chiede al backend se c'è già una sessione valida.
 	onMount(() => {
@@ -57,7 +58,7 @@
 
 	$effect(() => {
 		void page.url.pathname;
-		adminMenuOpen = false;
+		navOpen = false;
 		settingsOpen = false;
 	});
 
@@ -65,14 +66,6 @@
 		void auth.user?.id;
 		settingsOpen = false;
 	});
-
-	function closeAdminMenu(event: MouseEvent) {
-		// I click nel draft non chiudono il menu sottostante sospeso.
-		if (event.target instanceof Element && event.target.closest('[data-draft-host-dialog]')) return;
-		if (adminMenuOpen && adminMenu && !adminMenu.contains(event.target as Node)) {
-			adminMenuOpen = false;
-		}
-	}
 
 	async function logout() {
 		eventClient.disconnect();
@@ -82,18 +75,12 @@
 			// Lo stato locale è già svuotato: l'effetto qui sopra porta al login.
 		}
 	}
-
-	function isActive(path: string) {
-		if (path === '/') return page.url.pathname === '/';
-		return page.url.pathname.startsWith(path);
-	}
 </script>
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
 	<title>Heat — Pedal to the Roguelike</title>
 </svelte:head>
-<svelte:window onclick={closeAdminMenu} />
 
 <DraftHost host={draftHost}>
 	<div
@@ -136,7 +123,29 @@
 					class="sticky top-0 z-40 border-b border-white/10 bg-[#0d1017]/95 shadow-xl backdrop-blur-md"
 				>
 					<nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-2.5">
-						<div class="flex items-center gap-7">
+						<div class="flex items-center gap-3 md:gap-7">
+							<!-- Hamburger: apre il drawer di navigazione su schermi stretti -->
+							<button
+								type="button"
+								class="flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-[#151922] text-foreground transition hover:border-primary/40 hover:bg-[#1c2230] md:hidden"
+								aria-label="Apri il menu di navigazione"
+								aria-expanded={navOpen}
+								aria-controls="nav-drawer"
+								onclick={() => (navOpen = true)}
+							>
+								<svg
+									viewBox="0 0 24 24"
+									class="h-5 w-5"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									aria-hidden="true"
+								>
+									<path d="M4 7h16M4 12h16M4 17h16" />
+								</svg>
+							</button>
+
 							<!-- Brand Logo -->
 							<a
 								href={resolve('/')}
@@ -164,100 +173,8 @@
 							</a>
 
 							<!-- Nav links with themed icons -->
-							<div class="hidden items-center gap-2 md:flex">
-								<a
-									href={resolve('/team')}
-									class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all {isActive(
-										'/team'
-									)
-										? 'border border-primary/40 bg-primary/20 text-white shadow-sm'
-										: 'text-muted-foreground hover:bg-white/5 hover:text-foreground'}"
-								>
-									<RacingIcon name="helmet" size="sm" />
-									<span>Team e piloti</span>
-								</a>
-
-								<a
-									href={resolve('/championships')}
-									class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all {isActive(
-										'/championships'
-									)
-										? 'border border-primary/40 bg-primary/20 text-white shadow-sm'
-										: 'text-muted-foreground hover:bg-white/5 hover:text-foreground'}"
-								>
-									<RacingIcon name="trophy" size="sm" />
-									<span>Campionati</span>
-								</a>
-
-								<a
-									href={resolve('/shop')}
-									class="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all {isActive(
-										'/shop'
-									)
-										? 'border border-primary/40 bg-primary/20 text-white shadow-sm'
-										: 'text-muted-foreground hover:bg-white/5 hover:text-foreground'}"
-								>
-									<RacingIcon name="tires" size="sm" />
-									<span>Negozio</span>
-								</a>
-
-								{#if auth.isAdmin}
-									<!-- Admin dropdown with wrench icon -->
-									<details class="relative" bind:open={adminMenuOpen} bind:this={adminMenu}>
-										<summary
-											class="flex cursor-pointer list-none items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all select-none {isActive(
-												'/admin'
-											)
-												? 'border border-amber-500/40 bg-amber-500/20 text-amber-300'
-												: 'text-muted-foreground hover:bg-white/5 hover:text-foreground'}"
-										>
-											<RacingIcon name="wrenches" size="sm" />
-											<span>Admin</span>
-											<span class="text-xs opacity-70">▾</span>
-										</summary>
-										<ul
-											class="absolute left-0 z-50 mt-2 min-w-52 animate-in rounded-lg border border-white/10 bg-[#161a24] p-1.5 shadow-2xl backdrop-blur-xl fade-in slide-in-from-top-2"
-										>
-											<li>
-												<a
-													href={resolve('/admin/championships')}
-													class="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-primary/20 hover:text-white"
-												>
-													<RacingIcon name="trophy" size="sm" />
-													<span>Gestione campionati</span>
-												</a>
-											</li>
-											<li>
-												<a
-													href={resolve('/admin/pools')}
-													class="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-primary/20 hover:text-white"
-												>
-													<RacingIcon name="spark_plug" size="sm" />
-													<span>Pool di carte</span>
-												</a>
-											</li>
-											<li>
-												<a
-													href={resolve('/admin/shop')}
-													class="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-primary/20 hover:text-white"
-												>
-													<RacingIcon name="tires" size="sm" />
-													<span>Gestione negozio</span>
-												</a>
-											</li>
-											<li class="my-1 border-t border-white/5"></li>
-											<li>
-												<a
-													href={resolve('/admin/users')}
-													class="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-primary/20 hover:text-white"
-												>
-													<RacingIcon name="helmet" size="sm" />
-													<span>Utenti e ruoli</span>
-												</a>
-											</li>
-										</ul>
-									</details>
-								{/if}
+							<div class="hidden md:block">
+								<NavMenu currentPath={page.url.pathname} isAdmin={auth.isAdmin} />
 							</div>
 						</div>
 
@@ -304,6 +221,16 @@
 					<!-- Signature Track Curb Accent Line -->
 					<div class="curb-bar" role="presentation"></div>
 				</header>
+
+				<!-- Drawer di navigazione per schermi stretti -->
+				<NavDrawer bind:open={navOpen}>
+					<NavMenu
+						currentPath={page.url.pathname}
+						isAdmin={auth.isAdmin}
+						orientation="vertical"
+						onNavigate={() => (navOpen = false)}
+					/>
+				</NavDrawer>
 
 				{#if settingsOpen}
 					{#key auth.user.id}

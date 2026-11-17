@@ -1,50 +1,87 @@
 # Heat — Pedal to the Roguelike
 
-<!-- draft-validation-current:start -->
+Applicazione web per giocare a **Heat: Pedal to the Metal** in modalità roguelike: i mazzi crescono gara dopo gara, tra carte modifica, carte sponsor e punti sponsor da spendere nel Negozio.
 
-## Draft - stato verificato del 26 ottobre 2026
+Il progetto nasce come evoluzione del gioco da tavolo, non come suo sostituto. Le partite restano al tavolo, con plancia, carte e regole originali; l'applicazione tiene insieme ciò che il tavolo da solo non ricorda: iscrizioni, draft, composizione dei mazzi, gare, classifica e punti sponsor. Sono già comprese le carte delle espansioni Heavy Rain e Tunnel Vision; Rocky Roads e Narrow Streets arriveranno in futuro.
 
-Questa sezione prevale esclusivamente sulle precedenti note di stato e verifica del flusso draft. Regole, specifiche delle altre fasi e contenuti storici restano conservati.
+La modalità roguelike è un'idea nostra: non fa parte del gioco originale.
 
-Base funzionale: commit 8ba03aa1aa8a20f8c346b3e20b4f1352d9b2d74a, ramo draft, PR #18 ancora in bozza e senza merge in main. Correzione delle chiavi del flusso e della proprieta delle risorse UI, non una nuova modifica di regole o API.
+L'applicazione nasce per un uso locale: un PC fa da server e gli altri dispositivi della stessa rete Wi-Fi/LAN si collegano dal browser. Non servono servizi cloud, account online o tunnel.
 
-Verifiche lette: frontend (check, lint, test, build), runtime, backend pytest e migrazioni su database di test tutti success. Run CI 40269135082 e runtime 40269135447. I due job documentali di fase 16 sono skipped, non falliti.
+## Scopo del progetto
 
-Collaudo manuale positivo riferito dall autore il 26 ottobre alle 05:31: ora funziona tutto senza errori. Il riscontro segue i reset di presenze, zoom e mazzi e la correzione lifecycle. Non e un test browser automatizzato o una certificazione di tutti i dispositivi.
+Heat è un gioco da tavolo di corse automobilistiche: ogni pilota costruisce il proprio mazzo e lo usa in gara. La modalità roguelike trasforma il campionato in una progressione: si parte dal mazzo base, il draft aggiunge carte modifica, la gara assegna i punti sponsor, e il Negozio restituisce nuove carte con cui preparare la gara successiva.
 
-Base funzionale della draft confermata; le modifiche grafiche successive non sono ancora iniziate.
+Gestire tutto questo con fogli di calcolo o note scritte è dispersivo. L'applicazione riunisce in un unico posto anagrafica di utenti, team e piloti, stato delle carte di ogni pilota, gare e revisioni, classifica, punti sponsor e acquisti.
 
-Questo riallineamento non cambia codice applicativo, dipendenze, lockfile o dati e non esegue nuovi test dell applicazione. Nessun rilascio, ZIP finale o merge implicito. Interventi grafici successivi sospesi fino alla scelta dell autore.
+L'app registra ciò che accade al tavolo: non gioca le partite al posto dei giocatori.
 
-[Evidenze, cronologia e limiti della validazione](docs/DRAFT_VALIDATION.md).
-<!-- draft-validation-current:end -->
+## Modalità roguelike
 
-<!-- draft-backend-current:start -->
-## Draft - backend consolidato e limiti correnti
+**Draft iniziale (solo prima gara)**
 
-Aggiornamento del 25 ottobre 2026, solo ramo draft e PR 18. Questa sezione aggiorna il solo stato del flusso draft e prevale sulle note storiche di avanzamento, senza alterare gli altri requisiti.
+Si decide l'ordine di gioco. Si estraggono 5 carte modifica; il primo giocatore ne sceglie una e la aggiunge al proprio inventario, poi se ne pesca un'altra per riportare la pool a 5 carte, e si prosegue fino all'ultimo giocatore. Quando questi ha scelto, le carte rimanenti tornano nel mazzo modifiche, che viene mescolato; si estraggono altre 5 carte e si inizia la seconda passata, dall'ultimo al primo.
 
-Sorgenti recuperati dall artefatto draft-backend-materialized della run 40152061495, job materialize-and-check concluso con success sul commit tecnico 1052e5d. Gli hash SHA-256 dei sorgenti sono conservati in docs/DRAFT_BACKEND_MANIFEST.json.
+Dopo 4 passate ogni pilota ha 16 carte: 12 base (tre copie ciascuna di velocità 1, 2, 3 e 4) e 4 modifiche.
 
-Prima della pubblicazione questo workflow verifica di nuovo pytest backend, upgrade/downgrade/upgrade con controlli dello schema e frontend check, lint, test e build. Esecuzione di pubblicazione: https://github.com/ale3000ale/Heat-pedal-to-the-roguelike/actions/runs/40153346360. Il controllo dedicato sul commit risultante documenta queste verifiche pre-push; non e una nuova esecuzione dei job ordinari della PR.
+**Prima di ogni gara successiva**
 
-Nessun conteggio di test o warning inventato, nessun test locale o collaudo browser attestato. Nessun merge, rilascio, ZIP finale del progetto o intervento sul database reale. Il frontend draft non e implementato da questo consolidamento.
+Si fa la draft classica prevista dalle regole di Heat e la carta scelta entra nell'inventario. Poi si monta il mazzo di gioco: dall'inventario si scelgono 15 carte non sponsor e vi si aggiungono tutte le carte sponsor rimaste dalle gare precedenti. Le carte sponsor ottenute prima della gara dagli eventi vanno in mano come da regolamento.
 
-Il backend draft e consolidato sul ramo draft. La nuova interfaccia draft non e ancora disponibile; i controlli frontend riguardano l applicazione esistente.
-<!-- draft-backend-current:end -->
+**Gara**
 
-Applicazione web locale per gestire campionati del gioco da tavolo Heat: utenti e ruoli, team, piloti, mazzi, pool di carte, gare con carte sponsor e revisione, classifiche, oro e Negozio con apertura dei pacchetti.
+Si gioca con le regole classiche. L'unica attenzione in più: quando un pilota riceve una carta sponsor in curva, guadagna anche un punto sponsor.
 
-## Tecnologie
+**Fine gara e punti sponsor**
 
-- **Backend**: Python, FastAPI, SQLAlchemy, Alembic, Pydantic, SQLite.
-- **Frontend**: SvelteKit con TypeScript.
-- **Automazione**: `heat.py`, uno script Python multipiattaforma con menu e comandi.
+Si assegnano i punti classifica consueti; i punti sponsor guadagnati in gara si sommano a quelli già posseduti (alla prima gara si parte da 0). I punti sponsor si spendono nel Negozio in pacchetti di carte che possono contenere modifiche, carte sponsor o entrambe.
 
-## Prerequisiti
+**Stato attuale**
 
-- Python 3.11 o superiore.
-- Node.js con npm (https://nodejs.org).
+L'applicazione implementa già la draft classica delle regole di Heat, gli inventari delle modifiche e degli sponsor, il mazzo da gioco con il controllo delle 15 carte, le gare con revisione, la classifica, la registrazione dei punti sponsor a fine gara e il Negozio. Restano da implementare la draft iniziale a 4 passate e l'assegnazione automatica del punto sponsor quando si riceve una carta sponsor in curva; nell'app le carte sponsor restano in un inventario separato, mentre al tavolo si aggiungono al mazzo di gioco.
+
+## Requisiti
+
+- **Python 3.11 o superiore**: `setup` si interrompe con un messaggio chiaro su versioni precedenti.
+- **Node.js con npm**, per il frontend e per i controlli automatici.
+- **Gioco reale di Heat** per giocare.
+
+## Funzionalità
+
+**Account e ruoli**
+
+- Tre ruoli: amministratore, giudice e giocatore.
+- Accesso con sessione e cookie; cambio password che revoca le altre sessioni dello stesso account.
+
+**Team e piloti**
+
+- Anagrafica di team e piloti, ricerca per nome e iscrizione ai campionati.
+
+**Carte, mazzi e pool**
+
+- Mazzi da gioco, inventari e pool distinti per pilota, con immagini delle carte.
+- Caricamento delle immagini dall'area admin, con ritaglio e zoom; script per portare le immagini al formato dell'app.
+- Controllo delle copie: una gara parte solo quando il mazzo di ogni iscritto ha esattamente 15 copie.
+
+**Campionati e gare**
+
+- Creazione del campionato, iscrizioni e gestione delle gare.
+- Carte giocate e carte sponsor durante la gara, con revisione finale.
+- Classifica e oro aggiornati con gli esiti delle gare.
+
+**Negozio**
+
+- Acquisti con l'oro guadagnato in classifica o punti sponsor guadagnati in pista, pacchetti di carte e carte estratte all'acquisto.
+
+**Draft**
+
+- Preparazione del draft, turni di scelta e mazzi che si compongono carta per carta.
+
+**Gestione e supporto**
+
+- Area admin per carte, pool, negozio, utenti e ruoli; trasferimenti di carte con salvataggio atomico e controllo delle versioni.
+- Aggiornamenti in tempo reale delle pagine tramite Server-Sent Events, senza ricaricare.
+- Produzione Wi-Fi/LAN: il server stampa a video l'indirizzo da usare dagli altri dispositivi, con QR di accesso.
 
 ## Primo avvio
 
@@ -62,36 +99,44 @@ Dopo l'avvio:
 - Backend: http://127.0.0.1:8000
 - Frontend: http://127.0.0.1:5173
 
-Premi Ctrl+C per fermare entrambi.
+`Ctrl+C` ferma entrambi.
 
 ## Comandi
 
 | Comando | Cosa fa |
 |---|---|
 | `python heat.py` | Apre il menu interattivo. |
-| `python heat.py setup [--skip-admin] [--skip-seed]` | Installa tutto; le opzioni saltano la creazione dell'admin o del prototipo. |
+| `python heat.py setup [--skip-admin] [--skip-seed]` | Installa tutto; le opzioni saltano la creazione dell'admin o il prototipo del mazzo. |
+| `python heat.py start [--backend-only] [--public-url URL]` | Applica le migrazioni e avvia backend e frontend (o solo il backend); `--public-url` imposta l'origine pubblica usata dagli accessi esterni. |
 | `python heat.py migrate` | Applica le migrazioni del database (`alembic upgrade head`). |
-| `python heat.py start [--backend-only]` | Migra il database e avvia backend e frontend (o solo il backend). |
 | `python heat.py test` | Esegue i test del backend con pytest. |
-| `python heat.py check` | Esegue format, check, lint e test del frontend (`tools/check-frontend.mjs`). |
+| `python heat.py check` | Formattazione, controlli, lint e test del frontend (`tools/check-frontend.mjs`). |
+| `python heat.py production [--public-url URL]` | Compila il frontend e lo pubblica sulla rete Wi-Fi/LAN, scegliendo l'IPv4 del PC; non applica migrazioni. |
 
 Dopo un `git pull` o un cambio di ramo l'avvio migra comunque da solo il database.
+
+Nota per l'automazione: `python heat.py test` e `python heat.py check` non propagano il codice di uscita. In CI conviene invocare direttamente pytest e i comandi npm.
 
 ## Struttura
 
 | Percorso | Contenuto |
 |---|---|
-| `backend/` | API FastAPI, modelli, servizi, migrazioni Alembic, test, immagini in `backend/media/`. |
-| `frontend/` | Applicazione SvelteKit (`src/routes`, `src/lib`). |
-| `database/` | Cartella del database. |
-| `docs/` | Specifica, stato, note, domande aperte, specifica della fase 13, progetto e schema del Negozio. |
-| `tools/` | Script di supporto, tra cui `check-frontend.mjs`. |
-| `.github/` | Controlli automatici (CI) a ogni pull request. |
-| `heat.py` | Setup, avvio, migrazioni, test e controlli. |
+| `backend/app/api/` | Rotte FastAPI, raggruppate per dominio. |
+| `backend/app/services/` | Regole di business, raggruppate per dominio. |
+| `backend/app/db/models/` | Modelli SQLAlchemy; gli schemi Pydantic stanno in `backend/app/schemas/`. |
+| `backend/alembic/versions/` | Migrazioni del database. |
+| `backend/tests/` | Suite pytest. |
+| `backend/media/` | Immagini delle carte, servite su `/media`. |
+| `frontend/src/routes/` | Pagine SvelteKit. |
+| `frontend/src/lib/` | Logica riusabile e componenti, con i test accanto ai file. |
+| `tools/` | Avvio e gateway LAN, controlli del frontend. |
+| `docs/` | Specifica, stato, note di lavoro e documentazione delle fasi. |
+| `database/` | Riferimento dello schema del database. |
+| `heat.py` | Setup, avvio, migrazioni, test, controlli e produzione. |
 
 ## Immagini delle carte
 
-Le immagini stanno in `backend/media/cards/` (`base/modifiche`, `base/sponsor`, `starter`, `uploads`). Le cartelle `base` e `starter` vanno riempite a mano; `uploads` si riempie con il caricamento dell'admin (`POST /api/admin/cards`, immagine già tagliata a 560x870 px, al massimo 2 MB) e le carte caricate si eliminano con `DELETE /api/admin/cards`. L'interfaccia di caricamento con ritaglio e zoom è nella pagina admin delle pool (13f): le carte caricate si riconoscono dal nome in arancione e si eliminano dall'elenco. I nomi seguono `nome_N.ext`, con N pari al numero di copie. Per portarle al formato usato dall'applicazione (WebP, scatola massima 560x870 px), da `backend`:
+Le immagini stanno in `backend/media/cards/` (`base/modifiche`, `base/sponsor`, `starter`, `uploads`). Le cartelle `base` e `starter` vanno riempite a mano; `uploads` si riempie con il caricamento dell'admin (`POST /api/admin/cards`, immagine già tagliata a 560x870 px, al massimo 2 MB) e le carte caricate si eliminano con `DELETE /api/admin/cards`. L'interfaccia di caricamento con ritaglio e zoom è nella pagina admin delle pool: le carte caricate si riconoscono dal nome in arancione e si eliminano dall'elenco. I nomi seguono `nome_N.ext`, con N pari al numero di copie. Per portarle al formato usato dall'applicazione (WebP, scatola massima 560x870 px), da `backend`:
 
 ```
 python -m app.scripts.resize_cards [cartella] [--dry-run]
@@ -104,315 +149,26 @@ Le immagini dei pacchetti del Negozio stanno in `backend/media/pack/`.
 - `docs/PROJECT_SPEC.md`: regole di gioco e di prodotto, fonte principale.
 - `docs/PROJECT_STATUS.md`: stato di avanzamento.
 - `docs/PROJECT_NOTES.md`: mappa del codice, comandi e convenzioni di lavoro.
+- `docs/SETUP.md`: installazione e avvio in dettaglio.
+- `docs/PRODUCTION_LAN.md`: uso in Wi-Fi/LAN e limiti.
 - `docs/OPEN_QUESTIONS.md`: domande ancora aperte.
-- `docs/PHASE_13_SPEC.md`: specifica della fase 13 (carte sponsor in gara, revisione e amministrazione delle carte).
 - `docs/SHOP_DESIGN.md` e `docs/SHOP_SCHEMA.md`: funzionamento e schema tecnico del Negozio.
-- `docs/DATABASE_ANALYSIS.md`: analisi del database.
+- `docs/DATABASE.md` e `docs/DATABASE_ANALYSIS.md`: database e sua analisi.
+- `docs/HISTORY.md`: cronologia e note di stato precedenti.
+- `docs/PHASE_*.md`: note delle singole fasi, da leggere come cronologia.
 
 ## Sicurezza
 
 Non vanno inseriti nel repository ambiente virtuale, `node_modules`, database reali, file `.env`, password o token.
 
-## Stato corrente fase 16 - decisione formato e primo dominio (2026-10-22)
+## Patch
 
-Questa sezione aggiorna lo stato corrente; le descrizioni precedenti conservano
-la cronologia e non dichiarano nuovamente aperte le fasi gia' unite.
-Fase 15 integrata in main con PR 14, merge 6dcdc83. Fase 16 solo su
-phase-16-admin-pilot-inventory, PR 15 in bozza, senza merge autorizzato.
+### Beta 0.8.17112026
 
-Alle 18:49 CEST l'autore conferma il contratto gia' usato dall'applicazione:
-Deck.cards resta TEXT con array JSON di name, path e copies. Si mantengono i
-percorsi correnti relativi ai media, inclusi cards/starter/velocita-1.webp;
-nessuna conversione al precedente esempio path/value o a /images/cards.
-Questa decisione aggiorna quel precedente requisito per la fase 16. Nessuna
-migrazione, modifica del DB reale, nuovo scaffold o dipendenza introdotta.
+Versione attuale, non definitiva.
 
-backend/app/services/cards/admin_card_transfers.py prepara una copia indipendente dei
-cinque contenitori e applica una copia per clic nelle sole direzioni approvate.
-Non modifica gli input neppure su errore; non espone endpoint e non salva dati.
-Nessuna aggiunta pool/mazzo, nessuna doppia sottrazione. I nomi mantengono
-l'identita' normalizzata esistente e le immagini non vengono sostituite.
+- Caricamento dei font senza bloccare il render della pagina.
+- Drawer di navigazione su schermi stretti: menu completo anche sotto i 768 px.
+- README riscritto per un pubblico esterno, con la modalità roguelike, i requisiti e i comandi.
 
-backend/tests/test_admin_card_transfers.py: 19 test unitari, con cinque sottocasi
-per le direzioni. Eseguiti con unittest nell'ambiente isolato dell'assistente
-usando cards.py verificato contro il blob b329ece85fef6cc232ef322cb857108088ea5cf7;
-esito 19/19 OK. Rieseguiti da questo workflow prima del commit documentale.
-Non sono test transazionali/HTTP o di concorrenza, ne' collaudo browser.
-La precedente CI 39815434564 era verde prima di questo incremento: non ne e'
-una verifica. Rileggere la CI sul nuovo codice; nessun nuovo verde globale gia'
-dichiarato. Setup, script d'avvio e schema DB restano invariati.
-
-Da completare nel blocco backend approvato: rotte/DTO admin, iscrizione e username,
-letture dei cinque Deck, versioni e salvataggio atomico senza retry automatici,
-blocchi gara/revisione/chiusura, eventi privati e segnali senza carte nel payload,
-coordinamento con move_card e create_race per il controllo esatto delle 15 copie.
-Poi frontend, conferma testuale, live autorizzato e prove browser. Il dominio
-puro non garantisce ancora queste integrazioni e non va presentato come funzione
-utilizzabile. Nessun test, reset o migrazione sul database reale autorizzato.
-
-## Fase 16 - Incremento API admin di lettura
-
-Data: 2026-10-22. Solo ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
-Questo incremento espone letture, non il salvataggio o la gestione frontend.
-
-## Contratto
-
-- GET /api/admin/championships/{championship_id}/pilots: iscritti visibili,
-  con pilot_id, name, user_id e username. Solo admin, mai password o sessioni.
-- GET /api/admin/championships/{championship_id}/pilots/{pilot_id}/cards:
-  metadati del pilota, read_only, blocked_reason e cinque contenitori distinti.
-- Ogni contenitore espone available, id, version e cards nel formato corrente
-  name/path/copies. Le pool assenti hanno available=false, id/version null e
-  cards vuoto; una pool esistente ma vuota e' disponibile. Nessuna pool creata.
-- Tutti i Deck presenti vengono letti con una sola query. Riferimenti duplicati
-  o mancanti e JSON corrotto danno 409, non carte inventate o svuotate.
-- Campionato chiuso, gara o revisione non confermata sono leggibili ma indicati
-  in sola lettura. Nessuna conferma automatica della revisione dentro queste GET.
-- Il servizio ricontrolla il ruolo oltre alla dipendenza HTTP AdminUser.
-  Pilota nascosto o non iscritto: 404. Giudice e giocatore: 403; anonimo: 401.
-
-## File e verifiche
-
-Nuovi schemas/admin_pilot_cards.py, services/admin_pilot_cards.py e
-api/admin_pilot_cards.py; main.py registra il router senza alterare lifespan.
-Test HTTP in backend/tests/test_admin_pilot_cards_api.py: 13 casi, inclusi i
-parametri per ruoli e revisione. Verificano anche assenza di modifiche a Deck
-ed EventLog, immagini/versioni, pool assenti o vuote, dati corrotti e privacy.
-Alla preparazione: parsing Python e git diff --check riusciti. Test HTTP non
-eseguiti localmente: vanno eseguiti nel repository completo, senza dichiararli
-PASS sulla sola analisi sintattica. Il workflow documentale li esegue prima di
-riallineare i dieci documenti generali e di fase. La CI completa resta separata.
-
-## Limiti e seguito
-
-Nessuna POST/PUT di gestione carte, transazione di salvataggio, evento nuovo,
-regola di avvio da 15, modifica ai movimenti del giocatore o interfaccia ancora
-aggiunta da questo incremento. Quelle parti restano da implementare e testare.
-Le versioni lette non autorizzano una futura scrittura: il salvataggio dovra'
-ricontrollare ruolo, iscrizione, stato gara/revisione e tutti i contenitori.
-Nessun nuovo schema DB, migrazione, dipendenza o accesso al DB reale. Restano
-il formato confermato name/path/copies e i percorsi relativi ai media correnti.
-Un messaggio vuoto o solo @GitHub approva la proposta pendente; le sole modifiche
-documentali non richiedono attesa della CI applicativa. Nessun merge implicito.
-
-<!-- phase16-admin-save:start -->
-## Fase 16 - Salvataggio admin atomico
-
-Aggiornamento: 2026-10-23. Ramo phase-16-admin-pilot-inventory, PR 15 in bozza.
-Stato sintetico fase 16: Perimetro funzionale implementato, incluso live e riepilogo effettivo; CI 40026443509 riuscita su 2366d1d; riscontro manuale complessivamente positivo dell'autore, senza protocollo caso per caso; riallineamento finale documentale; nessun merge autorizzato.
-
-L'intestazione H1 e la riga Stato sintetico fase 16 sono contratti del workflow.
-Il titolo deve restare esattamente quello corrente; la riga di stato e' unica e
-senza pipe. Questo documento consolida lo stato corrente; le note incrementali
-precedenti restano nello storico Git. Non costituisce merge o rilascio in main.
-
-### Contratto backend e conservazione delle copie
-
-GET /api/admin/championships/{championship_id}/pilots restituisce iscritti visibili
-con nome e username. GET e PUT sul percorso
-/api/admin/championships/{championship_id}/pilots/{pilot_id}/cards leggono o
-salvano il contesto del pilota. Accesso solo admin; nessun diritto ampliato al
-giudice e nessuna modifica a utenti, team, ruoli, saldi o punteggi.
-
-Il PUT riceve versions di tutti i cinque contenitori e transfers con soli
-source/path. ID/version interi positivi; solo le due pool possono essere null.
-Campi extra, destinazioni client e sostituzioni arbitrarie sono rifiutati.
-Pool assente distinta da pool vuota, mai creata automaticamente. Riferimenti
-Deck incoerenti o JSON corrotto non diventano contenitori validi o vuoti.
-
-Ogni clic sposta una copia nelle sole direzioni approvate:
-- game_deck verso modification_pool;
-- modification_inventory verso modification_pool;
-- sponsor_inventory verso sponsor_pool;
-- modification_pool verso modification_inventory;
-- sponsor_pool verso sponsor_inventory.
-
-Nessun movimento diretto pool/mazzo, sponsor/mazzo o inventario/mazzo nella
-schermata admin. Una rimozione dal mazzo non sottrae anche dall'inventario.
-Il pianificatore clona gli input e rifiuta copie non valide, percorsi ambigui
-e nomi associati a immagini discordanti, senza mutazioni parziali su errore.
-
-Il backend ricontrolla ruolo, pilota visibile/iscritto, campionato chiuso, gara
-aperta, revisione non confermata e tutte le versioni nella transazione. 409 per
-conflitto, 422 per movimento non applicabile, senza retry automatici. Commit
-unico di Deck/eventi e rollback anche su errore eventi. Differenze effettive
-soltanto: versioni ed eventi non cambiano per un salvataggio senza differenze.
-Dopo commit: cards.changed pubblico vuoto e privato al proprietario con solo
-pilot_id, senza carte o notifiche regalo/tasto S.
-
-### Lock condiviso e avvio con mazzi da 15
-
-services/sqlite_write_lock.py e' condiviso da salvataggio admin, move_card e
-create_race prima delle letture autorevoli. Invalida identita' ORM precedenti e
-rifiuta modifiche pendenti; promuove una transazione nativa gia' aperta tramite
-UPDATE senza righe, senza cambiare carte/versioni. Il retry preesistente di
-move_card resta limitato a StaleDataError; admin e avvio non ritentano i lock.
-
-create_race richiede esattamente 15 copie nel mazzo da gioco di tutti gli
-iscritti, inclusi i nascosti, sotto lo stesso lock. Non 15 nomi o il totale degli
-inventari; nessun nuovo minimo di iscritti. race_deck_snapshot.py riusa il
-dominio race_deck_readiness.py. Mancanza mazzo o JSON corrotto non sono sanati.
-Tra le gare un mazzo puo' restare incompleto, anche dopo un salvataggio admin.
-
-Rifiuto di avvio: nessuna nuova gara o race.started, rollback e 409 con nomi e
-conteggi dei non pronti, senza carte. BUSY/LOCKED diventano RaceStartConflictError
-e 409; altri errori SQL non sono mascherati. Restano blocchi di chiusura e
-gara/revisione non confermata; gestione precedente delle revisioni scadute invariata.
-
-### UI, richiesta e riepilogo effettivo
-
-Nelle impostazioni campionato l'admin apre Piloti, vede nome/username e un
-pulsante Carte accessibile. Cinque sezioni apribili con immagini e quantita':
-mazzo N/15 per copie, due inventari distinti e due pool. Su mobile le aree
-restano in sequenza. Modal e CardTile riusati, senza nuovo scaffold o risorse.
-
-Il piano costruisce versions dalla baseline, anche per contenitori non toccati,
-e ricalcola la sequenza senza fidarsi di un'anteprima alterata. Percorsi entro
-255 code point, identita' nomi coerente con strip().casefold() del backend.
-Nessun arrotondamento di ID/version e nessuna destinazione/copertura di copie
-arbitraria nella richiesta. Tutti gli output sono indipendenti dalla sessione.
-
-Salva in fondo a destra apre un modal solo testuale con pilota, username, nome
-carta, quantita', sorgente/destinazione e nuovo conteggio del mazzo. Il riepilogo
-accorpa copie e compensa i versi opposti inventario/pool della stessa carta,
-senza inventare un verso inverso verso il mazzo. Non cambia il registro PUT:
-il server riceve i clic originali validati in ordine. Nessuna proposta di PUT
-quando non restano variazioni effettive. Annulla, X, Escape e sfondo non inviano
-e conservano la bozza. Solo Conferma e salva consuma una proposta una volta.
-
-Durante conferme e operazioni sono protetti clic, ripristino, ritorno, chiusura
-ordinaria e navigazione. Successo: nuova sessione da snapshot PUT e versioni
-server. Errori conservano la bozza; 422 consente azioni manuali, altri errori
-bloccano nuovi invii fino a rilettura. Esito di rete o risposta inutilizzabile
-non provano un rollback. Rileggi dal server e' esplicito: con bozza pendente
-richiede conferma e la sostituisce soltanto dopo risposta utilizzabile.
-Ripristina bozza e' locale e conserva i blocchi, non equivale a una rilettura.
-Il client controlla contesto e la creazione della sessione controlla carte:
-non e' una validazione runtime completa di ogni campo del DTO.
-
-### Live e lifecycle
-
-Il pannello usa eventClient condiviso e riletture REST autorizzate tramite il
-coordinatore createRefreshCoalescer. Nessun secondo EventSource, polling o
-autosalvataggio. I segnali non trasferiscono carte e non autorizzano scritture.
-Eventi pertinenti di carte, iscrizioni, gara/revisione, resync e riapertura del
-trasporto invalidano il contesto; gli altri campionati sono filtrati. Lo stato
-della connessione non viene presentato come prova della freschezza dei dati.
-
-Riletture accorpate e risultati obsoleti scartati. Una bozza non viene
-sovrascritta: aggiornamenti incompatibili la bloccano conservando i dati.
-Le conferme aperte sono distinte dalle richieste HTTP effettivamente in corso:
-un evento puo' invalidare la proposta prima dell'invio; durante PUT/GET viene
-rinviato, evitando di scartare il successo del proprio salvataggio. Una GET
-live puo' seguire un evento pendente dopo il PUT: non e' un retry della scrittura.
-Solo l'accettazione di uno snapshot server utilizzabile libera il blocco delle
-riletture, non un reset locale o un cambio di stato del trasporto.
-
-Cambio utente/ruolo, campionato, pilota o smontaggio invalidano il contesto;
-risposte e callback tardive non ripopolano un contesto successivo. I cleanup
-rimuovono i soli listener propri, senza chiudere lo stream condiviso. Una
-chiusura forzata del browser non annulla una scrittura gia' inviata.
-
-### Esiti finali verificati e collaudo dell'autore
-
-Codice candidato: 2366d1de37cf1cf638b45c55313a3e31601eebff. CI 40026443509
-riuscita per Frontend (check, lint, test, build), job 120664599995, Backend
-(pytest), job 120664600371, Migrazioni (database di test), job 120664600375,
-e Documenti fase 16 dopo backend, job 120665715224. Non sono nuove esecuzioni
-locali. I conteggi complessivi di test e warning non sono stati letti dai log.
-
-Dopo il via libera e la checklist in conversazione sul candidato 2366d1d,
-il 2026-10-23 alle 23:59 CEST l'autore riferisce: «sembra funzionare tutto».
-E' un riscontro manuale complessivamente positivo, non un verbale con esito
-per ogni caso. Non sono stati forniti browser/dispositivo, log o risultati
-individuali; non si marca automaticamente ogni voce OK. Non e' un collaudo
-browser eseguito dall'assistente ne' prova di tutte le condizioni concorrenti.
-
-Restano non attestati singolarmente i casi avanzati della checklist: doppio
-invio, rete interrotta/esito incerto, conflitti tra sessioni, risposte tardive,
-permessi e scadenza durante rete, rollback/concorrenza reale e privacy dei
-payload. Le coperture automatiche e il riscontro qualitativo non vanno confusi.
-
-### Tracciabilita' delle verifiche precedenti
-
-Storico: dominio 934333c; sessione eedd729; chiusura modal d9ee662; UI c950510;
-trasporto PUT 549e83e/f95c915; piano 024d47a/ad377d4; salvataggio 9769dd5/7d449cb;
-adattatore eventi ecbf684/e725ba4; riletture 914ee47; collegamento live
-fbcbd89/dc06e29; rimozione import 78661d8; prefer-const nei test 283c0ac;
-riepilogo effettivo e posizione Salva 6d1b7cd/2366d1d. I controlli finali
-sopra sostituiscono come stato corrente le letture incrementali in coda.
-
-Il precedente riepilogo dell'autore era 748 passed, 14 warnings e 14 subtests
-passed prima della pulizia 4514348; 27 asserzioni snapshot conservate tramite
-AST. La regressione 72 failed/676 passed, poi un fallimento, era stata corretta
-senza saltare test o allentare il dominio. Non sono i conteggi della CI finale.
-Dieci casi di readiness includevano lock simulato, non tutta la concorrenza reale.
-
-Identita' Unicode 15.0 verificata con confronto Node/Python su 1.112.064 scalari
-e nove casi composti, senza NFC/rimozione accenti; non era type-check. Controlli
-Node senza tipi: dodici scenari politica modal, venticinque adattatore eventi
-e nove coordinatore riletture; non equivalgono a Vitest o browser. Sette test
-Python della trasformazione documentale su fixture temporanee erano riusciti,
-non il workflow GitHub completo. Le esecuzioni npm locali non sono inventate.
-
-### Riallineamento documentale e consegna
-
-Il titolo stabile e' stato ripristinato in f8a94e4; la tabella PROJECT_STATUS
-deriva dalla riga Stato sintetico fase 16, senza stato hardcoded su vecchi commit.
-Il pin CI aggiornato usa il blob 6858f05d89072cca488efeeb46166a2770383545 del
-workflow approvato. Restano controlli su titolo, stato unico e marcatori anche
-invertiti/adiacenti, protezioni di ramo e percorsi e nessun force-push.
-
-Questo commit aggiorna soltanto i documenti sorgente e dedicati, dopo codice e
-verifiche come richiesto dall'autore. La propagazione ai dieci documenti generali
-va verificata dopo la pubblicazione, senza attendere nuovi test applicativi
-per i soli docs. Il successo del job documentale sul codice precedente non
-dimostra gia' propagato questo nuovo testo. Nessun merge, rilascio o ZIP finale
-creato implicitamente; la PR resta in bozza.
-
-Deck.cards resta TEXT con JSON name/path/copies e percorsi relativi ai media,
-come confermato il 2026-10-22. Nessuna conversione a path/value o /images/cards,
-migrazione, dipendenza, modifica di setup/avvio o accesso al database reale
-da parte dell'assistente. Perimetro funzionale fase 16 distinto dal resto
-delle istruzioni generali del progetto e da una consegna ZIP complessiva.
-
-Test mirati superati dal workflow prima di questo riallineamento; CI completa separata.
-<!-- phase16-admin-save:end -->
-
-<!-- production-lan-current:start -->
-## Produzione Wi-Fi/LAN - aggiornamento corrente del 24 ottobre 2026
-
-Per la produzione prevale questa sezione sulle indicazioni storiche relative al solo loopback o al tunnel. Funzionalita sul ramo production-lan, PR #16 in bozza, senza merge in main.
-
-Dalla radice: python heat.py production, oppure voce 7 del menu. Senza URL esplicito seleziona l IPv4 privato del PC e mostra l indirizzo da usare anche sugli altri dispositivi della LAN. Nessun tunnel o client aggiuntivo richiesto. --public-url resta facoltativo per un origine esplicita, incluso il solo loopback.
-
-Gateway sul solo IPv4 scelto:5173, backend su 127.0.0.1:8000 con un worker. API, immagini e SSE passano dal gateway; controlli Host/Origin mantenuti. HTTP solo su rete fidata: traffico non cifrato. Nessuna modifica automatica a firewall o router. PC acceso e dispositivi reciprocamente raggiungibili necessari.
-
-Production non installa dipendenze, non crea DB e non applica migrazioni: verifica soltanto le revisioni in lettura. Il comportamento storico di setup/start/migrate resta invariato. Nessuna modifica a schema, dati reali, formato carte, risorse, dipendenze o lockfile.
-
-Verifica osservata: Production runtime checks 40047553032, job runtime 120733397223, success sul codice formattato 09a9aa594bd75650fe0af0556b67b64f2c0dcc15. Include test launcher/LAN/gateway, tipi, frontend, build, smoke test e lint. Non e una nuova attestazione di tutti i job della CI generale, ne un collaudo Wi-Fi/browser. Conteggi e warning non letti dai log. Nessun nuovo test locale per questo riallineamento; nessun merge o ZIP finale implicito.
-
-Guida operativa e limiti: [Produzione Wi-Fi/LAN](docs/PRODUCTION_LAN.md).
-<!-- production-lan-current:end -->
-
-<!-- account-password-current:start -->
-## Impostazioni account e cambio password - 24 ottobre 2026
-
-Su main: clic sul proprio nome apre Impostazioni account. Password attuale e doppio inserimento della nuova; nuova password di 8-128 caratteri, validata anche sul server. La sessione corrente resta attiva con token e scadenza invariati; le altre sessioni dello stesso account vengono revocate. Hash e revoche sono nella stessa transazione con rollback su errore. Gli altri account non cambiano.
-
-Endpoint POST /api/auth/change-password, autenticato, successo 204. Nessuna migrazione o dipendenza nuova. Nessuna modifica al DB reale eseguita dall assistente. Durante l invio niente doppio invio o chiusura ordinaria; campi svuotati dopo la richiesta e alla chiusura. Errori di rete: esito incerto e nessun retry automatico. SSE riusa il controllo periodico delle sessioni.
-
-Riallineamento dopo pytest backend, tipi, lint, test frontend e build riusciti nel runner: run 40114589745, checkout 97653418434af55ff904d36ab75d80fb0e8fe365, formattazione circoscritta applicata prima delle verifiche. Nessun conteggio inventato, test locale o collaudo browser attestato.
-
-Dettagli, limiti e prove: [Impostazioni account](docs/ACCOUNT_SETTINGS.md).
-<!-- account-password-current:end -->
-
-<!-- account-password-ui-current:start -->
-## Aggiornamento grafico impostazioni e login - 24 ottobre 2026
-
-Nel modal Impostazioni account la sezione Cambio password e a scomparsa e inizialmente chiusa a ogni nuova apertura. La chiusura della sezione svuota i campi. In login e nei tre campi del cambio password e disponibile Mostra/Nascondi, indipendente per ogni campo e nascosto inizialmente. La visibilita non viene salvata; il componente dedicato password-input.svelte e riusato nei due contesti. Durante le richieste i controlli relativi sono disabilitati. Backend, API, database e comportamento di revoca delle altre sessioni restano invariati.
-
-Il fallimento Prettier su account-settings.svelte e stato affrontato applicando il formatter del lockfile solo a quel componente. Prima di questo riallineamento sono riusciti sul runner: npm run check, npm run lint, npm test e npm run build. Run 40124870171, checkout fc8d1f301a9350c555e4c4f2ab0d8ff6a7bb89ae, con componente formattato prima delle verifiche. Il successivo commit pubblica quello stile e questi documenti; non e una nuova esecuzione della CI sul commit risultante. Nessun test locale o conteggio inventato.
-
-I test password-ui.spec.ts presenti nel candidato sono controlli di rendering server, non prove interattive di clic, tastiera o browser. Restano da verificare manualmente espansione/richiusura, reset alla riapertura e Mostra/Nascondi nei quattro campi. Nessuna migrazione, nuova dipendenza, modifica al lockfile o operazione sul DB reale.
-<!-- account-password-ui-current:end -->
+Le note delle versioni precedenti e la cronologia dettagliata sono in `docs/HISTORY.md`.

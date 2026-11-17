@@ -124,7 +124,7 @@ jobs:
               validated[name] = raw
 
           documents = {
-              'README.md': 'Il backend draft e consolidato sul ramo draft. La nuova interfaccia draft non e ancora disponibile; i controlli frontend riguardano l applicazione esistente.',
+              'docs/HISTORY.md': 'Il backend draft e consolidato sul ramo draft. La nuova interfaccia draft non e ancora disponibile; i controlli frontend riguardano l applicazione esistente.',
               'docs/PROJECT_SPEC.md': 'Le regole del flusso restano quelle di docs/DRAFT_SPEC.md. Questo aggiornamento registra lo stato tecnico, senza introdurre nuove regole o autorizzare la fase frontend.',
               'docs/PROJECT_STATUS.md': 'Backend consolidato e verificato in CI. Frontend draft e collaudo browser restano da svolgere con approvazione separata. La PR 18 resta in bozza; nessun merge autorizzato.',
               'docs/SETUP.md': 'Setup e avvio esistenti restano invariati. Questo consolidamento non aggiunge dipendenze o lockfile e non esegue setup, reset o migrazioni sul database dell autore.',
