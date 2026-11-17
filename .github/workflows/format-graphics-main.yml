@@ -1,10 +1,7 @@
 name: Formatta grafica su main e verifica frontend
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/format-graphics-main.yml
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -113,7 +110,7 @@ jobs:
           const sha = process.env.VERIFIED_CODE_SHA;
           if (!/^\d+$/.test(run) || !/^[0-9a-f]{40}$/.test(sha)) throw new Error('Identificativi CI non validi');
           const paths = [
-            'README.md', 'docs/PROJECT_SPEC.md', 'docs/PROJECT_STATUS.md',
+            'docs/HISTORY.md', 'docs/PROJECT_SPEC.md', 'docs/PROJECT_STATUS.md',
             'docs/SETUP.md', 'docs/DATABASE.md', 'docs/SCRIPTS.md',
             'docs/PROJECT_NOTES.md', 'docs/FRONTEND_AUTH.md', 'frontend/README.md'
           ];
@@ -151,7 +148,7 @@ jobs:
         run: |
           set -euo pipefail
           files=(
-            README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/SETUP.md
+            docs/HISTORY.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/SETUP.md
             docs/DATABASE.md docs/SCRIPTS.md docs/PROJECT_NOTES.md
             docs/FRONTEND_AUTH.md frontend/README.md
           )

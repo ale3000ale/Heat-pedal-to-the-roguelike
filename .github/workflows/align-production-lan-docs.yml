@@ -54,7 +54,7 @@ jobs:
           script: |
             const fs = require('node:fs');
             const targets = [
-              ['README.md', 'docs/PRODUCTION_LAN.md'],
+              ['docs/HISTORY.md', 'docs/PRODUCTION_LAN.md'],
               ['docs/PROJECT_SPEC.md', 'PRODUCTION_LAN.md'],
               ['docs/PROJECT_STATUS.md', 'PRODUCTION_LAN.md'],
               ['docs/SETUP.md', 'PRODUCTION_LAN.md'],
@@ -101,11 +101,11 @@ jobs:
           set -euo pipefail
           while IFS= read -r path; do
             case "$path" in
-              README.md|docs/PROJECT_SPEC.md|docs/PROJECT_STATUS.md|docs/SETUP.md|docs/SCRIPTS.md|docs/DATABASE.md|docs/PROJECT_NOTES.md|frontend/README.md) ;;
+              docs/HISTORY.md|docs/PROJECT_SPEC.md|docs/PROJECT_STATUS.md|docs/SETUP.md|docs/SCRIPTS.md|docs/DATABASE.md|docs/PROJECT_NOTES.md|frontend/README.md) ;;
               *) echo "Modifica inattesa: $path"; exit 1 ;;
             esac
           done < <(git diff --name-only)
-          git add -- README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/SETUP.md docs/SCRIPTS.md docs/DATABASE.md docs/PROJECT_NOTES.md frontend/README.md
+          git add -- docs/HISTORY.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/SETUP.md docs/SCRIPTS.md docs/DATABASE.md docs/PROJECT_NOTES.md frontend/README.md
           git diff --cached --check
           if git diff --cached --quiet; then
             echo "Documenti gia allineati."

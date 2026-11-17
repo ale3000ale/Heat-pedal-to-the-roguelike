@@ -42,7 +42,7 @@ jobs:
                   raise RuntimeError("Base documentale cambiata: " + name)
 
           paths = [
-              "README.md", "docs/PROJECT_SPEC.md", "docs/PROJECT_STATUS.md",
+              "docs/HISTORY.md", "docs/PROJECT_SPEC.md", "docs/PROJECT_STATUS.md",
               "docs/PROJECT_NOTES.md", "docs/DATABASE.md", "docs/SETUP.md", "docs/SCRIPTS.md",
               "docs/PHASE_16_SPEC.md", "docs/PHASE_16_STATUS.md", "docs/PHASE_16_ALIGNMENT.md",
           ]
@@ -141,7 +141,7 @@ jobs:
         run: |
           set -euo pipefail
           git diff --exit-code -- frontend backend database heat.py
-          git add -- README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/PROJECT_NOTES.md docs/DATABASE.md docs/SETUP.md docs/SCRIPTS.md docs/PHASE_16_SPEC.md docs/PHASE_16_STATUS.md docs/PHASE_16_ALIGNMENT.md
+          git add -- docs/HISTORY.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/PROJECT_NOTES.md docs/DATABASE.md docs/SETUP.md docs/SCRIPTS.md docs/PHASE_16_SPEC.md docs/PHASE_16_STATUS.md docs/PHASE_16_ALIGNMENT.md
           git diff --cached --check
           git diff --cached --stat
           git fetch origin phase-16-admin-pilot-inventory

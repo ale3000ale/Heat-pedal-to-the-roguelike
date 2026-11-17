@@ -35,7 +35,7 @@ jobs:
           from pathlib import Path
 
           paths = [
-              "README.md", "docs/PROJECT_SPEC.md", "docs/PROJECT_STATUS.md",
+              "docs/HISTORY.md", "docs/PROJECT_SPEC.md", "docs/PROJECT_STATUS.md",
               "docs/PROJECT_NOTES.md", "docs/DATABASE.md", "docs/SETUP.md", "docs/SCRIPTS.md",
               "docs/PHASE_16_SPEC.md", "docs/PHASE_16_STATUS.md", "docs/PHASE_16_ALIGNMENT.md",
           ]
@@ -74,7 +74,7 @@ jobs:
               Path(name).write_text(text, encoding="utf-8")
           PY
           git diff --exit-code -- frontend backend database heat.py
-          git add -- README.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/PROJECT_NOTES.md docs/DATABASE.md docs/SETUP.md docs/SCRIPTS.md docs/PHASE_16_SPEC.md docs/PHASE_16_STATUS.md docs/PHASE_16_ALIGNMENT.md
+          git add -- docs/HISTORY.md docs/PROJECT_SPEC.md docs/PROJECT_STATUS.md docs/PROJECT_NOTES.md docs/DATABASE.md docs/SETUP.md docs/SCRIPTS.md docs/PHASE_16_SPEC.md docs/PHASE_16_STATUS.md docs/PHASE_16_ALIGNMENT.md
           git diff --cached --check
           if git diff --cached --quiet; then
             echo "Documenti gia' aggiornati"
