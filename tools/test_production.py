@@ -1,6 +1,8 @@
 """Test puri del launcher: non avviano processi e non accedono al DB reale."""
 import os
 import sys
+import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -52,13 +54,36 @@ class QrTests(unittest.TestCase):
         self.assertEqual(len(messages), 1)
         self.assertIn("QR non disponibile", messages[0])
 
-    def test_saves_png_and_opens_it(self):
+    def test_saves_generated_file_and_opens_it(self):
+        """Libreria sostituita da un modulo finto: il test non ha dipendenze esterne."""
+        payload = b"\x89PNG\r\n\x1a\ncontenuto di prova"
+        made = []
         messages = []
-        with patch("tools.production.webbrowser.open") as opened:
+
+        class FakeImage:
+            def save(self, path):
+                Path(path).write_bytes(payload)
+
+        def make(url, **options):
+            made.append((url, options))
+            return FakeImage()
+
+        fake = types.ModuleType("qrcode")
+        fake.make = make
+
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.dict(sys.modules, {"qrcode": fake}), \
+                patch("tools.production.tempfile.gettempdir", return_value=temporary), \
+                patch("tools.production.webbrowser.open") as opened:
             print_qr("http://192.168.1.10:5173", report=messages.append)
-        path = Path(messages[0].removeprefix("QR salvato in "))
-        self.assertEqual(path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
-        self.assertEqual(opened.call_args.args[0], path.as_uri())
+            path = Path(messages[0].removeprefix("QR salvato in "))
+            self.assertEqual(
+                made,
+                [("http://192.168.1.10:5173", {"box_size": 10, "border": 2})],
+            )
+            self.assertEqual(path.name, "heat-qr.png")
+            self.assertEqual(path.read_bytes(), payload)
+            self.assertEqual(opened.call_args.args[0], path.as_uri())
 
 
 if __name__ == "__main__":
