@@ -154,6 +154,7 @@ Le immagini dei pacchetti del Negozio stanno in `backend/media/pack/`.
 - `docs/OPEN_QUESTIONS.md`: domande ancora aperte.
 - `docs/SHOP_DESIGN.md` e `docs/SHOP_SCHEMA.md`: funzionamento e schema tecnico del Negozio.
 - `docs/DATABASE.md` e `docs/DATABASE_ANALYSIS.md`: database e sua analisi.
+- `docs/CHANGELOG.md`: versioni rilasciate e note di rilascio.
 - `docs/HISTORY.md`: cronologia e note di stato precedenti.
 - `docs/PHASE_*.md`: note delle singole fasi, da leggere come cronologia.
 
@@ -163,12 +164,13 @@ Non vanno inseriti nel repository ambiente virtuale, `node_modules`, database re
 
 ## Patch
 
-### Beta 0.8.17112026
+### Beta 0.8.1
 
 Versione attuale, non definitiva.
 
 - Caricamento dei font senza bloccare il render della pagina.
 - Drawer di navigazione su schermi stretti: menu completo anche sotto i 768 px.
 - README riscritto per un pubblico esterno, con la modalità roguelike, i requisiti e i comandi.
+- Voci di navigazione allineate a `resolve()` di SvelteKit e test del QR eseguibile in CI senza la libreria installata.
 
-Le note delle versioni precedenti e la cronologia dettagliata sono in `docs/HISTORY.md`.
+Le note delle versioni precedenti sono in `docs/CHANGELOG.md`; la cronologia dettagliata è in `docs/HISTORY.md`.
