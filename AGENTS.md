@@ -67,7 +67,11 @@ python heat.py production                # Node LAN server on :5173, no migratio
 - Prefer the project modal/confirm components (e.g. `components/confirm-dialog.svelte`) over native `dialog`/`confirm`. Native `confirm` calls still exist (e.g. `routes/admin/pools/+page.svelte`, `routes/team/+page.svelte`); treat them as known exceptions and don't replace them as incidental refactoring — replacement requires an approved scope.
 - `{#each}` keys must be unique; championship rank is not unique (see `src/lib/standings.ts`).
 - `README.md` and `docs/` contain marker blocks and contract lines enforced by `.github/workflows/phase-16-docs-pr.yml` (e.g. the required H1 and the single "Stato sintetico fase 16" line). Don't remove, reorder, or reword them. `ci.yml` pins that workflow by SHA-1; don't edit either unless the task requires it.
-- Branch convention: phase branches with draft PRs; the author merges. The checkout may not be on such a branch, so inspect it instead of assuming. VCS operations require explicit authorization.
+- Branch convention: `main` holds the last stable version and only receives merges from `release/*`. `release/X.Y` is the active release line, cut from `main` at the start of a cycle. `feat/<slug>`, `fix/<slug>`, `hotfix/<slug>` and `chore/<slug>` are short-lived and are cut from the active release line. Merge direction is work → `release` → `main`; `main` is never merged back into a working branch without an agreed reason. Versions live in annotated tags `vX.Y.Z`, never in branch names. The checkout may not be on the expected branch, so inspect it instead of assuming.
+- Releases: merge `release/X.Y` into `main` with `--no-ff`, tag `vX.Y.Z`, record the entry in `docs/CHANGELOG.md`, then delete the release branch unless an older line must be maintained. Version numbers follow `major.minor.patch` and carry no date; dates belong in the changelog.
+- Commit messages follow Conventional Commits (`type(scope): subject`), with an Italian imperative subject and a body explaining what and why. Report only verifications actually observed.
+- `.agents/skills/git-workflow/SKILL.md` describes the branch, commit, release and cleanup procedure; keep it consistent with this file.
+- VCS operations (commit, push, merge, tag, branch deletion) require explicit authorization. The author merges.
 - Update docs/status only after the relevant checks actually pass, and only within the approved scope.
 
 ## Reporting results
