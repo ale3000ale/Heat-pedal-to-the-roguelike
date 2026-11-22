@@ -38,7 +38,7 @@ Si assegnano i punti classifica consueti; i punti sponsor guadagnati in gara si 
 
 **Stato attuale**
 
-L'applicazione implementa la draft iniziale a quattro passate, con il tavolo da cinque carte e l'ordine a serpentina, la draft classica delle regole di Heat, gli inventari delle modifiche e degli sponsor, il mazzo da gioco con il controllo delle 15 carte, le gare con revisione, la classifica, la registrazione dei punti sponsor a fine gara con il punto automatico per ogni carta ricevuta con il tasto S e il Negozio. Nell'app le carte sponsor restano in un inventario separato, mentre al tavolo si aggiungono al mazzo di gioco.
+L'applicazione implementa la draft iniziale a quattro passate, con il tavolo da cinque carte e l'ordine a serpentina, la draft classica delle regole di Heat, gli inventari delle modifiche e degli sponsor, il mazzo da gioco con il controllo delle 15 carte, le gare con revisione, la classifica, la registrazione dei punti sponsor a fine gara con il punto automatico per ogni carta ricevuta con il tasto S, il Negozio e il tasto QR per aprire il sito dal telefono. Nell'app le carte sponsor restano in un inventario separato, mentre al tavolo si aggiungono al mazzo di gioco.
 
 ## Requisiti
 
@@ -82,6 +82,7 @@ L'applicazione implementa la draft iniziale a quattro passate, con il tavolo da 
 - Area admin per carte, pool, negozio, utenti e ruoli; trasferimenti di carte con salvataggio atomico e controllo delle versioni.
 - Aggiornamenti in tempo reale delle pagine tramite Server-Sent Events, senza ricaricare.
 - Produzione Wi-Fi/LAN: il server stampa a video l'indirizzo da usare dagli altri dispositivi, con QR di accesso.
+- Tasto **QR di accesso** nel menu, per tutti gli utenti collegati: mostra il codice e l'indirizzo per aprire Heat dal telefono; in produzione LAN usa l'indirizzo scelto dal launcher.
 
 ## Primo avvio
 

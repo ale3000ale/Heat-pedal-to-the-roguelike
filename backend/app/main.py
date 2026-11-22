@@ -24,6 +24,7 @@ from app.api.admin.card_admin import router as card_admin_router
 from app.api.race.race_review import router as race_review_router
 from app.api.race.review_counts import router as review_counts_router
 from app.api.events import router as events_router
+from app.api.site import router as site_router
 from app.api.draft.draft import router as draft_router
 from app.api.draft.draft_errors import draft_locked_response
 from app.services.draft.draft_guards import DraftLockedError
@@ -79,6 +80,7 @@ app.include_router(admin_router, prefix="/api/admin")
 app.include_router(admin_pilot_cards_router, prefix="/api/admin/championships")
 app.include_router(shop_router, prefix="/api/shop")
 app.include_router(events_router, prefix="/api/events")
+app.include_router(site_router, prefix="/api/site")
 app.include_router(draft_router, prefix="/api")
 
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)

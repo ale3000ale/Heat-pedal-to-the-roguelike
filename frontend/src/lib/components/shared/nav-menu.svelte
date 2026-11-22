@@ -26,7 +26,8 @@
 		currentPath,
 		isAdmin,
 		orientation = 'horizontal',
-		onNavigate
+		onNavigate,
+		onShowQr
 	}: {
 		currentPath: string;
 		isAdmin: boolean;
@@ -34,6 +35,8 @@
 		orientation?: 'horizontal' | 'vertical';
 		/** Chiamata al clic su una voce: il drawer si chiude. */
 		onNavigate?: () => void;
+		/** Apre il popup con il QR dell'indirizzo del sito. */
+		onShowQr?: () => void;
 	} = $props();
 
 	let vertical = $derived(orientation === 'vertical');
@@ -57,13 +60,20 @@
 		return currentPath.startsWith(href);
 	}
 
-	function itemClass(href: string) {
-		const base = vertical
+	function baseItemClass() {
+		return vertical
 			? 'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all'
 			: 'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all';
+	}
+
+	function itemClass(href: string) {
 		const active = 'border border-primary/40 bg-primary/20 text-white shadow-sm';
 		const idle = 'text-muted-foreground hover:bg-white/5 hover:text-foreground';
-		return `${base} ${isActive(href) ? active : idle}`;
+		return `${baseItemClass()} ${isActive(href) ? active : idle}`;
+	}
+
+	function actionClass() {
+		return `${baseItemClass()} text-muted-foreground hover:bg-white/5 hover:text-foreground`;
 	}
 
 	function adminSummaryClass() {
@@ -98,6 +108,22 @@
 				</a>
 			</li>
 		{/each}
+		{#if onShowQr}
+			<li class:contents={!vertical}>
+				<button
+					type="button"
+					class={actionClass()}
+					aria-haspopup="dialog"
+					onclick={() => {
+						onShowQr?.();
+						onNavigate?.();
+					}}
+				>
+					<RacingIcon name="qr" size="sm" />
+					<span>QR di accesso</span>
+				</button>
+			</li>
+		{/if}
 	</ul>
 
 	{#if isAdmin}

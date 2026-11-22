@@ -69,11 +69,11 @@ regole del Negozio. Dettagli in PHASE_15_CLOSURE.md.
 |---|---|
 | `heat.py` | Menu e comandi: `setup`, `start`, `migrate`, `test`, `check` |
 | `backend/` | FastAPI, SQLAlchemy, Alembic (SQLite) |
-| `backend/app/api/` | Router: `auth`, `teams`, `pilots`, `championships`, `races`, `pools`, `admin` e quelli del Negozio; per la fase 13 anche `race_review.py` (revisione, riepilogo, correzioni) e `card_admin.py` (caricamento ed eliminazione delle carte, prefisso `/api/admin/cards`, registrato in `main.py` prima del router `admin`); dipendenze in `deps.py` |
+| `backend/app/api/` | Router: `auth`, `teams`, `pilots`, `championships`, `races`, `pools`, `admin` e quelli del Negozio; per la fase 13 anche `race_review.py` (revisione, riepilogo, correzioni) e `card_admin.py` (caricamento ed eliminazione delle carte, prefisso `/api/admin/cards`, registrato in `main.py` prima del router `admin`); `site.py` (QR di accesso, prefisso `/api/site`); dipendenze in `deps.py` |
 | `backend/app/config.py` | `DATABASE_URL`, cookie di sessione, `MEDIA_DIR` (`backend/media`), `CARD_IMAGE_SIZE` (560x870) e `MAX_CARD_UPLOAD_BYTES` (dimensione massima del file caricato) |
 | `backend/app/db/models/` | Modelli SQLAlchemy (`deck.py`: `DeckPrototype` con `kind`, `Deck` con `version`; `championship.py`: `Championship`, `ChampionshipDefaults` (con `card_poll_seconds`), `GOLD_FIELDS`; `shop.py`: tabelle del Negozio, tra cui `PackPurchase`; fase 13: `CardPlay` (`card_play`), `CardGift` (`card_gift`) e le colonne `Race.review_started_at` e `Race.review_started_by_user_id`) |
-| `backend/app/schemas/` | Schemi Pydantic delle risposte e delle richieste (`card_poll.py` per l'intervallo di controllo; `card_admin.py` per caricamento ed eliminazione delle carte; `PilotDetail` include `sponsor_inventory`) |
-| `backend/app/services/` | Regole di business: campionati, gare (`races.py`), oro (`gold.py`), pool, carte, mazzi (`pilot_deck.py`), piloti, pulizia, immagini, nomi, ruoli, sessioni, team, utenti; Negozio: `packs.py`, `pack_images.py`, `shop_draw.py`, `shop_purchase.py`, `shop_view.py`, `shop_history.py`, `shop_inventory.py`, `shop_list.py`; carte sponsor in gara: `card_play.py`, `card_play_close.py`, `card_gift.py`, `card_judge.py`, `race_review.py`; amministrazione delle carte: `card_upload.py`, `card_delete.py` |
+| `backend/app/schemas/` | Schemi Pydantic delle risposte e delle richieste (`card_poll.py` per l'intervallo di controllo; `card_admin.py` per caricamento ed eliminazione delle carte; `site.py` per `{ url, image }` del QR; `PilotDetail` include `sponsor_inventory`) |
+| `backend/app/services/` | Regole di business: campionati, gare (`races.py`), oro (`gold.py`), pool, carte, mazzi (`pilot_deck.py`), piloti, pulizia, immagini, nomi, ruoli, sessioni, team, utenti; core: `site_qr.py` (origine del sito e PNG del QR); Negozio: `packs.py`, `pack_images.py`, `shop_draw.py`, `shop_purchase.py`, `shop_view.py`, `shop_history.py`, `shop_inventory.py`, `shop_list.py`; carte sponsor in gara: `card_play.py`, `card_play_close.py`, `card_gift.py`, `card_judge.py`, `race_review.py`; amministrazione delle carte: `card_upload.py`, `card_delete.py` |
 | `backend/app/scripts/` | `create_admin`, `seed_prototype`, `resize_cards` |
 | `backend/alembic/versions/` | Migrazioni (elenco nella sezione 11 della specifica) |
 | `backend/media/cards/` | Immagini delle carte (vedi sotto) |
@@ -500,3 +500,15 @@ Il fallimento Prettier su account-settings.svelte e stato affrontato applicando 
 
 I test password-ui.spec.ts presenti nel candidato sono controlli di rendering server, non prove interattive di clic, tastiera o browser. Restano da verificare manualmente espansione/richiusura, reset alla riapertura e Mostra/Nascondi nei quattro campi. Nessuna migrazione, nuova dipendenza, modifica al lockfile o operazione sul DB reale.
 <!-- account-password-ui-current:end -->
+
+## QR di accesso dal menu - 22 novembre 2026
+
+Tasto "QR di accesso" nel menu per tutti gli utenti collegati, sia nella barra orizzontale sia nel drawer stretto. Il popup mostra il QR e l'indirizzo in chiaro; con un indirizzo localhost avvisa che funziona solo dal PC.
+
+L'origine viene da `HEAT_PUBLIC_URL` (impostata da `heat.py production` e da `start --public-url`); se manca, da `X-Forwarded-Host`/`Host` della richiesta; in ultima istanza `http://127.0.0.1:5173`. Il gateway di produzione inoltra `X-Forwarded-Host` e `X-Forwarded-Proto`; il proxy di sviluppo conserva l'Host.
+
+Backend: `GET /api/site/qr` autenticato (401 senza sessione) restituisce `{ url, image }`, con `image` PNG in data URL generato con `qrcode` (già in `backend/requirements.txt`). Servizio `services/core/site_qr.py`, schema `schemas/site.py`, router `api/site.py` registrato con prefisso `/api/site` in `main.py`. Nessuna migrazione o dipendenza nuova.
+
+Frontend: `lib/site/site-qr.ts` (`fetchSiteQr`, `isLocalOnlyUrl`) con `site-qr.spec.ts`; `components/shared/site-qr-dialog.svelte`; icona `qr` in `racing-icon.svelte`; tasto in `nav-menu.svelte`; stato `qrOpen` e popup in `routes/+layout.svelte`. Il QR del terminale del launcher resta invariato.
+
+Controlli locali osservati: backend 928 test passati, un warning e 14 subtest; frontend 716 test passati su 86 file, check con 0 errori e 0 warning, build riuscita. `npm run lint` non è riuscito su 9 file preesistenti per i fine riga CRLF del checkout Windows; con `--end-of-line auto` gli stessi file passano e i file di questa modifica passano il controllo predefinito. Collaudo browser dal telefono non ancora attestato.

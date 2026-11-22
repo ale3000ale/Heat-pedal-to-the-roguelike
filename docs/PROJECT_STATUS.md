@@ -39,6 +39,12 @@ Ultimo aggiornamento: 2026-11-22
 
 Sul ramo `feat/0.9-punto-sponsor-s` ogni carta assegnata con il tasto S durante una gara in corso propone 1 punto sponsor nel modulo dei risultati. Il punto è precompilato quando il pilota entra in classifica, non viene accreditato prima della conferma e resta modificabile; chi è dichiarato assente non lo riceve. Il conteggio deriva dalle righe `card_gift`: l'annullo entro 60 secondi elimina anche il punto, mentre bonus e rimozione del revisore non lo cambiano. Nessuna migrazione. Controlli locali osservati: backend 909 test passati, un warning e 14 subtest; frontend 708 test passati, check, lint e build riusciti. L'autore ha riferito esito positivo del collaudo manuale dal browser. Merge in `release/0.9` con `--no-ff`; nessun risultato CI letto.
 
+## QR di accesso dal menu (0.9) - 2026-11-22
+
+Sul ramo `feat/0.9-qr-accesso` il menu mostra un tasto QR di accesso, visibile a tutti gli utenti collegati sia nella barra orizzontale sia nel drawer stretto. Il popup contiene il codice e l'indirizzo in chiaro: HEAT_PUBLIC_URL, altrimenti l'origine della richiesta (X-Forwarded-Host/Host), altrimenti `http://127.0.0.1:5173`; con un indirizzo localhost avvisa che funziona solo dal PC. L'endpoint `GET /api/site/qr` è autenticato (401 senza sessione) e restituisce un PNG in data URL generato con `qrcode`, già presente nelle dipendenze. Nessuna migrazione e nessuna dipendenza nuova.
+
+Controlli locali osservati: backend 928 test passati, un warning e 14 subtest; frontend 716 test passati su 86 file, `npm run check` con 0 errori e 0 warning, build riuscita. `npm run lint` non è riuscito su 9 file preesistenti per i fine riga CRLF del checkout Windows; con `--end-of-line auto` gli stessi file passano e i file toccati da questa modifica passano il controllo predefinito. Collaudo browser dal telefono in attesa; nessun risultato CI letto e nessun merge autorizzato.
+
 ## Draft della prima gara (0.9) - 2026-11-22
 
 Sul ramo `feat/0.9-draft-prima-gara` la draft della prima gara implementa quattro scelte per pilota, un tavolo da cinque carte con ordine a serpentina, una nuova carta dopo ogni scelta e la restituzione del tavolo residuo alla pool a fine giro. La soglia della pool e 4N+5, mentre dalle gare successive restano N+3 carte e una scelta. Controlli locali osservati: backend 906 test passati, un warning e 14 subtest; frontend 705 test passati, check, lint e build riusciti. L'autore ha riferito esito positivo del collaudo manuale dal browser. Nessun risultato CI letto e nessun merge autorizzato.

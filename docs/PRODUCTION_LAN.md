@@ -16,6 +16,10 @@ Il launcher cerca gli IPv4 privati associati al nome del PC. Con un solo candida
 
 Dopo la build e i controlli di avvio, il terminale mostra l'indirizzo effettivo, per esempio http://192.168.1.50:5173. Aprire esattamente quell'indirizzo nel browser sia sul PC sia sugli altri dispositivi. L'indirizzo e un esempio, non un valore fisso. Premere Ctrl+C per arrestare i processi.
 
+## QR dal menu
+
+Con l'app aperta nel browser, il tasto QR di accesso nel menu (visibile a tutti gli utenti collegati) apre un popup con il codice e l'indirizzo in chiaro. In produzione il QR contiene l'origine scelta dal launcher tramite HEAT_PUBLIC_URL; se la variabile manca, l'app usa l'indirizzo con cui e stata aperta la pagina e, in ultima istanza, http://127.0.0.1:5173. Con un indirizzo localhost il popup avvisa che funziona solo dal PC. Il QR stampato nel terminale dal launcher resta invariato.
+
 ## Origine esplicita facoltativa
 
 ```sh
