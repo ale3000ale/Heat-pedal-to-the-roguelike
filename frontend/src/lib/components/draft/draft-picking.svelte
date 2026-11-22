@@ -110,6 +110,12 @@
 			? 'space-y-4 rounded-xl bg-emerald-900 p-3 text-white sm:space-y-5 sm:p-4'
 			: 'space-y-4 rounded-xl bg-red-950 p-3 text-white sm:space-y-5 sm:p-4'}
 	>
+		{#if view.firstRace}
+			<div class="text-center">
+				<strong class="block">Prima gara</strong>
+				<span class="text-sm text-white/80">Giro {view.round} di {view.rounds}</span>
+			</div>
+		{/if}
 		{#if view.coherent && view.turn}
 			{#if view.ownedTurn}
 				<p role="status" class="turn-pulse text-center text-lg font-bold sm:text-xl">tocca a te</p>

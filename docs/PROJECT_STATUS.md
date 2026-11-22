@@ -33,7 +33,11 @@ Nessun conteggio di test o warning inventato, nessun test locale o collaudo brow
 Backend consolidato e verificato in CI. Frontend draft e collaudo browser restano da svolgere con approvazione separata. La PR 18 resta in bozza; nessun merge autorizzato.
 <!-- draft-backend-current:end -->
 
-Ultimo aggiornamento: 2026-10-23
+Ultimo aggiornamento: 2026-11-22
+
+## Draft della prima gara (0.9) - 2026-11-22
+
+Sul ramo `feat/0.9-draft-prima-gara` la draft della prima gara implementa quattro scelte per pilota, un tavolo da cinque carte con ordine a serpentina, una nuova carta dopo ogni scelta e la restituzione del tavolo residuo alla pool a fine giro. La soglia della pool e 4N+5, mentre dalle gare successive restano N+3 carte e una scelta. Controlli locali osservati: backend 906 test passati, un warning e 14 subtest; frontend 705 test passati, check, lint e build riusciti. L'autore ha riferito esito positivo del collaudo manuale dal browser. Nessun risultato CI letto e nessun merge autorizzato.
 
 ## Chiusura autorizzata della fase 15 - 2026-10-22
 

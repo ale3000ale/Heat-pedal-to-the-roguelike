@@ -97,8 +97,16 @@ describe('rendering scelta carte', () => {
 		expect(body).toContain('data-slot-id="2"');
 	});
 
+	it('mostra Prima gara e il giro corrente alla prima gara', async () => {
+		const { store } = await setup();
+		const { body } = render(DraftPicking, { props: { store } });
+		expect(body).toContain('Prima gara');
+		expect(body).toContain('Giro 1 di 4');
+	});
+
 	it('lascia a chi ha gia scelto la sola visione delle carte', async () => {
 		const value = snapshot();
+		value.first_race = false;
 		value.cards[0].chosen_by = 11;
 		value.picks = [1];
 		value.current_pilot_id = 12;
@@ -111,6 +119,15 @@ describe('rendering scelta carte', () => {
 		expect(body).toContain('Luca sta scegliendo');
 		expect(body).not.toContain('<button');
 		expect(body).not.toContain('w-44');
+	});
+
+	it('alla prima gara chi ha scelto una volta deve ancora scegliere', async () => {
+		const value = snapshot();
+		value.cards[0].chosen_by = 11;
+		value.picks = [1];
+		value.current_pilot_id = 12;
+		const { store } = await setup(value);
+		expect(draftPickingView(store.state).alreadyChosen).toBe(false);
 	});
 
 	it('non considera concluso chi deve ancora scegliere', async () => {

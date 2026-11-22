@@ -34,3 +34,9 @@ La provenienza backend in DRAFT_BACKEND_MANIFEST.json resta storica e non descri
 Il 26 ottobre alle 17:29 l autore ha richiesto prima il riallineamento dei documenti. Le modifiche grafiche non sono ancora definite o iniziate. Altre fasi, domande aperte, release, ZIP finale e merge non sono chiusi o autorizzati automaticamente da questo checkpoint.
 
 Questo documento e i blocchi correnti nei documenti generali separano risultati CI, collaudo riferito e limiti residui. Nessun nuovo test locale dell applicazione eseguito per il solo riallineamento.
+
+## Prima gara a quattro passate (22 novembre 2026)
+
+La draft della prima gara usa quattro scelte per pilota su un tavolo di cinque carte, con ordine a serpentina: dopo ogni scelta entra una nuova carta e a fine giro le copie residue tornano nella pool. La soglia della pool e 4N+5, mentre dalle gare successive restano N+3 carte e una scelta. Implementazione sul ramo `feat/0.9-draft-prima-gara`.
+
+Controlli locali osservati: backend `.venv/Scripts/python.exe -m pytest -q` con 906 test passati, un warning e 14 subtest; frontend `npm test` con 705 test passati, `npm run check`, `npm run lint` e `npm run build` riusciti. L'autore ha riferito esito positivo del collaudo manuale dal browser. Nessun risultato CI letto per queste modifiche.

@@ -38,7 +38,7 @@ Si assegnano i punti classifica consueti; i punti sponsor guadagnati in gara si 
 
 **Stato attuale**
 
-L'applicazione implementa già la draft classica delle regole di Heat, gli inventari delle modifiche e degli sponsor, il mazzo da gioco con il controllo delle 15 carte, le gare con revisione, la classifica, la registrazione dei punti sponsor a fine gara e il Negozio. Restano da implementare la draft iniziale a 4 passate e l'assegnazione automatica del punto sponsor quando si riceve una carta sponsor in curva; nell'app le carte sponsor restano in un inventario separato, mentre al tavolo si aggiungono al mazzo di gioco.
+L'applicazione implementa la draft iniziale a quattro passate, con il tavolo da cinque carte e l'ordine a serpentina, la draft classica delle regole di Heat, gli inventari delle modifiche e degli sponsor, il mazzo da gioco con il controllo delle 15 carte, le gare con revisione, la classifica, la registrazione dei punti sponsor a fine gara e il Negozio. Resta da implementare l'assegnazione automatica del punto sponsor quando si riceve una carta sponsor in curva; nell'app le carte sponsor restano in un inventario separato, mentre al tavolo si aggiungono al mazzo di gioco.
 
 ## Requisiti
 
@@ -75,7 +75,7 @@ L'applicazione implementa già la draft classica delle regole di Heat, gli inven
 
 **Draft**
 
-- Preparazione del draft, turni di scelta e mazzi che si compongono carta per carta.
+- Draft iniziale a quattro passate (tavolo da cinque carte, ordine a serpentina) e draft classica a una scelta; preparazione del draft, turni di scelta e mazzi che si compongono carta per carta.
 
 **Gestione e supporto**
 

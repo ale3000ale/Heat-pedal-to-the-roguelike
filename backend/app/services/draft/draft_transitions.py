@@ -3,8 +3,10 @@ from collections.abc import Callable, Sequence
 from random import SystemRandom
 
 from app.schemas.draft.draft_state import DraftCardSlot, DraftState
-from app.services.cards.cards import CardEntry
-from app.services.draft.draft_order import draft_order, has_draft_copies
+from app.services.cards.cards import CardEntry, card_key
+from app.services.draft.draft_order import (
+    FIRST_RACE_PICKS, FIRST_RACE_ROW, draft_order, has_draft_copies, turn_pilot,
+)
 from app.services.shop.shop_draw import draw_cards
 
 
@@ -44,7 +46,7 @@ def advance_attendance(state: DraftState, pool: Sequence[CardEntry],
         raise DraftTransitionError("Serve almeno un pilota presente")
     if result.first_race != (previous_finish is None):
         raise DraftTransitionError("Riferimento alla gara precedente incoerente")
-    if has_draft_copies(pool, len(present)):
+    if has_draft_copies(pool, len(present), first_race=result.first_race):
         result.order = draft_order(present, previous_finish, shuffle=shuffle)
         result.phase = "order"
     else:
@@ -61,27 +63,32 @@ def reorder(state: DraftState, pilot_ids: Sequence[int]) -> DraftState:
 
 def start_picking(state: DraftState, pool: Sequence[CardEntry], *, rng=None
                   ) -> tuple[DraftState, list[CardEntry]]:
-    """Estrae N+3 copie senza mutare input; ritorna stato e pool residua.
+    """Estrae le copie iniziali senza mutare input; ritorna stato e pool residua.
 
-    Riusa draw_cards senza filtri, con RNG opzionale. Una pool divenuta
-    insufficiente causa errore, non salto silenzioso. Il servizio salva tutto
-    atomicamente. Gli slot distinguono copie identiche.
+    Alla prima gara il tavolo parte da cinque copie e cresce durante i giri;
+    dopo la prima gara restano N+3 copie e una sola scelta per pilota. Riusa
+    draw_cards senza filtri, con RNG opzionale. Una pool divenuta insufficiente
+    causa errore, non salto silenzioso. Il servizio salva tutto atomicamente.
     """
     result = _copy(state, "order")
-    drawn, remaining = draw_cards(list(pool), len(result.order) + 3, False, None,
+    needed = FIRST_RACE_ROW if result.first_race else len(result.order) + 3
+    drawn, remaining = draw_cards(list(pool), needed, False, None,
                                   rng or SystemRandom())
     result.cards = []
+    result.row = []
     for card in drawn:
         for _ in range(card.copies):
-            result.cards.append(DraftCardSlot(slot_id=len(result.cards) + 1,
-                                             name=card.name, path=card.path))
+            slot = DraftCardSlot(slot_id=len(result.cards) + 1, name=card.name, path=card.path)
+            result.cards.append(slot)
+            if result.first_race:
+                result.row.append(slot.slot_id)
     result.phase = "picking"
     return _finish(result), remaining
 
 
 def _turn(state: DraftState, user_id: int) -> int:
     """Identifica il pilota di turno e verifica l'utente autenticato dal server."""
-    pilot_id = state.order[len(state.picks)]
+    pilot_id = turn_pilot(state.order, len(state.picks), state.first_race)
     owner = next(p.user_id for p in state.participants if p.pilot_id == pilot_id)
     if type(user_id) is not int or user_id != owner:
         raise DraftTurnPermissionError("Non e il tuo turno")
@@ -89,11 +96,15 @@ def _turn(state: DraftState, user_id: int) -> int:
 
 
 def _available(state: DraftState, slot_id: int) -> DraftCardSlot:
-    """Restituisce una copia non scelta, rifiutando booleani e riferimenti errati."""
+    """Restituisce una copia scelta possibile: tavolo alla prima gara, resto dopo."""
     if type(slot_id) is not int:
         raise DraftTransitionError("Copia non valida")
-    card = next((card for card in state.cards if card.slot_id == slot_id), None)
-    if card is None or card.chosen_by is not None:
+    if state.first_race:
+        allowed = set(state.row)
+    else:
+        allowed = {card.slot_id for card in state.cards if card.chosen_by is None}
+    card = next((item for item in state.cards if item.slot_id == slot_id), None)
+    if card is None or slot_id not in allowed:
         raise DraftTransitionError("Copia non disponibile")
     return card
 
@@ -114,13 +125,15 @@ def preview(state: DraftState, user_id: int, slot_id: int | None) -> DraftState:
 
 def choose(state: DraftState, user_id: int, slot_id: int
            ) -> tuple[DraftState, int, CardEntry]:
-    """Registra scelta e ritorna stato, pilota e singola copia.
+    """Registra la singola scelta delle gare successive.
 
     Il servizio trasferisce la copia all'inventario nella stessa transazione.
-    L'ultima scelta passa a decks, mai a Race. La conferma UI non sostituisce
-    la verifica server; nessuna modifica degli input.
+    L'ultima scelta passa a decks, mai a Race. Alla prima gara, dove le scelte
+    sono quattro e il tavolo viene rimpiazzato, si usa choose_first_race.
     """
     result = _copy(state, "picking")
+    if result.first_race:
+        raise DraftTransitionError("Prima gara con tavolo da cinque copie")
     pilot_id = _turn(result, user_id)
     slot = _available(result, slot_id)
     slot.chosen_by = pilot_id
@@ -129,6 +142,80 @@ def choose(state: DraftState, user_id: int, slot_id: int
     if len(result.picks) == len(result.order):
         result.phase = "decks"
     return _finish(result), pilot_id, CardEntry(name=slot.name, path=slot.path, copies=1)
+
+
+def _merge_copies(pool: Sequence[CardEntry], slots: Sequence[DraftCardSlot]) -> list[CardEntry]:
+    """Rimette nel tavolo le copie non scelte, sommando per nome come la pool."""
+    result = [card.model_copy() for card in pool]
+    index = {card_key(card.name): card for card in result}
+    for slot in slots:
+        key = card_key(slot.name)
+        found = index.get(key)
+        if found is None:
+            found = CardEntry(name=slot.name, path=slot.path, copies=1)
+            result.append(found)
+            index[key] = found
+        else:
+            found.copies += 1
+    return result
+
+
+def _deal(state: DraftState, pool: Sequence[CardEntry], count: int, rng) -> list[CardEntry]:
+    """Aggiunge al tavolo le copie estratte, mantenendo gli slot progressivi."""
+    drawn, remaining = draw_cards(list(pool), count, False, None, rng or SystemRandom())
+    next_id = max((card.slot_id for card in state.cards), default=0) + 1
+    for card in drawn:
+        for _ in range(card.copies):
+            slot = DraftCardSlot(slot_id=next_id, name=card.name, path=card.path)
+            next_id += 1
+            state.cards.append(slot)
+            state.row.append(slot.slot_id)
+    return remaining
+
+
+def _return_row(state: DraftState, pool: Sequence[CardEntry]) -> list[CardEntry]:
+    """Rimette nel tavolo le copie residue e le toglie dal registro della draft."""
+    by_slot = {card.slot_id: card for card in state.cards}
+    returned = [by_slot[item] for item in state.row]
+    state.cards = [card for card in state.cards if card.chosen_by is not None]
+    state.row = []
+    return _merge_copies(pool, returned)
+
+
+def choose_first_race(state: DraftState, user_id: int, slot_id: int,
+                      pool: Sequence[CardEntry], *, rng=None
+                      ) -> tuple[DraftState, int, CardEntry, list[CardEntry]]:
+    """Registra una scelta della prima gara e rimpiazza il tavolo.
+
+    Quattro scelte per pilota, alternate a serpentina. Dopo ogni scelta entra
+    una copia; a fine giro le copie residue tornano nella pool e il tavolo
+    riparte da cinque. All'ultima scelta il tavolo residuo torna nella pool e
+    la fase passa a decks. Ritorna stato, pilota, copia scelta e pool residua;
+    non crea mai la gara.
+    """
+    result = _copy(state, "picking")
+    if not result.first_race:
+        raise DraftTransitionError("Prima gara non in corso")
+    pilot_id = _turn(result, user_id)
+    slot = _available(result, slot_id)
+    slot.chosen_by = pilot_id
+    result.picks.append(slot_id)
+    result.preview_slot_id = None
+    result.row.remove(slot_id)
+    total = FIRST_RACE_PICKS * len(result.order)
+    remaining = list(pool)
+    made = len(result.picks)
+    if made == total:
+        remaining = _return_row(result, remaining)
+        result.phase = "decks"
+    else:
+        if made % len(result.order) == 0:
+            remaining = _return_row(result, remaining)
+            remaining = _deal(result, remaining, FIRST_RACE_ROW, rng)
+        else:
+            remaining = _deal(result, remaining, 1, rng)
+    chosen = CardEntry(name=slot.name, path=slot.path, copies=1)
+    return _finish(result), pilot_id, chosen, remaining
 
 
 def set_ready(state: DraftState, user_id: int, pilot_id: int, ready: bool,

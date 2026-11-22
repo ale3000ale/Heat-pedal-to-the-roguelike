@@ -6,7 +6,9 @@ from app.db.models import Championship, DraftPreparation, Pilot, Race, RaceResul
 from app.services.cards.cards import CardEntry, dump_cards, parse_cards
 from app.services.draft.draft_preparation import DraftPermissionError, DraftPreparationError
 from app.services.draft.draft_transaction import DraftMutation, draft_mutation
-from app.services.draft.draft_transitions import advance_attendance, choose, preview, reorder, start_picking
+from app.services.draft.draft_transitions import (
+    advance_attendance, choose, choose_first_race, preview, reorder, start_picking,
+)
 from app.services.pilots.pilot_deck import GameDeckFullError, _put_one, _take_one
 from app.services.race.races import MAX_RACE_PILOTS
 
@@ -99,21 +101,32 @@ def share_preview(db: Session, preparation_id: int, user_id: int,
 
 
 def choose_card(db: Session, preparation_id: int, user_id: int,
-                expected_version: int, slot_id: int) -> DraftPreparation:
-    """Salva scelta e inventario insieme; all'ultima scelta torna la pool residua.
+                expected_version: int, slot_id: int, *, rng=None) -> DraftPreparation:
+    """Salva scelta e inventario insieme, con la pool aggiornata.
 
-    Non sottrae nuovamente dalla pool la copia gia riservata all'estrazione.
-    Le tre copie non scelte tornano alla pool una sola volta. Ultima scelta
-    passa a decks, non crea Race. Ogni errore fa rollback dell'intera scelta.
+    Prima gara: quattro scelte per pilota, una copia nuova dopo ogni scelta e
+    tavolo rimescolato a fine giro; le copie residue tornano nella pool.
+    Gare successive: N+3 copie e una scelta a testa, con le tre residue
+    restituite alla fine. Non sottrae nuovamente dalla pool la copia gia
+    riservata. L'ultima scelta passa a decks, non crea Race. Ogni errore fa
+    rollback dell'intera scelta.
     """
     with draft_mutation(db, preparation_id, user_id, expected_version) as work:
-        next_state, pilot_id, card = choose(work.state, user_id, slot_id)
+        if work.state.first_race:
+            pool = _pool(db, work)
+            if pool is None:
+                raise DraftPreparationError("Pool modifiche non disponibile")
+            next_state, pilot_id, card, remaining = choose_first_race(
+                work.state, user_id, slot_id, parse_cards(pool.cards), rng=rng)
+            pool.cards = dump_cards(remaining)
+        else:
+            next_state, pilot_id, card = choose(work.state, user_id, slot_id)
         pilot = _pilot(db, work, pilot_id)
         inventory = work.decks[pilot.inventory_deck_id]
         cards = parse_cards(inventory.cards)
         _put_one(cards, card)
         inventory.cards = dump_cards(cards)
-        if next_state.phase == "decks":
+        if not work.state.first_race and next_state.phase == "decks":
             pool = _pool(db, work)
             if pool is None:
                 raise DraftPreparationError("Pool modifiche non disponibile")

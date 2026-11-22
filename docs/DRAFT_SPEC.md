@@ -61,11 +61,13 @@ Con pool sufficiente, mostrare i presenti nell'ordine inverso di arrivo della ga
 
 ## Pool insufficiente
 
-Servono N+3 copie nella pool modifiche del campionato. Se non bastano, mantenere la selezione Presenti/Assenti e poi passare direttamente alla modifica dei mazzi, saltando ordine e scelta carte. Non creare subito la gara e non bloccare il passaggio per mazzi ancora incompleti.
+Alla prima gara servono 4N+5 copie nella pool modifiche del campionato, dove N e il numero dei presenti: quattro scelte per pilota piu il tavolo da cinque. Se non bastano, mantenere la selezione Presenti/Assenti e passare direttamente alla modifica dei mazzi, saltando ordine e scelta carte. Nelle gare successive la soglia resta N+3. Non creare subito la gara e non bloccare il passaggio per mazzi ancora incompleti.
 
 ## Scelta delle carte
 
-Estrarre N+3 copie dalla pool modifiche del campionato; sono ammesse piu copie della stessa carta. Ogni pilota presente sceglie una sola copia, nell'ordine confermato. Le tre copie non scelte tornano nella pool.
+Alla prima gara estrarre cinque copie dalla pool modifiche e disporle sul tavolo; sono ammesse piu copie della stessa carta. Ogni pilota presente sceglie quattro copie, per un totale di 4N scelte. L'ordine di scelta e a serpentina: il primo giro segue l'ordine confermato, il secondo lo inverte, i giri successivi si alternano. Dopo ogni scelta entra una nuova copia nel tavolo; a fine giro le copie residue tornano nella pool e si estraggono cinque nuove copie. Dopo l'ultima scelta il tavolo residuo torna nella pool e si passa alla preparazione dei mazzi. Mostrare Prima gara in grassetto, in alto al centro, e il giro corrente (Giro n di 4).
+
+Dalle gare successive estrarre N+3 copie; ogni pilota presente sceglie una sola copia nell'ordine confermato. Le tre copie non scelte tornano nella pool.
 
 All'avvio della scelta aprire automaticamente il modal grande agli utenti proprietari dei piloti presenti, da qualunque pagina dell'app; il creatore lo ha gia aperto. I partecipanti non possono chiuderlo. Persistenza e recupero devono consentire a chi si riconnette o ricarica la pagina di ritrovare fase e turno correnti.
 
@@ -87,8 +89,10 @@ Quando tutti i piloti presenti sono pronti, ricontrollare sotto lock i loro mazz
 
 ## Criteri di verifica
 
-Verificare: selezione presenti/assenti senza requisito anticipato delle 15 carte; gare successive con mazzo vuoto o incompleto che raggiungono ordine/modifica; pool insufficiente senza blocco dei mazzi incompleti; ordine inverso e nuovi presenti in coda; ordine casuale prima gara; trascinamento; copie duplicate; turni e autorizzazioni per pilota; anteprima locale e indicazione condivisa; conferma scelta e inventario; restituzione delle copie residue; recupero su riconnessione/reload da qualsiasi pagina; account con piu piloti; prima gara senza requisito esatto delle 15 carte; pronto rifiutato con 14 carte nelle gare successive e accettato dopo modifica a 15; pronto/non Pronto; creazione soltanto a tutti pronti con ricontrollo finale; annullamento con ripristino completo anche durante la preparazione; percorso Gara già disputata.
+Verificare: selezione presenti/assenti senza requisito anticipato delle 15 carte; gare successive con mazzo vuoto o incompleto che raggiungono ordine/modifica; soglia 4N+5 alla prima gara e N+3 dopo, con pool insufficiente senza blocco dei mazzi incompleti; ordine inverso e nuovi presenti in coda; ordine casuale prima gara; quattro scelte a testa, tavolo da cinque, serpentina e restituzione del tavolo a fine giro; trascinamento; copie duplicate; turni e autorizzazioni per pilota; anteprima locale e indicazione condivisa; conferma scelta e inventario; restituzione delle copie residue; recupero su riconnessione/reload da qualsiasi pagina; account con piu piloti; prima gara senza requisito esatto delle 15 carte; pronto rifiutato con 14 carte nelle gare successive e accettato dopo modifica a 15; pronto/non Pronto; creazione soltanto a tutti pronti con ricontrollo finale; annullamento con ripristino completo anche durante la preparazione; percorso Gara già disputata.
 
 ## Stato delle verifiche
 
 Sul commit 8ba03aa1aa8a20f8c346b3e20b4f1352d9b2d74a sono stati letti con successo frontend (check, lint, test, build), runtime, backend pytest e migrazioni su database di test. Il 26 ottobre alle 05:31 l autore ha riferito che ora funziona tutto senza errori, dopo il collaudo negativo delle 05:09 e la correzione del lifecycle. Non sono attestati test locali dell assistente, conteggi o una matrice completa di browser/dispositivi. Evidenze e limiti in DRAFT_VALIDATION.md. Il manifesto backend resta la provenienza storica del consolidamento, non un manifesto degli hash del codice corrente.
+
+Stato del 22 novembre 2026: la draft della prima gara a quattro scelte, con tavolo da cinque carte e ordine a serpentina, e implementata sul ramo `feat/0.9-draft-prima-gara`. Controlli locali osservati: backend `.venv/Scripts/python.exe -m pytest -q` con 906 test passati, un warning e 14 subtest; frontend `npm test` con 705 test passati, `npm run check`, `npm run lint` e `npm run build` riusciti. L'autore ha riferito esito positivo del collaudo manuale dal browser. Nessun risultato CI letto per queste modifiche e nessun merge autorizzato.
