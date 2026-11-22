@@ -74,7 +74,7 @@ regole del Negozio. Dettagli in PHASE_15_CLOSURE.md.
 | `backend/app/db/models/` | Modelli SQLAlchemy (`deck.py`: `DeckPrototype` con `kind`, `Deck` con `version`; `championship.py`: `Championship`, `ChampionshipDefaults` (con `card_poll_seconds`), `GOLD_FIELDS`; `shop.py`: tabelle del Negozio, tra cui `PackPurchase`; fase 13: `CardPlay` (`card_play`), `CardGift` (`card_gift`) e le colonne `Race.review_started_at` e `Race.review_started_by_user_id`) |
 | `backend/app/schemas/` | Schemi Pydantic delle risposte e delle richieste (`card_poll.py` per l'intervallo di controllo; `card_admin.py` per caricamento ed eliminazione delle carte; `site.py` per `{ url, image }` del QR; `PilotDetail` include `sponsor_inventory`) |
 | `backend/app/services/` | Regole di business: campionati, gare (`races.py`), oro (`gold.py`), pool, carte, mazzi (`pilot_deck.py`), piloti, pulizia, immagini, nomi, ruoli, sessioni, team, utenti; core: `site_qr.py` (origine del sito e PNG del QR); Negozio: `packs.py`, `pack_images.py`, `shop_draw.py`, `shop_purchase.py`, `shop_view.py`, `shop_history.py`, `shop_inventory.py`, `shop_list.py`; carte sponsor in gara: `card_play.py`, `card_play_close.py`, `card_gift.py`, `card_judge.py`, `race_review.py`; amministrazione delle carte: `card_upload.py`, `card_delete.py` |
-| `backend/app/scripts/` | `create_admin`, `seed_prototype`, `resize_cards` |
+| `backend/app/scripts/` | `create_admin`, `seed_prototype`, `resize_cards`, `import_board` |
 | `backend/alembic/versions/` | Migrazioni (elenco nella sezione 11 della specifica) |
 | `backend/media/cards/` | Immagini delle carte (vedi sotto) |
 | `backend/media/pack/` | Immagini dei pacchetti (`defaultIllustration`, `illustration`) |
@@ -90,6 +90,7 @@ regole del Negozio. Dettagli in PHASE_15_CLOSURE.md.
 - Dopo un `git pull` o un cambio di ramo: `python heat.py migrate` (l'avvio migra comunque da solo).
 - Test backend: `python heat.py test` (224 test alla chiusura della fase 11, 248 alla fine della 12a, 447 prima della 13e, 474 dopo la 13e: gli ultimi due numeri sono esiti riferiti dall'autore in locale). Controlli frontend: `python heat.py check`.
 - Ridimensionare le carte, da `backend`: `python -m app.scripts.resize_cards [cartella] [--dry-run]`.
+- Importare immagini di mappe ed eventi, da `backend`: `python -m app.scripts.import_board --dest maps|events [file o cartelle] [--keep-name] [--no-preview] [--remove-source] [--dry-run]`.
 - Il lint del frontend (`npm run lint`) esegue `prettier --check` e `eslint`: dopo ogni modifica a un file `.svelte` o `.ts` conviene lanciare `npx prettier --write` sul file (le righe troppo lunghe sono la causa più comune di errore).
 - Dopo un'unione di teste Alembic, `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa.
 
@@ -512,3 +513,9 @@ Backend: `GET /api/site/qr` autenticato (401 senza sessione) restituisce `{ url,
 Frontend: `lib/site/site-qr.ts` (`fetchSiteQr`, `isLocalOnlyUrl`) con `site-qr.spec.ts`; `components/shared/site-qr-dialog.svelte`; icona `qr` in `racing-icon.svelte`; tasto in `nav-menu.svelte`; stato `qrOpen` e popup in `routes/+layout.svelte`. Il QR del terminale del launcher resta invariato.
 
 Controlli locali osservati: backend 928 test passati, un warning e 14 subtest; frontend 716 test passati su 86 file, check con 0 errori e 0 warning, build riuscita. `npm run lint` non è riuscito su 9 file preesistenti per i fine riga CRLF del checkout Windows; con `--end-of-line auto` gli stessi file passano e i file di questa modifica passano il controllo predefinito. L'autore ha riferito esito positivo del collaudo dal telefono il 22 novembre 2026.
+
+## Strumento per le immagini di mappe ed eventi - 23 novembre 2026
+
+`app/scripts/import_board.py` importa immagini in `backend/media/board/events` e `maps` con `--dest`; ridimensiona dentro la scatola 560x870 mantenendo il rapporto, converte in WebP qualità 90, apre l'anteprima nel visualizzatore e chiede il nome (Invio = nome originale). I nomi usano `safe_slug` (minuscolo, trattini) e `unique_filename` per i conflitti; opzioni `--keep-name`, `--no-preview`, `--remove-source`, `--dry-run`. La destinazione deve stare dentro `media/board`. Test in `tests/test_import_board.py`.
+
+Le 33 immagini esistenti (23 eventi, 10 mappe) sono state convertite in WebP da 560 px di larghezza (altezze 349-374, circa 1966 KB); i JPG sono stati rimossi dopo la verifica e restano nella storia git e nei backup dell'autore. L'autore controllerà visivamente i WebP.

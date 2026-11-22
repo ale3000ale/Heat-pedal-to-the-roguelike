@@ -145,6 +145,17 @@ python -m app.scripts.resize_cards [cartella] [--dry-run]
 
 Le immagini dei pacchetti del Negozio stanno in `backend/media/pack/`.
 
+## Immagini di mappe ed eventi
+
+Le immagini stanno in `backend/media/board/maps` e `backend/media/board/events`. Per importarle, da `backend`:
+
+```
+python -m app.scripts.import_board --dest maps C:\percorso\immagini
+python -m app.scripts.import_board --dest events --source C:\cartella
+```
+
+Lo strumento ridimensiona ogni immagine dentro la scatola 560x870 mantenendo il rapporto (le orizzontali restano orizzontali), la converte in WebP qualità 90, apre l'anteprima e chiede il nome: Invio mantiene il nome del file. I nomi diventano minuscoli con trattini e, se esistono già, ricevono `-2`, `-3`. Opzioni: `--keep-name` (nessuna domanda), `--no-preview`, `--remove-source` (elimina l'originale dopo un WebP verificato), `--dry-run`.
+
 ## Documentazione
 
 - `docs/PROJECT_SPEC.md`: regole di gioco e di prodotto, fonte principale.

@@ -33,7 +33,7 @@ Nessun conteggio di test o warning inventato, nessun test locale o collaudo brow
 Backend consolidato e verificato in CI. Frontend draft e collaudo browser restano da svolgere con approvazione separata. La PR 18 resta in bozza; nessun merge autorizzato.
 <!-- draft-backend-current:end -->
 
-Ultimo aggiornamento: 2026-11-22
+Ultimo aggiornamento: 2026-11-23
 
 ## Punto sponsor automatico dal tasto S (0.9) - 2026-11-22
 
@@ -44,6 +44,12 @@ Sul ramo `feat/0.9-punto-sponsor-s` ogni carta assegnata con il tasto S durante 
 Sul ramo `feat/0.9-qr-accesso` il menu mostra un tasto QR di accesso, visibile a tutti gli utenti collegati sia nella barra orizzontale sia nel drawer stretto. Il popup contiene il codice e l'indirizzo in chiaro: HEAT_PUBLIC_URL, altrimenti l'origine della richiesta (X-Forwarded-Host/Host), altrimenti `http://127.0.0.1:5173`; con un indirizzo localhost avvisa che funziona solo dal PC. L'endpoint `GET /api/site/qr` è autenticato (401 senza sessione) e restituisce un PNG in data URL generato con `qrcode`, già presente nelle dipendenze. Nessuna migrazione e nessuna dipendenza nuova.
 
 Controlli locali osservati: backend 928 test passati, un warning e 14 subtest; frontend 716 test passati su 86 file, `npm run check` con 0 errori e 0 warning, build riuscita. `npm run lint` non è riuscito su 9 file preesistenti per i fine riga CRLF del checkout Windows; con `--end-of-line auto` gli stessi file passano e i file toccati da questa modifica passano il controllo predefinito. L'autore ha riferito esito positivo del collaudo dal telefono. Merge in `release/0.9` con `--no-ff`; nessun risultato CI letto.
+
+## Strumento per le immagini di mappe ed eventi (0.9) - 2026-11-23
+
+Sul ramo `feat/0.9-mappe-eventi` il nuovo `app/scripts/import_board.py` importa immagini in `backend/media/board/events` e `maps`: ridimensiona dentro la scatola 560x870 mantenendo il rapporto, converte in WebP qualità 90, mostra l'anteprima e chiede il nome (Invio = nome originale). I nomi diventano minuscoli con trattini e ricevono `-2`/`-3` in caso di conflitto; opzioni `--keep-name`, `--no-preview`, `--remove-source`, `--dry-run`. Nessuna migrazione o dipendenza nuova.
+
+Le 33 immagini già presenti (23 eventi, 10 mappe) sono state convertite: tutte WebP da 560 px di larghezza, altezze 349-374, circa 1966 KB in totale; i JPG originali sono stati rimossi dopo la verifica e restano nella storia git e nei backup dell'autore. Controlli locali osservati: 14 test mirati passati e suite backend completa con 942 test passati, un warning e 14 subtest. L'autore controllerà visivamente i WebP. Nessun risultato CI letto e nessun merge autorizzato.
 
 ## Draft della prima gara (0.9) - 2026-11-22
 
