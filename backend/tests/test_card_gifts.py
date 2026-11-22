@@ -243,3 +243,43 @@ def test_unseen_gifts_are_listed_until_they_are_marked_seen(make_client, session
     r = player.post(f"/api/championships/{champ}/card-gifts/seen", json={"pilot_id": pilot})
     assert r.status_code == 204
     assert unseen(player, champ, pilot).json() == []
+
+
+def test_race_detail_suggests_one_sponsor_point_per_gift(make_client, session_factory):
+    admin, player, champ, pilot, race = scenario(
+        make_client, session_factory, copies=1, pool_copies=3
+    )
+    assert gift(player, champ, pilot).status_code == 201
+    assert gift(player, champ, pilot).status_code == 201
+    detail = admin.get(f"/api/championships/{champ}/races/{race}")
+    assert detail.status_code == 200
+    row = next(r for r in detail.json()["results"] if r["pilot_id"] == pilot)
+    assert row["suggested_sponsor_points"] == 2
+    assert row["sponsor_points"] == 0
+
+
+def test_undo_removes_the_suggested_sponsor_point(make_client, session_factory):
+    admin, player, champ, pilot, race = scenario(
+        make_client, session_factory, copies=1, pool_copies=2
+    )
+    gift_id = gift(player, champ, pilot).json()["id"]
+    assert admin.post(f"/api/championships/{champ}/card-gifts/{gift_id}/undo").status_code == 204
+    detail = admin.get(f"/api/championships/{champ}/races/{race}")
+    row = next(r for r in detail.json()["results"] if r["pilot_id"] == pilot)
+    assert row["suggested_sponsor_points"] == 0
+
+
+def test_suggested_sponsor_points_are_not_applied_without_confirmation(
+    make_client, session_factory
+):
+    admin, player, champ, pilot, race = scenario(
+        make_client, session_factory, copies=1, pool_copies=2
+    )
+    assert gift(player, champ, pilot).status_code == 201
+    finish_race(admin, champ, race, pilot)
+    detail = admin.get(f"/api/championships/{champ}/races/{race}")
+    row = next(r for r in detail.json()["results"] if r["pilot_id"] == pilot)
+    assert row["suggested_sponsor_points"] == 1
+    assert row["sponsor_points"] == 0
+    with session_factory() as db:
+        assert db.get(Pilot, pilot).sponsor == 0

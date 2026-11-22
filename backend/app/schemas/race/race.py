@@ -42,6 +42,9 @@ class RaceResultRead(BaseModel):
     position: int | None
     points: int
     sponsor_points: int
+    # Punti proposti dai tasti S della gara. Servono a precompilare il modulo dei
+    # risultati, che resta modificabile e salva solo i valori confermati.
+    suggested_sponsor_points: int
 
 
 class RaceDetail(RaceRead):

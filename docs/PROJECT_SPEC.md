@@ -247,7 +247,7 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo. Lo
 | 6° | 1 |
 | 7°–12° | 0 |
 
-- **Punti sponsor**: non dipendono dalla posizione, dipendono da come va la partita. Sono inseriti a mano per ogni pilota, valgono 0 se non indicati e non possono essere negativi. Vengono assegnati al pilota nel momento in cui la gara è terminata; in una correzione il pilota riceve (o perde) solo la differenza rispetto ai valori precedenti, senza scendere sotto zero.
+- **Punti sponsor**: non dipendono dalla posizione, dipendono da come va la partita. Ogni carta sponsor assegnata con il tasto S durante una gara in corso vale 1 punto sponsor per il pilota che la riceve; il punto è proposto nel modulo dei risultati quando il pilota entra in classifica, mentre chi è dichiarato assente non lo riceve. I punti restano modificabili a mano, valgono 0 se non indicati e non possono essere negativi. Vengono assegnati al pilota solo quando la gara è terminata; in una correzione il pilota riceve (o perde) solo la differenza rispetto ai valori precedenti, senza scendere sotto zero.
 - Un iscritto che non partecipa a una gara non ha una riga di risultato, ma viene mostrato nel dettaglio della gara con posizione assente, 0 punti e 0 punti sponsor.
 
 ### Classifica
@@ -417,6 +417,7 @@ La fase 13 ha sottofasi 13a-13g; il piano completo e le decisioni approvate sono
 ### Tasto S e notifica
 
 - Il tasto S dà al pilota una carta sponsor **casuale** dalla pool sponsor del campionato, con probabilità proporzionale alle copie rimaste. La copia passa dalla pool all'inventario del pilota, e viene creata una riga in `card_gift`; la carta è subito giocabile nella stessa gara.
+- Ogni assegnazione con il tasto S vale 1 punto sponsor, conteggiato dalle righe `card_gift` della gara e proposto nel modulo dei risultati. L'annullo entro 60 secondi elimina la riga e quindi anche il punto; il bonus e la rimozione carta del revisore non creano né eliminano righe `card_gift`, quindi non cambiano il punto.
 - Lo premono **giudice e admin**, dalla pagina della gara, su qualsiasi pilota iscritto non eliminato; il giocatore non ha più il tasto S. Chi lo preme vede solo "Carta assegnata a [nome]", non la carta. A livello di backend il giocatore può ancora usarlo solo sui propri piloti (404 sugli altri).
 - Con la pool sponsor vuota (409), senza gara in corso o con la gara in revisione il tasto S è rifiutato (409).
 - La notifica "Hai ottenuto una carta sponsor" va al proprietario del pilota e resta da leggere finché `seen_at` è vuoto: il giocatore la vede in un popup che si chiude solo con la X e, chiudendosi, segna come viste le notifiche del suo pilota nel campionato. Il bonus del revisore non crea notifiche.

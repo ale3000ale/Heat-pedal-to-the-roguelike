@@ -24,6 +24,7 @@ from app.services.race.races import (
     list_races,
     race_table,
     set_results,
+    suggested_sponsor_points,
 )
 
 router = APIRouter(tags=["races"])
@@ -65,6 +66,7 @@ def _read(db, race) -> RaceRead:
 
 def _detail(db, championship_id: int, race_id: int) -> RaceDetail:
     race, rows = race_table(db, championship_id, race_id)
+    suggested = suggested_sponsor_points(db, race.id)
     results = [
         RaceResultRead(
             pilot_id=p.id,
@@ -72,6 +74,7 @@ def _detail(db, championship_id: int, race_id: int) -> RaceDetail:
             position=position,
             points=points,
             sponsor_points=sponsor_points,
+            suggested_sponsor_points=suggested.get(p.id, 0),
         )
         for p, position, points, sponsor_points in rows
     ]

@@ -19,6 +19,9 @@ export interface RaceResult {
 	position: number | null;
 	points: number;
 	sponsor_points: number;
+	// Punti sponsor proposti dai tasti S della gara. Il modulo li usa per precompilare
+	// una riga non ancora salvata; restano modificabili e valgono solo alla conferma.
+	suggested_sponsor_points: number;
 }
 
 // Gara con i risultati.
