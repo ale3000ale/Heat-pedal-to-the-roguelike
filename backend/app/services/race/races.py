@@ -4,6 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from app.db.models.card_gift import CardGift
 from app.db.models.pilot import Pilot
 from app.db.models.race import Race, RaceResult
 from app.schemas.core.events import EventCreate
@@ -232,6 +233,18 @@ def _apply_sponsor_delta(db: Session, old: dict[int, int], new: dict[int, int]) 
         pilot = db.get(Pilot, pilot_id)
         if pilot is not None:
             pilot.sponsor = max(0, pilot.sponsor + new.get(pilot_id, 0) - old.get(pilot_id, 0))
+
+
+def suggested_sponsor_points(db: Session, race_id: int) -> dict[int, int]:
+    # Punti sponsor proposti dai tasti S della gara: ogni carta assegnata vale 1 punto.
+    # Il conteggio deriva da CardGift, quindi l'annullo entro 60 secondi elimina anche
+    # il punto. Il bonus e la rimozione del revisore non creano né eliminano righe qui.
+    rows = db.execute(
+        select(CardGift.pilot_id, func.count(CardGift.id))
+        .where(CardGift.race_id == race_id)
+        .group_by(CardGift.pilot_id)
+    )
+    return {pilot_id: count for pilot_id, count in rows}
 
 
 def race_table(

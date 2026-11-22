@@ -35,6 +35,10 @@ Backend consolidato e verificato in CI. Frontend draft e collaudo browser restan
 
 Ultimo aggiornamento: 2026-11-22
 
+## Punto sponsor automatico dal tasto S (0.9) - 2026-11-22
+
+Sul ramo `feat/0.9-punto-sponsor-s` ogni carta assegnata con il tasto S durante una gara in corso propone 1 punto sponsor nel modulo dei risultati. Il punto è precompilato quando il pilota entra in classifica, non viene accreditato prima della conferma e resta modificabile; chi è dichiarato assente non lo riceve. Il conteggio deriva dalle righe `card_gift`: l'annullo entro 60 secondi elimina anche il punto, mentre bonus e rimozione del revisore non lo cambiano. Nessuna migrazione. Controlli locali osservati: backend 909 test passati, un warning e 14 subtest; frontend 708 test passati, check, lint e build riusciti. L'autore ha riferito esito positivo del collaudo manuale dal browser. Merge in `release/0.9` con `--no-ff`; nessun risultato CI letto.
+
 ## Draft della prima gara (0.9) - 2026-11-22
 
 Sul ramo `feat/0.9-draft-prima-gara` la draft della prima gara implementa quattro scelte per pilota, un tavolo da cinque carte con ordine a serpentina, una nuova carta dopo ogni scelta e la restituzione del tavolo residuo alla pool a fine giro. La soglia della pool e 4N+5, mentre dalle gare successive restano N+3 carte e una scelta. Controlli locali osservati: backend 906 test passati, un warning e 14 subtest; frontend 705 test passati, check, lint e build riusciti. L'autore ha riferito esito positivo del collaudo manuale dal browser. Nessun risultato CI letto e nessun merge autorizzato.

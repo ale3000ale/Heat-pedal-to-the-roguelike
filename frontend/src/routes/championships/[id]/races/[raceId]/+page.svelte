@@ -8,6 +8,7 @@
 	import { loadPollIntervalMs } from '$lib/cards/card-poll.svelte';
 	import { startLiveRefresh } from '$lib/events/live-refresh.svelte';
 	import { hasResultChanges, reconcileResults } from '$lib/race/race-result-reconcile';
+	import { initialSponsor } from '$lib/race/race-sponsor-suggestion';
 	import type { ResultForm, ResultRow } from '$lib/race/race-result-reconcile';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
 	import type { RaceDetail } from '$lib/race/race-types';
@@ -207,7 +208,8 @@
 		if (!canEdit || order.length >= MAX_PARTICIPANTS) return;
 		if ([...order, ...absent].some((r) => r.pilot_id === pilotId)) return;
 		const found = race?.results.find((r) => r.pilot_id === pilotId);
-		if (found) order.push({ pilot_id: pilotId, name: found.pilot_name, sponsor: 0 });
+		if (found)
+			order.push({ pilot_id: pilotId, name: found.pilot_name, sponsor: initialSponsor(found) });
 	}
 	function addToAbsent(pilotId: number) {
 		if (!canEdit || [...order, ...absent].some((r) => r.pilot_id === pilotId)) return;
@@ -423,7 +425,8 @@
 					><Card.Description
 						>Metti in classifica i piloti in ordine di arrivo (massimo {MAX_PARTICIPANTS}) con i
 						punti sponsor di ciascuno, e indica a mano chi non partecipa. Ogni iscritto va
-						assegnato. Gli sponsor vengono assegnati al salvataggio.</Card.Description
+						assegnato. I punti delle carte ricevute con il tasto S sono già proposti e restano
+						modificabili; gli sponsor vengono assegnati al salvataggio.</Card.Description
 					></Card.Header
 				>
 				<Card.Content class="space-y-4">
