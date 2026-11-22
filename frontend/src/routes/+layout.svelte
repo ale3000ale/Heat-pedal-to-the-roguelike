@@ -14,10 +14,12 @@
 	import AccountSettings from '$lib/components/shared/account-settings.svelte';
 	import NavDrawer from '$lib/components/shared/nav-drawer.svelte';
 	import NavMenu from '$lib/components/shared/nav-menu.svelte';
+	import SiteQrDialog from '$lib/components/shared/site-qr-dialog.svelte';
 	import RacingIcon from '$lib/components/shared/racing-icon.svelte';
 
 	let { children } = $props();
 	let settingsOpen = $state(false);
+	let qrOpen = $state(false);
 	const draftHost = provideDraftHost(
 		createDraftHost({
 			getContext: () => {
@@ -174,7 +176,11 @@
 
 							<!-- Nav links with themed icons -->
 							<div class="hidden md:block">
-								<NavMenu currentPath={page.url.pathname} isAdmin={auth.isAdmin} />
+								<NavMenu
+									currentPath={page.url.pathname}
+									isAdmin={auth.isAdmin}
+									onShowQr={() => (qrOpen = true)}
+								/>
 							</div>
 						</div>
 
@@ -229,6 +235,7 @@
 						isAdmin={auth.isAdmin}
 						orientation="vertical"
 						onNavigate={() => (navOpen = false)}
+						onShowQr={() => (qrOpen = true)}
 					/>
 				</NavDrawer>
 
@@ -236,6 +243,10 @@
 					{#key auth.user.id}
 						<AccountSettings bind:open={settingsOpen} userId={auth.user.id} />
 					{/key}
+				{/if}
+
+				{#if qrOpen}
+					<SiteQrDialog bind:open={qrOpen} />
 				{/if}
 			{/if}
 

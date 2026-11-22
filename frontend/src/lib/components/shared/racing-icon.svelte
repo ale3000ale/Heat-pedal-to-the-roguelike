@@ -18,7 +18,8 @@
 			| 'laurel'
 			| 'flame'
 			| 'car'
-			| 'gear';
+			| 'gear'
+			| 'qr';
 		size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | number;
 		class?: string;
 		color?: string;
@@ -750,5 +751,34 @@
 		>
 		<!-- Shift knob in 3rd gear -->
 		<circle cx="40" cy="22" r="5" fill="#e63926" stroke="#ffffff" stroke-width="1.5" />
+	</svg>
+{/if}
+
+{#if name === 'qr'}
+	<!-- QR code -->
+	<svg
+		viewBox="0 0 64 64"
+		fill="none"
+		xmlns="http://www.w3.org/2000/svg"
+		class="{sizeClass} {className} inline-block shrink-0 align-middle"
+		style={inlineStyle}
+		aria-hidden="true"
+	>
+		<rect x="6" y="6" width="16" height="16" rx="2" stroke={color} stroke-width="4" />
+		<rect x="42" y="6" width="16" height="16" rx="2" stroke={color} stroke-width="4" />
+		<rect x="6" y="42" width="16" height="16" rx="2" stroke={color} stroke-width="4" />
+		<rect x="11" y="11" width="6" height="6" fill={color} />
+		<rect x="47" y="11" width="6" height="6" fill={color} />
+		<rect x="11" y="47" width="6" height="6" fill={color} />
+		<rect x="30" y="8" width="6" height="6" fill={color} />
+		<rect x="30" y="20" width="6" height="6" fill={color} />
+		<rect x="8" y="30" width="6" height="6" fill={color} />
+		<rect x="20" y="30" width="6" height="6" fill={color} />
+		<rect x="30" y="30" width="10" height="10" fill={color} />
+		<rect x="46" y="30" width="10" height="6" fill={color} />
+		<rect x="30" y="46" width="6" height="10" fill={color} />
+		<rect x="42" y="42" width="6" height="6" fill={color} />
+		<rect x="52" y="42" width="6" height="6" fill={color} />
+		<rect x="42" y="52" width="6" height="6" fill={color} />
 	</svg>
 {/if}
