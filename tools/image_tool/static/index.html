@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="it">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Immagini di mappe ed eventi</title>
+		<link rel="icon" href="data:," />
+		<link rel="stylesheet" href="/static/style.css" />
+	</head>
+	<body>
+		<main>
+			<header>
+				<p class="eyebrow">Strumento di sviluppo</p>
+				<h1>Immagini di mappe ed eventi</h1>
+				<p class="lead">
+					Carica le immagini, controlla anteprima e nome, poi salvale in
+					<code>backend/media/board</code>. Ogni file diventa WebP dentro la scatola
+					560×870, con il rapporto originale.
+				</p>
+			</header>
+
+			<section class="panel">
+				<label class="field">
+					<span>Cartella di destinazione</span>
+					<input
+						id="destination"
+						type="text"
+						list="destinations"
+						autocomplete="off"
+						spellcheck="false"
+					/>
+					<datalist id="destinations"></datalist>
+				</label>
+				<p class="hint">
+					Percorso relativo a <code>backend/media/board</code>. Puoi scegliere una
+					cartella esistente o scriverne una nuova.
+				</p>
+			</section>
+
+			<section class="panel">
+				<label id="drop" class="drop">
+					<input
+						id="files"
+						type="file"
+						accept="image/png,image/jpeg,image/webp"
+						multiple
+						hidden
+					/>
+					<strong>Trascina qui le immagini</strong>
+					<span>oppure clicca per sceglierle</span>
+				</label>
+				<p id="status" class="status" role="status" aria-live="polite"></p>
+			</section>
+
+			<form id="save-form" class="panel" hidden>
+				<div class="queue-head">
+					<h2>Immagini da salvare</h2>
+					<button type="button" id="clear" class="ghost">Svuota elenco</button>
+				</div>
+				<ul id="queue" class="queue"></ul>
+				<div class="actions">
+					<button type="submit" id="save" class="primary">Salva immagini</button>
+					<span class="hint">
+						Invio salva con i nomi indicati; se non cambi nulla resta il nome del file
+						caricato.
+					</span>
+				</div>
+			</form>
+
+			<section id="result" class="panel result" hidden>
+				<h2>Risultato</h2>
+				<div id="result-body"></div>
+			</section>
+		</main>
+		<script src="/static/app.js" defer></script>
+	</body>
+</html>
