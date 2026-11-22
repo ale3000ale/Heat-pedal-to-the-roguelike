@@ -6,6 +6,7 @@ from app.db.models import ChampionshipPilot, Deck, DraftPreparation, Pilot, User
 from app.schemas.draft.draft import DraftPilotDeckRead, DraftPilotRead, DraftRead
 from app.schemas.draft.draft_state import DraftState
 from app.services.cards.cards import parse_cards
+from app.services.draft.draft_order import turn_pilot
 from app.services.draft.draft_preparation import DraftPermissionError, DraftPreparationError
 
 
@@ -48,7 +49,8 @@ def _serialize(db: Session, row: DraftPreparation, user_id: int, role: str) -> D
                       for p in state.participants],
         order=state.order, cards=state.cards, picks=state.picks,
         preview_slot_id=state.preview_slot_id, ready=state.ready,
-        current_pilot_id=state.order[len(state.picks)] if state.phase == "picking" else None)
+        current_pilot_id=(turn_pilot(state.order, len(state.picks), state.first_race)
+                          if state.phase == "picking" else None))
 
 
 def list_my_drafts(db: Session, user_id: int) -> list[DraftRead]:

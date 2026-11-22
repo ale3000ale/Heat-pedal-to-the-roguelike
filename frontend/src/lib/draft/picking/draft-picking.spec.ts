@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
 	canConfirmDraftChoice,
+	draftPicksPerPilot,
 	draftPickingView,
+	draftTurnPilot,
 	proposeDraftChoice,
 	proposeDraftPreview
 } from './draft-picking';
@@ -42,6 +44,41 @@ function state(): DraftSessionState {
 }
 
 describe('turno e copie draft', () => {
+	it('alterna a serpentina quattro giri alla prima gara', () => {
+		expect(draftPicksPerPilot(true)).toBe(4);
+		expect(draftPicksPerPilot(false)).toBe(1);
+		expect(Array.from({ length: 8 }, (_, made) => draftTurnPilot([11, 12], made, true))).toEqual([
+			11, 12, 12, 11, 11, 12, 12, 11
+		]);
+		expect(draftTurnPilot([11, 12], 0, false)).toBe(11);
+		expect(draftTurnPilot([11, 12], 1, false)).toBe(12);
+		expect(draftTurnPilot([11, 12], 2, false)).toBeUndefined();
+		expect(draftTurnPilot([], 0, true)).toBeUndefined();
+	});
+
+	it('deriva il giro corrente dalla serpentina', () => {
+		const value = state();
+		value.snapshot!.cards[0].chosen_by = 11;
+		value.snapshot!.cards[1].chosen_by = 12;
+		value.snapshot!.cards.push(
+			...Array.from({ length: 3 }, (_, index) => ({
+				slot_id: index + 6,
+				name: 'Carta',
+				path: 'cards/a.webp',
+				chosen_by: null
+			}))
+		);
+		value.snapshot!.picks = [1, 2];
+		value.snapshot!.current_pilot_id = 12;
+		const view = draftPickingView(value);
+		expect(view.coherent).toBe(true);
+		expect(view.round).toBe(2);
+		expect(view.rounds).toBe(4);
+		expect(view.pickedCards.map((item) => item.pilot.pilot_id)).toEqual([11, 12]);
+		value.snapshot!.first_race = false;
+		expect(draftPickingView(value).rounds).toBe(1);
+	});
+
 	it('permette al proprietario del pilota, non al semplice gestore', () => {
 		const value = state();
 		expect(draftPickingView(value).canChoose).toBe(true);

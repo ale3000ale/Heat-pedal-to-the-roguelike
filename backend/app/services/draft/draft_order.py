@@ -33,12 +33,57 @@ def draft_order(
     return ordered + newcomers
 
 
-def has_draft_copies(pool: Sequence[CardEntry], present_count: int) -> bool:
-    """Verifica se le copie disponibili coprono N piloti e tre carte residue.
+FIRST_RACE_PICKS = 4
+FIRST_RACE_ROW = 5
 
-    Parametri: pool gia validata, numero positivo dei presenti. Ritorna bool;
-    non estrae carte e non modifica la pool. Conteggio non valido: ValueError.
+
+def picks_per_pilot(first_race: bool) -> int:
+    """Scelte spettanti a ogni presente: quattro alla prima gara, una dopo."""
+    if type(first_race) is not bool:
+        raise ValueError("Riferimento prima gara non valido")
+    return FIRST_RACE_PICKS if first_race else 1
+
+
+def required_draft_copies(present_count: int, first_race: bool) -> int:
+    """Copie necessarie nella pool: quattro scelte a testa piu il tavolo da cinque.
+
+    Parametri: numero positivo dei presenti e riferimento prima gara. Ritorna la
+    soglia minima; non legge la pool. Conteggio non valido: ValueError.
     """
     if type(present_count) is not int or present_count < 1:
         raise ValueError("Serve almeno un pilota presente")
-    return sum(card.copies for card in pool) >= present_count + 3
+    if not first_race:
+        return present_count + 3
+    return present_count * FIRST_RACE_PICKS + FIRST_RACE_ROW
+
+
+def has_draft_copies(pool: Sequence[CardEntry], present_count: int, *,
+                     first_race: bool = False) -> bool:
+    """Verifica se le copie disponibili coprono le scelte della procedura.
+
+    Parametri: pool gia validata, numero positivo dei presenti, riferimento
+    prima gara. Ritorna bool; non estrae carte e non modifica la pool.
+    Conteggio non valido: ValueError.
+    """
+    return sum(card.copies for card in pool) >= required_draft_copies(present_count, first_race)
+
+
+def turn_pilot(order: Sequence[int], made: int, first_race: bool) -> int:
+    """Pilota di turno secondo l'ordine confermato.
+
+    Alla prima gara i giri si alternano: il primo segue l'ordine, il secondo lo
+    inverte, e cosi via. Dopo la prima gara resta una sola scelta per pilota.
+    Parametri: ordine dei presenti, scelte gia registrate, riferimento prima
+    gara. Ritorna l'identificativo del pilota. Indici non validi: ValueError.
+    """
+    total = len(order)
+    if total < 1:
+        raise ValueError("Serve almeno un pilota presente")
+    if type(made) is not int or made < 0 or made >= total * picks_per_pilot(first_race):
+        raise ValueError("Turno non disponibile")
+    if not first_race:
+        return order[made]
+    round_index, position = divmod(made, total)
+    if round_index % 2 == 1:
+        position = total - 1 - position
+    return order[position]

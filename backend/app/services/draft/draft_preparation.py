@@ -54,9 +54,9 @@ def open_preparation(db: Session, championship_id: int, user_id: int) -> DraftPr
             ids.extend((pilot.inventory_deck_id, pilot.game_deck_id))
         snapshot = capture_snapshot(db, ids)
         first_race = db.scalar(select(Race.id).where(Race.championship_id == championship_id).limit(1)) is None
-        state = DraftState(format_version=1, phase="attendance", first_race=first_race,
+        state = DraftState(format_version=2, phase="attendance", first_race=first_race,
             participants=[DraftParticipant(pilot_id=p.id, user_id=p.user_id, name=p.name, present=True) for p in entrants],
-            order=[], cards=[], picks=[], preview_slot_id=None, ready=[])
+            order=[], cards=[], row=[], picks=[], preview_slot_id=None, ready=[])
         preparation = DraftPreparation(championship_id=championship_id, creator_user_id=user_id,
             phase=state.phase, state_json=state.model_dump_json(), snapshot_json=snapshot.model_dump_json())
         db.add(preparation)

@@ -114,6 +114,7 @@ describe('zoom per copia nello store draft', () => {
 		await env.store.refresh();
 		env.store.toggleZoom(1);
 		env.value.version = 3;
+		env.value.first_race = false;
 		env.value.cards[0].chosen_by = 11;
 		env.value.picks = [1];
 		env.value.current_pilot_id = 12;
