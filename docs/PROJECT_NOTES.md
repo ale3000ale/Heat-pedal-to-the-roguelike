@@ -67,7 +67,7 @@ regole del Negozio. Dettagli in PHASE_15_CLOSURE.md.
 
 | Percorso | Contenuto |
 |---|---|
-| `heat.py` | Menu e comandi: `setup`, `start`, `migrate`, `test`, `check` |
+| `heat.py` | Menu e comandi: `setup`, `start`, `production`, `migrate`, `test`, `check`, `images` |
 | `backend/` | FastAPI, SQLAlchemy, Alembic (SQLite) |
 | `backend/app/api/` | Router: `auth`, `teams`, `pilots`, `championships`, `races`, `pools`, `admin` e quelli del Negozio; per la fase 13 anche `race_review.py` (revisione, riepilogo, correzioni) e `card_admin.py` (caricamento ed eliminazione delle carte, prefisso `/api/admin/cards`, registrato in `main.py` prima del router `admin`); `site.py` (QR di accesso, prefisso `/api/site`); dipendenze in `deps.py` |
 | `backend/app/config.py` | `DATABASE_URL`, cookie di sessione, `MEDIA_DIR` (`backend/media`), `CARD_IMAGE_SIZE` (560x870) e `MAX_CARD_UPLOAD_BYTES` (dimensione massima del file caricato) |
@@ -78,9 +78,11 @@ regole del Negozio. Dettagli in PHASE_15_CLOSURE.md.
 | `backend/alembic/versions/` | Migrazioni (elenco nella sezione 11 della specifica) |
 | `backend/media/cards/` | Immagini delle carte (vedi sotto) |
 | `backend/media/pack/` | Immagini dei pacchetti (`defaultIllustration`, `illustration`) |
+| `backend/json/` | JSON di mappe ed eventi (`maps.json`, `events.json`) usati dallo strumento di sviluppo |
 | `backend/tests/` | Test; `conftest.py` crea un database SQLite in memoria con `create_all` (senza migrazioni) |
 | `frontend/` | SvelteKit; pagine in `src/routes`, codice condiviso in `src/lib` |
 | `tools/check-frontend.mjs` | format, check, lint e test del frontend in sequenza |
+| `tools/image_tool/` | Web app locale per media e JSON di mappe ed eventi (FastAPI, Pillow, pagina statica e test isolati) |
 | `.github/` | CI: test backend e controlli frontend a ogni pull request |
 | `docs/` | Specifica, stato, note, domande aperte, progetto e schema del Negozio, specifica della fase 13; documenti storici di bootstrap e autenticazione |
 
@@ -90,6 +92,7 @@ regole del Negozio. Dettagli in PHASE_15_CLOSURE.md.
 - Dopo un `git pull` o un cambio di ramo: `python heat.py migrate` (l'avvio migra comunque da solo).
 - Test backend: `python heat.py test` (224 test alla chiusura della fase 11, 248 alla fine della 12a, 447 prima della 13e, 474 dopo la 13e: gli ultimi due numeri sono esiti riferiti dall'autore in locale). Controlli frontend: `python heat.py check`.
 - Ridimensionare le carte, da `backend`: `python -m app.scripts.resize_cards [cartella] [--dry-run]`.
+- Aprire lo strumento di sviluppo per media e JSON: `python heat.py images` (porta predefinita 8765; `--port` e `--no-browser` facoltativi). Test dello strumento, da radice: `backend/.venv/Scripts/python.exe -m unittest tools.image_tool.tests.test_app tools.image_tool.tests.test_conversion tools.image_tool.tests.test_json_store -v`.
 - Il lint del frontend (`npm run lint`) esegue `prettier --check` e `eslint`: dopo ogni modifica a un file `.svelte` o `.ts` conviene lanciare `npx prettier --write` sul file (le righe troppo lunghe sono la causa più comune di errore).
 - Dopo un'unione di teste Alembic, `alembic downgrade -1` dà "Ambiguous walk": si usa la revisione precisa.
 
@@ -512,3 +515,21 @@ Backend: `GET /api/site/qr` autenticato (401 senza sessione) restituisce `{ url,
 Frontend: `lib/site/site-qr.ts` (`fetchSiteQr`, `isLocalOnlyUrl`) con `site-qr.spec.ts`; `components/shared/site-qr-dialog.svelte`; icona `qr` in `racing-icon.svelte`; tasto in `nav-menu.svelte`; stato `qrOpen` e popup in `routes/+layout.svelte`. Il QR del terminale del launcher resta invariato.
 
 Controlli locali osservati: backend 928 test passati, un warning e 14 subtest; frontend 716 test passati su 86 file, check con 0 errori e 0 warning, build riuscita. `npm run lint` non è riuscito su 9 file preesistenti per i fine riga CRLF del checkout Windows; con `--end-of-line auto` gli stessi file passano e i file di questa modifica passano il controllo predefinito. L'autore ha riferito esito positivo del collaudo dal telefono il 22 novembre 2026.
+
+## Strumento di sviluppo per media e JSON - 23 novembre 2026
+
+`tools/image_tool` è una web app locale avviata da `python heat.py images` (voce in fondo al menu, porta predefinita 8765). La barra `Media` carica più immagini in qualsiasi sottocartella di `backend/media`: anteprima WebP, nome proposto, "Salva immagini" o Invio; ridimensionamento nella scatola 560x870 con rapporto mantenuto, WebP qualità 90, nome minuscolo a trattini e suffisso `-2`, `-3` se il file esiste. I file esistenti non vengono sovrascritti e gli originali caricati non vengono toccati.
+
+Il menu `JSON` apre `Mappe` o `Eventi`: le schede da `backend/json/maps.json` e `backend/json/events.json` mostrano immagine e valori affiancati. Un clic apre la modifica con `Salva` (dopo conferma) e `Annulla`; il pulsante in alto a destra aggiunge un elemento vuoto. Il form chiede prima il path e poi il nome: scegliendo un'immagine dall'esploratore interno, il nome si compila con il nome del file senza estensione e resta modificabile. L'esploratore `/api/media/browse` parte da `backend/media`, mostra solo il contenuto della cartella corrente con breadcrumb cliccabile e pulsante `Su`; si può entrare nelle sottocartelle ma non uscire da `backend/media`, e la ricerca filtra solo la cartella aperta. La cartella usata per ultima è salvata separatamente per Eventi e Mappe in `tools/image_tool/state.json` tramite `GET`/`POST /api/media/last-folder` e viene riproposta anche dopo aver chiuso e riaperto l'applicazione; se la cartella non esiste più si riparte dalla radice. L'immagine scelta, o quella già associata a un elemento esistente, viene riprodotta in cima alla finestra di modifica sopra i campi. Il path deve essere un file esistente dentro `backend/media`; nome e path sono univoci case-insensitive e i duplicati mostrano `errore elemento già esistente`. Ogni elemento ha un `id` intero nascosto, autogenerato incrementale e conservato in modifica; un `id` inviato dal client viene ignorato. I numeri sono interi non negativi, senza pulsanti incrementali né freccette native. Il JSON delle mappe ha anche `sezioni`, lista di interi non negativi (lista vuota valida): nel form il campo `Numero sezioni` genera N piccoli input numerici per comporla. All'apertura di un JSON le chiavi sconosciute vengono eliminate e i campi mancanti, vuoti o non validi vengono impostati a `null` e riscritti in modo atomico; l'`id` resta un intero positivo univoco, mentre i duplicati di nome o path vengono solo segnalati. Le schede con errori salgono in cima e mostrano un triangolo rosso grande e semi-trasparente al centro dell'immagine: cliccandolo si apre la modifica con i campi problematici evidenziati in rosso. Se il JSON non esiste all'apertura della sezione, il backend lo crea vuoto e la UI mostra `File JSON creato` con il solo pulsante `OK`. Codice: `tools/image_tool/app.py` (API `/api/destinations`, `/api/media/browse`, `/api/media/last-folder`, `/api/data/{kind}`, `/api/data/{kind}/{index}`, `/api/upload`, `/api/staged/{id}`, `/api/save` e mount `/media`), `json_store.py` (validazione, riparazione, ID e scrittura atomica), `conversion.py`, `static/` (UI). Test isolati in `tools/image_tool/tests/`: `backend/.venv/Scripts/python.exe -m unittest tools.image_tool.tests.test_app tools.image_tool.tests.test_conversion tools.image_tool.tests.test_json_store -v` da radice. Nessuna migrazione e nessuna dipendenza nuova.
+
+Le 33 immagini esistenti (23 eventi, 10 mappe) sono state convertite in WebP da 560 px di larghezza (altezze 349-374, circa 1966 KB); i JPG sono stati rimossi dopo la verifica e restano nella storia git e nei backup dell'autore. L'autore controllerà visivamente i WebP.
+
+## Preparazione della prossima gara - 23 novembre 2026
+
+Solo punti di ingresso verificati; flusso, test e limiti sono nella scheda
+`docs/kb/sottosistemi/setup-prossima-gara.md`, che non viene ripetuta qui.
+
+- API: `POST /api/championships/{championship_id}/setup` in `backend/app/api/championship/championships.py:106-127`, con prefisso registrato in `backend/app/main.py:69` e dipendenza `JudgeUser` in `backend/app/api/deps.py:58-65`.
+- Servizio: `backend/app/services/championship/race_setup.py:56-96`; cartelle e scelta delle immagini in `:16-19` e `:34-53`.
+- Persistenza: `backend/app/db/models/championship.py:46-47` e migrazione `backend/alembic/versions/b8f4e2a1c7d9_next_race_setup.py:5-20`; pulizia dei percorsi in `backend/app/services/championship/championships.py:164-165` e `backend/app/services/race/races.py:209-213`.
+- Frontend: `frontend/src/routes/championships/[id]/+page.svelte:40-41,63-69,200-224,651-667,741-755` e helper `frontend/src/lib/championship/next-race-setup.ts:6-18`.

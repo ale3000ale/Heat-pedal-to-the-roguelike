@@ -71,6 +71,9 @@ export interface Entrant {
 // Campionato con i piloti iscritti.
 export interface ChampionshipDetail extends Championship {
 	pilots: Entrant[];
+	// Percorsi relativi a media delle carte estratte per la prossima gara.
+	next_map_path: string | null;
+	next_event_path: string | null;
 }
 
 // Tipo di una pool di carte: modifiche o sponsor.

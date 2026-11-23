@@ -42,6 +42,9 @@ class Championship(GoldRulesMixin, Base):
     pool_deck_id = Column(Integer, ForeignKey("deck.id"), nullable=True)
     # Copia della pool degli sponsor.
     sponsor_pool_deck_id = Column(Integer, ForeignKey("deck.id"), nullable=True)
+    # Mappa ed evento estratti per la prossima gara; null finché non sono stati preparati.
+    next_map_path = Column(String, nullable=True)
+    next_event_path = Column(String, nullable=True)
     __table_args__ = (UniqueConstraint("name_key", name="uq_championship_name_key"),)
 
 

@@ -12,6 +12,7 @@
 	import { raceStatusView } from '$lib/race/race-status';
 	import { loadPollIntervalMs } from '$lib/cards/card-poll.svelte';
 	import { startChampionshipLive } from '$lib/championship/championship-live';
+	import { nextRaceImageUrl, nextRaceName } from '$lib/championship/next-race-setup';
 	import type { CardGift } from '$lib/cards/card-play-types';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
 	import type { Race, Standing } from '$lib/race/race-types';
@@ -22,6 +23,7 @@
 	import PilotPickerDialog from '$lib/components/pilots/pilot-picker-dialog.svelte';
 	import PilotCardPlays from '$lib/components/pilots/pilot-card-plays.svelte';
 	import CardGiftPopup from '$lib/components/cards/card-gift-popup.svelte';
+	import ConfirmDialog from '$lib/components/shared/confirm-dialog.svelte';
 	import RacingIcon from '$lib/components/shared/racing-icon.svelte';
 
 	// Recuperato durante l'inizializzazione, mai dentro un gestore di clic.
@@ -35,6 +37,8 @@
 	let raceError = $state<string | null>(null);
 	let busy = $state(false);
 	let settingsOpen = $state(false);
+	let setupConfirmOpen = $state(false);
+	let startConfirmOpen = $state(false);
 	let enrollOpen = $state(false);
 	let deckOpen = $state(false);
 	let gifts = $state<CardGift[]>([]);
@@ -56,6 +60,13 @@
 	);
 	let raceInProgress = $derived(races.some((race) => race.participants === 0));
 	let raceUnfinished = $derived(races.some((race) => race.status !== 'closed'));
+	let mapName = $derived(championship ? nextRaceName(championship.next_map_path) : null);
+	let mapUrl = $derived(championship ? nextRaceImageUrl(championship.next_map_path) : null);
+	let eventName = $derived(championship ? nextRaceName(championship.next_event_path) : null);
+	let eventUrl = $derived(championship ? nextRaceImageUrl(championship.next_event_path) : null);
+	let setupReady = $derived(
+		mapName !== null && mapUrl !== null && eventName !== null && eventUrl !== null
+	);
 	let canGift = $derived(
 		championship !== null && !championship.is_closed && auth.canManageRaces && raceInProgress
 	);
@@ -116,6 +127,8 @@
 		raceError = null;
 		busy = false;
 		settingsOpen = false;
+		setupConfirmOpen = false;
+		startConfirmOpen = false;
 		enrollOpen = false;
 		deckOpen = false;
 		if (!userId) return;
@@ -179,6 +192,35 @@
 	function openDeck() {
 		if (deckMode === 'choose') deckOpen = true;
 		else if (enrolled.length > 0) goToDeck(enrolled[0]);
+	}
+
+	/** Estrae mappa ed evento, poi rilegge lo snapshot con la stessa coda live.
+	 * Dopo await aggiorna messaggi e busy solo per la stessa pagina e generazione.
+	 */
+	async function setupRace(): Promise<void> {
+		if (busy || !championship) return;
+		const active = currentLive;
+		const championshipId = Number(page.params.id);
+		const sessionKey = auth.sessionKey;
+		if (championship.id !== championshipId) {
+			raceError = 'Campionato non disponibile: rileggi la pagina.';
+			return;
+		}
+		const isCurrent = () =>
+			active === currentLive &&
+			sessionKey === auth.sessionKey &&
+			championshipId === Number(page.params.id);
+		raceError = null;
+		busy = true;
+		try {
+			await api(`/championships/${championshipId}/setup`, { method: 'POST' });
+			if (isCurrent()) await active?.refresh();
+		} catch (cause) {
+			if (isCurrent())
+				raceError = cause instanceof Error ? cause.message : 'Estrazione non riuscita';
+		} finally {
+			if (isCurrent()) busy = false;
+		}
 	}
 
 	/** Apre la preparazione nel registro globale, senza creare direttamente una gara.
@@ -369,6 +411,60 @@
 			</div>
 		</div>
 
+		{#if setupReady && !championship.is_closed}
+			<div class="overflow-hidden rounded-2xl border border-red-500/30 bg-[#121622] shadow-xl">
+				<div
+					class="flex flex-wrap items-center justify-between gap-3 border-b border-red-500/20 bg-[#1a1218] px-5 py-4"
+				>
+					<div class="flex items-center gap-2.5">
+						<div
+							class="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/20 text-red-400"
+						>
+							<RacingIcon name="flags" size="sm" />
+						</div>
+						<div>
+							<h2 class="font-racing text-2xl font-bold tracking-wide text-white uppercase">
+								PROSSIMA GARA
+							</h2>
+							<p class="mt-0.5 text-xs text-muted-foreground">
+								Mappa ed evento estratti per la gara successiva
+							</p>
+						</div>
+					</div>
+					<span class="flex items-center gap-2 text-red-400">
+						<span class="setup-spia h-2.5 w-2.5 rounded-full bg-red-500"></span>
+						<span class="font-racing text-xs font-bold tracking-wider uppercase">In attesa</span>
+					</span>
+				</div>
+				<div class="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
+					<figure class="overflow-hidden rounded-xl border border-white/10 bg-[#161a26]">
+						<figcaption
+							class="border-b border-white/10 px-4 py-2 font-racing text-sm font-bold tracking-wider text-white uppercase"
+						>
+							{mapName}
+						</figcaption>
+						<img
+							src={mapUrl}
+							alt={`Mappa ${mapName}`}
+							class="h-56 w-full object-contain p-3 sm:h-64"
+						/>
+					</figure>
+					<figure class="overflow-hidden rounded-xl border border-white/10 bg-[#161a26]">
+						<figcaption
+							class="border-b border-red-500/20 px-4 py-2 font-racing text-sm font-bold tracking-wider text-red-400 uppercase"
+						>
+							EVENTO: {eventName}
+						</figcaption>
+						<img
+							src={eventUrl}
+							alt={`Evento ${eventName}`}
+							class="h-56 w-full object-contain p-3 sm:h-64"
+						/>
+					</figure>
+				</div>
+			</div>
+		{/if}
+
 		<!-- Grand Prix Leaderboard / Classifica Ufficiale -->
 		<div class="overflow-hidden rounded-2xl border border-white/10 bg-[#121622] shadow-xl">
 			<div
@@ -555,7 +651,7 @@
 				{#if auth.canManageRaces && !championship.is_closed}
 					<Button
 						size="sm"
-						onclick={createRace}
+						onclick={() => (setupReady ? (startConfirmOpen = true) : (setupConfirmOpen = true))}
 						disabled={busy ||
 							$draftHost.busy ||
 							$draftHost.status === 'blocked' ||
@@ -566,7 +662,7 @@
 							: ''}"
 					>
 						<RacingIcon name="flags" size="xs" class="mr-1.5" />
-						Nuova Gara
+						{setupReady ? 'AVVIA GARA' : 'SETUP GARA'}
 					</Button>
 				{/if}
 			</div>
@@ -641,6 +737,22 @@
 				ondeleted={afterDelete}
 			/>
 		{/if}
+
+		<ConfirmDialog
+			bind:open={setupConfirmOpen}
+			title="Setup gara"
+			message="Vuoi preparare la prossima gara?"
+			confirmLabel="Prepara"
+			onconfirm={setupRace}
+		/>
+
+		<ConfirmDialog
+			bind:open={startConfirmOpen}
+			title="Avvia gara"
+			message="Vuoi iniziare la gara?"
+			confirmLabel="Avvia"
+			onconfirm={createRace}
+		/>
 
 		<EnrollPilotDialog
 			bind:open={enrollOpen}

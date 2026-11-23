@@ -130,10 +130,10 @@ Nota per l'automazione: `python heat.py test` e `python heat.py check` non propa
 | `backend/media/` | Immagini delle carte, servite su `/media`. |
 | `frontend/src/routes/` | Pagine SvelteKit. |
 | `frontend/src/lib/` | Logica riusabile e componenti, con i test accanto ai file. |
-| `tools/` | Avvio e gateway LAN, controlli del frontend. |
+| `tools/` | Avvio e gateway LAN, controlli del frontend, strumento immagini di mappe ed eventi. |
 | `docs/` | Specifica, stato, note di lavoro e documentazione delle fasi. |
 | `database/` | Riferimento dello schema del database. |
-| `heat.py` | Setup, avvio, migrazioni, test, controlli e produzione. |
+| `heat.py` | Setup, avvio, migrazioni, test, controlli, produzione e strumento immagini. |
 
 ## Immagini delle carte
 
@@ -144,6 +144,16 @@ python -m app.scripts.resize_cards [cartella] [--dry-run]
 ```
 
 Le immagini dei pacchetti del Negozio stanno in `backend/media/pack/`.
+
+## Immagini di mappe ed eventi
+
+Le immagini stanno in `backend/media/board/maps` e `backend/media/board/events`. Per importarle apri lo strumento locale dal menu di `heat.py` o con:
+
+```
+python heat.py images
+```
+
+Si apre una pagina su `http://127.0.0.1:8765`. Scegli la cartella di destinazione (per esempio `events` o `maps`), carica una o più immagini e controlla anteprima e nome proposto: Invio o "Salva immagini" scrive i file, e se non cambi il nome resta quello del file caricato. Ogni immagine viene ridimensionata dentro la scatola 560x870 mantenendo il rapporto (le orizzontali restano orizzontali), convertita in WebP qualità 90 e salvata con un nome minuscolo a trattini; se il file esiste già riceve `-2`, `-3`, quindi nulla viene sovrascritto. La cartella deve stare dentro `backend/media/board`; gli originali caricati non vengono toccati. Opzioni: `python heat.py images --port 8765 --no-browser`.
 
 ## Documentazione
 

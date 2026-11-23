@@ -44,16 +44,21 @@ def _sql(engine):
 def _seed(engine):
     with Session(engine) as db:
         user = User(username="migration", password="unused-test-hash", role="player")
-        championship = Championship(name="Migration", name_key="migration")
         decks = [Deck(cards="[]") for _ in range(3)]
-        db.add_all([user, championship, *decks])
+        db.add_all([user, *decks])
         db.flush()
+        # Questa revisione non ha ancora le colonne del setup: inserimento Core
+        # con le sole colonne presenti, senza usare il modello corrente.
+        result = db.execute(
+            Championship.__table__.insert().values(name="Migration", name_key="migration")
+        )
+        championship_id = result.inserted_primary_key[0]
         pilot = Pilot(
             name="Migration Pilot", name_key="migration pilot", user_id=user.id,
             inventory_deck_id=decks[0].id, sponsor_inventory_deck_id=decks[1].id,
             game_deck_id=decks[2].id,
         )
-        race = Race(championship_id=championship.id, number=1)
+        race = Race(championship_id=championship_id, number=1)
         db.add_all([pilot, race])
         db.flush()
         for gift_id, seen_at in [(7, None), (41, datetime(2026, 10, 20, 12, 30))]:

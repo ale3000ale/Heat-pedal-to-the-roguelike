@@ -164,6 +164,20 @@ def production_menu():
     production()
 
 
+def image_tool(port=8765, open_browser=True):
+    """Avvia la web app locale per le immagini di mappe ed eventi."""
+    if not VENV_PY.exists():
+        fail("Ambiente non pronto. Scegli prima 'Setup'")
+    cmd = [VENV_PY, "-m", "tools.image_tool", "--port", str(port)]
+    if not open_browser:
+        cmd.append("--no-browser")
+    info(f"Avvio dello strumento immagini su http://{HOST}:{port}")
+    try:
+        run(cmd, ROOT)
+    except KeyboardInterrupt:
+        info("Strumento immagini arrestato")
+
+
 def run_tests():
     if not VENV_PY.exists():
         fail("Ambiente non pronto. Scegli prima 'Setup'")
@@ -186,6 +200,7 @@ MENU = [
     ("Esegui i test del backend", run_tests),
     ("Controlli del frontend (format, check, lint, test)", run_checks),
     ("Produzione Wi-Fi/LAN (build, senza migrazioni automatiche)", production_menu),
+    ("Strumento immagini di mappe ed eventi (web locale)", image_tool),
 ]
 
 
@@ -225,6 +240,11 @@ def main():
     sub.add_parser("migrate")
     sub.add_parser("test")
     sub.add_parser("check")
+    p_images = sub.add_parser(
+        "images", help="Strumento web per le immagini di mappe ed eventi"
+    )
+    p_images.add_argument("--port", type=int, default=8765)
+    p_images.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
     try:
         if args.command == "setup":
@@ -239,6 +259,8 @@ def main():
             run_tests()
         elif args.command == "check":
             run_checks()
+        elif args.command == "images":
+            image_tool(args.port, not args.no_browser)
         else:
             menu()
     except ValueError as exc:
