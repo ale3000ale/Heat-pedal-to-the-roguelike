@@ -57,7 +57,9 @@ function snapshot(gifts: PilotGiftNotification[] = []): ChampionshipSnapshot {
 			date: '2026-10-20',
 			is_closed: false,
 			pilots_count: 1,
-			pilots: [{ id: 1, name: 'Pilota', team_id: null, point: 0 }]
+			pilots: [{ id: 1, name: 'Pilota', team_id: null, point: 0 }],
+			next_map_path: null,
+			next_event_path: null
 		},
 		standings: [],
 		races: [],

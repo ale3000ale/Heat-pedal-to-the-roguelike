@@ -1,5 +1,6 @@
 export const DOMAIN_EVENTS = [
 	'championship.pilots_changed',
+	'championship.setup_changed',
 	'card.gifted',
 	'card.gift_undone',
 	'card.played',

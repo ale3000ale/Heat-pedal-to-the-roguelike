@@ -7,7 +7,7 @@ const body = { championship_id: 1, pilot_id: 2, payload: { race_id: 3 } };
 describe('protocollo SSE', () => {
 	it.each(DOMAIN_EVENTS)('accetta %s con cursore int64 esatto', (type) => {
 		const value =
-			type === 'championship.pilots_changed'
+			type === 'championship.pilots_changed' || type === 'championship.setup_changed'
 				? { championship_id: 1, pilot_id: null, payload: {} }
 				: type === 'draft.changed'
 					? { championship_id: 1, pilot_id: null, payload: { preparation_id: 4 } }
@@ -57,6 +57,17 @@ describe('protocollo SSE', () => {
 		expect(parseStreamEvent('resync', '{"reason":"altro"}', '1')).toBeNull();
 		expect(parseStreamEvent('auth.expired', '{"card":"privata"}', '')).toBeNull();
 	});
+});
+
+it('rifiuta dettagli pilota e payload sul segnale di setup', () => {
+	expect(parseStreamEvent('championship.setup_changed', JSON.stringify(body), '1')).toBeNull();
+	expect(
+		parseStreamEvent(
+			'championship.setup_changed',
+			JSON.stringify({ championship_id: 1, pilot_id: null, payload: { map: 'segreta' } }),
+			'1'
+		)
+	).toBeNull();
 });
 
 it('rifiuta dettagli pilota e payload sul segnale iscrizioni', () => {

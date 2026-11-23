@@ -51,6 +51,14 @@ Sul ramo `feat/0.9-mappe-eventi` lo strumento per le immagini di mappe ed eventi
 
 Le 33 immagini già presenti (23 eventi, 10 mappe) sono state convertite: tutte WebP da 560 px di larghezza, altezze 349-374, circa 1966 KB in totale; i JPG originali sono stati rimossi dopo la verifica e restano nella storia git e nei backup dell'autore. Controlli locali osservati: 20 test dello strumento passati; suite backend completa con 928 test passati, un warning e 14 subtest; `python heat.py --help` e `python heat.py images --help` riusciti; avvio reale su porta 8799 con verifica di `GET /`, `/api/destinations`, `/static/app.js` e `/static/style.css`; prova nel browser headless con caricamento, anteprima 560x315 e scarto, senza salvataggio; `git diff --check` pulito. L'autore controllerà visivamente i WebP e proverà lo strumento. Nessun risultato CI letto e nessun merge autorizzato.
 
+## Preparazione della prossima gara (0.9) - 2026-11-23
+
+Implementazione presente sul commit `21e17e637b43528d7320e88f0af5623db7158ee9`, letta dal codice: `POST /api/championships/{championship_id}/setup` per admin e giudice, servizio `race_setup.py` con estrazione protetta da lock, colonne `next_map_path` e `next_event_path` con migrazione `b8f4e2a1c7d9`, pulsante `SETUP GARA` / `AVVIA GARA`, sezione "PROSSIMA GARA", segnale `championship.setup_changed` e pulizia dei percorsi alla prima registrazione dei risultati o alla chiusura del campionato. Mappa completa e citazioni nella scheda `docs/kb/sottosistemi/setup-prossima-gara.md`.
+
+Risultati riferiti dalla fase precedente, non ri-osservati in questa fase: backend 935 test con un warning e 14 subtest; 18 test mirati; frontend `npm run check` senza errori, 721 test e build riuscita; `npm run lint` non riuscito su 15 file preesistenti fuori scope; collaudo visivo dell'autore riferito positivo. Nessun risultato CI letto.
+
+Verifiche non rieseguite: suite applicativa, test mirati, browser, migrazioni e database reale. Questo aggiornamento è documentale e non dichiara superati i controlli della fase precedente.
+
 ## Draft della prima gara (0.9) - 2026-11-22
 
 Sul ramo `feat/0.9-draft-prima-gara` la draft della prima gara implementa quattro scelte per pilota, un tavolo da cinque carte con ordine a serpentina, una nuova carta dopo ogni scelta e la restituzione del tavolo residuo alla pool a fine giro. La soglia della pool e 4N+5, mentre dalle gare successive restano N+3 carte e una scelta. Controlli locali osservati: backend 906 test passati, un warning e 14 subtest; frontend 705 test passati, check, lint e build riusciti. L'autore ha riferito esito positivo del collaudo manuale dal browser. Nessun risultato CI letto e nessun merge autorizzato.

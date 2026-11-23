@@ -520,3 +520,13 @@ Controlli locali osservati: backend 928 test passati, un warning e 14 subtest; f
 `tools/image_tool` è una web app locale avviata da `python heat.py images` (voce in fondo al menu, porta predefinita 8765). Si sceglie una cartella dentro `backend/media/board`, si caricano più immagini e per ognuna si vede l'anteprima WebP con il nome proposto. "Salva immagini" o Invio sposta i file: ridimensionamento nella scatola 560x870 con rapporto mantenuto, WebP qualità 90, nome minuscolo a trattini e suffisso `-2`, `-3` se il file esiste. I file esistenti non vengono sovrascritti e gli originali caricati non vengono toccati. Codice: `tools/image_tool/app.py` (FastAPI e API `/api/destinations`, `/api/upload`, `/api/staged/{id}`, `/api/save`), `conversion.py` (logica), `static/` (pagina). Test in `tools/image_tool/tests/` con `backend/.venv/Scripts/python.exe -m unittest tools.image_tool.tests.test_conversion tools.image_tool.tests.test_app -v` da radice. Nessuna migrazione o dipendenza nuova: usa FastAPI, uvicorn, Pillow e python-multipart già in `backend/.venv`.
 
 Le 33 immagini esistenti (23 eventi, 10 mappe) sono state convertite in WebP da 560 px di larghezza (altezze 349-374, circa 1966 KB); i JPG sono stati rimossi dopo la verifica e restano nella storia git e nei backup dell'autore. L'autore controllerà visivamente i WebP.
+
+## Preparazione della prossima gara - 23 novembre 2026
+
+Solo punti di ingresso verificati; flusso, test e limiti sono nella scheda
+`docs/kb/sottosistemi/setup-prossima-gara.md`, che non viene ripetuta qui.
+
+- API: `POST /api/championships/{championship_id}/setup` in `backend/app/api/championship/championships.py:106-127`, con prefisso registrato in `backend/app/main.py:69` e dipendenza `JudgeUser` in `backend/app/api/deps.py:58-65`.
+- Servizio: `backend/app/services/championship/race_setup.py:56-96`; cartelle e scelta delle immagini in `:16-19` e `:34-53`.
+- Persistenza: `backend/app/db/models/championship.py:46-47` e migrazione `backend/alembic/versions/b8f4e2a1c7d9_next_race_setup.py:5-20`; pulizia dei percorsi in `backend/app/services/championship/championships.py:164-165` e `backend/app/services/race/races.py:209-213`.
+- Frontend: `frontend/src/routes/championships/[id]/+page.svelte:40-41,63-69,200-224,651-667,741-755` e helper `frontend/src/lib/championship/next-race-setup.ts:6-18`.

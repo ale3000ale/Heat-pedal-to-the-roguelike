@@ -19,6 +19,13 @@ Local web app for running Heat board-game championships. Python/FastAPI/SQLite b
 - `docs/PROJECT_SPEC.md` is the source of truth for game rules; `docs/PROJECT_NOTES.md` has the code map and working rules. Parts of `docs/` are historical phase notes — check the current-state marker blocks.
 - `tools/` holds the LAN launcher/gateway and `check-frontend.mjs`.
 
+## Knowledge base
+
+- Consult `docs/kb/INDICE.md` to orient yourself in the project.
+- Open only the references pertinent to the current task.
+- Verify current sources before making changes; KB cards are source maps, not approved requirements.
+- Do not load the whole KB into the context automatically.
+
 ## Commands (run from repo root unless noted)
 
 ```bash

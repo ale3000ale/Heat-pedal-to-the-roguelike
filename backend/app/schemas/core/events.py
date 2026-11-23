@@ -7,7 +7,7 @@ EventType = Literal[
     "card.gifted", "card.gift_undone", "card.played", "card.play_undone",
     "cards.changed", "race.started", "race.review_changed",
     "race.results_changed", "standings.changed", "championship.pilots_changed",
-    "draft.changed",
+    "championship.setup_changed", "draft.changed",
 ]
 
 
@@ -31,6 +31,15 @@ class EventCreate(BaseModel):
             self.pilot_id is not None or self.recipient_user_id is not None or self.payload
         ):
             raise ValueError("Il segnale iscrizioni deve avere riferimenti nulli e payload vuoto")
+        return self
+
+    @model_validator(mode="after")
+    def setup_signal_only(self) -> "EventCreate":
+        """Il segnale di setup resta pubblico e privo di dati aggiuntivi."""
+        if self.type == "championship.setup_changed" and (
+            self.pilot_id is not None or self.recipient_user_id is not None or self.payload
+        ):
+            raise ValueError("Il segnale di setup deve avere riferimenti nulli e payload vuoto")
         return self
 
     @model_validator(mode="after")
