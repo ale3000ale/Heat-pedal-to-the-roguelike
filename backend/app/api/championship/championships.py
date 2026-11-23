@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import AdminUser, CurrentUser, DbDep
+from app.api.deps import AdminUser, CurrentUser, DbDep, JudgeUser
 from app.schemas.championship.championship import (
     ChampionshipCreate,
     ChampionshipDetail,
@@ -25,7 +25,15 @@ from app.services.championship.championships import (
     set_gold_rules,
 )
 from app.services.championship.gold import rules_of
+from app.services.championship.race_setup import (
+    RaceSetupAlreadyExistsError,
+    RaceSetupConflictError,
+    RaceSetupFilesError,
+    prepare_next_race,
+)
+from app.services.draft.draft_guards import DraftLockedError
 from app.services.pilots.pilots import PilotInActiveChampionshipError, PilotNotFoundError
+from app.services.race.races import RaceInProgressError
 from app.services.championship.pools import PoolNotFoundError, PoolRuleError
 from app.services.shop.shop_templates import ShopTemplateEmptyError, ShopTemplateNotFoundError
 
@@ -41,6 +49,16 @@ def _read(db, championship) -> ChampionshipRead:
         date=championship.date,
         is_closed=championship.is_closed,
         pilots_count=len(list_entrants(db, championship.id)),
+    )
+
+
+def _detail(db, championship) -> ChampionshipDetail:
+    pilots = [EntrantRead.model_validate(p) for p in list_entrants(db, championship.id)]
+    return ChampionshipDetail(
+        **_read(db, championship).model_dump(),
+        pilots=pilots,
+        next_map_path=championship.next_map_path,
+        next_event_path=championship.next_event_path,
     )
 
 
@@ -82,8 +100,31 @@ def detail(championship_id: int, user: CurrentUser, db: DbDep):
         championship = get_championship(db, championship_id)
     except ChampionshipNotFoundError:
         raise NOT_FOUND
-    pilots = [EntrantRead.model_validate(p) for p in list_entrants(db, championship.id)]
-    return ChampionshipDetail(**_read(db, championship).model_dump(), pilots=pilots)
+    return _detail(db, championship)
+
+
+@router.post("/{championship_id}/setup", response_model=ChampionshipDetail)
+def setup_next_race(championship_id: int, judge: JudgeUser, db: DbDep):
+    # Estrae mappa ed evento della prossima gara (solo admin e giudice), con segnale live.
+    try:
+        return _detail(db, prepare_next_race(db, championship_id))
+    except ChampionshipNotFoundError:
+        raise NOT_FOUND
+    except ChampionshipClosedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Campionato chiuso")
+    except RaceInProgressError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "C'è già una gara in corso: va terminata prima di crearne un'altra"
+        )
+    except (DraftLockedError, RaceSetupAlreadyExistsError) as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc))
+    except RaceSetupConflictError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Setup non completato per un conflitto di scrittura; rileggi lo stato prima di riprovare",
+        )
+    except RaceSetupFilesError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc))
 
 
 @router.get("/{championship_id}/gold-rules", response_model=GoldRulesData)

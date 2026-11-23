@@ -161,6 +161,8 @@ def close_championship(db: Session, championship_id: int) -> Championship:
         if championship.is_closed:
             raise ChampionshipClosedError
         championship.is_closed = True
+        championship.next_map_path = None
+        championship.next_event_path = None
         _freeze_standings(db, championship)
         for pilot in list_entrants(db, championship.id):
             _reset_pilot(db, pilot)

@@ -14,6 +14,15 @@ def test_valid_private_event():
     assert event.model_dump()["payload"] == {"gift_id": 4}
 
 
+def test_setup_signal_must_stay_public_and_empty():
+    event = EventCreate(type="championship.setup_changed", championship_id=1)
+    assert event.payload == {}
+    with pytest.raises(ValidationError):
+        EventCreate(type="championship.setup_changed", championship_id=1, pilot_id=2)
+    with pytest.raises(ValidationError):
+        EventCreate(type="championship.setup_changed", championship_id=1, payload={"map": "x"})
+
+
 def test_payload_defaults_are_independent():
     first = EventCreate(type="standings.changed", championship_id=1)
     second = EventCreate(type="standings.changed", championship_id=1)

@@ -44,3 +44,6 @@ class ChampionshipRead(BaseModel):
 
 class ChampionshipDetail(ChampionshipRead):
     pilots: list[EntrantRead]
+    # Percorsi relativi a media delle carte estratte per la prossima gara.
+    next_map_path: str | None
+    next_event_path: str | None

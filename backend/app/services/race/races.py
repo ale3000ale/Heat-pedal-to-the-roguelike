@@ -208,6 +208,9 @@ def _set_results(db, championship_id, race_id, entries, can_correct, absent, rev
     _apply_sponsor_delta(db, old_sponsor, dict(entries))
     if not old_sponsor:
         award_race_gold(entrants, rules_of(championship), pilot_ids)
+        # La gara è disputata: mappa ed evento estratti non sono più la prossima gara.
+        championship.next_map_path = None
+        championship.next_event_path = None
         if reviewer_id is not None:
             race.review_started_at = datetime.now(timezone.utc)
             race.review_started_by_user_id = reviewer_id
