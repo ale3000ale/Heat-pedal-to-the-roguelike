@@ -141,27 +141,54 @@ come passi del setup.
   `frontend/production-server.mjs:57-61`, `frontend/production-server.mjs:63-143`,
   `frontend/production-server.mjs:145-164`.
 
-### Strumento immagini di mappe ed eventi
+### Strumento di sviluppo per media e JSON di mappe ed eventi
 
 - Avvio: `python heat.py images` passa da `heat.py:167-178`; il modulo accetta `--port` predefinita
   8765 e `--no-browser`, verifica che la porta sia libera e apre uvicorn solo su loopback:
-  `tools/image_tool/__main__.py:12-50`.
-- App locale: cartella predefinita `backend/media/board`, area di staging temporanea con ID
-  esadecimali e lock, pagina statica e API `/api/destinations`, `/api/upload`,
-  `/api/staged/{id}` (GET e DELETE) e `/api/save`; la pulizia dello staging avviene a lifespan
-  terminato: `tools/image_tool/app.py:29-35`, `tools/image_tool/app.py:38-121`,
-  `tools/image_tool/app.py:123-175`.
-- Convertitore: file fino a 25 MB, scatola massima 560x870 senza ingrandire, orientamento EXIF,
-  WebP qualità 90 scritto su temporaneo e sostituito solo dopo verifica, nomi minuscoli a trattini
-  con suffisso `-2`, `-3` se esiste già un file, destinazioni relative e confinate a
-  `backend/media/board`: `tools/image_tool/conversion.py:9-16`,
-  `tools/image_tool/conversion.py:19-33`, `tools/image_tool/conversion.py:36-69`,
+  `tools/image_tool/__main__.py:1-53`.
+- App locale: radice predefinita `backend/media`, JSON in `backend/json`, area di staging temporanea
+  con ID esadecimali e lock, pagina statica, mount `/media` e API `/api/destinations`,
+  `/api/media/browse`, `/api/media/last-folder` (GET e POST), `/api/data/{kind}` (GET e POST),
+  `/api/data/{kind}/{index}` (PUT), `/api/upload`, `/api/staged/{id}` (GET e DELETE) e `/api/save`;
+  se il JSON manca, la GET lo crea vuoto e restituisce `created: true`; se serve una riparazione la
+  GET restituisce anche `repaired: true`; la pulizia dello staging avviene a lifespan terminato:
+  `tools/image_tool/app.py:44-51`, `tools/image_tool/app.py:178-216`,
+  `tools/image_tool/app.py:221-292`, `tools/image_tool/app.py:384-426`.
+- Media: `/api/media/browse` restituisce solo le sottocartelle e le immagini della cartella richiesta,
+  con `path`, `parent` nullo alla radice e URL codificati; path assoluti, `..`, parti nascoste e file
+  vengono rifiutati e il resolved path deve restare dentro `backend/media`; le destinazioni di
+  salvataggio restano relative e confinate: `tools/image_tool/app.py:178-216`,
   `tools/image_tool/conversion.py:72-110`.
-- Salvataggio: sposta i WebP dallo staging alla destinazione scelta, usa il nome suggerito se il
-  campo è vuoto e restituisce esiti ed errori per singola immagine:
-  `tools/image_tool/app.py:177-219`.
+- Stato della cartella: `GET /api/media/last-folder?kind=...` restituisce l'ultima cartella del tipo,
+  `POST` la salva con scrittura atomica UTF-8 in `tools/image_tool/state.json` senza toccare gli altri
+  tipi; valori non validi o cartelle sparite ricadono sulla radice:
+  `tools/image_tool/app.py:58-101`, `tools/image_tool/app.py:273-292`.
+- JSON: `events.json` e `maps.json` usano modelli Pydantic con `id` intero nascosto, autogenerato
+  incrementale e conservato in modifica; campi obbligatori, `StrictInt >= 0`, path immagine esistente
+  dentro `backend/media`, unicità case-insensitive di nome e path con errore
+  `errore elemento già esistente`, e scrittura atomica UTF-8. `repair_items` all'apertura elimina le
+  chiavi sconosciute e imposta a `null` i campi mancanti o non validi, riscrivendo il file; l'ID resta
+  un intero positivo univoco e i duplicati vengono solo segnalati. `maps.json` include `sezioni`, lista
+  di interi non negativi (anche vuota): `tools/image_tool/json_store.py:17-56`,
+  `tools/image_tool/json_store.py:59-101`, `tools/image_tool/json_store.py:117-224`,
+  `tools/image_tool/json_store.py:227-290`.
+- Convertitore: file fino a 25 MB, scatola massima 560x870 senza ingrandire, orientamento EXIF e
+  WebP qualità 90 scritto su temporaneo e sostituito solo dopo verifica:
+  `tools/image_tool/conversion.py:9-69`.
+- UI: barra `Media` / `JSON` con sottomenù `Mappe` ed `Eventi`, schede con immagine e valori, modale
+  di modifica con anteprima dell'immagine in cima, path prima del nome, autofill del nome dal file,
+  conferma, aggiunta vuota, esploratore a cartelle con breadcrumb e pulsante `Su`, ricerca limitata
+  alla cartella aperta, cartella iniziale ripristinata per tipo di JSON, campo `Numero sezioni` che
+  genera N input numerici senza stepper (rimossi anche da tutti gli altri campi), schede con errori in
+  cima con triangolo rosso semi-trasparente sull'immagine che evidenzia i campi problematici, e avviso
+  `File JSON creato` con solo `OK`:
+  `tools/image_tool/static/index.html`, `tools/image_tool/static/app.js`,
+  `tools/image_tool/static/style.css`.
+- Salvataggio immagini: sposta i WebP dallo staging alla destinazione scelta, usa il nome suggerito
+  se il campo è vuoto e restituisce esiti ed errori per singola immagine:
+  `tools/image_tool/app.py:384-426`.
 
-## Test individuati (non eseguiti in questa fase)
+## Test individuati
 
 - `tools/test_lan.py`, `tools/test_production.py`, `tools/test_production_lan.py` — validazione IP e
   origini, ambiente di produzione, gateway, proxy, readiness e intestazioni.
@@ -171,32 +198,44 @@ come passi del setup.
   `frontend/production-lan.test.mjs:53-55`.
 - `tools/image_tool/tests/test_conversion.py` — ridimensionamento, nomi e destinazioni:
   `tools/image_tool/tests/test_conversion.py:24-72`.
-- `tools/image_tool/tests/test_app.py` — pagina, elenco destinazioni, upload, anteprima, salvataggio,
-  nomi e conflitti: `tools/image_tool/tests/test_app.py:18-100`.
+- `tools/image_tool/tests/test_app.py` — pagina, destinazioni, mount `/media`, navigazione a cartelle
+  con rifiuto dei path esterni e voci nascoste, ultima cartella per JSON con persistenza al riavvio,
+  upload, anteprima, salvataggio, API JSON, creazione del file mancante, riparazione all'apertura,
+  duplicati preservati, ID incrementali, percorsi non validi, JSON corrotto e marker UI (triangolo,
+  sezioni, assenza di stepper).
+- `tools/image_tool/tests/test_json_store.py` — modelli, validazione, ID generati e normalizzati,
+  riparazione dei campi e delle sezioni, duplicati preservati, path dentro `backend/media`, scrittura
+  atomica e JSON corrotto.
 - `tools/test_startup.py` — test di avvio reali di `setup`, `migrate`, `test`, `check`, sviluppo e
   produzione, disabilitati salvo `HEAT_STARTUP_TESTS=1` e con server non accesi:
   `tools/test_startup.py:1-7`, `tools/test_startup.py:95-120`.
 
-Nessun test è stato eseguito durante la generazione della scheda. I conteggi e gli esiti riportati in
-`docs/PROJECT_STATUS.md:52` sono riferiti ad altre sessioni e non qui ri-osservati.
+Nella sessione corrente sono stati eseguiti solo i tre test dello strumento: 60 test passati con
+`backend/.venv/Scripts/python.exe -m unittest tools.image_tool.tests.test_app
+tools.image_tool.tests.test_conversion tools.image_tool.tests.test_json_store -v`. Test di startup,
+suite applicativa, CI, avvio reale e browser non sono stati ri-eseguiti; gli altri conteggi in
+`docs/PROJECT_STATUS.md` restano riferiti ad altre sessioni.
 
 ## Osservato, dedotto e non verificato
 
-- **Osservato:** launcher, configurazione, proxy, gateway, strumento immagini, script richiamati dal
-  setup, test elencati e documenti di avvio.
+- **Osservato:** launcher, configurazione, proxy, gateway, strumento di sviluppo, script richiamati
+  dal setup, test elencati, documenti di avvio e 60 test dello strumento passati nella sessione
+  corrente.
 - **Dedotto dal codice:** produzione non crea il database e non applica migrazioni; il gateway non
-  accetta header inoltrati dal client e costruisce quelli verso il backend; lo strumento immagini non
-  sovrascrive i file esistenti; `start` passa `--public-url` solo al processo frontend.
-- **Non verificato:** esecuzione di comandi, porte, build, test, CI, database reale, browser,
-  codice di uscita dei comandi `test` e `check`, scattering degli header in una rete LAN effettiva.
+  accetta header inoltrati dal client e costruisce quelli verso il backend; lo strumento non
+  sovrascrive i file esistenti, valida i JSON e confina i path immagine dentro `backend/media`;
+  `start` passa `--public-url` solo al processo frontend.
+- **Non verificato:** esecuzione della suite applicativa e degli script di startup, porte, build, CI,
+  database reale, browser, interazioni click/tastiera della nuova UI, codice di uscita dei comandi
+  `test` e `check`, scattering degli header in una rete LAN effettiva.
 
 ## Fonti da ricontrollare quando cambiano le fonti pertinenti
 
 - `heat.py`, `backend/app/config.py`, `backend/app/scripts/{create_admin,seed_prototype}.py`,
   `frontend/vite.config.ts`, `tools/check-frontend.mjs`, `tools/{production,lan}.py`,
   `frontend/production-server.mjs` e i test elencati sopra.
-- `tools/image_tool/` (app, conversione, pagina statica e test) e `backend/media/board` come
-  destinazione predefinita.
+- `tools/image_tool/` (app, archivio JSON, conversione, pagina statica e test), `backend/media` come
+  radice predefinita e `backend/json` per `events.json` e `maps.json`.
 - I documenti canonici linkati all'inizio. Se cambiano i comandi del launcher, le variabili
   d'ambiente, le porte, la selezione dell'IP o la procedura di avvio, aggiornare qui i rimandi a
   `SETUP.md`, `SCRIPTS.md` e `PRODUCTION_LAN.md`.

@@ -3,75 +3,193 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Immagini di mappe ed eventi</title>
+		<title>Strumento di sviluppo — Heat</title>
 		<link rel="icon" href="data:," />
 		<link rel="stylesheet" href="/static/style.css" />
 	</head>
 	<body>
+		<header class="topbar">
+			<div class="brand">
+				<span class="brand-mark">HEAT</span>
+				<span>Strumento di sviluppo</span>
+			</div>
+			<nav class="nav" aria-label="Sezioni">
+				<button type="button" class="nav-link active" data-view="media">Media</button>
+				<div class="dropdown" id="json-dropdown">
+					<button
+						type="button"
+						class="nav-link"
+						id="json-toggle"
+						aria-expanded="false"
+						aria-haspopup="true"
+					>
+						JSON <span aria-hidden="true">▾</span>
+					</button>
+					<div class="dropdown-menu" id="json-menu" hidden>
+						<button type="button" data-view="maps">Mappe</button>
+						<button type="button" data-view="events">Eventi</button>
+					</div>
+				</div>
+			</nav>
+			<button type="button" id="add-item" class="primary add-button" hidden>
+				+ Aggiungi elemento
+			</button>
+		</header>
+
 		<main>
-			<header>
-				<p class="eyebrow">Strumento di sviluppo</p>
-				<h1>Immagini di mappe ed eventi</h1>
-				<p class="lead">
-					Carica le immagini, controlla anteprima e nome, poi salvale in
-					<code>backend/media/board</code>. Ogni file diventa WebP dentro la scatola
-					560×870, con il rapporto originale.
-				</p>
-			</header>
+			<section id="view-media" class="view">
+				<header class="page-head">
+					<p class="eyebrow">Media</p>
+					<h1>Immagini</h1>
+					<p class="lead">
+						Carica le immagini, controlla anteprima e nome, poi salvale in qualsiasi
+						sottocartella di <code>backend/media</code>. Ogni file diventa WebP dentro la
+						scatola 560×870, con il rapporto originale.
+					</p>
+				</header>
 
-			<section class="panel">
-				<label class="field">
-					<span>Cartella di destinazione</span>
-					<input
-						id="destination"
-						type="text"
-						list="destinations"
-						autocomplete="off"
-						spellcheck="false"
-					/>
-					<datalist id="destinations"></datalist>
-				</label>
-				<p class="hint">
-					Percorso relativo a <code>backend/media/board</code>. Puoi scegliere una
-					cartella esistente o scriverne una nuova.
-				</p>
+				<section class="panel">
+					<label class="field">
+						<span>Cartella di destinazione</span>
+						<input
+							id="destination"
+							type="text"
+							list="destinations"
+							autocomplete="off"
+							spellcheck="false"
+						/>
+						<datalist id="destinations"></datalist>
+					</label>
+					<p class="hint">
+						Percorso relativo a <code>backend/media</code>. Puoi scegliere una cartella
+						esistente o scriverne una nuova.
+					</p>
+				</section>
+
+				<section class="panel">
+					<label id="drop" class="drop">
+						<input
+							id="files"
+							type="file"
+							accept="image/png,image/jpeg,image/webp"
+							multiple
+							hidden
+						/>
+						<strong>Trascina qui le immagini</strong>
+						<span>oppure clicca per sceglierle</span>
+					</label>
+					<p id="status" class="status" role="status" aria-live="polite"></p>
+				</section>
+
+				<form id="save-form" class="panel" hidden>
+					<div class="queue-head">
+						<h2>Immagini da salvare</h2>
+						<button type="button" id="clear" class="ghost">Svuota elenco</button>
+					</div>
+					<ul id="queue" class="queue"></ul>
+					<div class="actions">
+						<button type="submit" id="save" class="primary">Salva immagini</button>
+						<span class="hint">
+							Invio salva con i nomi indicati; se non cambi nulla resta il nome del file
+							caricato.
+						</span>
+					</div>
+				</form>
+
+				<section id="result" class="panel result" hidden>
+					<h2>Risultato</h2>
+					<div id="result-body"></div>
+				</section>
 			</section>
 
-			<section class="panel">
-				<label id="drop" class="drop">
-					<input
-						id="files"
-						type="file"
-						accept="image/png,image/jpeg,image/webp"
-						multiple
-						hidden
-					/>
-					<strong>Trascina qui le immagini</strong>
-					<span>oppure clicca per sceglierle</span>
-				</label>
-				<p id="status" class="status" role="status" aria-live="polite"></p>
-			</section>
-
-			<form id="save-form" class="panel" hidden>
-				<div class="queue-head">
-					<h2>Immagini da salvare</h2>
-					<button type="button" id="clear" class="ghost">Svuota elenco</button>
-				</div>
-				<ul id="queue" class="queue"></ul>
-				<div class="actions">
-					<button type="submit" id="save" class="primary">Salva immagini</button>
-					<span class="hint">
-						Invio salva con i nomi indicati; se non cambi nulla resta il nome del file
-						caricato.
-					</span>
-				</div>
-			</form>
-
-			<section id="result" class="panel result" hidden>
-				<h2>Risultato</h2>
-				<div id="result-body"></div>
+			<section id="view-json" class="view" hidden>
+				<header class="page-head">
+					<p class="eyebrow">JSON</p>
+					<h1 id="json-title">Mappe</h1>
+					<p class="lead" id="json-description"></p>
+				</header>
+				<p id="json-status" class="status" role="status" aria-live="polite"></p>
+				<div id="cards" class="cards"></div>
 			</section>
 		</main>
+
+		<div id="edit-modal" class="modal" hidden>
+			<div class="modal-backdrop" data-close="edit"></div>
+			<div class="dialog" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+				<h2 id="edit-title">Modifica elemento</h2>
+				<form id="edit-form">
+					<div id="edit-preview" class="edit-preview" hidden>
+						<img id="edit-preview-image" alt="Anteprima immagine selezionata" />
+					</div>
+					<div id="edit-fields" class="edit-fields"></div>
+					<p id="edit-error" class="status error" role="alert"></p>
+					<div class="actions">
+						<button type="submit" class="primary">Salva</button>
+						<button type="button" id="edit-cancel" class="ghost">Annulla</button>
+					</div>
+				</form>
+			</div>
+		</div>
+
+		<div id="confirm-modal" class="modal" hidden>
+			<div class="modal-backdrop" data-close="confirm"></div>
+			<div
+				class="dialog small"
+				role="alertdialog"
+				aria-modal="true"
+				aria-labelledby="confirm-title"
+			>
+				<h2 id="confirm-title">Conferma salvataggio</h2>
+				<p id="confirm-message"></p>
+				<div class="actions">
+					<button type="button" id="confirm-yes" class="primary">Conferma</button>
+					<button type="button" id="confirm-no" class="ghost">Annulla</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="media-modal" class="modal" hidden>
+			<div class="modal-backdrop" data-close="media"></div>
+			<div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="media-title">
+				<h2 id="media-title">Scegli un'immagine da <code>backend/media</code></h2>
+				<label class="field">
+					<span>Cerca per nome o percorso</span>
+					<input
+						type="search"
+						id="media-search"
+						placeholder="Per esempio board/maps/ITALIA"
+						autocomplete="off"
+					/>
+				</label>
+				<p id="media-status" class="status" role="status"></p>
+				<div class="media-nav">
+					<button type="button" id="media-up" class="ghost">↑ Su</button>
+					<nav id="media-crumb" class="media-breadcrumb" aria-label="Percorso"></nav>
+				</div>
+				<div id="media-folders" class="media-folders"></div>
+				<div id="media-grid" class="media-grid"></div>
+				<div class="actions">
+					<button type="button" id="media-cancel" class="ghost">Annulla</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="notice-modal" class="modal" hidden>
+			<div class="modal-backdrop" data-close="notice"></div>
+			<div
+				class="dialog small"
+				role="alertdialog"
+				aria-modal="true"
+				aria-labelledby="notice-title"
+			>
+				<h2 id="notice-title">File JSON creato</h2>
+				<p id="notice-message"></p>
+				<div class="actions">
+					<button type="button" id="notice-ok" class="primary">OK</button>
+				</div>
+			</div>
+		</div>
+
 		<script src="/static/app.js" defer></script>
 	</body>
 </html>

@@ -1,0 +1,159 @@
+[
+  {
+    "id": 1,
+    "nome": "DEUTSCHLAND",
+    "image": "board/maps/DEUTSCHLAND.webp",
+    "giri": 2,
+    "curve": 6,
+    "caselle": 62,
+    "sezioni": [
+      12,
+      1,
+      13,
+      8,
+      7,
+      21
+    ]
+  },
+  {
+    "id": 2,
+    "nome": "ESPANA",
+    "image": "board/maps/ESPANA.webp",
+    "giri": 1,
+    "curve": 11,
+    "caselle": 109,
+    "sezioni": [
+      17,
+      4,
+      14,
+      3,
+      12,
+      21,
+      20,
+      7,
+      3,
+      3,
+      5
+    ]
+  },
+  {
+    "id": 3,
+    "nome": "FRANCE",
+    "image": "board/maps/FRANCE.webp",
+    "giri": 2,
+    "curve": 5,
+    "caselle": 60,
+    "sezioni": [
+      8,
+      7,
+      12,
+      8,
+      25
+    ]
+  },
+  {
+    "id": 4,
+    "nome": "GREAT BRITAIN",
+    "image": "board/maps/GREAT BRITAIN.webp",
+    "giri": 2,
+    "curve": 5,
+    "caselle": 63,
+    "sezioni": [
+      30,
+      15,
+      7,
+      6,
+      5
+    ]
+  },
+  {
+    "id": 5,
+    "nome": "ITALIA",
+    "image": "board/maps/ITALIA.webp",
+    "giri": 3,
+    "curve": 54,
+    "caselle": 3,
+    "sezioni": [
+      7,
+      9,
+      38
+    ]
+  },
+  {
+    "id": 6,
+    "nome": "JAPAN",
+    "image": "board/maps/JAPAN.webp",
+    "giri": 2,
+    "curve": 5,
+    "caselle": 60,
+    "sezioni": [
+      27,
+      8,
+      17,
+      2,
+      6
+    ]
+  },
+  {
+    "id": 7,
+    "nome": "MÉXICO",
+    "image": "board/maps/MÉXICO.webp",
+    "giri": 3,
+    "curve": 6,
+    "caselle": 60,
+    "sezioni": [
+      5,
+      19,
+      6,
+      6,
+      1,
+      23
+    ]
+  },
+  {
+    "id": 8,
+    "nome": "NEDERLAND",
+    "image": "board/maps/NEDERLAND.webp",
+    "giri": 3,
+    "curve": 5,
+    "caselle": 55,
+    "sezioni": [
+      4,
+      3,
+      1,
+      8,
+      30
+    ]
+  },
+  {
+    "id": 9,
+    "nome": "SOUTH AFRICA",
+    "image": "board/maps/SOUTH AFRICA.webp",
+    "giri": 2,
+    "curve": 7,
+    "caselle": 71,
+    "sezioni": [
+      7,
+      6,
+      10,
+      12,
+      9,
+      7,
+      20
+    ]
+  },
+  {
+    "id": 10,
+    "nome": "USA",
+    "image": "board/maps/USA.webp",
+    "giri": 2,
+    "curve": 4,
+    "caselle": 69,
+    "sezioni": [
+      16,
+      8,
+      24,
+      20
+    ]
+  }
+]

@@ -1,4 +1,4 @@
-"""Avvio dello strumento web per le immagini di mappe ed eventi."""
+"""Avvio dello strumento di sviluppo per media e JSON di mappe ed eventi."""
 import argparse
 import socket
 import threading
@@ -23,7 +23,7 @@ def port_is_free(port: int) -> bool:
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(
-        description="Strumento locale per importare immagini di mappe ed eventi"
+        description="Strumento locale di sviluppo per media e JSON di mappe ed eventi"
     )
     parser.add_argument(
         "--port",
@@ -42,7 +42,7 @@ def main(argv=None) -> None:
     except (ImageToolError, OSError) as exc:
         parser.error(str(exc))
     url = f"http://127.0.0.1:{args.port}/"
-    print(f"Strumento immagini pronto su {url} - Ctrl+C per fermare", flush=True)
+    print(f"Strumento di sviluppo pronto su {url} - Ctrl+C per fermare", flush=True)
     if not args.no_browser:
         timer = threading.Timer(1.0, webbrowser.open, args=[url])
         timer.daemon = True

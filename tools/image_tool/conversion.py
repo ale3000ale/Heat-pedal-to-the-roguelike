@@ -84,10 +84,10 @@ def list_destinations(root: Path) -> list[str]:
 
 
 def default_destination(destinations: list[str]) -> str:
-    for name in ("events", "maps"):
+    for name in ("board/events", "board/maps", "events", "maps"):
         if name in destinations:
             return name
-    return destinations[0] if destinations else "events"
+    return destinations[0] if destinations else "board/events"
 
 
 def resolve_destination(root: Path, value: str) -> Path:
@@ -96,15 +96,15 @@ def resolve_destination(root: Path, value: str) -> Path:
     if not value:
         raise ImageToolError("Indica la cartella di destinazione")
     if ":" in value:
-        raise ImageToolError("La cartella deve essere relativa a backend/media/board")
+        raise ImageToolError("La cartella deve essere relativa a backend/media")
     candidate = Path(value)
     if candidate.is_absolute() or candidate.drive:
-        raise ImageToolError("La cartella deve essere relativa a backend/media/board")
+        raise ImageToolError("La cartella deve essere relativa a backend/media")
     parts = candidate.parts
     if not parts or any(part in ("", ".", "..") for part in parts):
-        raise ImageToolError("La cartella deve essere una sottocartella di backend/media/board")
+        raise ImageToolError("La cartella deve essere una sottocartella di backend/media")
     root = root.resolve()
     resolved = (root / candidate).resolve()
     if resolved == root or root not in resolved.parents:
-        raise ImageToolError("La cartella deve stare dentro backend/media/board")
+        raise ImageToolError("La cartella deve stare dentro backend/media")
     return resolved
