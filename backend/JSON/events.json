@@ -1,1 +1,178 @@
-[]
+[
+  {
+    "id": 1,
+    "nome": "AFFLUENZA RECORD",
+    "image": "board/events/AFFLUENZA RECORD.webp",
+    "effetto": "Giro extra e +1 carta in mano.\nlap+1,hand+1",
+    "sponsor": 1,
+    "fotografi": "CE"
+  },
+  {
+    "id": 2,
+    "nome": "CHICANE PER UNA MAGGIORE SICUREZZA",
+    "image": "board/events/CHICANE PER UNA MAGGIORE SICUREZZA.webp",
+    "effetto": "si possono scartare carte Heat durante il passo 8.",
+    "sponsor": 1,
+    "fotografi": "C"
+  },
+  {
+    "id": 3,
+    "nome": "CONSULTARE I MECCANICI",
+    "image": "board/events/CONSULTARE I MECCANICI.webp",
+    "effetto": "In ordine di griglia di partenza si sceglie se +1 di Heat e Stress o -1 di Heat e Stress.",
+    "sponsor": 1,
+    "fotografi": "B"
+  },
+  {
+    "id": 4,
+    "nome": "CORRUZIONE NEL COMITATO ORGANIZZATORE",
+    "image": "board/events/CORRUZIONE NEL COMITATO ORGANIZZATORE.webp",
+    "effetto": "Chi sta sul podio riceve un punto extra.\npos1-3+1",
+    "sponsor": 1,
+    "fotografi": "C"
+  },
+  {
+    "id": 5,
+    "nome": "DIVENTARE GLOBALE",
+    "image": "board/events/DIVENTARE GLOBALE.webp",
+    "effetto": "Doppi sponsor e punti sponsor alle curve.\nS+1",
+    "sponsor": 0,
+    "fotografi": "BC"
+  },
+  {
+    "id": 6,
+    "nome": "INAUGURAZIONE DELLA NUOVA TRIBUNA",
+    "image": "board/events/INAUGURAZIONE DELLA NUOVA TRIBUNA.webp",
+    "effetto": "Primi 3 piloti che superano il traguardo ottengono uno sponsor ed un punto sponsor.",
+    "sponsor": 2,
+    "fotografi": "A"
+  },
+  {
+    "id": 7,
+    "nome": "LA FOLLA IMPAZZISCE",
+    "image": "board/events/LA FOLLA IMPAZZISCE.webp",
+    "effetto": "I primi 2 piloti che superano la curva B ad ogni giro  e subito ottengono una carta sponsor ed un punto sponsor.",
+    "sponsor": 0,
+    "fotografi": "-"
+  },
+  {
+    "id": 8,
+    "nome": "LO SPONSOR PRINCIPALE SI RITIRA",
+    "image": "board/events/LO SPONSOR PRINCIPALE SI RITIRA.webp",
+    "effetto": "+1 carta Stress, chi sbanda é fuori e riceve 0 punti.\nSt+1",
+    "sponsor": 0,
+    "fotografi": "D"
+  },
+  {
+    "id": 9,
+    "nome": "MANOVRABILITÁ LIMITATA",
+    "image": "board/events/MANOVRABILITÁ LIMITATA.webp",
+    "effetto": "Per entrare in scia bisogna essere affiancati.",
+    "sponsor": 1,
+    "fotografi": "E"
+  },
+  {
+    "id": 10,
+    "nome": "NUOVE REGOLE DI SICUREZZA",
+    "image": "board/events/NUOVE REGOLE DI SICUREZZA.webp",
+    "effetto": "-2 Heat, -1 Stress e limite mano -1.\nH-2,St-1,hand-1",
+    "sponsor": 1,
+    "fotografi": "D"
+  },
+  {
+    "id": 11,
+    "nome": "NUOVO RECORD DI VELOCITÁ",
+    "image": "board/events/NUOVO RECORD DI VELOCITÁ.webp",
+    "effetto": "se velocitá ≥ 15 ottine +1 carta sponsor ed +1 punti sponsor",
+    "sponsor": 1,
+    "fotografi": "B"
+  },
+  {
+    "id": 12,
+    "nome": "NUOVO SPONSOR PRINCIPALE",
+    "image": "board/events/NUOVO SPONSOR PRINCIPALE.webp",
+    "effetto": "Niente.",
+    "sponsor": 3,
+    "fotografi": "A"
+  },
+  {
+    "id": 13,
+    "nome": "PARTENZA TRANQUILLA",
+    "image": "board/events/PARTENZA TRANQUILLA.webp",
+    "effetto": "Pre gara lo stress va negli scarti.",
+    "sponsor": 1,
+    "fotografi": "C"
+  },
+  {
+    "id": 14,
+    "nome": "PENTOLE A PRESSIONE",
+    "image": "board/events/PENTOLE A PRESSIONE.webp",
+    "effetto": "+1 giri, ad ogni giro -1 Heat dal gioco.\nlap+1",
+    "sponsor": 1,
+    "fotografi": "B"
+  },
+  {
+    "id": 15,
+    "nome": "PRIMA GARA IN DIRETTA TV",
+    "image": "board/events/PRIMA GARA IN DIRETTA TV.webp",
+    "effetto": "Se sorpassi 3 o piú auto ottini +1 sponsor e punti sponsor.",
+    "sponsor": 1,
+    "fotografi": "BD"
+  },
+  {
+    "id": 16,
+    "nome": "REVOCA DELLE RESTRIZIONI AL MOTORE",
+    "image": "board/events/REVOCA DELLE RESTRIZIONI AL MOTORE.webp",
+    "effetto": "Heat +1.\nH+1",
+    "sponsor": 2,
+    "fotografi": "E"
+  },
+  {
+    "id": 17,
+    "nome": "SCIOPERO DEI PILOTI",
+    "image": "board/events/SCIOPERO DEI PILOTI.webp",
+    "effetto": "Giri -1, + 2 punti extra se arrivi primo.\nlap-1, pos1-1+2",
+    "sponsor": 1,
+    "fotografi": "C"
+  },
+  {
+    "id": 18,
+    "nome": "SORRIDETE E SALUTATE",
+    "image": "board/events/SORRIDETE E SALUTATE.webp",
+    "effetto": "Nelle curve ottieni sponsor solo se la Velocitá < Velocitá Curva.",
+    "sponsor": 0,
+    "fotografi": "C"
+  },
+  {
+    "id": 19,
+    "nome": "TENETE DURO",
+    "image": "board/events/TENETE DURO.webp",
+    "effetto": "In fase 8 puoi scartare solo 1 carta",
+    "sponsor": 2,
+    "fotografi": "D"
+  },
+  {
+    "id": 20,
+    "nome": "UNA PIOGGIA IMPROVVISA RITARDA LA CORSA",
+    "image": "board/events/UNA PIOGGIA IMPROVVISA RITARDA LA CORSA.webp",
+    "effetto": "Niente adrenalina agli ultimi.",
+    "sponsor": 1,
+    "fotografi": "-"
+  },
+  {
+    "id": 21,
+    "nome": "VENTI TURBOLENTI",
+    "image": "board/events/VENTI TURBOLENTI.webp",
+    "effetto": "La scia si applica solo in terza o in quarta marcia",
+    "sponsor": 1,
+    "fotografi": "B"
+  },
+  {
+    "id": 22,
+    "nome": "VISIONE A TUNNEL",
+    "image": "board/events/VISIONE A TUNNEL.webp",
+    "effetto": "In fase 8 puoi scartare lo Stress",
+    "sponsor": 0,
+    "fotografi": "AC"
+  }
+]

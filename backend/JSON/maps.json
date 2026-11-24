@@ -6,6 +6,8 @@
     "giri": 2,
     "curve": 6,
     "caselle": 62,
+    "stress": 3,
+    "heat": 5,
     "sezioni": [
       12,
       1,
@@ -22,6 +24,8 @@
     "giri": 1,
     "curve": 11,
     "caselle": 109,
+    "stress": 3,
+    "heat": 6,
     "sezioni": [
       17,
       4,
@@ -43,6 +47,8 @@
     "giri": 2,
     "curve": 5,
     "caselle": 60,
+    "stress": 3,
+    "heat": 6,
     "sezioni": [
       8,
       7,
@@ -58,6 +64,8 @@
     "giri": 2,
     "curve": 5,
     "caselle": 63,
+    "stress": 3,
+    "heat": 6,
     "sezioni": [
       30,
       15,
@@ -71,8 +79,10 @@
     "nome": "ITALIA",
     "image": "board/maps/ITALIA.webp",
     "giri": 3,
-    "curve": 54,
-    "caselle": 3,
+    "curve": 3,
+    "caselle": 54,
+    "stress": 3,
+    "heat": 6,
     "sezioni": [
       7,
       9,
@@ -86,6 +96,8 @@
     "giri": 2,
     "curve": 5,
     "caselle": 60,
+    "stress": 3,
+    "heat": 7,
     "sezioni": [
       27,
       8,
@@ -101,6 +113,8 @@
     "giri": 3,
     "curve": 6,
     "caselle": 60,
+    "stress": 2,
+    "heat": 6,
     "sezioni": [
       5,
       19,
@@ -117,6 +131,8 @@
     "giri": 3,
     "curve": 5,
     "caselle": 55,
+    "stress": 3,
+    "heat": 6,
     "sezioni": [
       4,
       3,
@@ -132,6 +148,8 @@
     "giri": 2,
     "curve": 7,
     "caselle": 71,
+    "stress": 3,
+    "heat": 7,
     "sezioni": [
       7,
       6,
@@ -149,6 +167,8 @@
     "giri": 2,
     "curve": 4,
     "caselle": 69,
+    "stress": 3,
+    "heat": 6,
     "sezioni": [
       16,
       8,

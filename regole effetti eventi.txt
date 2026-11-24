@@ -1,0 +1,11 @@
+l'effetto della carta evento viene descritto nel seguente modo
+prima parte effetto riassunto
+seconda parte se la carta ha un effetto tangibile su elementi valori o altre cose in app
+avranno un codice come verrá descritto in seguito e saranno seprati da virgole
+- lap±N: indica quanti N giri i piú o in meno di mappa si faranno
+- hand±N: indica quante N carte in piú o in meno si possono avere in mano
+- H±N: indica quante N carte Heat in piú o in meno si possono avere
+- St±N: indica quante N carte Stress in piú o in meno si possono avere
+- pos1-A+N: dove 1-B indicano un range di qualifica che va dal primo alla posizione B, essi riceveranno N punti in piú
+- S+N: indica N carte sponsor e punti sponsor in piú alle curve 
+ 
