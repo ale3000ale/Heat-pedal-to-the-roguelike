@@ -89,6 +89,41 @@ citazioni di riga delle sezioni storiche seguenti si riferiscono alla revisione
   ai risultati, annullamento, vista pool, creazione, campionato legacy) e
   `frontend/src/lib/championship/board-pool-api.spec.ts`.
 
+## Blocco e controlli sulle carte delle pool (24 novembre 2026)
+
+Aggiornamento successivo alla sezione precedente; le citazioni delle sezioni storiche restano
+relative alla revisione indicata più avanti.
+
+- Modello e migrazione: `backend/app/db/models/championship.py` aggiunge `map_blocked_ids` ed
+  `event_blocked_ids` (testo JSON nullable, soli ID). La migrazione
+  `d4f7a2c9e1b3` (`backend/alembic/versions/d4f7a2c9e1b3_blocco_carte_pool.py`) discende da
+  `c1d5e9f3a7b2`, crea le due colonne e le inizializza a `[]` per i campionati esistenti.
+  Applicata al database reale dopo backup verificato
+  (`backend/heat.db.bak-2026-11-24-214451`, 499712 byte, `integrity_check=ok`, SHA-256
+  `ad4205c8fc4137d3a20351aaa05d0a86d026b4b5df24679f7169daada596f4db`): versione
+  `d4f7a2c9e1b3`, `integrity_check=ok`, tre campionati con entrambe le nuove colonne a `[]`.
+- Servizio `backend/app/services/championship/board_pools.py`: `set_membership` espelle o
+  reinserisce (riordinando secondo il catalogo e azzerando il blocco quando espelle),
+  `set_blocked` blocca solo carte presenti in pool, `draw_card` esclude le carte bloccate e
+  solleva `BoardPoolEmptyError` se tutte le rimaste sono bloccate. `update_card` fa una sola
+  modifica per richiesta dentro lock SQLite, scrive l'evento `championship.setup_changed` e
+  nega le modifiche a campionato chiuso; `pool_view` espone `blocked`.
+- API: `PATCH /api/championships/{id}/board-pools/{kind}/cards/{card_id}` in
+  `backend/app/api/championship/board_pools.py`, solo admin, con body `{in_pool}` oppure
+  `{blocked}`: 403 senza permesso, 404 risorsa mancante, 409 stato/campionato chiuso/conflitto,
+  422 body non valido. Il `GET` restituisce ora anche `blocked`.
+- Frontend: `updateBoardPoolCard` in `frontend/src/lib/championship/board-pool-api.ts`,
+  icone `deck_import`, `lock_open` e `lock_closed` in `racing-icon.svelte`, conferme via
+  `ConfirmDialog` in `championship-board-pool-panel.svelte` per ogni azione. Nelle carte in
+  pool e sbloccate appare l'icona di espulsione; fuori pool quella verde di reinserimento;
+  in pool appaiono anche aprire/chiudere lucchetto. Se compare una sola icona sale in alto.
+  La carta bloccata mostra un lucchetto nero semitrasparente grande al centro.
+- Test: nuovi casi in `backend/tests/test_championship_race_setup.py` e
+  `frontend/src/lib/championship/board-pool-api.spec.ts`. Verifiche osservate in questo
+  worktree: 19 test mirati, 947 test backend completi con 1 warning e 14 subtest,
+  `npm run check` senza errori, 725 test frontend, build riuscita, Prettier conforme sui
+  quattro file toccati. Non esiste un test browser per posizione delle icone o click.
+
 ## Revisione e stato del worktree esaminati
 
 - Revisione: `21e17e637b43528d7320e88f0af5623db7158ee9`

@@ -46,6 +46,10 @@ class Championship(GoldRulesMixin, Base):
     # NULL significa pool mai inizializzata, [] significa pool esaurita.
     map_pool_ids = Column(Text, nullable=True)
     event_pool_ids = Column(Text, nullable=True)
+    # ID delle carte bloccate dall'estrazione, ancora separate in mappe ed eventi.
+    # NULL significa nessun blocco, [] significa nessuna carta bloccata.
+    map_blocked_ids = Column(Text, nullable=True)
+    event_blocked_ids = Column(Text, nullable=True)
     # Mappa ed evento estratti per la prossima gara; null finché non sono stati preparati.
     next_map_path = Column(String, nullable=True)
     next_event_path = Column(String, nullable=True)

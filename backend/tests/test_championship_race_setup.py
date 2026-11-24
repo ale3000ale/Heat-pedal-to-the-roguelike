@@ -332,6 +332,7 @@ def test_board_pool_view_lists_catalog_and_out_of_pool(
     assert [(card["id"], card["in_pool"]) for card in events.json()["cards"]] == [
         (1, False),
     ]
+    assert all(not card["blocked"] for card in maps.json()["cards"] + events.json()["cards"])
     assert admin.get(f"/api/championships/{championship_id}/board-pools/altro").status_code == 404
     assert make_player(make_client).get(
         f"/api/championships/{championship_id}/board-pools/mappe"
@@ -390,3 +391,85 @@ def test_pool_view_for_uninitialized_pool_shows_all_available(monkeypatch, tmp_p
     assert [card["in_pool"] for card in response.json()["cards"]] == [True, True]
     # La vista non scrive: la pool resta da inizializzare fino al primo setup.
     assert pool_ids(session_factory, championship_id) == (None, None)
+
+
+def blocked_ids(session_factory, championship_id):
+    with session_factory() as db:
+        championship = db.get(Championship, championship_id)
+        return board_pools._blocked_ids(championship, "mappe"), board_pools._blocked_ids(
+            championship, "eventi"
+        )
+
+
+def test_pool_card_actions_update_membership_and_block(
+    monkeypatch, tmp_path, make_client, session_factory
+):
+    seed_board(
+        monkeypatch,
+        tmp_path,
+        maps=(("mappa-1.webp", 1), ("mappa-2.webp", 2), ("mappa-3.webp", 3)),
+    )
+    championship_id = seed_championship(session_factory, "AzioniPool")
+    admin = make_admin(make_client, session_factory)
+    url = f"/api/championships/{championship_id}/board-pools/mappe/cards"
+
+    removed = admin.patch(f"{url}/1", json={"in_pool": False})
+    assert removed.status_code == 200
+    assert removed.json()["in_pool"] is False
+    assert pool_ids(session_factory, championship_id)[0] == [2, 3]
+
+    restored = admin.patch(f"{url}/1", json={"in_pool": True})
+    assert restored.status_code == 200
+    assert restored.json()["in_pool"] is True
+    assert pool_ids(session_factory, championship_id)[0] == [1, 2, 3]
+
+    blocked = admin.patch(f"{url}/3", json={"blocked": True})
+    assert blocked.status_code == 200
+    assert blocked.json()["blocked"] is True
+    assert blocked_ids(session_factory, championship_id)[0] == [3]
+
+    setup = admin.post(f"/api/championships/{championship_id}/setup")
+    assert setup.status_code == 200
+    # La carta 3 è bloccata: l'estrazione prende l'ultima ancora disponibile, la 2.
+    assert setup.json()["next_map_path"] == "board/maps/mappa-2.webp"
+
+    unblocked = admin.patch(f"{url}/3", json={"blocked": False})
+    assert unblocked.status_code == 200
+    assert unblocked.json()["blocked"] is False
+    assert blocked_ids(session_factory, championship_id)[0] == []
+
+
+def test_all_blocked_pool_cannot_draw(monkeypatch, tmp_path, make_client, session_factory):
+    seed_board(monkeypatch, tmp_path)
+    championship_id = seed_championship(session_factory, "TuttoBloccato")
+    admin = make_admin(make_client, session_factory)
+    for card_id in (1, 2):
+        response = admin.patch(
+            f"/api/championships/{championship_id}/board-pools/mappe/cards/{card_id}",
+            json={"blocked": True},
+        )
+        assert response.status_code == 200
+
+    assert admin.post(f"/api/championships/{championship_id}/setup").status_code == 503
+
+
+def test_pool_card_actions_validate_permissions_and_state(
+    monkeypatch, tmp_path, make_client, session_factory
+):
+    seed_board(monkeypatch, tmp_path)
+    championship_id = seed_championship(session_factory, "PermessiPool")
+    player = make_player(make_client)
+    admin = make_admin(make_client, session_factory)
+    url = f"/api/championships/{championship_id}/board-pools/mappe/cards"
+
+    assert player.patch(f"{url}/1", json={"in_pool": False}).status_code == 403
+    assert admin.patch(f"{url}/1", json={}).status_code == 422
+    assert admin.patch(f"{url}/1", json={"in_pool": False, "blocked": True}).status_code == 422
+    assert admin.patch(f"{url}/999", json={"in_pool": False}).status_code == 404
+    assert admin.patch(f"{url}/1", json={"in_pool": False}).status_code == 200
+    assert admin.patch(f"{url}/1", json={"blocked": True}).status_code == 409
+
+    with session_factory() as db:
+        db.get(Championship, championship_id).is_closed = True
+        db.commit()
+    assert admin.patch(f"{url}/2", json={"blocked": True}).status_code == 409

@@ -14,7 +14,14 @@ export interface BoardPoolCard {
 	image: string;
 	// Falso quando la carta è già uscita dalla pool del campionato.
 	in_pool: boolean;
+	// Vero quando la carta è in pool ma non può essere estratta.
+	blocked: boolean;
 	fields: BoardPoolField[];
+}
+
+export interface BoardPoolCardPatch {
+	in_pool?: boolean;
+	blocked?: boolean;
 }
 
 export interface BoardPool {
@@ -30,4 +37,17 @@ export function boardPoolImageUrl(image: string): string {
 // Errori: ApiError se non sei admin (403) o il campionato non esiste (404).
 export function fetchBoardPool(championshipId: number, kind: BoardPoolKind): Promise<BoardPool> {
 	return api<BoardPool>(`/championships/${championshipId}/board-pools/${kind}`);
+}
+
+// Espelle/reinserisce una carta oppure la blocca/sblocca (solo admin).
+export function updateBoardPoolCard(
+	championshipId: number,
+	kind: BoardPoolKind,
+	cardId: number,
+	patch: BoardPoolCardPatch
+): Promise<BoardPoolCard> {
+	return api<BoardPoolCard>(
+		`/championships/${championshipId}/board-pools/${kind}/cards/${cardId}`,
+		{ method: 'PATCH', body: patch }
+	);
 }
