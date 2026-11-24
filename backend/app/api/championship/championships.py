@@ -29,6 +29,9 @@ from app.services.championship.race_setup import (
     RaceSetupAlreadyExistsError,
     RaceSetupConflictError,
     RaceSetupFilesError,
+    RaceSetupNotReadyError,
+    cancel_next_race,
+    map_stats,
     prepare_next_race,
 )
 from app.services.draft.draft_guards import DraftLockedError
@@ -54,11 +57,16 @@ def _read(db, championship) -> ChampionshipRead:
 
 def _detail(db, championship) -> ChampionshipDetail:
     pilots = [EntrantRead.model_validate(p) for p in list_entrants(db, championship.id)]
+    stress, heat, curve, caselle = map_stats(championship.next_map_path)
     return ChampionshipDetail(
         **_read(db, championship).model_dump(),
         pilots=pilots,
         next_map_path=championship.next_map_path,
         next_event_path=championship.next_event_path,
+        next_map_stress=stress,
+        next_map_heat=heat,
+        next_map_curve=curve,
+        next_map_caselle=caselle,
     )
 
 
@@ -125,6 +133,28 @@ def setup_next_race(championship_id: int, judge: JudgeUser, db: DbDep):
         )
     except RaceSetupFilesError as exc:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc))
+
+
+@router.delete("/{championship_id}/setup", response_model=ChampionshipDetail)
+def cancel_setup(championship_id: int, judge: JudgeUser, db: DbDep):
+    # Annulla il setup (solo admin e giudice) senza restituire le carte alla pool.
+    try:
+        return _detail(db, cancel_next_race(db, championship_id))
+    except ChampionshipNotFoundError:
+        raise NOT_FOUND
+    except ChampionshipClosedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Campionato chiuso")
+    except RaceInProgressError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "C'è una gara in corso: il setup non si può annullare"
+        )
+    except RaceSetupNotReadyError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc))
+    except RaceSetupConflictError:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Annullamento non completato per un conflitto di scrittura; rileggi lo stato prima di riprovare",
+        )
 
 
 @router.get("/{championship_id}/gold-rules", response_model=GoldRulesData)

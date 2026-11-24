@@ -14,6 +14,7 @@ from app.services.championship.championships import (
     list_entrants,
     pilot_totals,
 )
+from app.services.championship.board_pools import consume_setup
 from app.services.core.event_log import append_event
 from app.services.draft.draft_guards import require_no_draft
 from app.services.championship.gold import award_race_gold, rules_of
@@ -208,7 +209,8 @@ def _set_results(db, championship_id, race_id, entries, can_correct, absent, rev
     _apply_sponsor_delta(db, old_sponsor, dict(entries))
     if not old_sponsor:
         award_race_gold(entrants, rules_of(championship), pilot_ids)
-        # La gara è disputata: mappa ed evento estratti non sono più la prossima gara.
+        # La gara è disputata: mappa ed evento estratti escono dalla pool del campionato.
+        consume_setup(championship)
         championship.next_map_path = None
         championship.next_event_path = None
         if reviewer_id is not None:

@@ -548,6 +548,24 @@ button:disabled {
 	color: var(--accent);
 }
 
+.destination-button {
+	min-height: 42px;
+}
+
+.media-folder-tools {
+	display: grid;
+	gap: 12px;
+	margin-top: 14px;
+	padding: 12px;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: #fbfaf7;
+}
+
+.media-folder-tools .actions {
+	margin-top: 0;
+}
+
 input[type="number"] {
 	-moz-appearance: textfield;
 	appearance: textfield;

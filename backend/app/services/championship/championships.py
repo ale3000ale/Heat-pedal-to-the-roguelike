@@ -18,6 +18,7 @@ from app.db.models.race import Race, RaceResult
 from app.db.models.shop import Pack, PackPurchase
 from app.services.cards.card_delete import remove_orphan_uploads
 from app.services.cards.cards import STARTER_INVENTORY, dump_cards
+from app.services.championship.board_pools import initialize_pools
 from app.services.championship.gold import GoldRules, apply_rules, get_defaults, rules_of
 from app.services.pilots.names import clean_name, name_key
 from app.services.pilots.pilots import PilotInActiveChampionshipError, get_own_pilot
@@ -127,6 +128,8 @@ def create_championship(
         sponsor_pool_deck_id=sponsor_deck.id if sponsor_deck is not None else None,
     )
     apply_rules(championship, rules_of(get_defaults(db)))
+    # Ogni campionato riceve le pool di mappe ed eventi con tutti gli ID correnti.
+    initialize_pools(championship)
     db.add(championship)
     try:
         db.flush()

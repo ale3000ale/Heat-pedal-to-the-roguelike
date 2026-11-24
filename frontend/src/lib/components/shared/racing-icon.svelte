@@ -19,7 +19,12 @@
 			| 'flame'
 			| 'car'
 			| 'gear'
-			| 'qr';
+			| 'qr'
+			| 'trash'
+			| 'deck_export'
+			| 'deck_import'
+			| 'lock_open'
+			| 'lock_closed';
 		size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | number;
 		class?: string;
 		color?: string;
@@ -780,5 +785,116 @@
 		<rect x="42" y="42" width="6" height="6" fill={color} />
 		<rect x="52" y="42" width="6" height="6" fill={color} />
 		<rect x="42" y="52" width="6" height="6" fill={color} />
+	</svg>
+{/if}
+
+{#if name === 'trash'}
+	<!-- Bidone per annullare il setup -->
+	<svg
+		viewBox="0 0 64 64"
+		fill="none"
+		xmlns="http://www.w3.org/2000/svg"
+		class="{sizeClass} {className} inline-block shrink-0 align-middle"
+		style={inlineStyle}
+		aria-hidden="true"
+	>
+		<path d="M12 18 H52" stroke={color} stroke-width="4" stroke-linecap="round" />
+		<path d="M25 18 V12 H39 V18" stroke={color} stroke-width="4" stroke-linejoin="round" />
+		<path
+			d="M18 18 L21 52 H43 L46 18"
+			stroke={color}
+			stroke-width="4"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		/>
+		<path d="M28 27 V43 M36 27 V43" stroke={color} stroke-width="3" stroke-linecap="round" />
+	</svg>
+{/if}
+
+{#if name === 'deck_export'}
+	<!-- Mazzo con freccia in uscita: carta fuori dalla pool -->
+	<svg
+		viewBox="0 0 64 64"
+		fill="none"
+		xmlns="http://www.w3.org/2000/svg"
+		class="{sizeClass} {className} inline-block shrink-0 align-middle"
+		style={inlineStyle}
+		aria-hidden="true"
+	>
+		<rect x="5" y="16" width="22" height="34" rx="3" stroke={color} stroke-width="3" />
+		<rect x="10" y="11" width="22" height="34" rx="3" stroke={color} stroke-width="3" />
+		<rect x="15" y="6" width="22" height="34" rx="3" stroke={color} stroke-width="3" />
+		<path
+			d="M31 32 H57 M49 24 L57 32 L49 40"
+			stroke={color}
+			stroke-width="4"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		/>
+	</svg>
+{/if}
+
+{#if name === 'deck_import'}
+	<!-- Mazzo con freccia entrante: carta che torna nella pool -->
+	<svg
+		viewBox="0 0 64 64"
+		fill="none"
+		xmlns="http://www.w3.org/2000/svg"
+		class="{sizeClass} {className} inline-block shrink-0 align-middle"
+		style={inlineStyle}
+		aria-hidden="true"
+	>
+		<rect x="30" y="16" width="22" height="34" rx="3" stroke={color} stroke-width="3" />
+		<rect x="35" y="11" width="22" height="34" rx="3" stroke={color} stroke-width="3" />
+		<rect x="40" y="6" width="22" height="34" rx="3" stroke={color} stroke-width="3" />
+		<path
+			d="M5 32 H28 M20 24 L28 32 L20 40"
+			stroke={color}
+			stroke-width="4"
+			stroke-linecap="round"
+			stroke-linejoin="round"
+		/>
+	</svg>
+{/if}
+
+{#if name === 'lock_open'}
+	<!-- Lucchetto aperto: carta bloccabile -->
+	<svg
+		viewBox="0 0 64 64"
+		fill="none"
+		xmlns="http://www.w3.org/2000/svg"
+		class="{sizeClass} {className} inline-block shrink-0 align-middle"
+		style={inlineStyle}
+		aria-hidden="true"
+	>
+		<path
+			d="M22 28 V20 C22 10 42 10 42 20 V24"
+			stroke={color}
+			stroke-width="5"
+			stroke-linecap="round"
+		/>
+		<rect x="14" y="27" width="36" height="28" rx="5" stroke={color} stroke-width="4" />
+		<circle cx="32" cy="39" r="3.5" fill={color} />
+	</svg>
+{/if}
+
+{#if name === 'lock_closed'}
+	<!-- Lucchetto chiuso: carta bloccata -->
+	<svg
+		viewBox="0 0 64 64"
+		fill="none"
+		xmlns="http://www.w3.org/2000/svg"
+		class="{sizeClass} {className} inline-block shrink-0 align-middle"
+		style={inlineStyle}
+		aria-hidden="true"
+	>
+		<path
+			d="M22 28 V20 C22 10 42 10 42 20 V28"
+			stroke={color}
+			stroke-width="5"
+			stroke-linecap="round"
+		/>
+		<rect x="14" y="27" width="36" height="28" rx="5" stroke={color} stroke-width="4" />
+		<circle cx="32" cy="39" r="3.5" fill={color} />
 	</svg>
 {/if}

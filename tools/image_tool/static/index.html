@@ -49,20 +49,20 @@
 				</header>
 
 				<section class="panel">
-					<label class="field">
+					<div class="field">
 						<span>Cartella di destinazione</span>
-						<input
+						<button
+							type="button"
 							id="destination"
-							type="text"
-							list="destinations"
-							autocomplete="off"
-							spellcheck="false"
-						/>
-						<datalist id="destinations"></datalist>
-					</label>
+							class="path-button destination-button"
+							data-path=""
+						>
+							Scegli una cartella da backend/media…
+						</button>
+					</div>
 					<p class="hint">
-						Percorso relativo a <code>backend/media</code>. Puoi scegliere una cartella
-						esistente o scriverne una nuova.
+						Puoi scegliere una cartella esistente o crearne una nuova dentro
+						<code>backend/media</code>.
 					</p>
 				</section>
 
@@ -167,6 +167,26 @@
 					<nav id="media-crumb" class="media-breadcrumb" aria-label="Percorso"></nav>
 				</div>
 				<div id="media-folders" class="media-folders"></div>
+				<div id="media-folder-tools" class="media-folder-tools" hidden>
+					<label class="field">
+						<span>Nuova cartella</span>
+						<input
+							id="media-new-folder"
+							type="text"
+							placeholder="Nome della cartella"
+							autocomplete="off"
+							spellcheck="false"
+						/>
+					</label>
+					<div class="actions">
+						<button type="button" id="media-select-folder" class="primary">
+							Seleziona questa cartella
+						</button>
+						<button type="button" id="media-create-folder" class="ghost">
+							Crea cartella
+						</button>
+					</div>
+				</div>
 				<div id="media-grid" class="media-grid"></div>
 				<div class="actions">
 					<button type="button" id="media-cancel" class="ghost">Annulla</button>

@@ -17,14 +17,112 @@ comportamento descritto sotto è evidenza da codice e test, non un requisito.
 
 ## Perimetro ed esclusioni
 
-**Incluso:** estrazione casuale di mappa ed evento da `backend/media/board`, persistenza dei
-due percorsi sul campionato, segnale `championship.setup_changed`, pulsante
-`SETUP GARA` / `AVVIA GARA`, sezione “PROSSIMA GARA” e pulizia dei percorsi alla prima
+**Incluso:** estrazione di mappa ed evento dalle pool del campionato (catalogo in
+`backend/JSON/maps.json` e `events.json`), persistenza dei due percorsi sul campionato,
+segnale `championship.setup_changed`, pulsante `SETUP GARA` / `AVVIA GARA`, sezione
+“PROSSIMA GARA”, annullamento del setup e consumo delle due carte dalla pool alla prima
 registrazione dei risultati o alla chiusura del campionato.
 
 **Escluso:** regole interne della draft, creazione ed esecuzione della gara, regole dei mazzi
 e delle carte, strumento di importazione immagini, eventi live non pertinenti, dati reali e
 migrazioni eseguite.
+
+## Aggiornamento del 24 novembre 2026
+
+La sezione “PROSSIMA GARA” mostra anche i dati della mappa estratta, senza nuove colonne:
+l'immagine conserva le dimensioni originali e, nella barra del nome, un mini tachimetro
+`speedometer` contiene il numero di curve mentre un quadratino accanto contiene quello delle
+caselle. Le miniature `backend/media/cards/generics/stress.webp` e
+`backend/media/cards/generics/heat.webp` mostrano il conteggio al centro con `text-2xl`: su
+telefono stanno a destra del nome, su desktop in una colonna assoluta più interna
+(`sm:right-12`). Un conteggio non disponibile è reso con `—`.
+
+I valori sono derivati a ogni lettura: `map_stats`
+(`backend/app/services/championship/race_setup.py:58-88`) cerca in `backend/JSON/maps.json`
+l'elemento il cui `image` coincide con il path della mappa estratta, normalizzando separatori e
+maiuscole, e restituisce stress, heat, curve e caselle come interi non negativi. File
+mancante/corrotto, mappa non trovata o valore non valido restituiscono `None`. I campi
+`next_map_stress`, `next_map_heat`, `next_map_curve` e `next_map_caselle` sono nello schema
+`backend/app/schemas/championship/championship.py:45-54` e vengono popolati in
+`backend/app/api/championship/championships.py:56-68`.
+
+Punti frontend correnti: helper in `frontend/src/lib/championship/next-race-setup.ts:24-34`,
+tipo in `frontend/src/lib/types.ts:78-81`, valori derivati in
+`frontend/src/routes/championships/[id]/+page.svelte:68-77` e layout in `:451-499`. Test
+aggiornati: `backend/tests/test_championship_race_setup.py:70-71,96-124,153-154`,
+`frontend/src/lib/championship/next-race-setup.spec.ts:31-41` e
+`frontend/src/lib/championship/championship-live.spec.ts:65-66`.
+
+Gli esiti già osservati prima degli ultimi ritocchi (9 test backend mirati, 938 test backend
+completi con 1 warning e 14 subtest, check frontend senza errori, 723 test e build riuscita,
+lint fermo su 19 file preesistenti) si riferiscono allo stato precedente. Curve/caselle, layout
+responsive e numeri più grandi non sono ancora stati verificati: su indicazione dell'autore
+test, Prettier, lint, build e `git diff --check` sono rinviati al merge. Nessuna migrazione,
+dipendenza, modifica di `maps.json` o delle immagini, prova browser, CI od operazione VCS. Le
+citazioni di riga delle sezioni storiche seguenti si riferiscono alla revisione
+`21e17e637b43528d7320e88f0af5623db7158ee9` e non sono state riscritte.
+
+## Pool di mappe ed eventi (24 novembre 2026)
+
+- Modello: `backend/app/db/models/championship.py` — `map_pool_ids` ed `event_pool_ids`,
+  testo JSON nullable; `NULL` significa pool mai inizializzata, `[]` pool esaurita.
+- Migrazione `c1d5e9f3a7b2`
+  (`backend/alembic/versions/c1d5e9f3a7b2_pool_mappe_eventi.py`): crea le colonne e
+  inizializza i campionati esistenti con gli ID dei due JSON.
+- Servizio `backend/app/services/championship/board_pools.py`: catalogo dai JSON,
+  inizializzazione, estrazione, consumo e vista; la vista non scrive sul campionato.
+- Creazione: `backend/app/services/championship/championships.py` chiama `initialize_pools`.
+- Setup: `prepare_next_race` estrae dalle pool; `cancel_next_race` svuota i percorsi senza
+  toccare le pool.
+- Consumo: `backend/app/services/race/races.py` chiama `consume_setup` alla prima
+  registrazione dei risultati, prima di azzerare i percorsi.
+- API: `DELETE /api/championships/{id}/setup` per admin e giudici in
+  `backend/app/api/championship/championships.py`; `GET /api/championships/{id}/board-pools/{kind}`
+  per il solo admin in `backend/app/api/championship/board_pools.py`, registrato in
+  `backend/app/main.py`.
+- Frontend: helper `frontend/src/lib/championship/board-pool-api.ts`, pannello
+  `frontend/src/lib/components/championship/championship-board-pool-panel.svelte`, sezione
+  Pool in `championship-settings.svelte`, cestino in
+  `frontend/src/routes/championships/[id]/+page.svelte`, icone `trash` e `deck_export` in
+  `frontend/src/lib/components/shared/racing-icon.svelte`.
+- Test: `backend/tests/test_championship_race_setup.py` (estrazione senza consumo, consumo
+  ai risultati, annullamento, vista pool, creazione, campionato legacy) e
+  `frontend/src/lib/championship/board-pool-api.spec.ts`.
+
+## Blocco e controlli sulle carte delle pool (24 novembre 2026)
+
+Aggiornamento successivo alla sezione precedente; le citazioni delle sezioni storiche restano
+relative alla revisione indicata più avanti.
+
+- Modello e migrazione: `backend/app/db/models/championship.py` aggiunge `map_blocked_ids` ed
+  `event_blocked_ids` (testo JSON nullable, soli ID). La migrazione
+  `d4f7a2c9e1b3` (`backend/alembic/versions/d4f7a2c9e1b3_blocco_carte_pool.py`) discende da
+  `c1d5e9f3a7b2`, crea le due colonne e le inizializza a `[]` per i campionati esistenti.
+  Applicata al database reale dopo backup verificato
+  (`backend/heat.db.bak-2026-11-24-214451`, 499712 byte, `integrity_check=ok`, SHA-256
+  `ad4205c8fc4137d3a20351aaa05d0a86d026b4b5df24679f7169daada596f4db`): versione
+  `d4f7a2c9e1b3`, `integrity_check=ok`, tre campionati con entrambe le nuove colonne a `[]`.
+- Servizio `backend/app/services/championship/board_pools.py`: `set_membership` espelle o
+  reinserisce (riordinando secondo il catalogo e azzerando il blocco quando espelle),
+  `set_blocked` blocca solo carte presenti in pool, `draw_card` esclude le carte bloccate e
+  solleva `BoardPoolEmptyError` se tutte le rimaste sono bloccate. `update_card` fa una sola
+  modifica per richiesta dentro lock SQLite, scrive l'evento `championship.setup_changed` e
+  nega le modifiche a campionato chiuso; `pool_view` espone `blocked`.
+- API: `PATCH /api/championships/{id}/board-pools/{kind}/cards/{card_id}` in
+  `backend/app/api/championship/board_pools.py`, solo admin, con body `{in_pool}` oppure
+  `{blocked}`: 403 senza permesso, 404 risorsa mancante, 409 stato/campionato chiuso/conflitto,
+  422 body non valido. Il `GET` restituisce ora anche `blocked`.
+- Frontend: `updateBoardPoolCard` in `frontend/src/lib/championship/board-pool-api.ts`,
+  icone `deck_import`, `lock_open` e `lock_closed` in `racing-icon.svelte`, conferme via
+  `ConfirmDialog` in `championship-board-pool-panel.svelte` per ogni azione. Nelle carte in
+  pool e sbloccate appare l'icona di espulsione; fuori pool quella verde di reinserimento;
+  in pool appaiono anche aprire/chiudere lucchetto. Se compare una sola icona sale in alto.
+  La carta bloccata mostra un lucchetto nero semitrasparente grande al centro.
+- Test: nuovi casi in `backend/tests/test_championship_race_setup.py` e
+  `frontend/src/lib/championship/board-pool-api.spec.ts`. Verifiche osservate in questo
+  worktree: 19 test mirati, 947 test backend completi con 1 warning e 14 subtest,
+  `npm run check` senza errori, 725 test frontend, build riuscita, Prettier conforme sui
+  quattro file toccati. Non esiste un test browser per posizione delle icone o click.
 
 ## Revisione e stato del worktree esaminati
 
@@ -126,12 +224,20 @@ come superati.
 Rivalutare la scheda quando cambia una delle fonti pertinenti, non a ogni commit:
 
 - `backend/app/services/championship/race_setup.py`, `backend/app/services/race/races.py`,
-  `backend/app/services/championship/championships.py`.
-- `backend/app/api/championship/championships.py`, `backend/app/api/deps.py`,
-  `backend/app/schemas/championship/championship.py`, `backend/app/schemas/core/events.py`.
+  `backend/app/services/championship/championships.py`,
+  `backend/app/services/championship/board_pools.py`.
+- `backend/app/api/championship/championships.py`, `backend/app/api/championship/board_pools.py`,
+  `backend/app/api/deps.py`, `backend/app/schemas/championship/championship.py`,
+  `backend/app/schemas/core/events.py`.
 - `backend/app/db/models/championship.py`,
-  `backend/alembic/versions/b8f4e2a1c7d9_next_race_setup.py`.
+  `backend/alembic/versions/b8f4e2a1c7d9_next_race_setup.py`,
+  `backend/alembic/versions/c1d5e9f3a7b2_pool_mappe_eventi.py`.
 - `frontend/src/routes/championships/[id]/+page.svelte`,
-  `frontend/src/lib/championship/next-race-setup.ts`, `frontend/src/lib/types.ts`,
+  `frontend/src/lib/championship/next-race-setup.ts`,
+  `frontend/src/lib/championship/board-pool-api.ts`,
+  `frontend/src/lib/components/championship/championship-board-pool-panel.svelte`,
+  `frontend/src/lib/components/championship/championship-settings.svelte`,
+  `frontend/src/lib/components/shared/racing-icon.svelte`,
+  `frontend/src/lib/types.ts`,
   `frontend/src/lib/events/event-types.ts`, `frontend/src/lib/events/event-validation.ts`.
 - I test elencati nella sezione precedente e i documenti canonici linkati all'inizio.

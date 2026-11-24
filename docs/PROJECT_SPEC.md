@@ -100,7 +100,7 @@ Le regole del flusso restano quelle di docs/DRAFT_SPEC.md. Questo aggiornamento 
 - Race 1:N CardPlay; Pilot 1:N CardPlay (carte sponsor giocate in gara, sezione 14).
 - Race 1:N CardGift; Pilot 1:N CardGift (carte sponsor regalate con il tasto S, sezione 14).
 - Race N:1 User tramite `review_started_by_user_id` (revisore unico della gara, facoltativo).
-- Championship N:2 pool: una copia della pool delle modifiche e una della pool degli sponsor.
+- Championship N:2 pool di carte (una copia della pool delle modifiche e una della pool degli sponsor) e due pool di mappe/eventi, memorizzate come elenchi di ID del catalogo JSON.
 - Championship 1:N Pack (pacchetti del negozio); Championship 1:N PackPurchase (storico).
 - DeckPrototype: indipendente, ha un tipo (`modifiche` o `sponsor`); sorgente delle pool di ogni campionato.
 - ChampionshipDefaults: una sola riga con le impostazioni generali (regole dell'oro per gara, copiate su ogni nuovo campionato; `card_poll_seconds`, che non si copia e vale per tutti).
@@ -212,6 +212,10 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo. Lo
 - L'admin crea il campionato scegliendo due pool: una di modifiche e una di sponsor. Per ciascuna può scegliere una pool derivata o, come valore predefinito, la rispettiva pool di base. Può anche scegliere un template di negozio (sezione 13).
 - Il nome del campionato è unico senza distinguere maiuscole; la grafia scelta dall'admin è quella mostrata nell'interfaccia.
 - Il campionato riceve una copia indipendente di ciascuna delle due pool scelte.
+- Alla creazione il campionato riceve anche due pool, una di mappe e una di eventi, inizializzate con tutti gli ID presenti in `backend/JSON/maps.json` e `backend/JSON/events.json`. Nel campionato si salvano solo gli ID; nome, immagine e informazioni si rileggono dai JSON. Le carte aggiunte ai JSON dopo la creazione non entrano nelle pool esistenti e una pool esaurita resta vuota.
+- Il **setup della prossima gara** estrae una mappa e un evento dalle rispettive pool e ne salva i percorsi sul campionato. L'estrazione non consuma le pool: le due carte escono dalla pool alla prima registrazione dei risultati della gara. Annullare il setup svuota i percorsi senza restituire nulla alla pool, perché il consumo avviene solo a fine gara.
+- Admin e giudici possono preparare o annullare il setup. L'admin può vedere dalle impostazioni del campionato l'elenco completo delle due pool, con miniatura e informazioni di ogni carta e l'indicazione di quelle già uscite.
+- Dalla vista delle pool l'admin può espellere una carta (conferma: torna in pool con il pulsante verde) oppure bloccarla e sbloccarla (conferma). Le carte bloccate restano nella pool ma non sono estratte: se lo sono tutte, il setup non parte. Ogni modifica riguarda una sola carta e un solo stato alla volta; le modifiche sono riservate all'admin e vietate a campionato chiuso.
 - L'admin può chiudere un campionato anche se alcune gare non sono state create o completate. Dopo la chiusura, il campionato è in sola lettura.
 - L'admin può cancellare definitivamente solo un campionato chiuso.
 

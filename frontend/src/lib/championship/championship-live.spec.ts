@@ -59,7 +59,11 @@ function snapshot(gifts: PilotGiftNotification[] = []): ChampionshipSnapshot {
 			pilots_count: 1,
 			pilots: [{ id: 1, name: 'Pilota', team_id: null, point: 0 }],
 			next_map_path: null,
-			next_event_path: null
+			next_event_path: null,
+			next_map_stress: null,
+			next_map_heat: null,
+			next_map_curve: null,
+			next_map_caselle: null
 		},
 		standings: [],
 		races: [],

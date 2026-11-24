@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint
 from app.db.base import Base
 from sqlalchemy.sql import func, expression
 
@@ -42,6 +42,14 @@ class Championship(GoldRulesMixin, Base):
     pool_deck_id = Column(Integer, ForeignKey("deck.id"), nullable=True)
     # Copia della pool degli sponsor.
     sponsor_pool_deck_id = Column(Integer, ForeignKey("deck.id"), nullable=True)
+    # Pool del campionato per mappe ed eventi: array JSON di soli ID del catalogo.
+    # NULL significa pool mai inizializzata, [] significa pool esaurita.
+    map_pool_ids = Column(Text, nullable=True)
+    event_pool_ids = Column(Text, nullable=True)
+    # ID delle carte bloccate dall'estrazione, ancora separate in mappe ed eventi.
+    # NULL significa nessun blocco, [] significa nessuna carta bloccata.
+    map_blocked_ids = Column(Text, nullable=True)
+    event_blocked_ids = Column(Text, nullable=True)
     # Mappa ed evento estratti per la prossima gara; null finché non sono stati preparati.
     next_map_path = Column(String, nullable=True)
     next_event_path = Column(String, nullable=True)

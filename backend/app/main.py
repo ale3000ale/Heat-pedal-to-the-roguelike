@@ -10,6 +10,7 @@ from app.api.pilots.teams import router as teams_router
 from fastapi.staticfiles import StaticFiles
 from app.api.pilots.pilots import router as pilots_router
 from app.api.championship.championships import router as championships_router
+from app.api.championship.board_pools import router as board_pools_router
 from app.api.championship.pools import router as pools_router
 from app.api.race.races import router as races_router
 from app.api.admin.admin import router as admin_router
@@ -67,6 +68,7 @@ app.include_router(teams_router, prefix="/api/teams")
 app.include_router(pilots_router, prefix="/api/pilots")
 app.include_router(pools_router, prefix="/api/pools")
 app.include_router(championships_router, prefix="/api/championships")
+app.include_router(board_pools_router, prefix="/api/championships")
 app.include_router(races_router, prefix="/api/championships")
 app.include_router(race_review_router, prefix="/api/championships")
 app.include_router(review_counts_router, prefix="/api/championships")

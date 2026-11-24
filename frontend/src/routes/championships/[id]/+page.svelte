@@ -12,7 +12,12 @@
 	import { raceStatusView } from '$lib/race/race-status';
 	import { loadPollIntervalMs } from '$lib/cards/card-poll.svelte';
 	import { startChampionshipLive } from '$lib/championship/championship-live';
-	import { nextRaceImageUrl, nextRaceName } from '$lib/championship/next-race-setup';
+	import {
+		genericCardImageUrl,
+		mapCountLabel,
+		nextRaceImageUrl,
+		nextRaceName
+	} from '$lib/championship/next-race-setup';
 	import type { CardGift } from '$lib/cards/card-play-types';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
 	import type { Race, Standing } from '$lib/race/race-types';
@@ -38,6 +43,7 @@
 	let busy = $state(false);
 	let settingsOpen = $state(false);
 	let setupConfirmOpen = $state(false);
+	let cancelSetupConfirmOpen = $state(false);
 	let startConfirmOpen = $state(false);
 	let enrollOpen = $state(false);
 	let deckOpen = $state(false);
@@ -64,6 +70,12 @@
 	let mapUrl = $derived(championship ? nextRaceImageUrl(championship.next_map_path) : null);
 	let eventName = $derived(championship ? nextRaceName(championship.next_event_path) : null);
 	let eventUrl = $derived(championship ? nextRaceImageUrl(championship.next_event_path) : null);
+	let stressImageUrl = genericCardImageUrl('stress');
+	let heatImageUrl = genericCardImageUrl('heat');
+	let stressLabel = $derived(mapCountLabel(championship?.next_map_stress));
+	let heatLabel = $derived(mapCountLabel(championship?.next_map_heat));
+	let curveLabel = $derived(mapCountLabel(championship?.next_map_curve));
+	let caselleLabel = $derived(mapCountLabel(championship?.next_map_caselle));
 	let setupReady = $derived(
 		mapName !== null && mapUrl !== null && eventName !== null && eventUrl !== null
 	);
@@ -218,6 +230,35 @@
 		} catch (cause) {
 			if (isCurrent())
 				raceError = cause instanceof Error ? cause.message : 'Estrazione non riuscita';
+		} finally {
+			if (isCurrent()) busy = false;
+		}
+	}
+
+	/** Annulla il setup senza restituire le carte alla pool, poi rilegge lo snapshot.
+	 * Dopo await aggiorna messaggi e busy solo per la stessa pagina e generazione.
+	 */
+	async function cancelSetup(): Promise<void> {
+		if (busy || !championship) return;
+		const active = currentLive;
+		const championshipId = Number(page.params.id);
+		const sessionKey = auth.sessionKey;
+		if (championship.id !== championshipId) {
+			raceError = 'Campionato non disponibile: rileggi la pagina.';
+			return;
+		}
+		const isCurrent = () =>
+			active === currentLive &&
+			sessionKey === auth.sessionKey &&
+			championshipId === Number(page.params.id);
+		raceError = null;
+		busy = true;
+		try {
+			await api(`/championships/${championshipId}/setup`, { method: 'DELETE' });
+			if (isCurrent()) await active?.refresh();
+		} catch (cause) {
+			if (isCurrent())
+				raceError = cause instanceof Error ? cause.message : 'Annullamento non riuscito';
 		} finally {
 			if (isCurrent()) busy = false;
 		}
@@ -431,17 +472,73 @@
 							</p>
 						</div>
 					</div>
-					<span class="flex items-center gap-2 text-red-400">
-						<span class="setup-spia h-2.5 w-2.5 rounded-full bg-red-500"></span>
-						<span class="font-racing text-xs font-bold tracking-wider uppercase">In attesa</span>
-					</span>
+					<div class="ml-auto flex items-center gap-3">
+						<span class="flex items-center gap-2 text-red-400">
+							<span class="setup-spia h-2.5 w-2.5 rounded-full bg-red-500"></span>
+							<span class="font-racing text-xs font-bold tracking-wider uppercase">In attesa</span>
+						</span>
+						{#if auth.canManageRaces}
+							<Button
+								size="sm"
+								variant="destructive"
+								class="h-9 w-9 shrink-0 p-0"
+								aria-label="Annulla setup"
+								title="Annulla setup"
+								disabled={busy}
+								onclick={() => (cancelSetupConfirmOpen = true)}
+							>
+								<RacingIcon name="trash" size="sm" />
+							</Button>
+						{/if}
+					</div>
 				</div>
 				<div class="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
-					<figure class="overflow-hidden rounded-xl border border-white/10 bg-[#161a26]">
-						<figcaption
-							class="border-b border-white/10 px-4 py-2 font-racing text-sm font-bold tracking-wider text-white uppercase"
-						>
-							{mapName}
+					<figure class="relative overflow-hidden rounded-xl bg-[#161a26]">
+						<figcaption class="flex items-center justify-between gap-2 px-4 py-2">
+							<div class="flex min-w-0 items-center gap-2">
+								<span
+									class="truncate font-racing text-2xl font-bold tracking-wider text-white uppercase"
+								>
+									{mapName}
+								</span>
+								<span
+									class="relative flex h-9 w-9 shrink-0 items-center justify-center text-amber-400"
+									title="Curve"
+								>
+									<RacingIcon name="speedometer" size="xl" />
+									<span
+										class="absolute inset-0 flex items-center justify-center font-racing text-[17px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]"
+									>
+										{curveLabel}
+									</span>
+								</span>
+								<span
+									class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-white/20 bg-white/10 font-racing text-[17px] font-bold text-white"
+									title="Caselle"
+								>
+									{caselleLabel}
+								</span>
+							</div>
+							<div
+								class="flex shrink-0 items-center gap-1 sm:absolute sm:top-[58%] sm:right-12 sm:-translate-y-1/2 sm:flex-col"
+							>
+								<div class="relative h-12 w-8">
+									<img src={stressImageUrl} alt="Carta stress" class="h-12 w-8 object-contain" />
+									<span
+										class="absolute inset-0 flex items-center justify-center font-racing text-2xl leading-none font-bold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)]"
+									>
+										{stressLabel}
+									</span>
+								</div>
+								<div class="relative h-12 w-8">
+									<img src={heatImageUrl} alt="Carta heat" class="h-12 w-8 object-contain" />
+									<span
+										class="absolute inset-0 flex items-center justify-center font-racing text-2xl leading-none font-bold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.95)]"
+									>
+										{heatLabel}
+									</span>
+								</div>
+							</div>
 						</figcaption>
 						<img
 							src={mapUrl}
@@ -449,9 +546,9 @@
 							class="h-56 w-full object-contain p-3 sm:h-64"
 						/>
 					</figure>
-					<figure class="overflow-hidden rounded-xl border border-white/10 bg-[#161a26]">
+					<figure class="overflow-hidden rounded-xl bg-[#161a26]">
 						<figcaption
-							class="border-b border-red-500/20 px-4 py-2 font-racing text-sm font-bold tracking-wider text-red-400 uppercase"
+							class="px-4 py-2 font-racing text-sm font-bold tracking-wider text-red-400 uppercase"
 						>
 							EVENTO: {eventName}
 						</figcaption>
@@ -744,6 +841,14 @@
 			message="Vuoi preparare la prossima gara?"
 			confirmLabel="Prepara"
 			onconfirm={setupRace}
+		/>
+
+		<ConfirmDialog
+			bind:open={cancelSetupConfirmOpen}
+			title="Annullare il setup?"
+			message="Mappa ed evento della prossima gara vengono rimossi dal setup. Le carte restano nella pool e potranno essere estratte di nuovo."
+			confirmLabel="Annulla setup"
+			onconfirm={cancelSetup}
 		/>
 
 		<ConfirmDialog
