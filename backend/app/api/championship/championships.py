@@ -29,6 +29,7 @@ from app.services.championship.race_setup import (
     RaceSetupAlreadyExistsError,
     RaceSetupConflictError,
     RaceSetupFilesError,
+    map_stats,
     prepare_next_race,
 )
 from app.services.draft.draft_guards import DraftLockedError
@@ -54,11 +55,16 @@ def _read(db, championship) -> ChampionshipRead:
 
 def _detail(db, championship) -> ChampionshipDetail:
     pilots = [EntrantRead.model_validate(p) for p in list_entrants(db, championship.id)]
+    stress, heat, curve, caselle = map_stats(championship.next_map_path)
     return ChampionshipDetail(
         **_read(db, championship).model_dump(),
         pilots=pilots,
         next_map_path=championship.next_map_path,
         next_event_path=championship.next_event_path,
+        next_map_stress=stress,
+        next_map_heat=heat,
+        next_map_curve=curve,
+        next_map_caselle=caselle,
     )
 
 

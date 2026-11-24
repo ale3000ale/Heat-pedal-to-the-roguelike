@@ -74,6 +74,11 @@ export interface ChampionshipDetail extends Championship {
 	// Percorsi relativi a media delle carte estratte per la prossima gara.
 	next_map_path: string | null;
 	next_event_path: string | null;
+	// Conteggi derivati da maps.json per la mappa estratta.
+	next_map_stress: number | null;
+	next_map_heat: number | null;
+	next_map_curve: number | null;
+	next_map_caselle: number | null;
 }
 
 // Tipo di una pool di carte: modifiche o sponsor.

@@ -33,7 +33,7 @@ Nessun conteggio di test o warning inventato, nessun test locale o collaudo brow
 Backend consolidato e verificato in CI. Frontend draft e collaudo browser restano da svolgere con approvazione separata. La PR 18 resta in bozza; nessun merge autorizzato.
 <!-- draft-backend-current:end -->
 
-Ultimo aggiornamento: 2026-11-23
+Ultimo aggiornamento: 2026-11-24
 
 ## Punto sponsor automatico dal tasto S (0.9) - 2026-11-22
 
@@ -64,6 +64,8 @@ Implementazione presente sul commit `21e17e637b43528d7320e88f0af5623db7158ee9`, 
 Risultati riferiti dalla fase precedente, non ri-osservati in questa fase: backend 935 test con un warning e 14 subtest; 18 test mirati; frontend `npm run check` senza errori, 721 test e build riuscita; `npm run lint` non riuscito su 15 file preesistenti fuori scope; collaudo visivo dell'autore riferito positivo. Nessun risultato CI letto.
 
 Verifiche non rieseguite: suite applicativa, test mirati, browser, migrazioni e database reale. Questo aggiornamento è documentale e non dichiara superati i controlli della fase precedente.
+
+Sul ramo `feat/info-mappe-ed-eventi` la sezione “PROSSIMA GARA” mostra l'immagine della mappa con le dimensioni originali. Nella barra del nome, su entrambi i layout, un mini tachimetro `speedometer` contiene il numero di curve e un quadratino accanto contiene il numero di caselle. Le miniature `stress.webp` e `heat.webp`, con il conteggio sovrapposto al centro, su telefono stanno a destra del nome; su desktop diventano una colonna assoluta più interna (`sm:right-12`) e i numeri sono passati a `text-2xl`. I valori non sono persistiti: `map_stats` in `backend/app/services/championship/race_setup.py:58-88` rilegge `backend/JSON/maps.json`, cerca l'elemento con `image` uguale al path della mappa estratta normalizzando separatori e maiuscole e restituisce stress, heat, curve e caselle come interi non negativi. Se il file è mancante o corrotto, la mappa non è presente o un valore non è valido, i campi derivati `next_map_stress`, `next_map_heat`, `next_map_curve` e `next_map_caselle` (`backend/app/schemas/championship/championship.py:45-54`, popolati in `backend/app/api/championship/championships.py:56-68`) restano `null` e la UI mostra `—`. Nessuna migrazione, dipendenza, modifica di `maps.json` o delle immagini. Gli esiti già osservati prima di questi ultimi ritocchi (9 test backend mirati, 938 test backend completi con 1 warning e 14 subtest, check frontend senza errori, 723 test e build riuscita, lint fermo su 19 file preesistenti) si riferiscono allo stato precedente: curve/caselle, layout responsive e numeri più grandi non sono ancora stati verificati. Su indicazione dell'autore test, Prettier, lint, build e `git diff --check` sono rinviati al merge. Nessuna prova browser, CI o operazione VCS.
 
 ## Draft della prima gara (0.9) - 2026-11-22
 

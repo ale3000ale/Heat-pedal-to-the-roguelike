@@ -1,4 +1,6 @@
 """Setup della prossima gara: estrazione, permessi e pulizia."""
+import json
+
 import pytest
 from sqlalchemy import select
 
@@ -63,12 +65,93 @@ def test_setup_draws_and_publishes_cards(monkeypatch, tmp_path, make_client, ses
     detail = admin.get(f"/api/championships/{championship_id}").json()
     assert detail["next_map_path"] == response.json()["next_map_path"]
     assert detail["next_event_path"] == response.json()["next_event_path"]
+    assert detail["next_map_stress"] is None
+    assert detail["next_map_heat"] is None
+    assert detail["next_map_curve"] is None
+    assert detail["next_map_caselle"] is None
     with session_factory() as db:
         kinds = db.scalars(select(EventLog.type).where(
             EventLog.championship_id == championship_id
         )).all()
     assert kinds == ["championship.setup_changed"]
     assert admin.post(f"/api/championships/{championship_id}/setup").status_code == 409
+
+
+def test_map_card_counts_reads_matching_map(monkeypatch, tmp_path):
+    monkeypatch.setattr(race_setup, "MEDIA_DIR", tmp_path / "media")
+    json_dir = tmp_path / "JSON"
+    json_dir.mkdir()
+    (json_dir / "maps.json").write_text(json.dumps([
+        {"image": "board/maps/altre.webp", "stress": 9, "heat": 9, "curve": 1, "caselle": 2},
+        {
+            "image": "board/maps/DEUTSCHLAND.WEBP",
+            "stress": 3,
+            "heat": 5,
+            "curve": 6,
+            "caselle": 62,
+        },
+    ]), encoding="utf-8")
+
+    assert race_setup.map_card_counts("board\\maps\\deutschland.webp") == (3, 5)
+    assert race_setup.map_stats("board/maps/deutschland.webp") == (3, 5, 6, 62)
+
+
+def test_map_card_counts_handles_missing_and_invalid_data(monkeypatch, tmp_path):
+    monkeypatch.setattr(race_setup, "MEDIA_DIR", tmp_path / "media")
+    assert race_setup.map_card_counts("board/maps/mappa.webp") == (None, None)
+    assert race_setup.map_stats("board/maps/mappa.webp") == (None, None, None, None)
+
+    json_dir = tmp_path / "json"
+    json_dir.mkdir()
+    maps_file = json_dir / "maps.json"
+    maps_file.write_text("{non valido", encoding="utf-8")
+    assert race_setup.map_card_counts("board/maps/mappa.webp") == (None, None)
+    assert race_setup.map_stats("board/maps/mappa.webp") == (None, None, None, None)
+
+    maps_file.write_text(json.dumps([
+        {"image": "board/maps/altra.webp", "stress": 1, "heat": 2, "curve": 3, "caselle": 4},
+        {
+            "image": "board/maps/mappa.webp",
+            "stress": "3",
+            "heat": -1,
+            "curve": "6",
+            "caselle": -2,
+        },
+    ]), encoding="utf-8")
+    assert race_setup.map_card_counts("board/maps/mappa.webp") == (None, None)
+    assert race_setup.map_stats("board/maps/mappa.webp") == (None, None, None, None)
+    assert race_setup.map_card_counts("board/maps/inesistente.webp") == (None, None)
+    assert race_setup.map_stats("board/maps/inesistente.webp") == (None, None, None, None)
+
+
+def test_detail_publishes_map_card_counts(monkeypatch, tmp_path, make_client, session_factory):
+    media = tmp_path / "media"
+    for folder in ("maps", "events"):
+        (media / "board" / folder).mkdir(parents=True)
+    (media / "board" / "maps" / "mappa-2.webp").write_bytes(b"webp")
+    (media / "board" / "events" / "evento-1.webp").write_bytes(b"webp")
+    monkeypatch.setattr(race_setup, "MEDIA_DIR", media)
+    monkeypatch.setattr(race_setup, "_choose", lambda values: values[-1])
+    json_dir = tmp_path / "JSON"
+    json_dir.mkdir()
+    (json_dir / "maps.json").write_text(json.dumps([
+        {
+            "image": "board/maps/mappa-2.webp",
+            "stress": 4,
+            "heat": 7,
+            "curve": 9,
+            "caselle": 80,
+        },
+    ]), encoding="utf-8")
+    championship_id = seed_championship(session_factory, "ConConteggi")
+    admin = make_admin(make_client, session_factory)
+
+    assert admin.post(f"/api/championships/{championship_id}/setup").status_code == 200
+    detail = admin.get(f"/api/championships/{championship_id}").json()
+    assert detail["next_map_stress"] == 4
+    assert detail["next_map_heat"] == 7
+    assert detail["next_map_curve"] == 9
+    assert detail["next_map_caselle"] == 80
 
 
 def test_setup_requires_session_manager_and_championship(monkeypatch, tmp_path, make_client, session_factory):

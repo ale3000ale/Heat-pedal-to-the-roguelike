@@ -47,3 +47,8 @@ class ChampionshipDetail(ChampionshipRead):
     # Percorsi relativi a media delle carte estratte per la prossima gara.
     next_map_path: str | None
     next_event_path: str | None
+    # Conteggi derivati da maps.json per la mappa estratta.
+    next_map_stress: int | None
+    next_map_heat: int | None
+    next_map_curve: int | None
+    next_map_caselle: int | None

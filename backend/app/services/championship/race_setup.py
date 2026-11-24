@@ -1,5 +1,7 @@
 """Estrazione casuale di mappa ed evento per la prossima gara."""
+import json
 import secrets
+from pathlib import Path
 
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
@@ -16,6 +18,8 @@ from app.services.race.races import RaceInProgressError, has_race_in_progress
 MAP_DIR = "board/maps"
 EVENT_DIR = "board/events"
 IMAGE_SUFFIX = ".webp"
+MAPS_FILENAME = "maps.json"
+JSON_DIR_NAMES = ("json", "JSON")
 _choose = secrets.choice
 
 
@@ -29,6 +33,59 @@ class RaceSetupAlreadyExistsError(Exception):
 
 class RaceSetupConflictError(Exception):
     """Il lock non consente un setup coerente; nessun retry automatico."""
+
+
+def _maps_json_path() -> Path:
+    """Trova maps.json accettando sia backend/json sia backend/JSON."""
+    base = MEDIA_DIR.parent
+    for name in JSON_DIR_NAMES:
+        candidate = base / name / MAPS_FILENAME
+        if candidate.is_file():
+            return candidate
+    return base / JSON_DIR_NAMES[0] / MAPS_FILENAME
+
+
+def _normalized_path(value: object) -> str:
+    return value.replace("\\", "/").strip().lower() if isinstance(value, str) else ""
+
+
+def _non_negative_int(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def map_stats(
+    map_path: str | None,
+) -> tuple[int | None, int | None, int | None, int | None]:
+    """Restituisce stress, heat, curve e caselle della mappa estratta da maps.json."""
+    target = _normalized_path(map_path)
+    if not target:
+        return None, None, None, None
+    try:
+        items = json.loads(_maps_json_path().read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None, None, None, None
+    if not isinstance(items, list):
+        return None, None, None, None
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if _normalized_path(item.get("image")) != target:
+            continue
+        return (
+            _non_negative_int(item.get("stress")),
+            _non_negative_int(item.get("heat")),
+            _non_negative_int(item.get("curve")),
+            _non_negative_int(item.get("caselle")),
+        )
+    return None, None, None, None
+
+
+def map_card_counts(map_path: str | None) -> tuple[int | None, int | None]:
+    """Restituisce stress e heat della mappa estratta, letti da maps.json."""
+    stress, heat, _, _ = map_stats(map_path)
+    return stress, heat
 
 
 def _draw(relative_dir: str) -> str:

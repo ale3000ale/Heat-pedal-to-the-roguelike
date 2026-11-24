@@ -26,6 +26,41 @@ registrazione dei risultati o alla chiusura del campionato.
 e delle carte, strumento di importazione immagini, eventi live non pertinenti, dati reali e
 migrazioni eseguite.
 
+## Aggiornamento del 24 novembre 2026
+
+La sezione “PROSSIMA GARA” mostra anche i dati della mappa estratta, senza nuove colonne:
+l'immagine conserva le dimensioni originali e, nella barra del nome, un mini tachimetro
+`speedometer` contiene il numero di curve mentre un quadratino accanto contiene quello delle
+caselle. Le miniature `backend/media/cards/generics/stress.webp` e
+`backend/media/cards/generics/heat.webp` mostrano il conteggio al centro con `text-2xl`: su
+telefono stanno a destra del nome, su desktop in una colonna assoluta più interna
+(`sm:right-12`). Un conteggio non disponibile è reso con `—`.
+
+I valori sono derivati a ogni lettura: `map_stats`
+(`backend/app/services/championship/race_setup.py:58-88`) cerca in `backend/JSON/maps.json`
+l'elemento il cui `image` coincide con il path della mappa estratta, normalizzando separatori e
+maiuscole, e restituisce stress, heat, curve e caselle come interi non negativi. File
+mancante/corrotto, mappa non trovata o valore non valido restituiscono `None`. I campi
+`next_map_stress`, `next_map_heat`, `next_map_curve` e `next_map_caselle` sono nello schema
+`backend/app/schemas/championship/championship.py:45-54` e vengono popolati in
+`backend/app/api/championship/championships.py:56-68`.
+
+Punti frontend correnti: helper in `frontend/src/lib/championship/next-race-setup.ts:24-34`,
+tipo in `frontend/src/lib/types.ts:78-81`, valori derivati in
+`frontend/src/routes/championships/[id]/+page.svelte:68-77` e layout in `:451-499`. Test
+aggiornati: `backend/tests/test_championship_race_setup.py:70-71,96-124,153-154`,
+`frontend/src/lib/championship/next-race-setup.spec.ts:31-41` e
+`frontend/src/lib/championship/championship-live.spec.ts:65-66`.
+
+Gli esiti già osservati prima degli ultimi ritocchi (9 test backend mirati, 938 test backend
+completi con 1 warning e 14 subtest, check frontend senza errori, 723 test e build riuscita,
+lint fermo su 19 file preesistenti) si riferiscono allo stato precedente. Curve/caselle, layout
+responsive e numeri più grandi non sono ancora stati verificati: su indicazione dell'autore
+test, Prettier, lint, build e `git diff --check` sono rinviati al merge. Nessuna migrazione,
+dipendenza, modifica di `maps.json` o delle immagini, prova browser, CI od operazione VCS. Le
+citazioni di riga delle sezioni storiche seguenti si riferiscono alla revisione
+`21e17e637b43528d7320e88f0af5623db7158ee9` e non sono state riscritte.
+
 ## Revisione e stato del worktree esaminati
 
 - Revisione: `21e17e637b43528d7320e88f0af5623db7158ee9`

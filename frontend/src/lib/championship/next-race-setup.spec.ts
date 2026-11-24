@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { nextRaceImageUrl, nextRaceName } from './next-race-setup';
+import {
+	genericCardImageUrl,
+	mapCountLabel,
+	nextRaceImageUrl,
+	nextRaceName
+} from './next-race-setup';
 
 describe('carte della prossima gara', () => {
 	it('mostra il nome del file senza estensione', () => {
@@ -21,5 +26,18 @@ describe('carte della prossima gara', () => {
 		expect(nextRaceImageUrl('board\\events\\eventi-pages-to-jpg-0002.webp')).toBe(
 			'/media/board/events/eventi-pages-to-jpg-0002.webp'
 		);
+	});
+
+	it('costruisce gli URL delle miniature generiche', () => {
+		expect(genericCardImageUrl('stress')).toBe('/media/cards/generics/stress.webp');
+		expect(genericCardImageUrl('heat')).toBe('/media/cards/generics/heat.webp');
+	});
+
+	it('mostra un trattino quando il conteggio non e disponibile', () => {
+		expect(mapCountLabel(0)).toBe('0');
+		expect(mapCountLabel(7)).toBe('7');
+		expect(mapCountLabel(null)).toBe('—');
+		expect(mapCountLabel(undefined)).toBe('—');
+		expect(mapCountLabel(-1)).toBe('—');
 	});
 });
