@@ -21,6 +21,7 @@ from tools.image_tool.conversion import (
     DEFAULT_NAME,
     MAX_UPLOAD_BYTES,
     ImageToolError,
+    create_media_folder,
     default_destination,
     list_destinations,
     load_image,
@@ -46,7 +47,7 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 DEFAULT_MEDIA_DIR = ROOT / "backend" / "media"
 DEFAULT_JSON_DIR = ROOT / "backend" / "json"
 DEFAULT_STATE_PATH = Path(__file__).resolve().parent / "state.json"
-STATE_KINDS = ("events", "maps")
+STATE_KINDS = ("events", "maps", "destination")
 ID_PATTERN = re.compile(r"^[0-9a-f]{32}$")
 _STATE_LOCK = threading.Lock()
 
@@ -61,7 +62,7 @@ def _check_state_kind(kind: str) -> None:
 
 
 def read_last_folder(state_path: Path, kind: str) -> str:
-    """Ultima cartella ricordata per un JSON; file assente o rotto significa radice."""
+    """Ultima cartella ricordata per un JSON o per la destinazione; assente significa radice."""
     _check_state_kind(kind)
     try:
         with _STATE_LOCK:
@@ -77,7 +78,7 @@ def read_last_folder(state_path: Path, kind: str) -> str:
 
 
 def write_last_folder(state_path: Path, kind: str, path: str) -> str:
-    """Salva la cartella per un JSON senza toccare le altre, con scrittura atomica."""
+    """Salva la cartella di un tipo senza toccare le altre, con scrittura atomica."""
     _check_state_kind(kind)
     value = (path or "").strip().replace("\\", "/")
     with _STATE_LOCK:
@@ -175,6 +176,11 @@ class LastFolderRequest(BaseModel):
     path: str = ""
 
 
+class CreateFolderRequest(BaseModel):
+    parent: str = ""
+    name: str
+
+
 def browse_media(root: Path, value: str = "") -> dict[str, Any]:
     """Contenuto immediato di una cartella dentro media, senza uscirne."""
     root = root.resolve()
@@ -269,6 +275,13 @@ def create_app(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except FileNotFoundError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/media/folders")
+    def media_create_folder(payload: CreateFolderRequest):
+        try:
+            return {"path": create_media_folder(media_dir, payload.parent, payload.name)}
+        except ImageToolError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/media/last-folder")
     def media_last_folder(kind: str):

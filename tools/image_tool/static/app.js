@@ -12,17 +12,18 @@ const FIELDS = {
 		{ key: 'giri', label: 'Giri', type: 'number' },
 		{ key: 'curve', label: 'Curve', type: 'number' },
 		{ key: 'caselle', label: 'Caselle', type: 'number' },
-		{ key: 'sezioni', label: 'Numero sezioni', type: 'sections' }
+		{ key: 'stress', label: 'Stress', type: 'number' },
+		{ key: 'heat', label: 'Heat', type: 'number' },
+		{ key: 'sezioni', label: 'Dimensione sezioni', type: 'sections' }
 	]
 };
 const LABELS = { events: 'Eventi', maps: 'Mappe' };
 const DESCRIPTIONS = {
 	events: 'Schede degli eventi: nome, immagine, effetto, sponsor e fotografi.',
-	maps: 'Schede delle mappe: nome, immagine, giri, curve, caselle e sezioni.'
+	maps: 'Schede delle mappe: nome, immagine, giri, curve, caselle, stress, heat e sezioni.'
 };
 
-const destinationInput = document.getElementById('destination');
-const destinationsList = document.getElementById('destinations');
+const destinationButton = document.getElementById('destination');
 const fileInput = document.getElementById('files');
 const dropZone = document.getElementById('drop');
 const status = document.getElementById('status');
@@ -53,11 +54,16 @@ const editError = document.getElementById('edit-error');
 const confirmModal = document.getElementById('confirm-modal');
 const confirmMessage = document.getElementById('confirm-message');
 const mediaModal = document.getElementById('media-modal');
+const mediaTitle = document.getElementById('media-title');
 const mediaSearch = document.getElementById('media-search');
 const mediaStatus = document.getElementById('media-status');
 const mediaUp = document.getElementById('media-up');
 const mediaCrumb = document.getElementById('media-crumb');
 const mediaFolders = document.getElementById('media-folders');
+const mediaFolderTools = document.getElementById('media-folder-tools');
+const mediaNewFolder = document.getElementById('media-new-folder');
+const mediaSelectFolder = document.getElementById('media-select-folder');
+const mediaCreateFolder = document.getElementById('media-create-folder');
 const mediaGrid = document.getElementById('media-grid');
 const noticeModal = document.getElementById('notice-modal');
 const noticeMessage = document.getElementById('notice-message');
@@ -71,7 +77,11 @@ const state = {
 	editingIndex: null,
 	highlightErrors: false,
 	media: { path: '', parent: null, directories: [], images: [] },
+	mediaMode: 'image',
+	mediaKind: null,
 	onImageSelect: null,
+	onFolderSelect: null,
+	usedImages: new Set(),
 	folderSave: Promise.resolve(),
 	confirmResolve: null
 };
@@ -98,6 +108,21 @@ function imageUrl(path) {
 function fileStem(path) {
 	const name = path.split('/').pop() || '';
 	return name.replace(/\.[^.]+$/, '');
+}
+
+function normalizeImagePath(path) {
+	return typeof path === 'string' ? path.replace(/\\/g, '/').toLowerCase() : '';
+}
+
+/* I path già usati dagli altri elementi del JSON non sono selezionabili: evita i duplicati. */
+function usedImagePaths(excludeIndex = null) {
+	const used = new Set();
+	state.items.forEach((item, index) => {
+		if (index === excludeIndex) return;
+		const path = normalizeImagePath(item.image);
+		if (path) used.add(path);
+	});
+	return used;
 }
 
 function detailOf(response, data) {
@@ -127,6 +152,7 @@ function setBusy(value) {
 	saveButton.disabled = value || !queue.children.length;
 	clearButton.disabled = value;
 	fileInput.disabled = value;
+	destinationButton.disabled = value;
 }
 
 function fileSize(bytes) {
@@ -135,18 +161,27 @@ function fileSize(bytes) {
 	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-async function loadDestinations() {
+function setDestination(path) {
+	const value = (path || '').replace(/\\/g, '/');
+	destinationButton.dataset.path = value;
+	destinationButton.textContent = value || 'Scegli una cartella da backend/media…';
+}
+
+async function loadDestination() {
 	try {
-		const response = await fetch('/api/destinations');
-		if (!response.ok) throw new Error('Elenco delle cartelle non disponibile');
-		const data = await response.json();
-		destinationsList.replaceChildren();
-		for (const name of data.destinations) {
-			const option = document.createElement('option');
-			option.value = name;
-			destinationsList.append(option);
+		const response = await fetch('/api/media/last-folder?kind=destination');
+		const data = await response.json().catch(() => ({}));
+		if (!response.ok) throw new Error(detailOf(response, data));
+		if (data.path) {
+			setDestination(data.path);
+			return;
 		}
-		if (!destinationInput.value) destinationInput.value = data.default;
+		const foldersResponse = await fetch('/api/destinations');
+		const folders = await foldersResponse.json().catch(() => ({}));
+		if (!foldersResponse.ok) throw new Error('Elenco delle cartelle non disponibile');
+		const available = folders.destinations || [];
+		const selected = available.includes(folders.default) ? folders.default : '';
+		setDestination(selected);
 	} catch (error) {
 		setStatus(status, error.message, 'error');
 	}
@@ -287,10 +322,10 @@ function showResult(saved, errors, destination) {
 async function saveAll(event) {
 	event.preventDefault();
 	if (busy || !queue.children.length) return;
-	const destination = destinationInput.value.trim();
+	const destination = destinationButton.dataset.path.trim();
 	if (!destination) {
-		setStatus(status, 'Indica la cartella di destinazione.', 'error');
-		destinationInput.focus();
+		setStatus(status, 'Scegli la cartella di destinazione.', 'error');
+		destinationButton.focus();
 		return;
 	}
 	const items = [...queue.querySelectorAll('.queue-item')].map((row) => ({
@@ -545,7 +580,7 @@ function sectionControl(field, value) {
 	count.min = '0';
 	count.step = '1';
 	count.dataset.role = 'count';
-	count.setAttribute('aria-label', 'Numero sezioni');
+	count.setAttribute('aria-label', 'Dimensione sezioni');
 	count.value = Array.isArray(value) ? String(value.length) : '';
 	const list = document.createElement('div');
 	list.className = 'section-inputs';
@@ -778,7 +813,7 @@ function queueMediaFolderSave(kind, path) {
 		.then(() => rememberMediaFolder(kind, path));
 }
 
-async function loadMediaFolder(path = '', remember = true) {
+async function loadMediaFolder(path = '', remember = true, kind = state.mediaKind) {
 	try {
 		const query = path ? `?path=${encodeURIComponent(path)}` : '';
 		const response = await fetch('/api/media/browse' + query);
@@ -788,25 +823,47 @@ async function loadMediaFolder(path = '', remember = true) {
 			path: data.path || '',
 			parent: data.parent ?? null,
 			directories: data.directories || [],
-			images: data.images || []
+			images: (data.images || []).filter(
+				(entry) => !state.usedImages.has(normalizeImagePath(entry.path))
+			)
 		};
 		const where = state.media.path ? `backend/media/${state.media.path}` : 'backend/media';
-		setStatus(mediaStatus, `${state.media.images.length} immagini in ${where}.`);
+		const count = state.mediaMode === 'folder'
+			? state.media.directories.length
+			: state.media.images.length;
+		const noun = state.mediaMode === 'folder' ? 'cartelle' : 'immagini';
+		setStatus(mediaStatus, `${count} ${noun} in ${where}.`);
 		renderMediaGrid();
-		if (remember) queueMediaFolderSave(state.kind, state.media.path);
+		if (remember) queueMediaFolderSave(kind, state.media.path);
 	} catch (error) {
 		setStatus(mediaStatus, error.message, 'error');
 	}
 }
 
-async function openMediaPicker(onSelect) {
-	state.onImageSelect = onSelect;
+async function openMediaPicker(onSelect, mode = 'image') {
+	state.mediaMode = mode;
+	state.mediaKind = mode === 'folder' ? 'destination' : state.kind;
+	state.onImageSelect = mode === 'image' ? onSelect : null;
+	state.onFolderSelect = mode === 'folder' ? onSelect : null;
+	state.usedImages = mode === 'image' ? usedImagePaths(state.editingIndex) : new Set();
 	mediaSearch.value = '';
+	mediaNewFolder.value = '';
+	if (mode === 'folder') {
+		mediaTitle.textContent = 'Scegli una cartella da backend/media';
+		mediaSearch.placeholder = 'Cerca cartelle';
+		show(mediaFolderTools);
+		mediaGrid.hidden = true;
+	} else {
+		mediaTitle.textContent = 'Scegli un’immagine da backend/media';
+		mediaSearch.placeholder = 'Per esempio board/maps/ITALIA';
+		hide(mediaFolderTools);
+		mediaGrid.hidden = false;
+	}
 	show(mediaModal);
 	let last = '';
 	try {
 		const response = await fetch(
-			'/api/media/last-folder?kind=' + encodeURIComponent(state.kind)
+			'/api/media/last-folder?kind=' + encodeURIComponent(state.mediaKind)
 		);
 		const data = await response.json().catch(() => ({}));
 		if (!response.ok) throw new Error(detailOf(response, data));
@@ -814,7 +871,8 @@ async function openMediaPicker(onSelect) {
 	} catch (error) {
 		last = '';
 	}
-	await loadMediaFolder(last, false);
+	if (mode === 'folder' && !last) last = destinationButton.dataset.path || '';
+	await loadMediaFolder(last, false, state.mediaKind);
 }
 
 function renderMediaGrid() {
@@ -841,7 +899,7 @@ function renderMediaGrid() {
 		button.type = 'button';
 		button.className = 'media-crumb';
 		button.textContent = crumb.label;
-		button.addEventListener('click', () => loadMediaFolder(crumb.path));
+		button.addEventListener('click', () => loadMediaFolder(crumb.path, true, state.mediaKind));
 		mediaCrumb.append(button);
 	});
 
@@ -855,8 +913,23 @@ function renderMediaGrid() {
 		button.className = 'folder-item';
 		button.textContent = `📁 ${entry.name}`;
 		button.title = entry.path;
-		button.addEventListener('click', () => loadMediaFolder(entry.path));
+		button.addEventListener('click', () => loadMediaFolder(entry.path, true, state.mediaKind));
 		mediaFolders.append(button);
+	}
+
+	if (state.mediaMode === 'folder') {
+		mediaSelectFolder.disabled = !state.media.path;
+		if (!folders.length) {
+			const empty = document.createElement('p');
+			empty.className = 'hint';
+			empty.textContent = !state.media.path
+				? 'Apri o crea una sottocartella di backend/media.'
+				: query
+					? 'Nessuna cartella trovata in questa cartella.'
+					: 'Questa cartella non contiene sottocartelle.';
+			mediaFolders.append(empty);
+		}
+		return;
 	}
 
 	const matches = state.media.images.filter((entry) => entry.name.toLowerCase().includes(query));
@@ -883,11 +956,45 @@ function renderMediaGrid() {
 		name.textContent = entry.name;
 		button.append(preview, name);
 		button.addEventListener('click', () => {
-			queueMediaFolderSave(state.kind, state.media.path);
+			queueMediaFolderSave(state.mediaKind, state.media.path);
 			if (state.onImageSelect) state.onImageSelect(entry.path);
 			hide(mediaModal);
 		});
 		mediaGrid.append(button);
+	}
+}
+
+function selectFolderFromBrowser() {
+	if (!state.media.path || !state.onFolderSelect) return;
+	queueMediaFolderSave('destination', state.media.path);
+	state.onFolderSelect(state.media.path);
+	hide(mediaModal);
+}
+
+async function createMediaFolderFromBrowser() {
+	const name = mediaNewFolder.value.trim();
+	if (!name) {
+		setStatus(mediaStatus, 'Indica il nome della cartella.', 'error');
+		mediaNewFolder.focus();
+		return;
+	}
+	try {
+		const response = await fetch('/api/media/folders', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ parent: state.media.path, name })
+		});
+		const data = await response.json().catch(() => ({}));
+		if (!response.ok) throw new Error(detailOf(response, data));
+		const path = data.path || '';
+		mediaNewFolder.value = '';
+		await loadMediaFolder(path, false, 'destination');
+		queueMediaFolderSave('destination', path);
+		if (state.onFolderSelect) state.onFolderSelect(path);
+		hide(mediaModal);
+		setStatus(status, `Cartella ${path} creata e selezionata.`, 'ok');
+	} catch (error) {
+		setStatus(mediaStatus, error.message, 'error');
 	}
 }
 
@@ -911,6 +1018,9 @@ dropZone.addEventListener('drop', (event) => {
 
 form.addEventListener('submit', saveAll);
 clearButton.addEventListener('click', clearQueue);
+destinationButton.addEventListener('click', () => {
+	openMediaPicker((path) => setDestination(path), 'folder');
+});
 
 jsonToggle.addEventListener('click', () => {
 	const open = jsonMenu.hidden;
@@ -932,8 +1042,10 @@ document.getElementById('edit-cancel').addEventListener('click', () => hide(edit
 document.getElementById('confirm-yes').addEventListener('click', () => answerConfirm(true));
 document.getElementById('confirm-no').addEventListener('click', () => answerConfirm(false));
 document.getElementById('media-cancel').addEventListener('click', () => hide(mediaModal));
+mediaSelectFolder.addEventListener('click', selectFolderFromBrowser);
+mediaCreateFolder.addEventListener('click', createMediaFolderFromBrowser);
 mediaUp.addEventListener('click', () => {
-	if (state.media.parent !== null) loadMediaFolder(state.media.parent);
+	if (state.media.parent !== null) loadMediaFolder(state.media.parent, true, state.mediaKind);
 });
 editPreviewImage.addEventListener('error', () => hide(editPreview));
 noticeOk.addEventListener('click', () => hide(noticeModal));
@@ -948,4 +1060,4 @@ for (const backdrop of document.querySelectorAll('.modal-backdrop')) {
 	});
 }
 
-loadDestinations();
+loadDestination();

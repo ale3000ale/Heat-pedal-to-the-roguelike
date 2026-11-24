@@ -7,6 +7,7 @@ from PIL import Image
 
 from tools.image_tool.conversion import (
     ImageToolError,
+    create_media_folder,
     fit_image,
     load_image,
     resolve_destination,
@@ -70,6 +71,48 @@ class ConversionTests(unittest.TestCase):
             for value in values:
                 with self.subTest(value=value), self.assertRaises(ImageToolError):
                     resolve_destination(root, value)
+
+    def test_create_media_folder_normalizes_the_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "media"
+            (root / "board").mkdir(parents=True)
+            self.assertEqual(
+                create_media_folder(root, "board", "Gran Premio d'Italia"),
+                "board/gran-premio-d-italia",
+            )
+            self.assertTrue((root / "board" / "gran-premio-d-italia").is_dir())
+            self.assertEqual(create_media_folder(root, "", "Nuove Mappe"), "nuove-mappe")
+            self.assertTrue((root / "nuove-mappe").is_dir())
+
+    def test_create_media_folder_rejects_unsafe_paths_and_names(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "media"
+            (root / "board").mkdir(parents=True)
+            parents = ("..", "../cards", "board/../cards", "/etc", str(root / "board"), ".nascosta")
+            for parent in parents:
+                with self.subTest(parent=parent), self.assertRaises(ImageToolError):
+                    create_media_folder(root, parent, "nuova")
+            names = (
+                "",
+                "..",
+                "../cards",
+                "board/mappe",
+                "board\\mappe",
+                ".nascosta",
+                "C:maps",
+                "/assoluta",
+            )
+            for name in names:
+                with self.subTest(name=name), self.assertRaises(ImageToolError):
+                    create_media_folder(root, "board", name)
+
+    def test_create_media_folder_refuses_an_existing_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "media"
+            root.mkdir()
+            create_media_folder(root, "", "nuova")
+            with self.assertRaises(ImageToolError):
+                create_media_folder(root, "", "nuova")
 
 
 if __name__ == "__main__":

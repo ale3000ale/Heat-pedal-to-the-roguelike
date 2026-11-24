@@ -64,6 +64,8 @@ class AppTests(unittest.TestCase):
             "giri": 3,
             "curve": 12,
             "caselle": 42,
+            "stress": 2,
+            "heat": 3,
             "sezioni": [1, 2],
         }
         payload.update(overrides)
@@ -142,6 +144,30 @@ class AppTests(unittest.TestCase):
         self.assertNotIn(".segreto.webp", [entry["name"] for entry in data["images"]])
         self.assertNotIn(".nascosta", [entry["name"] for entry in data["directories"]])
 
+    def test_media_folder_creation_stays_inside_media(self):
+        response = self.client.post(
+            "/api/media/folders", json={"parent": "board", "name": "Nuove Mappe"}
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["path"], "board/nuove-mappe")
+        self.assertTrue((self.media / "board" / "nuove-mappe").is_dir())
+
+        duplicate = self.client.post(
+            "/api/media/folders", json={"parent": "board", "name": "nuove-mappe"}
+        )
+        self.assertEqual(duplicate.status_code, 400, duplicate.text)
+
+        invalid = (
+            {"parent": "../cards", "name": "nuova"},
+            {"parent": "board", "name": "../nuova"},
+            {"parent": "board", "name": ".nascosta"},
+            {"parent": "board", "name": ""},
+        )
+        for payload in invalid:
+            with self.subTest(payload=payload):
+                result = self.client.post("/api/media/folders", json=payload)
+                self.assertEqual(result.status_code, 400, result.text)
+
     def test_media_browser_script_and_preview_are_wired(self):
         page = self.client.get("/")
         for marker in (
@@ -161,6 +187,55 @@ class AppTests(unittest.TestCase):
         self.assertIn("/api/media/last-folder", script)
         self.assertIn("showPreview(item.image || '')", script)
 
+    def test_folder_picker_replaces_the_destination_field(self):
+        page = self.client.get("/")
+        for marker in (
+            'id="destination"',
+            'class="path-button destination-button"',
+            'id="media-folder-tools"',
+            'id="media-new-folder"',
+            'id="media-select-folder"',
+            'id="media-create-folder"',
+            "Seleziona questa cartella",
+            "Crea cartella",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, page.text)
+        self.assertNotIn('id="destinations"', page.text)
+
+        script = (
+            Path(__file__).resolve().parents[1] / "static" / "app.js"
+        ).read_text(encoding="utf-8")
+        css = (
+            Path(__file__).resolve().parents[1] / "static" / "style.css"
+        ).read_text(encoding="utf-8")
+        for marker in (
+            "/api/media/folders",
+            "kind=destination",
+            "state.mediaMode === 'folder'",
+            "openMediaPicker((path) => setDestination(path), 'folder')",
+            "async function createMediaFolderFromBrowser()",
+            "queueMediaFolderSave('destination', path)",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, script)
+        self.assertIn(".media-folder-tools", css)
+
+    def test_media_picker_hides_images_used_by_other_json_items(self):
+        script = (
+            Path(__file__).resolve().parents[1] / "static" / "app.js"
+        ).read_text(encoding="utf-8")
+        for marker in (
+            "usedImages: new Set()",
+            "function normalizeImagePath(path)",
+            "function usedImagePaths(excludeIndex = null)",
+            "if (index === excludeIndex) return;",
+            "state.usedImages = mode === 'image' ? usedImagePaths(state.editingIndex) : new Set();",
+            "!state.usedImages.has(normalizeImagePath(entry.path))",
+        ):
+            with self.subTest(marker=marker):
+                self.assertIn(marker, script)
+
     def test_json_editor_marks_errors_and_sections_without_steppers(self):
         script = (
             Path(__file__).resolve().parents[1] / "static" / "app.js"
@@ -171,7 +246,9 @@ class AppTests(unittest.TestCase):
         for marker in (
             'className = \'card-alert\'',
             'type: \'sections\'',
-            'Numero sezioni',
+            'key: \'stress\'',
+            'key: \'heat\'',
+            'Dimensione sezioni',
             'className = \'field\'',
             'classList.add(\'invalid\')',
             'data-role="count"',
@@ -215,6 +292,25 @@ class AppTests(unittest.TestCase):
         self.assertEqual(
             json.loads(self.state.read_text(encoding="utf-8")),
             {"maps": "board/maps", "events": "board/events"},
+        )
+
+    def test_destination_folder_is_remembered_separately(self):
+        self.client.post(
+            "/api/media/last-folder", json={"kind": "maps", "path": "board/maps"}
+        )
+        response = self.client.post(
+            "/api/media/last-folder", json={"kind": "destination", "path": "board/events"}
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(
+            self.client.get("/api/media/last-folder", params={"kind": "destination"}).json()[
+                "path"
+            ],
+            "board/events",
+        )
+        self.assertEqual(
+            json.loads(self.state.read_text(encoding="utf-8")),
+            {"maps": "board/maps", "destination": "board/events"},
         )
 
     def test_last_folder_survives_an_app_restart(self):
@@ -421,6 +517,8 @@ class AppTests(unittest.TestCase):
                 "giri": None,
                 "curve": None,
                 "caselle": 42,
+                "stress": None,
+                "heat": None,
                 "sezioni": None,
             },
         )
@@ -541,12 +639,13 @@ class AppTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 400, response.text)
 
     def test_wrong_number_types_are_rejected(self):
-        for value in (-1, "3", 1.5):
-            with self.subTest(value=value):
-                response = self.client.post(
-                    "/api/data/maps", json=self.map_payload(giri=value)
-                )
-                self.assertEqual(response.status_code, 400, response.text)
+        for field in ("giri", "stress", "heat"):
+            for value in (-1, "3", 1.5):
+                with self.subTest(field=field, value=value):
+                    response = self.client.post(
+                        "/api/data/maps", json=self.map_payload(**{field: value})
+                    )
+                    self.assertEqual(response.status_code, 400, response.text)
 
     def test_corrupt_json_is_reported(self):
         (self.json_dir / "maps.json").write_text("{", encoding="utf-8")

@@ -157,19 +157,24 @@ come passi del setup.
 - Media: `/api/media/browse` restituisce solo le sottocartelle e le immagini della cartella richiesta,
   con `path`, `parent` nullo alla radice e URL codificati; path assoluti, `..`, parti nascoste e file
   vengono rifiutati e il resolved path deve restare dentro `backend/media`; le destinazioni di
-  salvataggio restano relative e confinate: `tools/image_tool/app.py:178-216`,
-  `tools/image_tool/conversion.py:72-110`.
+  salvataggio restano relative e confinate. `POST /api/media/folders` crea una sottocartella con
+  `{parent, name}`, normalizza il nome con `slugify`, rifiuta separatori, `..`, assoluti e nomi
+  nascosti, e non sovrascrive una cartella esistente:
+  `tools/image_tool/app.py:178-216`, `tools/image_tool/app.py:279-284`,
+  `tools/image_tool/conversion.py:72-151`.
 - Stato della cartella: `GET /api/media/last-folder?kind=...` restituisce l'ultima cartella del tipo,
   `POST` la salva con scrittura atomica UTF-8 in `tools/image_tool/state.json` senza toccare gli altri
-  tipi; valori non validi o cartelle sparite ricadono sulla radice:
-  `tools/image_tool/app.py:58-101`, `tools/image_tool/app.py:273-292`.
+  tipi; oltre a `events` e `maps` esiste `destination` per la cartella di salvataggio dei media.
+  Valori non validi o cartelle sparite ricadono sulla radice:
+  `tools/image_tool/app.py:58-108`, `tools/image_tool/app.py:286-304`.
 - JSON: `events.json` e `maps.json` usano modelli Pydantic con `id` intero nascosto, autogenerato
   incrementale e conservato in modifica; campi obbligatori, `StrictInt >= 0`, path immagine esistente
   dentro `backend/media`, unicità case-insensitive di nome e path con errore
   `errore elemento già esistente`, e scrittura atomica UTF-8. `repair_items` all'apertura elimina le
   chiavi sconosciute e imposta a `null` i campi mancanti o non validi, riscrivendo il file; l'ID resta
   un intero positivo univoco e i duplicati vengono solo segnalati. `maps.json` include `sezioni`, lista
-  di interi non negativi (anche vuota): `tools/image_tool/json_store.py:17-56`,
+  di interi non negativi (anche vuota), e i campi obbligatori `stress` ed `heat`, anch'essi `StrictInt >= 0`:
+  `tools/image_tool/json_store.py:17-56`,
   `tools/image_tool/json_store.py:59-101`, `tools/image_tool/json_store.py:117-224`,
   `tools/image_tool/json_store.py:227-290`.
 - Convertitore: file fino a 25 MB, scatola massima 560x870 senza ingrandire, orientamento EXIF e
@@ -178,12 +183,22 @@ come passi del setup.
 - UI: barra `Media` / `JSON` con sottomenù `Mappe` ed `Eventi`, schede con immagine e valori, modale
   di modifica con anteprima dell'immagine in cima, path prima del nome, autofill del nome dal file,
   conferma, aggiunta vuota, esploratore a cartelle con breadcrumb e pulsante `Su`, ricerca limitata
-  alla cartella aperta, cartella iniziale ripristinata per tipo di JSON, campo `Numero sezioni` che
-  genera N input numerici senza stepper (rimossi anche da tutti gli altri campi), schede con errori in
+  alla cartella aperta, cartella iniziale ripristinata per tipo di JSON, campi `Stress` e `Heat` per le
+  mappe, campo `Dimensione sezioni` che genera N input numerici senza stepper (rimossi anche da tutti gli
+  altri campi), schede con errori in
   cima con triangolo rosso semi-trasparente sull'immagine che evidenzia i campi problematici, e avviso
   `File JSON creato` con solo `OK`:
   `tools/image_tool/static/index.html`, `tools/image_tool/static/app.js`,
   `tools/image_tool/static/style.css`.
+- Destinazione dei media: il campo di testo è sostituito da un pulsante che apre l'esploratore in
+  modalità cartella, con `Seleziona questa cartella` e `Crea cartella`; la cartella creata diventa
+  subito la destinazione e l'ultima scelta è ricordata con `kind=destination`:
+  `tools/image_tool/static/app.js:164-186`, `tools/image_tool/static/app.js:843-993`,
+  `tools/image_tool/static/index.html`, `tools/image_tool/static/style.css`.
+- Selettore immagini dei JSON: nasconde i path già usati dagli altri elementi dello stesso JSON,
+  confrontati case-insensitive e con separatori `/`; l'immagine dell'elemento in modifica resta
+  visibile. Filtro e insieme dei path usati nel client:
+  `tools/image_tool/static/app.js:118-128`, `tools/image_tool/static/app.js:816-842`.
 - Salvataggio immagini: sposta i WebP dallo staging alla destinazione scelta, usa il nome suggerito
   se il campo è vuoto e restituisce esiti ed errori per singola immagine:
   `tools/image_tool/app.py:384-426`.

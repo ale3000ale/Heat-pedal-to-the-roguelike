@@ -108,3 +108,43 @@ def resolve_destination(root: Path, value: str) -> Path:
     if resolved == root or root not in resolved.parents:
         raise ImageToolError("La cartella deve stare dentro backend/media")
     return resolved
+
+
+def create_media_folder(root: Path, parent: str, name: str) -> str:
+    """Crea una cartella dentro media e ne ritorna il path relativo normalizzato."""
+    root = root.resolve()
+    parent_value = (parent or "").strip().replace("\\", "/")
+    if ":" in parent_value:
+        raise ImageToolError("La cartella deve essere relativa a backend/media")
+    parent_path = Path(parent_value) if parent_value else Path()
+    if parent_path.is_absolute() or parent_path.drive:
+        raise ImageToolError("La cartella deve essere relativa a backend/media")
+    if any(part in ("", ".", "..") or part.startswith(".") for part in parent_path.parts):
+        raise ImageToolError("La cartella deve stare dentro backend/media")
+    destination = (root / parent_path).resolve()
+    if destination != root and root not in destination.parents:
+        raise ImageToolError("La cartella deve stare dentro backend/media")
+    if not destination.is_dir():
+        raise ImageToolError("Cartella genitore non trovata")
+
+    raw_name = (name or "").strip()
+    if not raw_name:
+        raise ImageToolError("Indica il nome della cartella")
+    if (
+        ":" in raw_name
+        or "/" in raw_name
+        or "\\" in raw_name
+        or Path(raw_name).is_absolute()
+        or Path(raw_name).drive
+        or raw_name in (".", "..")
+        or raw_name.startswith(".")
+    ):
+        raise ImageToolError("Il nome della cartella non deve contenere separatori")
+    candidate = destination / slugify(raw_name)
+    try:
+        candidate.mkdir()
+    except FileExistsError as exc:
+        raise ImageToolError("La cartella esiste già") from exc
+    except OSError as exc:
+        raise ImageToolError(f"Cartella non creabile: {exc}") from exc
+    return candidate.relative_to(root).as_posix()

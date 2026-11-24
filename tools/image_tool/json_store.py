@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, ValidationError, f
 KINDS = ("events", "maps")
 FIELD_NAMES = {
     "events": ("nome", "image", "effetto", "sponsor", "fotografi"),
-    "maps": ("nome", "image", "giri", "curve", "caselle", "sezioni"),
+    "maps": ("nome", "image", "giri", "curve", "caselle", "stress", "heat", "sezioni"),
 }
 IMAGE_SUFFIXES = frozenset({".webp", ".png", ".jpg", ".jpeg"})
 _LOCK = threading.RLock()
@@ -85,6 +85,8 @@ class MapItem(BaseModel):
     giri: StrictInt = Field(ge=0)
     curve: StrictInt = Field(ge=0)
     caselle: StrictInt = Field(ge=0)
+    stress: StrictInt = Field(ge=0)
+    heat: StrictInt = Field(ge=0)
     sezioni: list[StrictInt]
 
     @field_validator("nome")
@@ -146,7 +148,7 @@ def _repaired_field(field: str, value: Any, media_dir: Path) -> Any:
     if field in ("nome", "effetto", "fotografi"):
         stripped = _strip(value)
         return stripped if isinstance(stripped, str) and stripped else None
-    if field in ("sponsor", "giri", "curve", "caselle"):
+    if field in ("sponsor", "giri", "curve", "caselle", "stress", "heat"):
         return value if _valid_number(value) else None
     if field == "sezioni":
         return [entry for entry in value] if _valid_sections(value) else None

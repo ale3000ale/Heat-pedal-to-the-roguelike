@@ -38,6 +38,8 @@ class JsonStoreTests(unittest.TestCase):
             "giri": 3,
             "curve": 12,
             "caselle": 42,
+            "stress": 2,
+            "heat": 3,
             "sezioni": [1, 2],
         }
         payload.update(overrides)
@@ -122,6 +124,8 @@ class JsonStoreTests(unittest.TestCase):
                 "giri": None,
                 "curve": None,
                 "caselle": 42,
+                "stress": None,
+                "heat": None,
                 "sezioni": None,
             },
         )
@@ -198,10 +202,24 @@ class JsonStoreTests(unittest.TestCase):
             ("giri", "3"),
             ("curve", 2.5),
             ("caselle", "42"),
+            ("stress", -1),
+            ("stress", "2"),
+            ("heat", -1),
+            ("heat", 2.5),
         )
         for field, value in cases:
             with self.subTest(field=field, value=value), self.assertRaises(StoreError):
                 validate_item("maps", self.map_payload(**{field: value}), self.media, [])
+
+    def test_stress_and_heat_are_preserved_and_required(self):
+        item = self.valid_item()
+        self.assertEqual((item["stress"], item["heat"]), (2, 3))
+        for field in ("stress", "heat"):
+            with self.subTest(field=field):
+                payload = self.map_payload()
+                del payload[field]
+                with self.assertRaises(StoreError):
+                    validate_item("maps", payload, self.media, [])
 
     def test_extra_fields_are_rejected(self):
         payload = self.map_payload(ignored=True)
