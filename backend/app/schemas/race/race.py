@@ -14,9 +14,10 @@ class RaceCreate(BaseModel):
 
 
 class ResultEntry(BaseModel):
-    # Un pilota all'arrivo, con i punti sponsor scelti a mano (mai negativi).
+    # Un pilota all'arrivo, con i punti sponsor e i punti extra evento scelti a mano.
     pilot_id: int
     sponsor_points: int = Field(default=0, ge=0)
+    bonus_points: int = Field(default=0, ge=0)
 
 
 class ResultsSet(BaseModel):
@@ -45,6 +46,8 @@ class RaceResultRead(BaseModel):
     # Punti proposti dai tasti S della gara. Servono a precompilare il modulo dei
     # risultati, che resta modificabile e salva solo i valori confermati.
     suggested_sponsor_points: int
+    # Punti extra evento già inclusi in points, distinti dai punti di posizione.
+    bonus_points: int
 
 
 class RaceDetail(RaceRead):

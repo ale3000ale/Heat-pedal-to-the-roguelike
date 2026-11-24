@@ -63,7 +63,12 @@ function snapshot(gifts: PilotGiftNotification[] = []): ChampionshipSnapshot {
 			next_map_stress: null,
 			next_map_heat: null,
 			next_map_curve: null,
-			next_map_caselle: null
+			next_map_caselle: null,
+			next_event_effect: null,
+			next_event_labels: [],
+			next_event_sponsor_points: 0,
+			next_event_position_limit: 0,
+			next_event_position_points: 0
 		},
 		standings: [],
 		races: [],

@@ -4,6 +4,7 @@ export interface ResultRow {
 	pilot_id: number;
 	name: string;
 	sponsor: RaceResult['sponsor_points'] | undefined;
+	bonus: RaceResult['bonus_points'];
 }
 
 export interface ResultForm {
@@ -43,8 +44,11 @@ export function hasResultChanges(base: ResultForm, local: ResultForm): boolean {
 	assertAssignment(base);
 	assertAssignment(local);
 	if (!sameAssignment(base, local)) return true;
-	const values = new Map(base.order.map((row) => [row.pilot_id, row.sponsor]));
-	return local.order.some((row) => !Object.is(row.sponsor, values.get(row.pilot_id)));
+	const values = new Map(base.order.map((row) => [row.pilot_id, row]));
+	return local.order.some((row) => {
+		const previous = values.get(row.pilot_id);
+		return !Object.is(row.sponsor, previous?.sponsor) || !Object.is(row.bonus, previous?.bonus);
+	});
 }
 
 /**
@@ -66,7 +70,11 @@ export function reconcileResults(base: ResultForm, local: ResultForm, remote: Re
 		local.order
 			.filter((row) => {
 				const previous = baseRows.get(row.pilot_id);
-				return !previous || !Object.is(previous.sponsor, row.sponsor);
+				return (
+					!previous ||
+					!Object.is(previous.sponsor, row.sponsor) ||
+					!Object.is(previous.bonus, row.bonus)
+				);
 			})
 			.map((row) => row.pilot_id)
 	);
@@ -81,13 +89,23 @@ export function reconcileResults(base: ResultForm, local: ResultForm, remote: Re
 			const fresh = remoteRows.get(row.pilot_id);
 			const previous = baseRows.get(row.pilot_id);
 			const keep = own !== undefined && dirty.has(row.pilot_id);
-			if (keep && fresh && !Object.is(own.sponsor, fresh.sponsor)) {
-				if (!previous || !Object.is(previous.sponsor, fresh.sponsor)) conflict = true;
+			if (
+				keep &&
+				fresh &&
+				(!Object.is(own.sponsor, fresh.sponsor) || !Object.is(own.bonus, fresh.bonus))
+			) {
+				if (
+					!previous ||
+					!Object.is(previous.sponsor, fresh.sponsor) ||
+					!Object.is(previous.bonus, fresh.bonus)
+				)
+					conflict = true;
 			}
 			return {
 				pilot_id: row.pilot_id,
 				name: names.get(row.pilot_id) ?? row.name,
-				sponsor: keep ? own.sponsor : fresh ? fresh.sponsor : 0
+				sponsor: keep ? own.sponsor : fresh ? fresh.sponsor : 0,
+				bonus: keep ? own.bonus : fresh ? fresh.bonus : 0
 			};
 		}),
 		absent: source.absent.map((row) => ({

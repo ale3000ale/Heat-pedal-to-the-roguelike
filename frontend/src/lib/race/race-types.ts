@@ -22,6 +22,8 @@ export interface RaceResult {
 	// Punti sponsor proposti dai tasti S della gara. Il modulo li usa per precompilare
 	// una riga non ancora salvata; restano modificabili e valgono solo alla conferma.
 	suggested_sponsor_points: number;
+	// Punti extra dell'evento, già inclusi in points e modificabili nel modulo.
+	bonus_points: number;
 }
 
 // Gara con i risultati.
@@ -33,6 +35,7 @@ export interface RaceDetail extends Race {
 export interface RaceResultInput {
 	pilot_id: number;
 	sponsor_points: number;
+	bonus_points: number;
 }
 
 // Riga della classifica ufficiale. Nei campionati chiusi pilot_id può essere nullo.

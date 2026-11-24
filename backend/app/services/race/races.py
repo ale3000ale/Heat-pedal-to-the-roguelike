@@ -136,14 +136,16 @@ def set_results(
     db: Session,
     championship_id: int,
     race_id: int,
-    entries: list[tuple[int, int]],
+    entries: list[tuple[int, ...]],
     can_correct: bool = False,
     absent: list[int] | None = None,
     reviewer_id: int | None = None,
 ) -> Race:
     """Salva risultati, saldi, revisione ed eventi con un solo commit.
 
-    entries contiene (pilota, sponsor) in ordine; absent elenca gli assenti.
+    entries contiene (pilota, sponsor, punti extra evento) in ordine; la terza
+    voce è facoltativa per i chiamanti che non usano gli effetti evento.
+    absent elenca gli assenti.
     can_correct permette la correzione; reviewer_id identifica chi termina.
     Ritorna la gara. Errori di dominio, SQL o evento causano rollback completo.
     La correzione non riavvia la revisione e non assegna nuovamente oro.
@@ -176,15 +178,27 @@ def _set_results(db, championship_id, race_id, entries, can_correct, absent, rev
     }
     if old_sponsor and not can_correct:
         raise RaceAlreadyClosedError
-    pilot_ids = [pilot_id for pilot_id, _ in entries]
+    normalized: list[tuple[int, int, int]] = []
+    for entry in entries:
+        if len(entry) == 2:
+            pilot_id, sponsor = entry
+            bonus = 0
+        elif len(entry) == 3:
+            pilot_id, sponsor, bonus = entry
+        else:
+            raise RaceResultError("Voce risultato non valida")
+        normalized.append((pilot_id, sponsor, bonus))
+    pilot_ids = [pilot_id for pilot_id, _, _ in normalized]
     if not pilot_ids:
         raise RaceResultError("Serve almeno un pilota")
     if len(pilot_ids) > MAX_RACE_PILOTS:
         raise RaceResultError(f"Una gara può avere al massimo {MAX_RACE_PILOTS} piloti")
     if len(set(pilot_ids)) != len(pilot_ids):
         raise RaceResultError("Pilota ripetuto")
-    if any(sponsor < 0 for _, sponsor in entries):
+    if any(sponsor < 0 for _, sponsor, _ in normalized):
         raise RaceResultError("I punti sponsor non possono essere negativi")
+    if any(bonus < 0 for _, _, bonus in normalized):
+        raise RaceResultError("I punti extra non possono essere negativi")
     entrants = list_entrants(db, championship_id)
     enrolled = {pilot.id for pilot in entrants}
     if not set(pilot_ids) <= enrolled:
@@ -199,14 +213,14 @@ def _set_results(db, championship_id, race_id, entries, can_correct, absent, rev
         if enrolled - set(pilot_ids) - set(absent):
             raise RaceResultError("Indica per ogni iscritto se ha partecipato o no")
     db.query(RaceResult).where(RaceResult.race_id == race.id).delete()
-    for position, (pilot_id, sponsor) in enumerate(entries, start=1):
+    for position, (pilot_id, sponsor, bonus) in enumerate(normalized, start=1):
         db.add(RaceResult(
             race_id=race.id, pilot_id=pilot_id, position=position,
-            points=POINTS_BY_POSITION.get(position, 0), sponsor_points=sponsor,
+            points=POINTS_BY_POSITION.get(position, 0) + bonus, sponsor_points=sponsor,
         ))
     db.flush()
     _sync_pilot_points(db, championship_id)
-    _apply_sponsor_delta(db, old_sponsor, dict(entries))
+    _apply_sponsor_delta(db, old_sponsor, {pilot_id: sponsor for pilot_id, sponsor, _ in normalized})
     if not old_sponsor:
         award_race_gold(entrants, rules_of(championship), pilot_ids)
         # La gara è disputata: mappa ed evento estratti escono dalla pool del campionato.
@@ -254,7 +268,7 @@ def suggested_sponsor_points(db: Session, race_id: int) -> dict[int, int]:
 
 def race_table(
     db: Session, championship_id: int, race_id: int
-) -> tuple[Race, list[tuple[Pilot, int | None, int, int]]]:
+) -> tuple[Race, list[tuple[Pilot, int | None, int, int, int]]]:
     # Tutti gli iscritti: prima chi ha corso (per posizione), poi gli altri a 0 punti.
     race = get_race(db, championship_id, race_id)
     entrants = list_entrants(db, championship_id)
@@ -263,6 +277,10 @@ def race_table(
     }
     raced = sorted((p for p in entrants if p.id in results), key=lambda p: results[p.id].position)
     absent = [p for p in entrants if p.id not in results]
-    rows = [(p, results[p.id].position, results[p.id].points, results[p.id].sponsor_points) for p in raced]
-    rows += [(p, None, 0, 0) for p in absent]
+    rows = []
+    for pilot in raced:
+        result = results[pilot.id]
+        bonus = result.points - POINTS_BY_POSITION.get(result.position, 0)
+        rows.append((pilot, result.position, result.points, result.sponsor_points, bonus))
+    rows += [(p, None, 0, 0, 0) for p in absent]
     return race, rows

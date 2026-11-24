@@ -14,12 +14,14 @@ from app.services.championship.board_pools import (
     draw_card,
 )
 from app.services.championship.championships import ChampionshipClosedError, get_championship
+from app.services.championship.event_effects import EventEffects, parse_effect
 from app.services.core.event_log import append_event
 from app.services.core.sqlite_write_lock import SQLiteWriteLockError, acquire_sqlite_write_lock
 from app.services.draft.draft_guards import require_no_draft
 from app.services.race.races import RaceInProgressError, has_race_in_progress
 
 MAPS_FILENAME = "maps.json"
+EVENTS_FILENAME = "events.json"
 JSON_DIR_NAMES = ("json", "JSON")
 
 
@@ -39,14 +41,35 @@ class RaceSetupConflictError(Exception):
     """Il lock non consente un setup coerente; nessun retry automatico."""
 
 
-def _maps_json_path() -> Path:
-    """Trova maps.json accettando sia backend/json sia backend/JSON."""
+def _json_path(filename: str) -> Path:
+    """Trova un JSON del catalogo accettando sia backend/json sia backend/JSON."""
     base = MEDIA_DIR.parent
     for name in JSON_DIR_NAMES:
-        candidate = base / name / MAPS_FILENAME
+        candidate = base / name / filename
         if candidate.is_file():
             return candidate
-    return base / JSON_DIR_NAMES[0] / MAPS_FILENAME
+    return base / JSON_DIR_NAMES[0] / filename
+
+
+def _maps_json_path() -> Path:
+    return _json_path(MAPS_FILENAME)
+
+
+def _catalog_item(filename: str, path: str | None) -> dict | None:
+    """Restituisce la voce del catalogo il cui percorso immagine corrisponde."""
+    target = _normalized_path(path)
+    if not target:
+        return None
+    try:
+        items = json.loads(_json_path(filename).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(items, list):
+        return None
+    for item in items:
+        if isinstance(item, dict) and _normalized_path(item.get("image")) == target:
+            return item
+    return None
 
 
 def _normalized_path(value: object) -> str:
@@ -63,27 +86,21 @@ def map_stats(
     map_path: str | None,
 ) -> tuple[int | None, int | None, int | None, int | None]:
     """Restituisce stress, heat, curve e caselle della mappa estratta da maps.json."""
-    target = _normalized_path(map_path)
-    if not target:
+    item = _catalog_item(MAPS_FILENAME, map_path)
+    if item is None:
         return None, None, None, None
-    try:
-        items = json.loads(_maps_json_path().read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError):
-        return None, None, None, None
-    if not isinstance(items, list):
-        return None, None, None, None
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        if _normalized_path(item.get("image")) != target:
-            continue
-        return (
-            _non_negative_int(item.get("stress")),
-            _non_negative_int(item.get("heat")),
-            _non_negative_int(item.get("curve")),
-            _non_negative_int(item.get("caselle")),
-        )
-    return None, None, None, None
+    return (
+        _non_negative_int(item.get("stress")),
+        _non_negative_int(item.get("heat")),
+        _non_negative_int(item.get("curve")),
+        _non_negative_int(item.get("caselle")),
+    )
+
+
+def event_effects(event_path: str | None) -> EventEffects:
+    """Effetto strutturato dell'evento estratto, letto da events.json."""
+    item = _catalog_item(EVENTS_FILENAME, event_path)
+    return parse_effect(item.get("effetto")) if item is not None else EventEffects()
 
 
 def map_card_counts(map_path: str | None) -> tuple[int | None, int | None]:

@@ -9,6 +9,7 @@
 	import { startLiveRefresh } from '$lib/events/live-refresh.svelte';
 	import { hasResultChanges, reconcileResults } from '$lib/race/race-result-reconcile';
 	import { initialSponsor } from '$lib/race/race-sponsor-suggestion';
+	import { initialBonus } from '$lib/race/race-bonus-suggestion';
 	import type { ResultForm, ResultRow } from '$lib/race/race-result-reconcile';
 	import type { ChampionshipDetail, Pilot } from '$lib/types';
 	import type { RaceDetail } from '$lib/race/race-types';
@@ -28,6 +29,7 @@
 		'h-8 w-20 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50';
 	let race = $state<RaceDetail | null>(null);
 	let championship = $state<ChampionshipDetail | null>(null);
+	let eventLabels = $derived(championship?.next_event_labels ?? []);
 	let myPilots = $state<Pilot[]>([]);
 	let order = $state<ResultRow[]>([]);
 	let absent = $state<ResultForm['absent']>([]);
@@ -98,7 +100,12 @@
 			order: detail.results
 				.filter((r) => r.position !== null)
 				.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-				.map((r) => ({ pilot_id: r.pilot_id, name: r.pilot_name, sponsor: r.sponsor_points })),
+				.map((r) => ({
+					pilot_id: r.pilot_id,
+					name: r.pilot_name,
+					sponsor: r.sponsor_points,
+					bonus: r.bonus_points
+				})),
 			absent:
 				detail.participants > 0
 					? detail.results
@@ -209,7 +216,17 @@
 		if ([...order, ...absent].some((r) => r.pilot_id === pilotId)) return;
 		const found = race?.results.find((r) => r.pilot_id === pilotId);
 		if (found)
-			order.push({ pilot_id: pilotId, name: found.pilot_name, sponsor: initialSponsor(found) });
+			order.push({
+				pilot_id: pilotId,
+				name: found.pilot_name,
+				sponsor: initialSponsor(found),
+				bonus: initialBonus(
+					found,
+					order.length + 1,
+					championship?.next_event_position_limit ?? 0,
+					championship?.next_event_position_points ?? 0
+				)
+			});
 	}
 	function addToAbsent(pilotId: number) {
 		if (!canEdit || [...order, ...absent].some((r) => r.pilot_id === pilotId)) return;
@@ -229,6 +246,11 @@
 		order.splice(target, 0, row);
 	}
 	function cleanSponsor(value: unknown): number {
+		const n = Math.trunc(Number(value));
+		return Number.isFinite(n) && n > 0 ? n : 0;
+	}
+
+	function cleanBonus(value: unknown): number {
 		const n = Math.trunc(Number(value));
 		return Number.isFinite(n) && n > 0 ? n : 0;
 	}
@@ -262,7 +284,8 @@
 					body: {
 						results: submitted.order.map((r) => ({
 							pilot_id: r.pilot_id,
-							sponsor_points: cleanSponsor(r.sponsor)
+							sponsor_points: cleanSponsor(r.sponsor),
+							bonus_points: cleanBonus(r.bonus)
 						})),
 						absent: submitted.absent.map((r) => r.pilot_id)
 					}
@@ -351,7 +374,7 @@
 				<Card.Content>
 					<ol class="list-decimal pl-5">
 						{#each order as row (row.pilot_id)}<li>
-								{row.name}: {row.sponsor ?? 'vuoto'} sponsor
+								{row.name}: {row.sponsor ?? 'vuoto'} sponsor, {row.bonus} extra
 							</li>{/each}
 					</ol>
 					<p class="mt-2 text-sm">
@@ -425,11 +448,16 @@
 					><Card.Description
 						>Metti in classifica i piloti in ordine di arrivo (massimo {MAX_PARTICIPANTS}) con i
 						punti sponsor di ciascuno, e indica a mano chi non partecipa. Ogni iscritto va
-						assegnato. I punti delle carte ricevute con il tasto S sono già proposti e restano
-						modificabili; gli sponsor vengono assegnati al salvataggio.</Card.Description
+						assegnato. I punti delle carte ricevute con il tasto S e quelli extra dell'evento sono
+						già proposti e restano modificabili; gli sponsor vengono assegnati al salvataggio.</Card.Description
 					></Card.Header
 				>
 				<Card.Content class="space-y-4">
+					{#if eventLabels.length}
+						<p class="text-sm text-muted-foreground">
+							Effetti evento: {eventLabels.join(' · ')}
+						</p>
+					{/if}
 					<form onsubmit={save} class="space-y-4">
 						<h2 class="text-sm font-semibold">Classifica</h2>
 						{#if order.length === 0}<p class="text-sm text-muted-foreground">
@@ -448,6 +476,16 @@
 												class={inputClass}
 												bind:value={row.sponsor}
 												aria-label={`Punti sponsor di ${row.name}`}
+											/></label
+										>
+										<label class="flex items-center gap-1 text-sm text-muted-foreground"
+											>Extra<input
+												type="number"
+												min="0"
+												step="1"
+												class={inputClass}
+												bind:value={row.bonus}
+												aria-label={`Punti extra evento di ${row.name}`}
 											/></label
 										>
 										<Button

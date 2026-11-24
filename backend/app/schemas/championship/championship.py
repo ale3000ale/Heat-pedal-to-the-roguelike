@@ -52,3 +52,9 @@ class ChampionshipDetail(ChampionshipRead):
     next_map_heat: int | None
     next_map_curve: int | None
     next_map_caselle: int | None
+    # Effetto dell'evento estratto, letto da events.json e decodificato in italiano.
+    next_event_effect: str | None
+    next_event_labels: list[str]
+    next_event_sponsor_points: int
+    next_event_position_limit: int
+    next_event_position_points: int

@@ -252,6 +252,7 @@ Il pilota può iscriversi solo se non partecipa a un altro campionato attivo. Lo
 | 7°–12° | 0 |
 
 - **Punti sponsor**: non dipendono dalla posizione, dipendono da come va la partita. Ogni carta sponsor assegnata con il tasto S durante una gara in corso vale 1 punto sponsor per il pilota che la riceve; il punto è proposto nel modulo dei risultati quando il pilota entra in classifica, mentre chi è dichiarato assente non lo riceve. I punti restano modificabili a mano, valgono 0 se non indicati e non possono essere negativi. Vengono assegnati al pilota solo quando la gara è terminata; in una correzione il pilota riceve (o perde) solo la differenza rispetto ai valori precedenti, senza scendere sotto zero.
+- Gli effetti delle carte evento sono definiti in `regole effetti eventi.txt`. I codici `lap±N`, `hand±N`, `H±N` e `St±N` sono mostrati come informazione, senza modificare contatori dell'app. I codici `S+N` e `pos1-A+N` propongono rispettivamente N punti sponsor in più per ogni pilota non ancora classificato e N punti extra ai primi A classificati: le proposte sono precompilate nel modulo risultati, restano modificabili a mano e valgono solo alla conferma. I punti extra sono salvati insieme a quelli di posizione e una correzione può modificarli.
 - Un iscritto che non partecipa a una gara non ha una riga di risultato, ma viene mostrato nel dettaglio della gara con posizione assente, 0 punti e 0 punti sponsor.
 
 ### Classifica

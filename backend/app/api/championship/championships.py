@@ -31,6 +31,7 @@ from app.services.championship.race_setup import (
     RaceSetupFilesError,
     RaceSetupNotReadyError,
     cancel_next_race,
+    event_effects,
     map_stats,
     prepare_next_race,
 )
@@ -58,6 +59,7 @@ def _read(db, championship) -> ChampionshipRead:
 def _detail(db, championship) -> ChampionshipDetail:
     pilots = [EntrantRead.model_validate(p) for p in list_entrants(db, championship.id)]
     stress, heat, curve, caselle = map_stats(championship.next_map_path)
+    effect = event_effects(championship.next_event_path)
     return ChampionshipDetail(
         **_read(db, championship).model_dump(),
         pilots=pilots,
@@ -67,6 +69,11 @@ def _detail(db, championship) -> ChampionshipDetail:
         next_map_heat=heat,
         next_map_curve=curve,
         next_map_caselle=caselle,
+        next_event_effect=effect.raw or None,
+        next_event_labels=list(effect.labels),
+        next_event_sponsor_points=effect.sponsor_points,
+        next_event_position_limit=effect.position_limit,
+        next_event_position_points=effect.position_points,
     )
 
 

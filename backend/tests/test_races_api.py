@@ -113,6 +113,41 @@ def test_players_cannot_manage_races(make_client, session_factory):
     assert player.get(f"/api/championships/{cid}/standings").status_code == 200
 
 
+def test_event_bonus_points_are_saved_and_exposed(make_client, session_factory):
+    admin, _, cid, pilots = setup(make_client, session_factory, ["Anna", "Bia"])
+    race_id = new_race(admin, cid)
+    entries = [
+        {"pilot_id": pilots["Anna"], "sponsor_points": 1, "bonus_points": 2},
+        {"pilot_id": pilots["Bia"], "sponsor_points": 0},
+    ]
+
+    response = admin.put(
+        f"/api/championships/{cid}/races/{race_id}/results", json={"results": entries}
+    )
+
+    assert response.status_code == 200
+    rows = {row["pilot_id"]: row for row in response.json()["results"]}
+    assert rows[pilots["Anna"]]["points"] == 11
+    assert rows[pilots["Anna"]]["bonus_points"] == 2
+    assert rows[pilots["Bia"]]["points"] == 6
+    assert rows[pilots["Bia"]]["bonus_points"] == 0
+    detail = admin.get(f"/api/championships/{cid}/races/{race_id}").json()
+    assert [(row["points"], row["bonus_points"]) for row in detail["results"]] == [
+        (11, 2),
+        (6, 0),
+    ]
+
+
+def test_negative_event_bonus_is_rejected(make_client, session_factory):
+    admin, _, cid, pilots = setup(make_client, session_factory, ["Anna"])
+    race_id = new_race(admin, cid)
+    response = admin.put(
+        f"/api/championships/{cid}/races/{race_id}/results",
+        json={"results": [{"pilot_id": pilots["Anna"], "bonus_points": -1}]},
+    )
+    assert response.status_code == 422
+
+
 def test_races_are_numbered_and_unknown_ids_are_404(make_client, session_factory):
     admin, player, cid, pilots = setup(make_client, session_factory, ["Anna"])
     first = new_race(admin, cid)

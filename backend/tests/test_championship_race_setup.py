@@ -23,6 +23,7 @@ def seed_board(
     tmp_path,
     maps=(("mappa-1.webp", 1), ("mappa-2.webp", 2)),
     events=(("evento-1.webp", 1),),
+    event_effects=None,
 ):
     # Media e catalogo JSON del servizio vengono sostituiti solo nel test.
     media = tmp_path / "media"
@@ -37,13 +38,14 @@ def seed_board(
         catalog = []
         for name, card_id in entries:
             (directory / name).write_bytes(b"webp")
-            catalog.append(
-                {
-                    "id": card_id,
-                    "nome": name.rsplit(".", 1)[0].upper(),
-                    "image": f"board/{folder}/{name}",
-                }
-            )
+            card = {
+                "id": card_id,
+                "nome": name.rsplit(".", 1)[0].upper(),
+                "image": f"board/{folder}/{name}",
+            }
+            if folder == "events" and event_effects and card_id in event_effects:
+                card["effetto"] = event_effects[card_id]
+            catalog.append(card)
         (json_dir / filename).write_text(json.dumps(catalog), encoding="utf-8")
     monkeypatch.setattr(board_pools, "MEDIA_DIR", media)
     monkeypatch.setattr(race_setup, "MEDIA_DIR", media)
@@ -98,6 +100,10 @@ def test_setup_draws_and_publishes_cards(monkeypatch, tmp_path, make_client, ses
     assert detail["next_map_heat"] is None
     assert detail["next_map_curve"] is None
     assert detail["next_map_caselle"] is None
+    assert detail["next_event_effect"] is None
+    assert detail["next_event_labels"] == []
+    assert detail["next_event_sponsor_points"] == 0
+    assert detail["next_event_position_limit"] == 0
     # Il setup estrae ma non consuma: le pool contengono ancora tutte le carte.
     assert pool_ids(session_factory, championship_id) == ([1, 2], [1])
     with session_factory() as db:
@@ -106,6 +112,56 @@ def test_setup_draws_and_publishes_cards(monkeypatch, tmp_path, make_client, ses
         )).all()
     assert kinds == ["championship.setup_changed"]
     assert admin.post(f"/api/championships/{championship_id}/setup").status_code == 409
+
+
+def test_detail_publishes_event_effects(monkeypatch, tmp_path, make_client, session_factory):
+    seed_board(monkeypatch, tmp_path, event_effects={1: "Extra.\nS+2, pos1-3+1"})
+    championship_id = seed_championship(session_factory)
+    admin = make_admin(make_client, session_factory)
+
+    assert admin.post(f"/api/championships/{championship_id}/setup").status_code == 200
+    detail = admin.get(f"/api/championships/{championship_id}").json()
+
+    assert detail["next_event_effect"] == "Extra.\nS+2, pos1-3+1"
+    assert detail["next_event_labels"] == [
+        "Sponsor alle curve: +2 punti",
+        "Primi 3: +1 punti",
+    ]
+    assert detail["next_event_sponsor_points"] == 2
+    assert detail["next_event_position_limit"] == 3
+    assert detail["next_event_position_points"] == 1
+
+
+def test_suggested_sponsor_points_include_event_bonus(
+    monkeypatch, tmp_path, make_client, session_factory
+):
+    seed_board(monkeypatch, tmp_path, event_effects={1: "Extra.\nS+2"})
+    championship_id = seed_championship(session_factory, "Suggerimento")
+    admin = make_admin(make_client, session_factory)
+    assert admin.post(f"/api/championships/{championship_id}/setup").status_code == 200
+
+    with session_factory() as db:
+        user_id = db.scalar(select(User.id).where(User.username == "capo"))
+        decks = [Deck(cards="[]") for _ in range(3)]
+        db.add_all(decks)
+        db.flush()
+        pilot = Pilot(
+            name="Pilota", name_key="pilota", user_id=user_id,
+            inventory_deck_id=decks[0].id, sponsor_inventory_deck_id=decks[1].id,
+            game_deck_id=decks[2].id,
+        )
+        db.add(pilot)
+        db.flush()
+        db.add(ChampionshipPilot(championship_id=championship_id, pilot_id=pilot.id))
+        race = Race(championship_id=championship_id, number=1)
+        db.add(race)
+        db.commit()
+        race_id = race.id
+
+    detail = admin.get(f"/api/championships/{championship_id}/races/{race_id}").json()
+    assert detail["results"][0]["position"] is None
+    assert detail["results"][0]["suggested_sponsor_points"] == 2
+    assert detail["results"][0]["bonus_points"] == 0
 
 
 def test_map_card_counts_reads_matching_map(monkeypatch, tmp_path):

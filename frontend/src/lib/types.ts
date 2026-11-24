@@ -79,6 +79,12 @@ export interface ChampionshipDetail extends Championship {
 	next_map_heat: number | null;
 	next_map_curve: number | null;
 	next_map_caselle: number | null;
+	// Effetto dell'evento estratto, decodificato in italiano dal backend.
+	next_event_effect: string | null;
+	next_event_labels: string[];
+	next_event_sponsor_points: number;
+	next_event_position_limit: number;
+	next_event_position_points: number;
 }
 
 // Tipo di una pool di carte: modifiche o sponsor.

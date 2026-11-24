@@ -4,8 +4,8 @@ import { hasResultChanges, reconcileResults, type ResultForm } from './race-resu
 function baseForm(): ResultForm {
 	return {
 		order: [
-			{ pilot_id: 1, name: 'Uno', sponsor: 1 },
-			{ pilot_id: 2, name: 'Due', sponsor: 2 }
+			{ pilot_id: 1, name: 'Uno', sponsor: 1, bonus: 0 },
+			{ pilot_id: 2, name: 'Due', sponsor: 2, bonus: 0 }
 		],
 		absent: [{ pilot_id: 3, name: 'Tre' }]
 	};
@@ -50,7 +50,7 @@ describe('riconciliazione risultati', () => {
 		local.order.reverse();
 		const remote = structuredClone(base);
 		remote.absent = [{ pilot_id: 2, name: 'Due' }];
-		remote.order[1] = { pilot_id: 3, name: 'Tre', sponsor: 4 };
+		remote.order[1] = { pilot_id: 3, name: 'Tre', sponsor: 4, bonus: 0 };
 		const merged = reconcileResults(base, local, remote);
 		expect(merged.form.order.map((row) => row.pilot_id)).toEqual([2, 1]);
 		expect(merged.form.absent).toEqual(local.absent);
@@ -93,6 +93,18 @@ describe('riconciliazione risultati', () => {
 		expect(merged.conflict).toBe(true);
 		local.order[0].sponsor = 6;
 		expect(reconcileResults(base, local, remote).hasChanges).toBe(false);
+	});
+
+	it('conserva i punti extra locali e segnala modifiche concorrenti', () => {
+		const base = baseForm();
+		const local = structuredClone(base);
+		local.order[0].bonus = 4;
+		const remote = structuredClone(base);
+		remote.order[0].bonus = 2;
+		const merged = reconcileResults(base, local, remote);
+		expect(merged.form.order[0].bonus).toBe(4);
+		expect(merged.conflict).toBe(true);
+		expect(hasResultChanges(base, local)).toBe(true);
 	});
 
 	it('puo usare la bozza inviata come base per preservare modifiche durante PUT', () => {

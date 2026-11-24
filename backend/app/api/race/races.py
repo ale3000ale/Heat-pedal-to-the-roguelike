@@ -10,7 +10,13 @@ from app.schemas.race.race import (
     ResultsSet,
     StandingRead,
 )
-from app.services.championship.championships import standings, ChampionshipClosedError, ChampionshipNotFoundError
+from app.services.championship.championships import (
+    get_championship,
+    standings,
+    ChampionshipClosedError,
+    ChampionshipNotFoundError,
+)
+from app.services.championship.race_setup import event_effects
 from app.services.race.race_deck_readiness import GameDecksNotReadyError
 from app.services.race.race_review import is_last_race, is_review_active, settle_expired_reviews
 from app.services.race.races import (
@@ -67,6 +73,9 @@ def _read(db, race) -> RaceRead:
 def _detail(db, championship_id: int, race_id: int) -> RaceDetail:
     race, rows = race_table(db, championship_id, race_id)
     suggested = suggested_sponsor_points(db, race.id)
+    # L'effetto S+N si propone solo prima del salvataggio: dopo, il valore salvato
+    # è autorevole e modulo e correzioni leggono sponsor_points.
+    effect = event_effects(get_championship(db, championship_id).next_event_path)
     results = [
         RaceResultRead(
             pilot_id=p.id,
@@ -74,9 +83,11 @@ def _detail(db, championship_id: int, race_id: int) -> RaceDetail:
             position=position,
             points=points,
             sponsor_points=sponsor_points,
-            suggested_sponsor_points=suggested.get(p.id, 0),
+            suggested_sponsor_points=suggested.get(p.id, 0)
+            + (effect.sponsor_points if position is None else 0),
+            bonus_points=bonus,
         )
-        for p, position, points, sponsor_points in rows
+        for p, position, points, sponsor_points, bonus in rows
     ]
     return RaceDetail(**_read(db, race).model_dump(), results=results)
 
@@ -133,7 +144,9 @@ def put_results(
     # Termina la gara registrando classifica, sponsor e assenti (giudice o admin).
     # Alla prima registrazione chi preme Termina diventa il revisore e la revisione delle
     # carte parte subito. Se la gara ha già i risultati, solo l'admin può correggerli.
-    entries = [(entry.pilot_id, entry.sponsor_points) for entry in data.results]
+    entries = [
+        (entry.pilot_id, entry.sponsor_points, entry.bonus_points) for entry in data.results
+    ]
     try:
         set_results(
             db,

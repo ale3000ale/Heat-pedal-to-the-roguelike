@@ -70,6 +70,7 @@
 	let mapUrl = $derived(championship ? nextRaceImageUrl(championship.next_map_path) : null);
 	let eventName = $derived(championship ? nextRaceName(championship.next_event_path) : null);
 	let eventUrl = $derived(championship ? nextRaceImageUrl(championship.next_event_path) : null);
+	let eventLabels = $derived(championship?.next_event_labels ?? []);
 	let stressImageUrl = genericCardImageUrl('stress');
 	let heatImageUrl = genericCardImageUrl('heat');
 	let stressLabel = $derived(mapCountLabel(championship?.next_map_stress));
@@ -557,6 +558,16 @@
 							alt={`Evento ${eventName}`}
 							class="h-56 w-full object-contain p-3 sm:h-64"
 						/>
+						{#if eventLabels.length}
+							<p class="border-t border-white/10 px-4 py-2 text-xs text-muted-foreground">
+								Effetti evento:
+								{#each eventLabels as label, index (index)}
+									<span class="mr-1 inline-block rounded bg-white/5 px-1.5 py-0.5 text-white"
+										>{label}</span
+									>
+								{/each}
+							</p>
+						{/if}
 					</figure>
 				</div>
 			</div>
