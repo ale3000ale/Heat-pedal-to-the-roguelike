@@ -5,6 +5,7 @@
 	import AdminChampionshipPilots from '$lib/components/admin/admin-championship-pilots.svelte';
 	import ChampionshipHistoryPanel from '$lib/components/championship/championship-history-panel.svelte';
 	import ChampionshipPacksManager from '$lib/components/championship/championship-packs-manager.svelte';
+	import ChampionshipBoardPoolPanel from '$lib/components/championship/championship-board-pool-panel.svelte';
 	import ChampionshipPoolPanel from '$lib/components/championship/championship-pool-panel.svelte';
 	import ConfirmDialog from '$lib/components/shared/confirm-dialog.svelte';
 	import GoldRulesForm from '$lib/components/championship/gold-rules-form.svelte';
@@ -35,6 +36,8 @@
 	let packsOpen = $state(false);
 	let historyOpen = $state(false);
 	let poolOpen = $state(false);
+	let mapsPoolOpen = $state(false);
+	let eventsPoolOpen = $state(false);
 	let pilotsOpen = $state(false);
 	let pilotsPending = $state(false);
 	let pilotsBusy = $state(false);
@@ -56,6 +59,14 @@
 	function openPool() {
 		open = false;
 		poolOpen = true;
+	}
+	function openMapsPool() {
+		open = false;
+		mapsPoolOpen = true;
+	}
+	function openEventsPool() {
+		open = false;
+		eventsPoolOpen = true;
 	}
 	function openPilots() {
 		if (!auth.isAdmin) return;
@@ -132,6 +143,13 @@
 					<Button size="sm" variant="outline" onclick={openPilots}>Visualizza piloti e carte</Button
 					>
 				</div>
+				<div class="space-y-2 border-t pt-4">
+					<h3 class="text-sm font-semibold">Pool</h3>
+					<div class="flex flex-wrap gap-2">
+						<Button size="sm" variant="outline" onclick={openMapsPool}>Pool mappe</Button>
+						<Button size="sm" variant="outline" onclick={openEventsPool}>Pool eventi</Button>
+					</div>
+				</div>
 			{/if}
 			<div class={shopOnly ? 'space-y-2' : 'space-y-2 border-t pt-4'}>
 				<h3 class="text-sm font-semibold">Negozio</h3>
@@ -185,6 +203,28 @@
 	<Modal bind:open={poolOpen} title="Pool completa del campionato">
 		{#if poolOpen}<ChampionshipPoolPanel championshipId={championship.id} />{/if}
 	</Modal>
+	{#if auth.isAdmin}
+		<Modal bind:open={mapsPoolOpen} title="Pool mappe" extraWide>
+			{#if mapsPoolOpen}<ChampionshipBoardPoolPanel
+					championshipId={championship.id}
+					kind="mappe"
+					onback={() => {
+						mapsPoolOpen = false;
+						open = true;
+					}}
+				/>{/if}
+		</Modal>
+		<Modal bind:open={eventsPoolOpen} title="Pool eventi" extraWide>
+			{#if eventsPoolOpen}<ChampionshipBoardPoolPanel
+					championshipId={championship.id}
+					kind="eventi"
+					onback={() => {
+						eventsPoolOpen = false;
+						open = true;
+					}}
+				/>{/if}
+		</Modal>
+	{/if}
 	<Modal bind:open={historyOpen} title="Storico acquisti del campionato">
 		{#if historyOpen}<ChampionshipHistoryPanel championshipId={championship.id} />{/if}
 	</Modal>

@@ -17,9 +17,10 @@ comportamento descritto sotto è evidenza da codice e test, non un requisito.
 
 ## Perimetro ed esclusioni
 
-**Incluso:** estrazione casuale di mappa ed evento da `backend/media/board`, persistenza dei
-due percorsi sul campionato, segnale `championship.setup_changed`, pulsante
-`SETUP GARA` / `AVVIA GARA`, sezione “PROSSIMA GARA” e pulizia dei percorsi alla prima
+**Incluso:** estrazione di mappa ed evento dalle pool del campionato (catalogo in
+`backend/JSON/maps.json` e `events.json`), persistenza dei due percorsi sul campionato,
+segnale `championship.setup_changed`, pulsante `SETUP GARA` / `AVVIA GARA`, sezione
+“PROSSIMA GARA”, annullamento del setup e consumo delle due carte dalla pool alla prima
 registrazione dei risultati o alla chiusura del campionato.
 
 **Escluso:** regole interne della draft, creazione ed esecuzione della gara, regole dei mazzi
@@ -60,6 +61,33 @@ test, Prettier, lint, build e `git diff --check` sono rinviati al merge. Nessuna
 dipendenza, modifica di `maps.json` o delle immagini, prova browser, CI od operazione VCS. Le
 citazioni di riga delle sezioni storiche seguenti si riferiscono alla revisione
 `21e17e637b43528d7320e88f0af5623db7158ee9` e non sono state riscritte.
+
+## Pool di mappe ed eventi (24 novembre 2026)
+
+- Modello: `backend/app/db/models/championship.py` — `map_pool_ids` ed `event_pool_ids`,
+  testo JSON nullable; `NULL` significa pool mai inizializzata, `[]` pool esaurita.
+- Migrazione `c1d5e9f3a7b2`
+  (`backend/alembic/versions/c1d5e9f3a7b2_pool_mappe_eventi.py`): crea le colonne e
+  inizializza i campionati esistenti con gli ID dei due JSON.
+- Servizio `backend/app/services/championship/board_pools.py`: catalogo dai JSON,
+  inizializzazione, estrazione, consumo e vista; la vista non scrive sul campionato.
+- Creazione: `backend/app/services/championship/championships.py` chiama `initialize_pools`.
+- Setup: `prepare_next_race` estrae dalle pool; `cancel_next_race` svuota i percorsi senza
+  toccare le pool.
+- Consumo: `backend/app/services/race/races.py` chiama `consume_setup` alla prima
+  registrazione dei risultati, prima di azzerare i percorsi.
+- API: `DELETE /api/championships/{id}/setup` per admin e giudici in
+  `backend/app/api/championship/championships.py`; `GET /api/championships/{id}/board-pools/{kind}`
+  per il solo admin in `backend/app/api/championship/board_pools.py`, registrato in
+  `backend/app/main.py`.
+- Frontend: helper `frontend/src/lib/championship/board-pool-api.ts`, pannello
+  `frontend/src/lib/components/championship/championship-board-pool-panel.svelte`, sezione
+  Pool in `championship-settings.svelte`, cestino in
+  `frontend/src/routes/championships/[id]/+page.svelte`, icone `trash` e `deck_export` in
+  `frontend/src/lib/components/shared/racing-icon.svelte`.
+- Test: `backend/tests/test_championship_race_setup.py` (estrazione senza consumo, consumo
+  ai risultati, annullamento, vista pool, creazione, campionato legacy) e
+  `frontend/src/lib/championship/board-pool-api.spec.ts`.
 
 ## Revisione e stato del worktree esaminati
 
@@ -161,12 +189,20 @@ come superati.
 Rivalutare la scheda quando cambia una delle fonti pertinenti, non a ogni commit:
 
 - `backend/app/services/championship/race_setup.py`, `backend/app/services/race/races.py`,
-  `backend/app/services/championship/championships.py`.
-- `backend/app/api/championship/championships.py`, `backend/app/api/deps.py`,
-  `backend/app/schemas/championship/championship.py`, `backend/app/schemas/core/events.py`.
+  `backend/app/services/championship/championships.py`,
+  `backend/app/services/championship/board_pools.py`.
+- `backend/app/api/championship/championships.py`, `backend/app/api/championship/board_pools.py`,
+  `backend/app/api/deps.py`, `backend/app/schemas/championship/championship.py`,
+  `backend/app/schemas/core/events.py`.
 - `backend/app/db/models/championship.py`,
-  `backend/alembic/versions/b8f4e2a1c7d9_next_race_setup.py`.
+  `backend/alembic/versions/b8f4e2a1c7d9_next_race_setup.py`,
+  `backend/alembic/versions/c1d5e9f3a7b2_pool_mappe_eventi.py`.
 - `frontend/src/routes/championships/[id]/+page.svelte`,
-  `frontend/src/lib/championship/next-race-setup.ts`, `frontend/src/lib/types.ts`,
+  `frontend/src/lib/championship/next-race-setup.ts`,
+  `frontend/src/lib/championship/board-pool-api.ts`,
+  `frontend/src/lib/components/championship/championship-board-pool-panel.svelte`,
+  `frontend/src/lib/components/championship/championship-settings.svelte`,
+  `frontend/src/lib/components/shared/racing-icon.svelte`,
+  `frontend/src/lib/types.ts`,
   `frontend/src/lib/events/event-types.ts`, `frontend/src/lib/events/event-validation.ts`.
 - I test elencati nella sezione precedente e i documenti canonici linkati all'inizio.

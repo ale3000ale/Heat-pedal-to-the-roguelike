@@ -14,6 +14,7 @@
 		closeOnOutside = true,
 		blur = false,
 		wide = false,
+		extraWide = false,
 		narrow = false,
 		stableViewport = false,
 		fitContent = false,
@@ -28,6 +29,7 @@
 		closeOnOutside?: boolean;
 		blur?: boolean;
 		wide?: boolean;
+		extraWide?: boolean;
 		narrow?: boolean;
 		stableViewport?: boolean;
 		fitContent?: boolean;
@@ -65,7 +67,7 @@
 			role="dialog"
 			aria-modal="true"
 			aria-label={title}
-			class={`relative max-h-[90vh] w-full ${wide ? 'max-w-3xl' : narrow ? 'max-w-xs' : 'max-w-lg'} overflow-y-auto rounded-lg border bg-background ${fitContent ? 'p-3 sm:p-4' : 'p-4'} text-foreground shadow-lg`}
+			class={`relative max-h-[90vh] w-full ${wide ? 'max-w-3xl' : extraWide ? 'max-w-[920px]' : narrow ? 'max-w-xs' : 'max-w-lg'} overflow-y-auto rounded-lg border bg-background ${fitContent ? 'p-3 sm:p-4' : 'p-4'} text-foreground shadow-lg`}
 			class:viewport-stable={stableViewport}
 			class:viewport-fit={fitContent}
 		>

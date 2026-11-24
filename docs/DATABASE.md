@@ -87,6 +87,7 @@ Prima di eseguire migrazioni sui dati del gioco: arresto dell'app, backup verifi
 ### championship
 
 - `id`, `name` (unico), `name_key` (unico), `date`, `is_closed` (predefinito falso), `pool_deck_id` (copia della pool delle modifiche, verso `deck.id`), `sponsor_pool_deck_id` (copia della pool sponsor, verso `deck.id`).
+- `map_pool_ids` ed `event_pool_ids`: testo JSON con gli ID di mappe ed eventi ancora in pool. `NULL` indica una pool mai inizializzata, `[]` una pool esaurita. Nome, immagine e informazioni restano nei JSON `maps.json` e `events.json`.
 - Regole dell'oro per gara: `gold_base` (predefinito 20), `gold_pos_1` ... `gold_pos_6` e `gold_pos_other` (predefinito 0; l'ultima vale dalla 7ª posizione in poi).
 
 ### championship_defaults
