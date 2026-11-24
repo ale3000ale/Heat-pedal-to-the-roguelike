@@ -135,6 +135,7 @@
 					title="Oro per gara"
 					description="Oro dato a tutti gli iscritti dopo ogni gara, anche a chi non corre. Un totale negativo diventa 0. Le modifiche valgono dalla gara successiva."
 					editable
+					collapsible
 				/>
 			{/if}
 			{#if !shopOnly && auth.isAdmin}
